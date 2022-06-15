@@ -1,7 +1,7 @@
 #
-# left_recursion.py
+# Based on the pyparsing examples: parsePythonValue.py, left_recursion.py, simpleBool.py
 #
-# Example code illustrating use of left-recursion in Pyparsing.
+# 
 #
 import pyparsing as pp
 
@@ -9,17 +9,6 @@ import sys
 import io
 
 from preprocessor import preprocess
-
-
-#class Operator:
-#    def __init__(self, t):
-#        pass
-#
-#
-#class ASTNode:
-#    def __init__(self, t):
-#        self.t = t
-#
 
 
 class Node:
