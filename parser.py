@@ -83,7 +83,11 @@ class Block(Node):
 
     def __init__(self, tokens):#, args=None):
         self.func = "Block"#tokens[0][0]
-        self.args = tokens.as_list()
+        # something is annoying and bad here
+        if len(tokens) == 1:
+            self.args = tokens.as_list()[0]
+        else:
+            self.args = tokens.as_list()
         # if args is not None:
         #     self.args = args
         # else:

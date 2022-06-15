@@ -88,23 +88,54 @@ def codegen(parsed):
     return cpp.getvalue()
 
 
-def semantic_analysis(parsed):
-    assert isinstance(parsed, Module) # enforced by parser
-    for moddef in parsed.args:
-        assert isinstance(moddef, Call) # enforced by parser
-
-        print(moddef.func)
-        if moddef.func not in ["def", "class"]:
-            raise SemanticAnalysisError("Only defs or classes at module level")
-    return parsed
-
-
 def one_liner_expander(parsed):
 
+    def ifreplacer(ifop):
+
+        if len(ifop.args) < 1:
+            raise SemanticAnalysisError("not enough if args")
+
+        if len(ifop.args) == 1 or not isinstance(ifop.args[1],
+                                                 Block):
+            if isinstance(ifop.args[0], ColonBinOp):
+                # convert second arg of outermost colon to one element block
+                rebuilt = [ifop.args[0].args[0], RebuiltBlock(
+                    args=[ifop.args[0].args[1]])] + ifop.args[2:]
+                return RebuiltCall(func="if", args=rebuilt)
+            else:
+                raise SemanticAnalysisError("bad first if-args")
+
+        for i, a in enumerate(ifop.args[2:]):
+            if isinstance(a, Block):
+                if not ifop.args[i - 1] in ["elif", "else"]:
+                    raise SemanticAnalysisError(
+                        f"unexpected if arg. Found block at position {i} but it's not preceded by 'if' or 'elif'")
+            elif a in ["elif", "else"]:
+                if i == len(ifop.args) - 1:
+                    raise SemanticAnalysisError(
+                        "found {} as last arg of if".format(a))
+                elif not isinstance(ifop.args[i + 1], Block):
+                    # convert single expression to 1-element block (hope this is desirable!)
+                    rebuilt = [ifop.args[0:i + 1], RebuiltBlock(
+                        args=[ifop.args[i + 1]])] + ifop.args[i + 1:]
+                    return RebuiltCall(func="if", args=rebuilt)
+                elif isinstance(a, ColonBinOp):
+                    if isinstance(a, ColonBinOp):
+                        # convert second arg of outermost colon to one element block
+                        rebuilt = [a.args[0], RebuiltBlock(
+                            args=[a.args[1]])] + rebuilt[2:]
+                        return RebuiltCall(func="if", args=rebuilt)
+                else:
+                    raise SemanticAnalysisError(
+                        f"bad if-arg {a} at position {i}")
+
+        return ifop
+
     def visitor(op):
-        #print("op", op.func)
+
         if not isinstance(op, Node):
-            return op
+            return False, op
+
         if isinstance(op, Call):
             if op.func == "def":
                 if len(op.args) < 2:
@@ -113,88 +144,55 @@ def one_liner_expander(parsed):
                     raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
                 if not isinstance(op.args[-1], Block):
                     # last arg becomes one-element block
-                    op.args[-1] = RebuiltBlock(args=[op.args[-1]])
-
-            def ifreplacer(ifop):
-
-                if len(ifop.args) < 1:
-                    raise SemanticAnalysisError("not enough if args")
-                #if ifop.args[0]
-
-                if 0 and len(ifop.args) == 1:
-                    if not isinstance(ifop.args[0], ColonBinOp):
-                        raise SemanticAnalysisError("wrong one-liner if syntax")
-                    rebuilt = [a.args[0], RebuiltBlock(args=[a.args[1]])] + rebuilt[2:]
-                    return RebuiltCall(func="if", args=rebuilt)
-                    rebuilt = []
-                    
-
-                rebuilt = list(ifop.args)
-
-                for i, a in enumerate(ifop.args):
-                    if i == 0:
-                        if len(ifop.args) == 1 or not isinstance(ifop.args[1], Block):
-                            if isinstance(a, ColonBinOp):
-                                # convert second arg of outermost colon to one element block
-                                rebuilt = [a.args[0], RebuiltBlock(args=[a.args[1]])] + rebuilt[2:]
-                                return RebuiltCall(func="if", args=rebuilt)
-                            else:
-                                raise SemanticAnalysisError("bad first if-args")
-                    elif i == 1:
-                        if not isinstance(a, Block):
-                            raise SemanticAnalysisError("unexpected 2nd if-arg")
-                    else:
-                        if isinstance(a, Block):
-                            if not ifop.args[i-1] in ["elif", "else"]:
-                                raise SemanticAnalysisError("unexpected if arg. Found block at position {} but it's not preceded by 'if or elif'".format(i) )
-
-
-                    if isinstance(a, ColonBinOp):
-                        if a.args[0] == "elif":
-                            pass
-                        elif a.args[1] == "else":
-                            pass
-                        elif i == 0:
-                            pass
-                        else:
-                            raise SemanticAnalysisError("bad if args")
-
-                        if a.args[0] == "elif" and i < len(args)-1 and isinstance(a[i + 1], Block):
-                            continue
-                        elif a.args[0] == "huh":
-                            if not isinstance(a.args[1], Block):
-                                pass
-                    elif i != 0:
-                        raise SemanticAnalysisError("bad if args")
-                    elif i:
-                        pass
-
-            if op.func == "if" and 0:
+                    return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
+            elif op.func == "if":
+                changed = False
                 while True:
                     new = ifreplacer(op)
-                    if new is not op:
-                        op = new
-                    else:
+                    if new is op:
                         break
+                    else:
+                        changed = True
+                        op = new
+                if changed:
+                    return True, op
+
+        rebuilt = []
+        changed = False
 
         for arg in op.args:
-            visitor(arg)
+            changed, arg = visitor(arg)
+            rebuilt.append(arg)
 
-        return op
+        if changed:
+            op.args = rebuilt
 
-    return visitor(parsed)
+        return changed, op
+
+    while True:
+        changed, parsed = visitor(parsed)
+        if not changed:
+            break
+
+    return parsed
 
 
 def compile(s):
     parsed = parse(s)
-    #parsed = semantic_analysis(parsed)
     parsed = one_liner_expander(parsed)
+    print("one_liner_expander", parsed)
     code = codegen(parsed)
     print("code:\n", code)
 
 
 if __name__ == "__main__":
     compile("""
+def (main:
+    if (1:1)
+    def (x,1)
+)""")
+
+    0 and compile("""
 def (bar, x, y, 0)
 def (foo, x, y:
     # parser: [Module([def(['bar', 'x', 'y', 0]), def(['foo', 'x', 'y', Block([[if([:(x,int), :(1,int), :(elif,:(-(x,1),int)), :(5,int), :(else,:(0,int))])], 
@@ -207,6 +205,7 @@ def (foo, x, y:
     # :(elif, :(x,:(int,:(5,int)))), 
     # :(else,0)])]
     #if (1:1, elif:x:int:5:int, else: 0:int)
+    if (1:1)
     if (elif:x:int:5:int) # should result in "unknown identifier 'int'"
     if (elif:(x:int):5:int)
     #if (1:1, elif:(x:int):5:int, else: 0:int)
