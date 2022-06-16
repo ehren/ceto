@@ -160,6 +160,8 @@ def one_liner_expander(parsed):
         if not isinstance(op, Node):
             return False, op
 
+        changed = False
+
         if isinstance(op, Call):
             if op.func == "def":
                 if len(op.args) < 2:
@@ -170,22 +172,27 @@ def one_liner_expander(parsed):
                     # last arg becomes one-element block
                     return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
             elif op.func == "if":
-                changed = False
-                while True:
-                    new = ifreplacer(op)
-                    if new is op:
-                        break
-                    else:
-                        changed = True
-                        op = new
-                if changed:
-                    return True, op
+                # changed = False
+                new = ifreplacer(op)
+                if new is not op:
+                    return True, new
+                # while True:
+                #     new = ifreplacer(op)
+                #     if new is op:
+                #         break
+                #     else:
+                #         changed = True
+                #         op = new
+                # if changed:
+                #     return True, op
 
         rebuilt = []
-        changed = False
+        # changed = False
 
         for arg in op.args:
-            changed, arg = visitor(arg)
+            arg_change, arg = visitor(arg)
+            if arg_change:
+                changed = True
             rebuilt.append(arg)
 
         if changed:
@@ -212,14 +219,15 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
 def (main:
-    if (1:1)
-    def (x,1)
-    if (1: 1, elif: x: 2, else: 0)
+    # if (1:1)
+    if (if(1:1):1)
+    # def (x,1)
+    # if (1: 1, elif: x: 2, else: 0)
     # if (elif:x:int:5:int) # should result in "unknown identifier 'elif'"
     # if ((x:int):0:int, elif:(x:int):5:int)  # works
     # if (x:int:y=0:int,elif:x:int:5:int, else:x=2:int) # nonsense but lowered correctly
     # if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
-    y=((x=123456789))
+    # y=((x=123456789))
 )""")
 
     0 and compile("""
