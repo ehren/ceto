@@ -3,6 +3,11 @@ from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, R
 import io
 
 
+def isa_or_wrapped(node, NodeClass):
+    return isinstance(node, NodeClass) or (isinstance(node, ColonBinOp) and isinstance(node.args[0], NodeClass))
+
+
+
 class RebuiltBlock(Block):
 
     def __init__(self, args):
@@ -13,6 +18,16 @@ class RebuiltBlock(Block):
 class RebuiltCall(Call):
     def __init__(self, func, args):
         self.func = func
+        self.args = args
+
+# def _monkey(self, func, args):
+#     self.func = func
+#     self.args = args
+
+# Assign.__init__ = _monkey
+class RebuiltAssign(Assign):
+    def __init__(self, args):
+        self.func = "Assign"
         self.args = args
 
 
@@ -210,6 +225,8 @@ def assign_to_named_parameter(parsed):
                         rebuilt.append(arg)
                 elif isinstance(arg, Assign):
                     rebuilt.append(NamedParameter(args=arg.args))
+                elif isinstance(arg, RedundantParens) and isa_or_wrapped(arg.args[0], Assign):
+                    rebuilt.append(arg.args[0])
                 else:
                     rebuilt.append(arg)
             op.args = rebuilt
@@ -238,8 +255,9 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
 def (main:
-    # foo((x=y:int:strong), x=y:int:weak)
+    foo((x=y:int:strong), x=y:int:weak)
     foo(x=y:int, (z=y:int))
+    (1+1)
 )
     """)
 
