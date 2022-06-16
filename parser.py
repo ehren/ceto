@@ -168,7 +168,7 @@ def create():
     factop = pp.Literal("!")
     colon = pp.Literal(":")
 
-    expr <<= pp.infixNotation(
+    expr <<= pp.infix_notation(
         listItem,
         [
             ("!", 1, pp.opAssoc.LEFT, UnOp),
@@ -180,6 +180,8 @@ def create():
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
+        lpar="(",# pp.Literal("(").setResultsName("LPAREN"),
+        rpar=")" # pp.Literal(")").setResultsName("RPAREN")
     )
 
     tupleStr <<= (
@@ -199,15 +201,23 @@ def create():
     block_start = pp.Suppress(gs)
     block_line_end = pp.Suppress(rs)
 
-    #block = block_start + pp.IndentedBlock(expr + block_line_end, recursive=False).setParseAction(Block)#.setResultsName("Block")#setParseAction(blockHandler)
+    # block = block_start + pp.IndentedBlock(expr + block_line_end, recursive=False).setParseAction(Block)#.setResultsName("Block")#setParseAction(blockHandler)
     block = block_start + pp.OneOrMore(pp.Group(expr + block_line_end)).setParseAction(Block)# this works but let's keep IndendtedBlock working too
+    # block_start = pp.Suppress(":\n")
+    # block_start.setDefaultWhitespaceChars(" \t")
+    # block_line = expr + pp.Suppress("\n")
+    # block_line.setDefaultWhitespaceChars(" \t")
+    # block = block_start + pp.IndentedBlock(block_line, recursive=True).setParseAction(Block)#.setResultsName("Block")#setParseAction(blockHandler)
+    # block.setDefaultWhitespaceChars(" \t")
 
     #function_call <<= (function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr|pp.Literal("*"))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr|pp.Literal("*")))) + rparen)
     #function_call <<= ((function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen)).setParseAction(Call)#.setResultsName("Call")
 
     function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
 
+    # module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
     module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
+    # module = pp.OneOrMore(function_call).setParseAction(Module)
 
     #function_call.setResultsName("FunctionCall")
 
@@ -221,6 +231,7 @@ def parse(s):
     print(s)
     sio = io.StringIO(s)
     transformed = preprocess(sio).getvalue()
+    # transformed = sio.getvalue()
     #print("preprocessed", repr(transformed))
 
     filter_comments = pp.Regex(r"#.*")

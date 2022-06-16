@@ -59,19 +59,19 @@ def preprocess(fileObject):
     rewritten = StringIO()
     began_indent = False
 
-    while (parsing_stack != []):
+    while parsing_stack != []:
 
         for line_number, line in enumerate(fileObject, start=1):
             line = line.rstrip()
 
-            if (line == ''):
+            if line == '':
                 rewritten.write("\n")
                 continue
 
             # leading spaces
             indent = 0
             for c in line:
-                if (c == ' '):
+                if c == ' ':
                     indent += 1
                 else:
                     break

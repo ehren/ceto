@@ -212,9 +212,12 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
 def (main:
-    if (1:1)
+    #if (1:1)
     def (x,1)
-    if (1: 1, elif: x: 2, else: 0)
+    #if (1: 1, elif: x: 2, else: 0)
+    # if (elif:x:int:5:int) # should result in "unknown identifier 'elif'"
+    # if ((x:int):0:int, elif:(x:int):5:int)  # works
+    1+1
 )""")
 
     0 and compile("""
