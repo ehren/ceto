@@ -1,5 +1,5 @@
 from parser import parse
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign
 import io
 
 
@@ -68,8 +68,6 @@ def codegen_def(defnode: Call, cpp):
     if len(args):
         cpp_args = ", ".join([f"std::shared_ptr<object> {a}" for a in args])
         cpp.write(cpp_args)
-        # for i in range(len(args)):
-        #    cpp.write(f"std::shared_ptr<object> {args[i]},")
     cpp.write(") {\n")
     codegen_block(block, cpp)
     cpp.write("}")
@@ -81,15 +79,17 @@ def codegen(parsed):
     #cpp.seek(io.SEEK_END)
 
     assert isinstance(parsed, Module) # enforced by parser
-    for moddef in parsed.args:
-        assert isinstance(moddef, Call) # enforced by parser
+    for modarg in parsed.args:
+        if isinstance(modarg, Call):
+            if modarg.func not in ["def", "class"]:
+                raise SemanticAnalysisError("Only defs or classes at module level (for now)")
+        elif isinstance(modarg, Assign):
+            pass
+        else:
+            raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
 
-        print(moddef.func)
-        if moddef.func not in ["def", "class"]:
-            raise SemanticAnalysisError("Only defs or classes at module level")
-
-        if moddef.func == "def":
-            codegen_def(moddef, cpp)
+        if modarg.func == "def":
+            codegen_def(modarg, cpp)
 
     return cpp.getvalue()
 
@@ -217,7 +217,8 @@ def (main:
     #if (1: 1, elif: x: 2, else: 0)
     # if (elif:x:int:5:int) # should result in "unknown identifier 'elif'"
     # if ((x:int):0:int, elif:(x:int):5:int)  # works
-    1+1
+    if (x:int:y=0:int,elif:x:int:5:int, else:x=2:int) # nonsense but lowered correctly
+    if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
 )""")
 
     0 and compile("""

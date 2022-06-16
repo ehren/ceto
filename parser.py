@@ -39,6 +39,10 @@ class ColonBinOp(BinOp):
     pass
 
 
+class Assign(BinOp):
+    pass
+
+
 class Call(Node):
     def __repr__(self):
         # return "{}({!r})".format(self.func, self.args)
@@ -176,7 +180,7 @@ def create():
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, BinOp),
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
-            ("=", 2, pp.opAssoc.RIGHT, BinOp),
+            ("=", 2, pp.opAssoc.RIGHT, Assign),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
@@ -216,7 +220,7 @@ def create():
     function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
 
     # module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
-    module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
+    module = pp.OneOrMore(expr + block_line_end).setParseAction(Module)
     # module = pp.OneOrMore(function_call).setParseAction(Module)
 
     #function_call.setResultsName("FunctionCall")
