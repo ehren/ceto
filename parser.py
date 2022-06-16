@@ -269,34 +269,26 @@ def create():
 
 grammar = create()
 
+
 def parse(s):
     print(s)
     sio = io.StringIO(s)
     transformed = preprocess(sio).getvalue()
-    # transformed = sio.getvalue()
-    #print("preprocessed", repr(transformed))
 
     filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()
     qs = pp.QuotedString('"') | pp.QuotedString("'")
     filter_comments = filter_comments.ignore(qs)
     transformed = filter_comments.transformString(transformed)
-    #print("nocomms", transformed)
-
-    # for tokens, start, end in grammar.scanString(transformed):
-    #     print(tokens.dump())
-        # sample[start:end]
 
     res = grammar.parseString(transformed, parseAll=True)
 
     print("parser:",res)
     # print(res.as_dict())
     # print(res.dump())
-    # print("done dump")
 
     res = res[0]
-    # for
-    #
+
     def replacer(op):
         if not isinstance(op, Node):
             return op
@@ -305,45 +297,17 @@ def parse(s):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
-        # else:
 
         if not isinstance(op, Node):
             return op
 
         op.args = [replacer(arg) for arg in op.args]
-
         return op
 
     res = replacer(res)
 
     print("redundant", res)
 
-    def printer(op):
-        #print("func(", op.func, end="===")
-        print("op", op.func)
-        for operand in op.args:#.as_list():
-            try:
-                #print("operand(", end="")
-                printer(operand)
-                #print(")", end="")
-            except:
-                #print("operand({})".format(operand))
-                print("operand({})".format(operand))
-        #print(")", op.func, end="")
-
-
-    #for item in res.as_list():
-        #print(type(item))
-        #print(item)
-        #print(item.func)
-        #print(item.args)
-    #    printer(item)
-    #printer(res[0])
-    #print("\n\n\n\n\n")
-    #d = grammar.dump(transformed)
-    #print(d)
-    #print(res.as_dict())
-    #print(res.as_dict())
     return res
 
 if __name__ == "__main__":
