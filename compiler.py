@@ -116,16 +116,6 @@ def one_liner_expander(parsed):
                 if not ifop.args[i - 1] == "else" and (not isinstance(ifop.args[i - 1], ColonBinOp) or ifop.args[i - 1].args[0] != "elif"):
                     raise SemanticAnalysisError(
                         f"Unexpected if arg. Found block at position {i} but it's not preceded by 'if' or 'elif'")
-                pass
-            # elif a in ["elif", "else"]:
-            #     if i == len(ifop.args) - 1:
-            #         raise SemanticAnalysisError(
-            #             "found {} as last arg of if".format(a))
-            #     elif not isinstance(ifop.args[i + 1], Block):
-            #         # convert single expression to 1-element block (hope this is desirable!)
-            #         rebuilt = [ifop.args[0:i + 1], RebuiltBlock(
-            #             args=[ifop.args[i + 1]])] + ifop.args[i + 1:]
-            #         return RebuiltCall(func="if", args=rebuilt)
             elif isinstance(a, ColonBinOp):
                 if not a.args[0] in ["elif", "else"]:
                     raise SemanticAnalysisError(
@@ -160,8 +150,6 @@ def one_liner_expander(parsed):
         if not isinstance(op, Node):
             return False, op
 
-        changed = False
-
         if isinstance(op, Call):
             if op.func == "def":
                 if len(op.args) < 2:
@@ -172,22 +160,12 @@ def one_liner_expander(parsed):
                     # last arg becomes one-element block
                     return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
             elif op.func == "if":
-                # changed = False
                 new = ifreplacer(op)
                 if new is not op:
                     return True, new
-                # while True:
-                #     new = ifreplacer(op)
-                #     if new is op:
-                #         break
-                #     else:
-                #         changed = True
-                #         op = new
-                # if changed:
-                #     return True, op
 
         rebuilt = []
-        # changed = False
+        changed = False
 
         for arg in op.args:
             arg_change, arg = visitor(arg)
@@ -201,8 +179,8 @@ def one_liner_expander(parsed):
         return changed, op
 
     while True:
-        changed, parsed = visitor(parsed)
-        if not changed:
+        did_change, parsed = visitor(parsed)
+        if not did_change:
             break
 
     return parsed
@@ -224,7 +202,7 @@ def (main:
     # def (x,1)
     # if (1: 1, elif: x: 2, else: 0)
     # if (elif:x:int:5:int) # should result in "unknown identifier 'elif'"
-    # if ((x:int):0:int, elif:(x:int):5:int)  # works
+    if ((x:int):0:int, elif:(x:int):5:int)  # works
     # if (x:int:y=0:int,elif:x:int:5:int, else:x=2:int) # nonsense but lowered correctly
     # if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
     # y=((x=123456789))
