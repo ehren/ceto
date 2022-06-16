@@ -43,8 +43,8 @@ class Assign(BinOp):
     pass
 
 
-# this intrudes an "implicit" outer Parens around every infix expression
-# but it allows us to preserve truly redundant parenthesis (to ascribe special meaning)
+# this introduces an "implicit" outer Parens around every infix expression
+# but it allows us to preserve truly redundant parentheses (to ascribe special meaning)
 # We remove the implicit outer Parens after parsing
 class Parens(Node):
     def __init__(self, t):
@@ -297,10 +297,8 @@ def parse(s):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
-
         if not isinstance(op, Node):
             return op
-
         op.args = [replacer(arg) for arg in op.args]
         return op
 

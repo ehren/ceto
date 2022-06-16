@@ -1,5 +1,5 @@
 from parser import parse
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens
 import io
 
 
@@ -20,6 +20,15 @@ class RebuiltColon(ColonBinOp):
     def __init__(self, func, args):
         self.func = func
         self.args = args
+
+
+class NamedParameter(Node):
+    def __init__(self, args):
+        self.func = "NamedParameter"
+        self.args = args  # [lhs, rhs]
+
+    def __repr__(self):
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
 class SemanticAnalysisError(Exception):
@@ -186,16 +195,55 @@ def one_liner_expander(parsed):
     return parsed
 
 
+def assign_to_named_parameter(parsed):
+
+    def replacer(op):
+        if not isinstance(op, Node):
+            return op
+        if isinstance(op, Call):
+            rebuilt = []
+            for arg in op.args:
+                if isinstance(arg, ColonBinOp):
+                    if isinstance(arg.args[0], Assign):
+                        rebuilt.append(RebuiltColon(func=arg.func, args=[NamedParameter(args=arg.args[0].args), arg.args[1]]))
+                    else:
+                        rebuilt.append(arg)
+                elif isinstance(arg, Assign):
+                    rebuilt.append(NamedParameter(args=arg.args))
+                else:
+                    rebuilt.append(arg)
+            op.args = rebuilt
+
+        op.args = [replacer(arg) for arg in op.args]
+        return op
+
+    return replacer(parsed)
+
+
+
+def semantic_analysis(parsed):
+    parsed = one_liner_expander(parsed)
+    parsed = assign_to_named_parameter(parsed)
+    return parsed
+
+
 def compile(s):
     parsed = parse(s)
-    parsed = one_liner_expander(parsed)
-    print("one_liner_expander", parsed)
+    parsed = semantic_analysis(parsed)
+    print("semantic", parsed)
     code = codegen(parsed)
     print("code:\n", code)
 
 
 if __name__ == "__main__":
     compile("""
+def (main:
+    # foo((x=y:int:strong), x=y:int:weak)
+    foo(x=y:int, (z=y:int))
+)
+    """)
+
+    0 and compile("""
 def (main:
     # if (1:1)
     if (if(1:1):1)
