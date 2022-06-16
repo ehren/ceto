@@ -41,7 +41,8 @@ class ColonBinOp(BinOp):
 
 class Call(Node):
     def __repr__(self):
-        return "{}({!r})".format(self.func, self.args)
+        # return "{}({!r})".format(self.func, self.args)
+        return "{}({})".format(self.func, ",".join(map(str,self.args)))
 
     #def __init__(self, tokens, func=None, args=None):
     def __init__(self, tokens):
@@ -84,10 +85,13 @@ class Block(Node):
     def __init__(self, tokens):#, args=None):
         self.func = "Block"#tokens[0][0]
         # something is annoying and bad here
-        if len(tokens) == 1:
-            self.args = tokens.as_list()[0]
-        else:
-            self.args = tokens.as_list()
+
+        self.args = [t[0] for t in tokens.as_list()]
+
+        # if len(tokens) == 1:
+        #     self.args = tokens.as_list()[0]
+        # else:
+        #     self.args = tokens.as_list()
         # if args is not None:
         #     self.args = args
         # else:
@@ -265,7 +269,11 @@ class (Foo:
         pass
     )
     def (destroy:
-        pass
+        blah(:
+            1
+        :
+            1
+        )
     )
     def (doit, x:
         print("yeah", x)

@@ -16,6 +16,12 @@ class RebuiltCall(Call):
         self.args = args
 
 
+class RebuiltColon(ColonBinOp):
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+
 class SemanticAnalysisError(Exception):
     pass
     #def __init__(self, message, line_number):
@@ -100,34 +106,52 @@ def one_liner_expander(parsed):
             if isinstance(ifop.args[0], ColonBinOp):
                 # convert second arg of outermost colon to one element block
                 rebuilt = [ifop.args[0].args[0], RebuiltBlock(
-                    args=[ifop.args[0].args[1]])] + ifop.args[2:]
+                    args=[ifop.args[0].args[1]])] + ifop.args[1:]
                 return RebuiltCall(func="if", args=rebuilt)
             else:
                 raise SemanticAnalysisError("bad first if-args")
 
-        for i, a in enumerate(ifop.args[2:]):
+        for i, a in enumerate(list(ifop.args[2:]), start=2):
             if isinstance(a, Block):
-                if not ifop.args[i - 1] in ["elif", "else"]:
+                if not ifop.args[i - 1] == "else" and (not isinstance(ifop.args[i - 1], ColonBinOp) or ifop.args[i - 1].args[0] != "elif"):
                     raise SemanticAnalysisError(
-                        f"unexpected if arg. Found block at position {i} but it's not preceded by 'if' or 'elif'")
-            elif a in ["elif", "else"]:
-                if i == len(ifop.args) - 1:
+                        f"Unexpected if arg. Found block at position {i} but it's not preceded by 'if' or 'elif'")
+                pass
+            # elif a in ["elif", "else"]:
+            #     if i == len(ifop.args) - 1:
+            #         raise SemanticAnalysisError(
+            #             "found {} as last arg of if".format(a))
+            #     elif not isinstance(ifop.args[i + 1], Block):
+            #         # convert single expression to 1-element block (hope this is desirable!)
+            #         rebuilt = [ifop.args[0:i + 1], RebuiltBlock(
+            #             args=[ifop.args[i + 1]])] + ifop.args[i + 1:]
+            #         return RebuiltCall(func="if", args=rebuilt)
+            elif isinstance(a, ColonBinOp):
+                if not a.args[0] in ["elif", "else"]:
                     raise SemanticAnalysisError(
-                        "found {} as last arg of if".format(a))
-                elif not isinstance(ifop.args[i + 1], Block):
-                    # convert single expression to 1-element block (hope this is desirable!)
-                    rebuilt = [ifop.args[0:i + 1], RebuiltBlock(
-                        args=[ifop.args[i + 1]])] + ifop.args[i + 1:]
-                    return RebuiltCall(func="if", args=rebuilt)
-                elif isinstance(a, ColonBinOp):
-                    if isinstance(a, ColonBinOp):
-                        # convert second arg of outermost colon to one element block
-                        rebuilt = [a.args[0], RebuiltBlock(
-                            args=[a.args[1]])] + rebuilt[2:]
-                        return RebuiltCall(func="if", args=rebuilt)
-                else:
-                    raise SemanticAnalysisError(
-                        f"bad if-arg {a} at position {i}")
+                        f"Unexpected if arg {a} at position {i}")
+                if a.args[0] == "else":
+                    rebuilt = ifop.args[0:i] + [a.args[0], RebuiltBlock(
+                        args=[a.args[1]])] + ifop.args[i + 1:]
+                    return RebuiltCall(ifop.func, args=rebuilt)
+                elif a.args[0] == "elif":
+                    if i == len(ifop.args) - 1 or not isinstance(ifop.args[i + 1], Block):
+                        c = a.args[1]
+                        if not isinstance(c, ColonBinOp):
+                            raise SemanticAnalysisError("bad if args")
+                        cond, rest = c.args
+                        new_elif = RebuiltColon(a.func, [a.args[0], cond])
+                        new_block = RebuiltBlock(args=[rest])
+                        rebuilt = ifop.args[0:i] + [new_elif, new_block] + ifop.args[i + 1:]
+                        return RebuiltCall(ifop.func, args=rebuilt)
+            elif a == "else":
+                if not i == len(ifop.args) - 2:
+                    raise SemanticAnalysisError("bad else placement")
+                if not isinstance(ifop.args[-1], Block):
+                    raise SemanticAnalysisError("bad arg after else")
+            else:
+                raise SemanticAnalysisError(
+                    f"bad if-arg {a} at position {i}")
 
         return ifop
 
@@ -190,6 +214,7 @@ if __name__ == "__main__":
 def (main:
     if (1:1)
     def (x,1)
+    if (1: 1, elif: x: 2, else: 0)
 )""")
 
     0 and compile("""
