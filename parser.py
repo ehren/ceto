@@ -43,6 +43,28 @@ class Assign(BinOp):
     pass
 
 
+# this intrudes an "implicit" outer Parens around every infix expression
+# but it allows us to preserve truly redundant parenthesis (to ascribe special meaning)
+# We remove the implicit outer Parens after parsing
+class Parens(Node):
+    def __init__(self, t):
+        # self.tokens = t
+        self.func = "Parens"
+        # self.args = [tt[0] for tt in t.as_list()]
+        self.args = [t.as_list()[0]]
+
+    def __repr__(self):
+        # return "{}({!r})".format(self.func, self.args)
+        return "{}({})".format(self.func, ",".join(map(str,self.args)))
+
+
+class RedundantParens(Parens):
+    def __init__(self, args):
+        self.func = "RedundantParens"
+        self.args = args
+
+
+
 class Call(Node):
     def __repr__(self):
         # return "{}({!r})".format(self.func, self.args)
@@ -172,6 +194,9 @@ def create():
     factop = pp.Literal("!")
     colon = pp.Literal(":")
 
+    def gcb(t):
+        return ["yo group", t]
+
     expr <<= pp.infix_notation(
         listItem,
         [
@@ -183,10 +208,23 @@ def create():
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
+            # ("!", 1, pp.opAssoc.LEFT),
+            # ("^", 2, pp.opAssoc.RIGHT),
+            # (signop, 1, pp.opAssoc.RIGHT),
+            # (multop, 2, pp.opAssoc.LEFT),
+            # (plusop, 2, pp.opAssoc.LEFT),
+            # ("=", 2, pp.opAssoc.RIGHT),
+            # (colon, 1, pp.opAssoc.RIGHT),
+            # # unary : shold bind less tight than binary
+            # (colon, 2, pp.opAssoc.RIGHT),
         ],
-        lpar="(",# pp.Literal("(").setResultsName("LPAREN"),
-        rpar=")" # pp.Literal(")").setResultsName("RPAREN")
-    )
+        #lpar="(",# pp.Literal("(").setResultsName("LPAREN"),
+        # lpar=pp.Literal("("),#.setParseAction(lambda t: ["open par", t]),#.setResultsName("LPAREN"),
+        # rpar=")" # pp.Literal(")").setResultsName("RPAREN")
+        # rpar=pp.Literal(")")#.setParseAction(lambda t: ["close par", t]),
+        #group_callback=gcb#lambda t: ["yo group", t]
+    # .setResultsName("LPAREN"),
+    ).setParseAction(Parens)
 
     tupleStr <<= (
         lparen + pp.delimitedList(expr) + pp.Optional(comma) + rparen
@@ -245,9 +283,40 @@ def parse(s):
     transformed = filter_comments.transformString(transformed)
     #print("nocomms", transformed)
 
+    # for tokens, start, end in grammar.scanString(transformed):
+    #     print(tokens.dump())
+        # sample[start:end]
+
     res = grammar.parseString(transformed, parseAll=True)
 
     print("parser:",res)
+    # print(res.as_dict())
+    # print(res.dump())
+    # print("done dump")
+
+    res = res[0]
+    # for
+    #
+    def replacer(op):
+        if not isinstance(op, Node):
+            return op
+        if isinstance(op, Parens):
+            if isinstance(op.args[0], Parens):
+                op = RedundantParens(args=[op.args[0].args[0]])
+            else:
+                op = op.args[0]
+        # else:
+
+        if not isinstance(op, Node):
+            return op
+
+        op.args = [replacer(arg) for arg in op.args]
+
+        return op
+
+    res = replacer(res)
+
+    print("redundant", res)
 
     def printer(op):
         #print("func(", op.func, end="===")
@@ -275,13 +344,28 @@ def parse(s):
     #print(d)
     #print(res.as_dict())
     #print(res.as_dict())
-    return res[0]
+    return res
 
 if __name__ == "__main__":
     parse("""
+# ((((xyz = 12345678))))
+# abc = 5
+(x = ((5+6)*7))     # Parens(=(x,*(Parens(+(5,6)),7)))
+x = ((5+6))*7    # Parens(=(x,Parens(*(Parens(+(5,6)),7))))
+
+foo(x=5, (y=5))
+
+if ((x=5):
+    print(5)
+)
+
+""")
+
+
+    0 and parse("""
 class (Foo:
     def (init, x:
-        pass
+        (((xyz = 12345678)))
     )
     def (destroy:
         blah(:
