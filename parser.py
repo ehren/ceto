@@ -87,12 +87,14 @@ class Call(Node):
 
 
 class Identifier(Node):
-    def __init__(self, tokens):
-        self.func = tokens[0]
+    def __init__(self, token):
+        self.func = str(token[0]) #tokens.as_list()[0]
+        self.name = self.func
         self.args = []
 
     def __repr__(self):
-        return "Ident({})".format(self.func)
+        # return "Ident({})".format(self.func)
+        return str(self.func)
 
 
 class ListLike(Node):
@@ -163,7 +165,7 @@ def create():
     dictStr = pp.Forward()
     function_call = pp.Forward()
     expr = pp.Forward()
-    ident = pp.Word(pp.alphas + "_", pp.alphanums + "_")#.setParseAction(Identifier)
+    ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").setParseAction(Identifier)
 
     #unistr = pp.unicodeString(multiline=True).setParseAction(lambda t: t[0][2:-1])
     quoted_str = pp.QuotedString("'", multiline=True).setParseAction(lambda t: "string:"+t[0])    #.setParseAction(lambda t: t[0][1:-1])

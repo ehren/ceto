@@ -1,5 +1,5 @@
 from parser import parse
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier
 import io
 import sys
 
@@ -7,6 +7,18 @@ import sys
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, ColonBinOp) and isinstance(node.args[0], NodeClass))
 
+
+# def _monkey_ident(self, name:str):
+#     self.func = name
+
+
+class RebuiltIdentifer(Identifier):
+    def __init__(self, name):
+        self.func = name
+        self.args = []
+        self.name = name
+
+# Identifier.__init__ = _monkey_ident
 
 
 class RebuiltBlock(Block):
@@ -20,6 +32,8 @@ class RebuiltCall(Call):
     def __init__(self, func, args):
         self.func = func
         self.args = args
+
+
 
 # def _monkey(self, func, args):
 #     self.func = func
@@ -47,6 +61,10 @@ class NamedParameter(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
+class Atom(Node):
+    pass
+
+
 class SemanticAnalysisError(Exception):
     pass
     #def __init__(self, message, line_number):
@@ -64,9 +82,41 @@ class object {
 """
 
 
+def strip_types(node: Node):
+    stripped = []
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return node
+
+        rebuilt = []
+        if isinstance(node, ColonBinOp):
+            lhs, rhs = node.args
+            stripped.append(rhs)
+            rebuilt.append(lhs)
+        node.args = rebuilt
+
+        rebuilt = []
+        for arg in node.args:
+            if isinstance(arg, Node):
+                arg = visitor(arg)
+            rebuilt.append(arg)
+        node.args = rebuilt
+
+    return stripped, visitor(node)
+
+
 def codegen_if(ifnode, cpp):
     assert ifnode.func == "if"
-    cpp.write("if (0")
+
+    ifargs = list(ifnode.args)
+    cond = ifargs.pop()
+
+    cpp.write("if (")
+
+
+
+    cpp.write("if (")
 
 
 def codegen_block(block: Block, cpp):
@@ -98,23 +148,68 @@ def codegen_def(defnode: Call, cpp):
     cpp.write("}")
 
 
+# class Environment:
+#     def __init__(self):
+#         self.parent
+#         self.
+
+def build_parents(node: Node):
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return
+        for arg in node.args:
+            if isinstance(arg, Node):
+                arg.parent = node
+                visitor(arg)
+    visitor(node)
+
+
+def build_types(node: Node):
+    stripped = []
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return node
+
+        rebuilt = []
+        if isinstance(node, ColonBinOp):
+            lhs, rhs = node.args
+            stripped.append(rhs)
+            rebuilt.append(lhs)
+        node.args = rebuilt
+
+        rebuilt = []
+        for arg in node.args:
+            if isinstance(arg, Node):
+                arg = visitor(arg)
+            rebuilt.append(arg)
+        node.args = rebuilt
+
+    return stripped, visitor(node)
+
+
+def codegen_node(node: Node, cpp):
+    if isinstance(node, Module):
+        for modarg in node.args:
+            if modarg.func == "def":
+                codegen_node(modarg, cpp)
+
+
+
+
 def codegen(parsed):
     cpp = io.StringIO()
     cpp.write(cpp_preamble)
+
+    build_parents(parsed)
+
+    codegen_stack = []
+
     #cpp.seek(io.SEEK_END)
 
     assert isinstance(parsed, Module) # enforced by parser
-    for modarg in parsed.args:
-        if isinstance(modarg, Call):
-            if modarg.func not in ["def", "class"]:
-                raise SemanticAnalysisError("Only defs or classes at module level (for now)")
-        elif isinstance(modarg, Assign):
-            pass
-        else:
-            raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
-
-        if modarg.func == "def":
-            codegen_def(modarg, cpp)
+    codegen_node(parsed, cpp)
 
     return cpp.getvalue()
 
@@ -256,11 +351,22 @@ def warn_and_remove_redundant_parens(expr, error=False):
     return replacer(expr)
 
 
-def semantic_analysis(expr: Node):
-    expr = one_liner_expander(expr)
-    expr = assign_to_named_parameter(expr)
-    expr = warn_and_remove_redundant_parens(expr)
-    return expr
+def semantic_analysis(parsed: Module):
+    assert isinstance(parsed, Module) # enforced by parser
+
+    for modarg in parsed.args:
+        if isinstance(modarg, Call):
+            if modarg.func.name not in ["def", "class"]:
+                raise SemanticAnalysisError("Only defs or classes at module level (for now)")
+        elif isinstance(modarg, Assign):
+            pass
+        else:
+            raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
+
+    parsed = one_liner_expander(parsed)
+    parsed = assign_to_named_parameter(parsed)
+    parsed = warn_and_remove_redundant_parens(parsed)
+    return parsed
 
 
 def compile(s):
