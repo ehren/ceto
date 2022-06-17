@@ -107,7 +107,7 @@ def strip_types(node: Node):
 
 
 def codegen_if(ifnode, cpp):
-    assert ifnode.func == "if"
+    assert ifnode.func.name == "if"
 
     ifargs = list(ifnode.args)
     cond = ifargs.pop()
@@ -123,7 +123,7 @@ def codegen_block(block: Block, cpp):
     assert isinstance(block, Block)
     for b in block.args:
         if isinstance(b, Call):
-            if b.func == "if":
+            if b.func.name == "if":
                 codegen_if(b, cpp)
         elif isinstance(b, BinOp):
             pass
@@ -134,7 +134,7 @@ def codegen_block(block: Block, cpp):
 
 
 def codegen_def(defnode: Call, cpp):
-    assert defnode.func == "def"
+    assert defnode.func.name == "def"
     name = defnode.args[0]
     cpp.write(f"std::shared_ptr<object> {name} (")
     args = defnode.args[1:]
@@ -186,7 +186,7 @@ def build_types(node: Node):
 def codegen_node(node: Node, cpp):
     if isinstance(node, Module):
         for modarg in node.args:
-            if modarg.func == "def":
+            if modarg.func.name == "def":
                 codegen_node(modarg, cpp)
 
 
@@ -268,15 +268,15 @@ def one_liner_expander(parsed):
             return False, op
 
         if isinstance(op, Call):
-            if op.func == "def":
+            if op.func.name == "def":
                 if len(op.args) < 2:
                     raise SemanticAnalysisError("not enough def args")
-                if not isinstance(op.args[0], str):
+                if not isinstance(op.args[0], Identifier):
                     raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
                 if not isinstance(op.args[-1], Block):
                     # last arg becomes one-element block
                     return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
-            elif op.func == "if":
+            elif op.func.name == "if":
                 new = ifreplacer(op)
                 if new is not op:
                     return True, new
