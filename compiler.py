@@ -1,6 +1,7 @@
 from parser import parse
 from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens
 import io
+import sys
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -237,11 +238,29 @@ def assign_to_named_parameter(parsed):
     return replacer(parsed)
 
 
+def warn_and_remove_redundant_parens(expr, error=False):
 
-def semantic_analysis(parsed):
-    parsed = one_liner_expander(parsed)
-    parsed = assign_to_named_parameter(parsed)
-    return parsed
+    def replacer(op):
+        if isinstance(op, RedundantParens):
+            op = op.args[0]
+            msg = f"warning: redundant parens {op}"
+            if error:
+                raise SemanticAnalysisError(msg)
+            else:
+                print(msg, file=sys.stderr)
+        if not isinstance(op, Node):
+            return op
+        op.args = [replacer(arg) for arg in op.args]
+        return op
+
+    return replacer(expr)
+
+
+def semantic_analysis(expr: Node):
+    expr = one_liner_expander(expr)
+    expr = assign_to_named_parameter(expr)
+    expr = warn_and_remove_redundant_parens(expr)
+    return expr
 
 
 def compile(s):
