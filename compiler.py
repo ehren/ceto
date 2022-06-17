@@ -60,7 +60,7 @@ class NamedParameter(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-class IfNode(Call):  # will have to avoid RebuiltCall
+class IfNode:#(Call):  # just a helper class for now (avoid adding to ast)
 
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
@@ -140,11 +140,18 @@ def strip_types(node: Node):
     return stripped, visitor(node)
 
 
-def codegen_if(ifnode, cpp):
-    assert ifnode.func.name == "if"
+def codegen_if(ifcall : Call, cpp):
+    assert isinstance(ifcall, Call)
+    assert ifcall.func.name == "if"
 
-    ifargs = list(ifnode.args)
-    cond = ifargs.pop()
+    ifnode = IfNode(ifcall.func, ifnode.args)
+
+    # ifargs = list(ifnode.args)
+    cond = ifnode.cond
+    thenblock = ifnode.thenblock
+    codegen_block(thenblock)
+
+    cond = codegen_node(cond, cpp)
 
     cpp.write("if (")
 
@@ -211,7 +218,7 @@ def build_types(node: Node):
         if not isinstance(node, Node):
             return node
 
-        if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):
+        if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):  # sure hope you're using 'elif' responsibly!
             lhs, rhs = node.args
             node = lhs
             node.type = rhs  # leaving open possibility this is still a ColonBinOp
@@ -232,6 +239,7 @@ def codegen_node(node: Node, cpp):
 
 
 def build_if_nodes(expr):
+    assert False
 
     def visitor(node):
         if not isinstance(node, Node):
@@ -252,7 +260,7 @@ def build_if_nodes(expr):
 
 def lowering(expr):
     # remove all non-"type" use of ColonBinOp (scratch that for now - leave elif as lhs of ColonBinOp)
-    expr = build_if_nodes(expr)
+    # expr = build_if_nodes(expr) # in fact don't even do this
 
     # convert ColonBinOp (except elif related) to types
     expr = build_types(expr)
