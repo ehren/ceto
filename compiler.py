@@ -166,27 +166,21 @@ def build_parents(node: Node):
 
 
 def build_types(node: Node):
-    stripped = []
 
     def visitor(node):
         if not isinstance(node, Node):
             return node
 
-        rebuilt = []
         if isinstance(node, ColonBinOp):
             lhs, rhs = node.args
-            stripped.append(rhs)
-            rebuilt.append(lhs)
-        node.args = rebuilt
+            node = lhs
+            node.type = rhs
 
-        rebuilt = []
-        for arg in node.args:
-            if isinstance(arg, Node):
-                arg = visitor(arg)
-            rebuilt.append(arg)
-        node.args = rebuilt
+        node.args = [visitor(arg) for arg in node.args]
 
-    return stripped, visitor(node)
+        return node
+
+    return visitor(node)
 
 
 def codegen_node(node: Node, cpp):
@@ -202,7 +196,10 @@ def codegen(parsed):
     cpp = io.StringIO()
     cpp.write(cpp_preamble)
 
+    parsed = build_types(parsed)
     build_parents(parsed)
+
+    print("after types/parents", parsed)
 
     codegen_stack = []
 
