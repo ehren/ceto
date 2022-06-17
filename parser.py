@@ -12,11 +12,17 @@ from preprocessor import preprocess
 
 
 class Node:
+
+    # def rebuild(self, func, args):
+    #     self.func = func
+    #     self.args = args
+
     def __repr__(self):
-        #return "{}({!r})".format(self.func, self.args)
-    #    #return "{}({}):{!r}".format(self.__class__.__name__,
+        # return "{}({!r})".format(self.func, self.args)
+        #    #return "{}({}):{!r}".format(self.__class__.__name__,
         return "{}({})({!r})".format(self.__class__.__name__,
                                      self.func, self.args)
+
 
 class UnOp(Node):
     def __init__(self, tokens):
@@ -97,6 +103,15 @@ class Identifier(Node):
         return str(self.func)
 
 
+class IntegerLiteral(Node):
+    def __init__(self, token):
+        self.func = int(token[0])
+        self.args = []
+
+    def __repr__(self):
+        return str(self.func)
+
+
 class ListLike(Node):
     def __repr__(self):
         return "{}({!r})".format(self.func, self.args)
@@ -158,7 +173,7 @@ def create():
     #colon = pp.Literal(":")
     #colon = pp.Suppress(":")
 
-    integer = pp.Regex(r"[+-]?\d+").setName("integer").setParseAction(cvtInt)
+    integer = pp.Regex(r"[+-]?\d+").setName("integer").setParseAction(IntegerLiteral)
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").setParseAction(cvtReal)
     tupleStr = pp.Forward()
     listStr = pp.Forward()
@@ -257,6 +272,7 @@ def create():
     #function_call <<= (function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr|pp.Literal("*"))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr|pp.Literal("*")))) + rparen)
     #function_call <<= ((function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen)).setParseAction(Call)#.setResultsName("Call")
 
+    #function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
     function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
 
     # module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)

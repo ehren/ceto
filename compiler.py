@@ -1,5 +1,5 @@
 from parser import parse
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral
 import io
 import sys
 
@@ -34,7 +34,6 @@ class RebuiltCall(Call):
         self.args = args
 
 
-
 # def _monkey(self, func, args):
 #     self.func = func
 #     self.args = args
@@ -61,8 +60,43 @@ class NamedParameter(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-class Atom(Node):
-    pass
+class IfNode(Call):  # will have to avoid RebuiltCall
+
+    def __repr__(self):
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+
+    def __init__(self, func, args):
+        self.func = func
+        self._build(args)
+
+    @property
+    def args(self):
+        return self._args
+
+    @args.setter
+    def args(self, args):
+        self._build(args)
+
+    def _build(self, args):
+        # Assumes that func and args have already been processed by `one_liner_expander`
+        self._args = list(args)
+        self.cond = args.pop(0)
+        self.thenblock = args.pop(0)
+        assert isinstance(self.thenblock, Block)
+        self.eliftuples = []
+        if args:
+            self.elseblock = args.pop()
+            elseidentifier = args.pop()
+            assert isinstance(elseidentifier, Identifier) and elseidentifier.name == "else"
+            while args:
+                elifcond = args.pop(0)
+                elifblock = args.pop(0)
+                assert isinstance(elifcond, ColonBinOp)
+                assert elifcond.args[0].name == "elif"
+                elifcond = elifcond.args[1]
+                self.eliftuples.append((elifcond, elifblock))
+        else:
+            self.elseblock = None
 
 
 class SemanticAnalysisError(Exception):
@@ -157,12 +191,18 @@ def build_parents(node: Node):
 
     def visitor(node):
         if not isinstance(node, Node):
-            return
+            return node
+        rebuilt = []
         for arg in node.args:
             if isinstance(arg, Node):
                 arg.parent = node
-                visitor(arg)
-    visitor(node)
+                # arg.rebuild(arg.func, arg.args)
+                arg = visitor(arg)
+            rebuilt.append(arg)
+        node.args = rebuilt
+        # node.rebuild(node.func, node.args)
+        return node
+    return visitor(node)
 
 
 def build_types(node: Node):
@@ -171,12 +211,13 @@ def build_types(node: Node):
         if not isinstance(node, Node):
             return node
 
-        if isinstance(node, ColonBinOp):
+        if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):
             lhs, rhs = node.args
             node = lhs
-            node.type = rhs
+            node.type = rhs  # leaving open possibility this is still a ColonBinOp
 
         node.args = [visitor(arg) for arg in node.args]
+        # node.rebuild(node.func, node.args)
 
         return node
 
@@ -190,16 +231,46 @@ def codegen_node(node: Node, cpp):
                 codegen_node(modarg, cpp)
 
 
+def build_if_nodes(expr):
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return node
+
+        # visit args before conversion to IfNode
+        # (should no longer be necessary)
+
+        if isinstance(node, Call) and node.func.name == "if":
+            node = IfNode(node.func, node.args)
+
+        node.args = [visitor(arg) for arg in node.args]
+
+        return node
+
+    return visitor(expr)
+
+
+def lowering(expr):
+    # remove all non-"type" use of ColonBinOp (scratch that for now - leave elif as lhs of ColonBinOp)
+    expr = build_if_nodes(expr)
+
+    # convert ColonBinOp (except elif related) to types
+    expr = build_types(expr)
+
+    # (perhaps both of these could have been done earlier)
+
+    expr = build_parents(expr)
+
+    print("after lowering", expr)
+
+    return  expr
 
 
 def codegen(parsed):
     cpp = io.StringIO()
     cpp.write(cpp_preamble)
 
-    parsed = build_types(parsed)
-    build_parents(parsed)
 
-    print("after types/parents", parsed)
 
     codegen_stack = []
 
@@ -224,24 +295,24 @@ def one_liner_expander(parsed):
                 # convert second arg of outermost colon to one element block
                 rebuilt = [ifop.args[0].args[0], RebuiltBlock(
                     args=[ifop.args[0].args[1]])] + ifop.args[1:]
-                return RebuiltCall(func="if", args=rebuilt)
+                return RebuiltCall(func=ifop.func, args=rebuilt)
             else:
                 raise SemanticAnalysisError("bad first if-args")
 
         for i, a in enumerate(list(ifop.args[2:]), start=2):
             if isinstance(a, Block):
-                if not ifop.args[i - 1] == "else" and (not isinstance(ifop.args[i - 1], ColonBinOp) or ifop.args[i - 1].args[0] != "elif"):
+                if not (isinstance(ifop.args[i - 1], Identifier) and ifop.args[i - 1].name == "else") and not (isinstance(ifop.args[i - 1], ColonBinOp) and (isinstance(elifliteral := ifop.args[i - 1].args[0], Identifier) and elifliteral.name == "elif")):
                     raise SemanticAnalysisError(
-                        f"Unexpected if arg. Found block at position {i} but it's not preceded by 'if' or 'elif'")
+                        f"Unexpected if arg. Found block at position {i} but it's not preceded by 'else' or 'elif'")
             elif isinstance(a, ColonBinOp):
-                if not a.args[0] in ["elif", "else"]:
+                if not a.args[0].name in ["elif", "else"]:
                     raise SemanticAnalysisError(
                         f"Unexpected if arg {a} at position {i}")
-                if a.args[0] == "else":
+                if a.args[0].name == "else":
                     rebuilt = ifop.args[0:i] + [a.args[0], RebuiltBlock(
                         args=[a.args[1]])] + ifop.args[i + 1:]
                     return RebuiltCall(ifop.func, args=rebuilt)
-                elif a.args[0] == "elif":
+                elif a.args[0].name == "elif":
                     if i == len(ifop.args) - 1 or not isinstance(ifop.args[i + 1], Block):
                         c = a.args[1]
                         if not isinstance(c, ColonBinOp):
@@ -251,7 +322,7 @@ def one_liner_expander(parsed):
                         new_block = RebuiltBlock(args=[rest])
                         rebuilt = ifop.args[0:i] + [new_elif, new_block] + ifop.args[i + 1:]
                         return RebuiltCall(ifop.func, args=rebuilt)
-            elif a == "else":
+            elif isinstance(a, Identifier) and a.name == "else":
                 if not i == len(ifop.args) - 2:
                     raise SemanticAnalysisError("bad else placement")
                 if not isinstance(ifop.args[-1], Block):
@@ -303,7 +374,7 @@ def one_liner_expander(parsed):
     return parsed
 
 
-def assign_to_named_parameter(parsed):
+def assign_to_named_parameter(expr):
 
     def replacer(op):
         if not isinstance(op, Node):
@@ -327,7 +398,7 @@ def assign_to_named_parameter(parsed):
         op.args = [replacer(arg) for arg in op.args]
         return op
 
-    return replacer(parsed)
+    return replacer(expr)
 
 
 def warn_and_remove_redundant_parens(expr, error=False):
@@ -348,10 +419,10 @@ def warn_and_remove_redundant_parens(expr, error=False):
     return replacer(expr)
 
 
-def semantic_analysis(parsed: Module):
-    assert isinstance(parsed, Module) # enforced by parser
+def semantic_analysis(expr: Module):
+    assert isinstance(expr, Module) # enforced by parser
 
-    for modarg in parsed.args:
+    for modarg in expr.args:
         if isinstance(modarg, Call):
             if modarg.func.name not in ["def", "class"]:
                 raise SemanticAnalysisError("Only defs or classes at module level (for now)")
@@ -360,22 +431,38 @@ def semantic_analysis(parsed: Module):
         else:
             raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
 
-    parsed = one_liner_expander(parsed)
-    parsed = assign_to_named_parameter(parsed)
-    parsed = warn_and_remove_redundant_parens(parsed)
-    return parsed
+    expr = one_liner_expander(expr)
+    expr = assign_to_named_parameter(expr)
+    expr = warn_and_remove_redundant_parens(expr)
+    return expr
 
 
 def compile(s):
-    parsed = parse(s)
-    parsed = semantic_analysis(parsed)
-    print("semantic", parsed)
-    code = codegen(parsed)
+    expr = parse(s)
+    expr = semantic_analysis(expr)
+    print("semantic", expr)
+    expr = lowering(expr)
+    code = codegen(expr)
     print("code:\n", code)
 
 
 if __name__ == "__main__":
     compile("""
+def (main:
+    # if (x:
+    #     dostuff()
+    # elif: y + 2:
+    #     otherstuff()
+    # else:
+    #     darn()
+    # )
+    
+    if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
+)
+    """)
+
+    # test named parameters....
+    0 and compile("""
 def (main:
     foo((x=y:int:strong), x=y:int:weak)
     foo(x=y:int, (z=y:int))
