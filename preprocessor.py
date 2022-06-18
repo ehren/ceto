@@ -175,7 +175,11 @@ def preprocess(fileObject):
                     else:
                         parsing_stack.append(DoubleQuote() if char == '"' else SingleQuote())
 
-            if isinstance(parsing_stack[-1], CallOpenParen) and line.endswith(":"):
+            #if isinstance(parsing_stack[-1], CallOpenParen) and line.endswith(":"):
+            # ^ this is not the best way due to difficulty parsing indirect calls.
+            # Let's just require a colon at the end of the line (within) any parentheses (type colons spilling over a line can use more parentheses e.g. "x : (
+            # int)
+            if isinstance(parsing_stack[-1], (ExprOpenParen, CallOpenParen)) and line.endswith(":"):
                 parsing_stack.append(Indent(current_indent(parsing_stack) + TAB_WIDTH))
                 # block_start
                 gs = '\x1D'
