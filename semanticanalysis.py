@@ -56,6 +56,7 @@ class NamedParameter(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
+# should be renamed "IfWrapper"
 class IfNode:#(Call):  # just a helper class for now (avoid adding to ast)
 
     def __repr__(self):
@@ -101,31 +102,6 @@ class SemanticAnalysisError(Exception):
     #    super().__init__("{}. Line {}.".format(message, line_number))
 
 
-def strip_types(node: Node):
-    stripped = []
-
-    def visitor(node):
-        if not isinstance(node, Node):
-            return node
-
-        rebuilt = []
-        if isinstance(node, ColonBinOp):
-            lhs, rhs = node.args
-            stripped.append(rhs)
-            rebuilt.append(lhs)
-        node.args = rebuilt
-
-        rebuilt = []
-        for arg in node.args:
-            if isinstance(arg, Node):
-                arg = visitor(arg)
-            rebuilt.append(arg)
-        node.args = rebuilt
-
-    return stripped, visitor(node)
-
-
-
 def build_parents(node: Node):
 
     def visitor(node):
@@ -150,6 +126,7 @@ def build_types(node: Node):
         if not isinstance(node, Node):
             return node
 
+        # TODO add NonTypeColonBinOp or SyntaxColonBinOp (to be swapped with e.g. elif ColonBinOp at some stage)
         if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):  # sure hope you're using 'elif' responsibly!
             lhs, rhs = node.args
             node = lhs
