@@ -1,4 +1,5 @@
 from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral
+import sys
 
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, ColonBinOp) and isinstance(node.args[0], NodeClass))
@@ -293,6 +294,7 @@ def warn_and_remove_redundant_parens(expr, error=False):
         if not isinstance(op, Node):
             return op
         op.args = [replacer(arg) for arg in op.args]
+        op.func = replacer(op.func)
         return op
 
     return replacer(expr)

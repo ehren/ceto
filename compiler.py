@@ -28,19 +28,19 @@ def (main:
     elif: y + 2:
         otherstuff()
         1 + 5 : (
-    int)
+int)
     else:
         darn()
     )
     
     if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
     
-    # (foo()+1)(1)
-    # (((1+2)))(1)
+    (foo()+1)(1)
+    ((((1+redundant))))(1)
     (1+2)(1)
     2(1)
-    (1+2)*3("blah")
-    ((1+2)*3)("blah")
+    (1+2)*3("blah", x=y)
+    ((1+2)*3)("blah", (x=y))
     
     (1+2)(:
         blah
