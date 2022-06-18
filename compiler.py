@@ -15,15 +15,23 @@ def compile(s):
 
 
 if __name__ == "__main__":
+    0 and compile("""
+(1+2)(:
+    hi
+)
+    """)
+
     compile("""
 def (main:
-    # if (x:
-    #     dostuff()
-    # elif: y + 2:
-    #     otherstuff()
-    # else:
-    #     darn()
-    # )
+    if (x:
+        dostuff()
+    elif: y + 2:
+        otherstuff()
+        1 + 5 : (
+    int)
+    else:
+        darn()
+    )
     
     if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
     
@@ -33,6 +41,11 @@ def (main:
     2(1)
     (1+2)*3("blah")
     ((1+2)*3)("blah")
+    
+    (1+2)(:
+        blah
+    )
+    
     
 )
     """)

@@ -79,7 +79,9 @@ def preprocess(fileObject):
             line = line[indent:] # consume spaces
             curr = current_indent(parsing_stack)
 
-            if isinstance(parsing_stack[-1], (Indent, CallOpenParen)):
+            # if isinstance(parsing_stack[-1], (Indent, CallOpenParen)):
+            if isinstance(parsing_stack[-1], Indent):
+            # if isinstance(parsing_stack[-1], Indent): CallOpenParen)):
 
                 if indent < curr and isinstance(parsing_stack[-1], Indent):
                     # dedent
@@ -144,7 +146,7 @@ def preprocess(fileObject):
                             break
                         elif not ident.isspace():
                             break
-                    if is_ident:
+                    if 0 and is_ident:
                         parsing_stack.append(CallOpenParen())
                     else:
                         parsing_stack.append(ExprOpenParen())

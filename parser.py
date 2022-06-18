@@ -214,6 +214,7 @@ def create():
     def gcb(t):
         return ["yo group", t]
 
+    # todo rename expr to arith_expr and listItem to expr
     expr <<= pp.infix_notation(
         listItem,
         [
