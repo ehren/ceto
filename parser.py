@@ -190,7 +190,8 @@ def create():
     noneLiteral = pp.Keyword("None").setParseAction(pp.replaceWith(None))
 
     listItem = (
-        real
+        function_call
+        | real
         | integer
         | quoted_str
         | dblquoted_str
@@ -199,9 +200,8 @@ def create():
         | pp.Group(listStr)
         | tupleStr
         | dictStr
-        | function_call
         | ident
-        | expr
+        # | expr
     )
 
     expop = pp.Literal("^")
@@ -273,7 +273,9 @@ def create():
     #function_call <<= ((function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen)).setParseAction(Call)#.setResultsName("Call")
 
     #function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
-    function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
+    # function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
+    # function_call <<= (listItem + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
+    function_call <<= ((listItem | (lparen + expr + rparen)) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
 
     # module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
     module = pp.OneOrMore(expr + block_line_end).setParseAction(Module)
@@ -292,6 +294,7 @@ def parse(s):
     print(s)
     sio = io.StringIO(s)
     transformed = preprocess(sio).getvalue()
+    print("preprocessed", transformed.replace("\x1E", "!!!").replace("\x1D", "+++"))
 
     filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()

@@ -26,6 +26,12 @@ def (main:
     # )
     
     if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
+    
+    # (foo()+1)(1)
+    # (((1+2)))(1)
+    (1+2)(1)
+    2(1)
+    
 )
     """)
 
