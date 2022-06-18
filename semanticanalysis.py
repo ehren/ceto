@@ -218,7 +218,7 @@ def one_liner_expander(parsed):
             return False, op
 
         if isinstance(op, Call):
-            if op.func.name == "def":
+            if isinstance(op.func, Identifier) and op.func.name == "def":
                 if len(op.args) < 2:
                     raise SemanticAnalysisError("not enough def args")
                 if not isinstance(op.args[0], Identifier):
@@ -226,7 +226,7 @@ def one_liner_expander(parsed):
                 if not isinstance(op.args[-1], Block):
                     # last arg becomes one-element block
                     return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
-            elif op.func.name == "if":
+            elif isinstance(op.func, Identifier) and op.func.name == "if":
                 new = ifreplacer(op)
                 if new is not op:
                     return True, new

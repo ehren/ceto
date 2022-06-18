@@ -31,7 +31,7 @@ def codegen_node(node: Node):
             else:
                 print("probably should handle", modarg)
     elif isinstance(node, Call): # not at module level
-        if node.func.name == "if":
+        if isinstance(node.func, Identifier) and node.func.name == "if":
             cpp.write(codegen_if(node))
     elif isinstance(node, (Identifier, IntegerLiteral)):
         cpp.write(str(node))

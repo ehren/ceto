@@ -31,10 +31,13 @@ def (main:
     # (((1+2)))(1)
     (1+2)(1)
     2(1)
+    (1+2)*3("blah")
+    ((1+2)*3)("blah")
     
 )
     """)
 
+    # test named parameters....
     # test named parameters....
     0 and compile("""
 def (main:

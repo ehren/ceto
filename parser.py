@@ -321,6 +321,7 @@ def parse(s):
         if not isinstance(op, Node):
             return op
         op.args = [replacer(arg) for arg in op.args]
+        op.func = replacer(op.func)
         return op
 
     res = replacer(res)
