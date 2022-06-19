@@ -5,7 +5,6 @@
 #
 import pyparsing as pp
 
-import sys
 import io
 
 from preprocessor import preprocess
@@ -13,13 +12,7 @@ from preprocessor import preprocess
 
 class Node:
 
-    # def rebuild(self, func, args):
-    #     self.func = func
-    #     self.args = args
-
     def __repr__(self):
-        # return "{}({!r})".format(self.func, self.args)
-        #    #return "{}({}):{!r}".format(self.__class__.__name__,
         return "{}({})({!r})".format(self.__class__.__name__,
                                      self.func, self.args)
 
@@ -36,8 +29,6 @@ class BinOp(Node):
         self.args = tokens[0][::2]
 
     def __repr__(self):
-        #return "{}({!r})".format(self.func, self.args)
-    #    #return "{}({}):{!r}".format(self.__class__.__name__,
         return "{}({})".format(self.func, ",".join(map(str,self.args)))
 
 
@@ -54,14 +45,11 @@ class Assign(BinOp):
 # We remove the implicit outer Parens after parsing
 class Parens(Node):
     def __init__(self, t):
-        # self.tokens = t
         self.func = "Parens"
-        # self.args = [tt[0] for tt in t.as_list()]
         self.args = [t.as_list()[0]]
 
     def __repr__(self):
-        # return "{}({!r})".format(self.func, self.args)
-        return "{}({})".format(self.func, ",".join(map(str,self.args)))
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
 class RedundantParens(Parens):
@@ -73,33 +61,20 @@ class RedundantParens(Parens):
 
 class Call(Node):
     def __repr__(self):
-        # return "{}({!r})".format(self.func, self.args)
         return "{}({})".format(self.func, ",".join(map(str,self.args)))
 
-    #def __init__(self, tokens, func=None, args=None):
     def __init__(self, tokens):
-        #self.func = "Call"#tokens[0][0]
-        #if func is not None:
-        #    self.func = func
-        #    self.args = args
-        #else:
         self.func = tokens[0]
-        self.args = tokens.as_list()[1:]#[1].as_list()
-        return
-        self.func = tokens[0]
-        #self.args = [tokens[0][i] for i in range(1, len(tokens))]
-        self.args = tokens[1].as_list()
-        #[t for t in tokens[1:]] #tokens[0]#[::2]
+        self.args = tokens.as_list()[1:]
 
 
 class Identifier(Node):
     def __init__(self, token):
-        self.func = str(token[0]) #tokens.as_list()[0]
+        self.func = str(token[0])
         self.name = self.func
         self.args = []
 
     def __repr__(self):
-        # return "Ident({})".format(self.func)
         return str(self.func)
 
 
@@ -123,26 +98,12 @@ class ListLike(Node):
 
 class Block(Node):
     def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str,self.args)))
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
-    def __init__(self, tokens):#, args=None):
-        self.func = "Block"#tokens[0][0]
-        # something is annoying and bad here
+    def __init__(self, tokens):
+        self.func = "Block"
 
         self.args = [t[0] for t in tokens.as_list()]
-
-        # if len(tokens) == 1:
-        #     self.args = tokens.as_list()[0]
-        # else:
-        #     self.args = tokens.as_list()
-        # if args is not None:
-        #     self.args = args
-        # else:
-        #self.args = tokens[0].as_list()
-        #self.func = tokens[0]
-        #self.args = [tokens[0][i] for i in range(1, len(tokens))]
-        #self.args = tokens[1].as_list()
-        #[t for t in tokens[1:]] #tokens[0]#[::2]
 
 
 class Module(ListLike):
@@ -153,7 +114,6 @@ class Module(ListLike):
 
 def create():
 
-    # comment out this line to see the effects without LR parsing enabled
     pp.ParserElement.enableLeftRecursion()
 
     cvtBool = lambda t: t[0] == "True"
@@ -163,15 +123,10 @@ def create():
     cvtDict = lambda toks: dict(toks.asList())
     cvtList = lambda toks: [toks.asList()]
 
-    blockHandler = lambda toks: [["block"]+toks.asList() +["endblock"]]
-
     # define punctuation as suppressed literals
     lparen, rparen, lbrack, rbrack, lbrace, rbrace, comma = map(
         pp.Suppress, "()[]{},"
     )
-
-    #colon = pp.Literal(":")
-    #colon = pp.Suppress(":")
 
     integer = pp.Regex(r"[+-]?\d+").setName("integer").setParseAction(IntegerLiteral)
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").setParseAction(cvtReal)
@@ -179,7 +134,7 @@ def create():
     listStr = pp.Forward()
     dictStr = pp.Forward()
     function_call = pp.Forward()
-    expr = pp.Forward()
+    infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").setParseAction(Identifier)
 
     #unistr = pp.unicodeString(multiline=True).setParseAction(lambda t: t[0][2:-1])
@@ -189,7 +144,7 @@ def create():
     boolLiteral = pp.oneOf("True False", asKeyword=True).setParseAction(cvtBool)
     noneLiteral = pp.Keyword("None").setParseAction(pp.replaceWith(None))
 
-    listItem = (
+    expr = (
         function_call
         | real
         | integer
@@ -201,7 +156,6 @@ def create():
         | tupleStr
         | dictStr
         | ident
-        # | expr
     )
 
     expop = pp.Literal("^")
@@ -211,12 +165,8 @@ def create():
     factop = pp.Literal("!")
     colon = pp.Literal(":")
 
-    def gcb(t):
-        return ["yo group", t]
-
-    # todo rename expr to arith_expr and listItem to expr
-    expr <<= pp.infix_notation(
-        listItem,
+    infix_expr <<= pp.infix_notation(
+        expr,
         [
             ("!", 1, pp.opAssoc.LEFT, UnOp),
             ("^", 2, pp.opAssoc.RIGHT, BinOp),
@@ -226,66 +176,32 @@ def create():
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
-            # ("!", 1, pp.opAssoc.LEFT),
-            # ("^", 2, pp.opAssoc.RIGHT),
-            # (signop, 1, pp.opAssoc.RIGHT),
-            # (multop, 2, pp.opAssoc.LEFT),
-            # (plusop, 2, pp.opAssoc.LEFT),
-            # ("=", 2, pp.opAssoc.RIGHT),
-            # (colon, 1, pp.opAssoc.RIGHT),
-            # # unary : shold bind less tight than binary
-            # (colon, 2, pp.opAssoc.RIGHT),
         ],
-        #lpar="(",# pp.Literal("(").setResultsName("LPAREN"),
-        # lpar=pp.Literal("("),#.setParseAction(lambda t: ["open par", t]),#.setResultsName("LPAREN"),
-        # rpar=")" # pp.Literal(")").setResultsName("RPAREN")
-        # rpar=pp.Literal(")")#.setParseAction(lambda t: ["close par", t]),
-        #group_callback=gcb#lambda t: ["yo group", t]
-    # .setResultsName("LPAREN"),
     ).setParseAction(Parens)
 
     tupleStr <<= (
-        lparen + pp.delimitedList(expr) + pp.Optional(comma) + rparen
+        lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
     )
 
     listStr <<= (
-        lbrack + pp.Optional(pp.delimitedList(expr) + pp.Optional(comma)) + rbrack
+        lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     )
 
-    dictEntry = pp.Group(expr + pp.Suppress("@@@") + expr)
+    dictEntry = pp.Group(infix_expr + pp.Suppress("@@@") + infix_expr)
     dictStr <<= (
         lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
     )
+
     gs = '\x1D'
     rs = '\x1E'
     block_start = pp.Suppress(gs)
     block_line_end = pp.Suppress(rs)
 
-    # block = block_start + pp.IndentedBlock(expr + block_line_end, recursive=False).setParseAction(Block)#.setResultsName("Block")#setParseAction(blockHandler)
-    block = block_start + pp.OneOrMore(pp.Group(expr + block_line_end)).setParseAction(Block)# this works but let's keep IndendtedBlock working too
-    # block_start = pp.Suppress(":\n")
-    # block_start.setDefaultWhitespaceChars(" \t")
-    # block_line = expr + pp.Suppress("\n")
-    # block_line.setDefaultWhitespaceChars(" \t")
-    # block = block_start + pp.IndentedBlock(block_line, recursive=True).setParseAction(Block)#.setResultsName("Block")#setParseAction(blockHandler)
-    # block.setDefaultWhitespaceChars(" \t")
+    block = block_start + pp.OneOrMore(pp.Group(infix_expr + block_line_end)).setParseAction(Block)
 
-    #function_call <<= (function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr|pp.Literal("*"))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr|pp.Literal("*")))) + rparen)
-    #function_call <<= ((function_call | ident) + pp.Group(lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen)).setParseAction(Call)#.setResultsName("Call")
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(infix_expr))) + rparen).setParseAction(Call)
 
-    #function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
-    # function_call <<= ((function_call | ident) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
-    # function_call <<= (listItem + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
-    function_call <<= ((listItem | (lparen + expr + rparen)) + lparen + pp.Optional(pp.delimitedList(expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(expr))) + rparen).setParseAction(Call)#.setResultsName("Call")
-
-    # module = pp.OneOrMore(function_call + block_line_end).setParseAction(Module)
-    module = pp.OneOrMore(expr + block_line_end).setParseAction(Module)
-    # module = pp.OneOrMore(function_call).setParseAction(Module)
-
-    #function_call.setResultsName("FunctionCall")
-
-    #listItem = expr
-    #return expr
+    module = pp.OneOrMore(infix_expr + block_line_end).setParseAction(Module)
     return module
 
 grammar = create()
@@ -305,9 +221,7 @@ def parse(s):
 
     res = grammar.parseString(transformed, parseAll=True)
 
-    print("parser:",res)
-    # print(res.as_dict())
-    # print(res.dump())
+    print("parser:", res)
 
     res = res[0]
 
