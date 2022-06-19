@@ -83,7 +83,8 @@ def preprocess(fileObject):
             if isinstance(parsing_stack[-1], Indent):
             # if isinstance(parsing_stack[-1], Indent): CallOpenParen)):
 
-                if indent < curr and isinstance(parsing_stack[-1], Indent):
+                #if indent < curr and isinstance(parsing_stack[-1], Indent):
+                if indent < curr:
                     # dedent
 
                     if began_indent:

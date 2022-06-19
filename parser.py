@@ -96,17 +96,16 @@ class ListLike(Node):
         self.args = tokens.as_list()
 
 
-class Block(Node):
+class Block(ListLike):
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
+        super().__init__(tokens)
         self.func = "Block"
 
-        self.args = [t[0] for t in tokens.as_list()]
 
-
-class Module(ListLike):
+class Module(Block):
     def __init__(self, tokens):
         super().__init__(tokens)
         self.func = "Module"
@@ -197,7 +196,7 @@ def create():
     block_start = pp.Suppress(gs)
     block_line_end = pp.Suppress(rs)
 
-    block = block_start + pp.OneOrMore(pp.Group(infix_expr + block_line_end)).setParseAction(Block)
+    block = block_start + pp.OneOrMore(infix_expr + block_line_end).setParseAction(Block)
 
     function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(infix_expr))) + rparen).setParseAction(Call)
 
