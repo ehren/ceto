@@ -40,12 +40,12 @@ class Assign(BinOp):
     pass
 
 
-# this introduces an "implicit" outer Parens around every infix expression
+# this introduces an "implicit" outer parens around every infix expression
 # but it allows us to preserve truly redundant parentheses (to ascribe special meaning)
 # We remove the implicit outer Parens after parsing
 class InfixExpr(Node):
     def __init__(self, t):
-        self.func = "Parens"
+        self.func = "InfixExpr"
         self.args = [t.as_list()[0]]
 
     def __repr__(self):
@@ -87,18 +87,23 @@ class IntegerLiteral(Node):
         return str(self.func)
 
 
-class ListLike(Node):
+class _ListLike(Node):
     def __repr__(self):
-        return "{}({!r})".format(self.func, self.args)
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
-        self.func = "ListLikeOperator"
+        self.func = "ListLike"
         self.args = tokens.as_list()
 
 
-class Block(ListLike):
-    def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+class ListLiteral(_ListLike):
+
+    def __init__(self, tokens):
+        super().__init__(tokens)
+        self.func = "List"
+
+
+class Block(_ListLike):
 
     def __init__(self, tokens):
         super().__init__(tokens)
@@ -122,18 +127,18 @@ def create():
         pp.Suppress, "()[]{},"
     )
 
-    integer = pp.Regex(r"[+-]?\d+").setName("integer").setParseAction(IntegerLiteral)
-    real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").setParseAction(cvtReal)
+    integer = pp.Regex(r"[+-]?\d+").setName("integer").set_parse_action(IntegerLiteral)
+    real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tupleStr = pp.Forward()
-    listStr = pp.Forward()
+    list_literal = pp.Forward()
     dictStr = pp.Forward()
     function_call = pp.Forward()
     infix_expr = pp.Forward()
-    ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").setParseAction(Identifier)
+    ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
-    #unistr = pp.unicodeString(multiline=True).setParseAction(lambda t: t[0][2:-1])
-    quoted_str = pp.QuotedString("'", multiline=True).setParseAction(lambda t: "string:"+t[0])    #.setParseAction(lambda t: t[0][1:-1])
-    dblquoted_str = pp.QuotedString('"', multiline=True).setParseAction(lambda t: "string"+t[0])   #  .setParseAction(lambda t: t[0][1:-1])
+    #unistr = pp.unicodeString(multiline=True).set_parse_action(lambda t: t[0][2:-1])
+    quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(lambda t: "string:"+t[0])    #.set_parse_action(lambda t: t[0][1:-1])
+    dblquoted_str = pp.QuotedString('"', multiline=True).set_parse_action(lambda t: "string"+t[0])   #  .set_parse_action(lambda t: t[0][1:-1])
 
     expr = (
         function_call
@@ -141,7 +146,7 @@ def create():
         | integer
         | quoted_str
         | dblquoted_str
-        | pp.Group(listStr)
+        | list_literal
         | tupleStr
         | dictStr
         | ident
@@ -166,15 +171,15 @@ def create():
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
-    ).setParseAction(InfixExpr)
+    ).set_parse_action(InfixExpr)
 
     tupleStr <<= (
         lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
     )
 
-    listStr <<= (
+    list_literal <<= (
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-    )
+    ).set_parse_action(ListLiteral)
 
     dictEntry = pp.Group(infix_expr + pp.Suppress("@@@") + infix_expr)
     dictStr <<= (
@@ -186,11 +191,11 @@ def create():
     block_start = pp.Suppress(gs)
     block_line_end = pp.Suppress(rs)
 
-    block = block_start + pp.OneOrMore(infix_expr + block_line_end).setParseAction(Block)
+    block = block_start + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(infix_expr))) + rparen).setParseAction(Call)
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(infix_expr))) + rparen).set_parse_action(Call)
 
-    module = pp.OneOrMore(infix_expr + block_line_end).setParseAction(Module)
+    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
     return module
 
 grammar = create()

@@ -15,13 +15,21 @@ def compile(s):
 
 
 if __name__ == "__main__":
-    0 and compile("""
-(1+2)(:
-    hi
+    compile("""
+# (1+2)(:
+#     hi
+# )
+def(y:
+    foo(:
+        1 :(
+              type)
+    a:int:
+        x : cpp: ptr:[int]
+    )
 )
     """)
 
-    compile("""
+    0 and compile("""
 def (main:
     if (x:
         dostuff()
