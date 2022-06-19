@@ -1,5 +1,8 @@
 #!/Users/ehren/Documents/ml/env/bin/python3
 
+# based on
+# https://github.com/aakash1104/IndentationChecker Written By: Aakash Prabhu, December 2016 (University of California, Davis)
+
 import sys
 from io import StringIO
  
@@ -59,7 +62,7 @@ def preprocess(fileObject):
     rewritten = StringIO()
     began_indent = False
 
-    while parsing_stack != []:
+    while parsing_stack:
 
         for line_number, line in enumerate(fileObject, start=1):
             line = line.rstrip()
