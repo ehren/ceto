@@ -43,7 +43,7 @@ class Assign(BinOp):
 # this introduces an "implicit" outer Parens around every infix expression
 # but it allows us to preserve truly redundant parentheses (to ascribe special meaning)
 # We remove the implicit outer Parens after parsing
-class Parens(Node):
+class InfixExpr(Node):
     def __init__(self, t):
         self.func = "Parens"
         self.args = [t.as_list()[0]]
@@ -52,11 +52,11 @@ class Parens(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-class RedundantParens(Parens):
+# Note: This is not created by the parser (later used to signify non-named parameters)
+class RedundantParens(InfixExpr):
     def __init__(self, args):
         self.func = "RedundantParens"
         self.args = args
-
 
 
 class Call(Node):
@@ -115,12 +115,7 @@ def create():
 
     pp.ParserElement.enableLeftRecursion()
 
-    cvtBool = lambda t: t[0] == "True"
-    cvtInt = lambda toks: int(toks[0])
     cvtReal = lambda toks: float(toks[0])
-    cvtTuple = lambda toks: tuple(toks.asList())
-    cvtDict = lambda toks: dict(toks.asList())
-    cvtList = lambda toks: [toks.asList()]
 
     # define punctuation as suppressed literals
     lparen, rparen, lbrack, rbrack, lbrace, rbrace, comma = map(
@@ -140,17 +135,12 @@ def create():
     quoted_str = pp.QuotedString("'", multiline=True).setParseAction(lambda t: "string:"+t[0])    #.setParseAction(lambda t: t[0][1:-1])
     dblquoted_str = pp.QuotedString('"', multiline=True).setParseAction(lambda t: "string"+t[0])   #  .setParseAction(lambda t: t[0][1:-1])
 
-    boolLiteral = pp.oneOf("True False", asKeyword=True).setParseAction(cvtBool)
-    noneLiteral = pp.Keyword("None").setParseAction(pp.replaceWith(None))
-
     expr = (
         function_call
         | real
         | integer
         | quoted_str
         | dblquoted_str
-        | boolLiteral
-        | noneLiteral
         | pp.Group(listStr)
         | tupleStr
         | dictStr
@@ -176,7 +166,7 @@ def create():
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
-    ).setParseAction(Parens)
+    ).setParseAction(InfixExpr)
 
     tupleStr <<= (
         lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
@@ -227,8 +217,8 @@ def parse(s):
     def replacer(op):
         if not isinstance(op, Node):
             return op
-        if isinstance(op, Parens):
-            if isinstance(op.args[0], Parens):
+        if isinstance(op, InfixExpr):
+            if isinstance(op.args[0], InfixExpr):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
