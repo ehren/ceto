@@ -8,6 +8,8 @@ TAB_WIDTH = 4
 
 GS = '\x1D'
 RS = '\x1E'
+BEL = '\x07'
+BS = '\x08'
 
 # Tokens
 Indent = 0
@@ -22,6 +24,14 @@ expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}"}
 
 def current_indent(parsing_stack):
     return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
+
+
+def colon_replacement_char(current_state):
+    if current_state == CurlyOpen:
+        return BEL
+    elif current_state == SquareOpen:
+        return BS
+    return ":"
 
 
 class PreprocessorError(Exception):
@@ -87,7 +97,7 @@ def preprocess(file_object):
             for n, char in enumerate(line):
 
                 if colon_to_write:
-                    rewritten.write(":")
+                    rewritten.write(colon_replacement_char(parsing_stack[-1]))
                     colon_to_write = False
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
@@ -139,7 +149,7 @@ def preprocess(file_object):
                     rewritten.write(RS)
 
             if colon_to_write:
-                rewritten.write(":")
+                rewritten.write(colon_replacement_char(parsing_stack[-1]))
 
         parsing_stack.pop()
 

@@ -181,7 +181,10 @@ def create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    dictEntry = pp.Group(infix_expr + pp.Suppress("@@@") + infix_expr)
+    bel = '\x07'
+    # bs = '\x08'  # for when slice syntax supported
+
+    dictEntry = pp.Group(infix_expr + bel + infix_expr)
     dictStr <<= (
         lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
     )
