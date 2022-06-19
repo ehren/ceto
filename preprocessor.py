@@ -1,5 +1,3 @@
-#!/Users/ehren/Documents/ml/env/bin/python3
-
 # based on
 # https://github.com/aakash1104/IndentationChecker Written By: Aakash Prabhu, December 2016 (University of California, Davis)
 
@@ -9,11 +7,7 @@ from io import StringIO
 TAB_WIDTH = 4
 
 
-class ExprOpenParen:
-    pass
-
-
-class CallOpenParen:
+class OpenParen:
     pass
 
 
@@ -56,7 +50,7 @@ class IndentError(PreprocessorError):
     pass
 
 
-def preprocess(fileObject):
+def preprocess(file_object):
     parsing_stack = [Indent(0)]
 
     rewritten = StringIO()
@@ -64,7 +58,7 @@ def preprocess(fileObject):
 
     while parsing_stack:
 
-        for line_number, line in enumerate(fileObject, start=1):
+        for line_number, line in enumerate(file_object, start=1):
             line = line.rstrip()
 
             if line == '':
@@ -82,26 +76,18 @@ def preprocess(fileObject):
             line = line[indent:] # consume spaces
             curr = current_indent(parsing_stack)
 
-            # if isinstance(parsing_stack[-1], (Indent, CallOpenParen)):
             if isinstance(parsing_stack[-1], Indent):
-            # if isinstance(parsing_stack[-1], Indent): CallOpenParen)):
 
-                #if indent < curr and isinstance(parsing_stack[-1], Indent):
                 if indent < curr:
                     # dedent
-
                     if began_indent:
                         raise IndentError("Error in what should be the first indented expression. Expected indent: {}. Got: {}".format(curr, indent), line_number)
-
                     diff = curr - indent
-
                     if diff % TAB_WIDTH != 0:
                         raise IndentError("Indentation not a multible of {}".format(TAB_WIDTH), line_number)
-
                     while diff > 0:
                         if not isinstance(parsing_stack[-1], Indent):
                             raise IndentError("Too many de-indents!", line_number)
-
                         parsing_stack.pop()
                         diff -= TAB_WIDTH
 
@@ -114,10 +100,8 @@ def preprocess(fileObject):
             # non whitespace char handling
 
             colon_to_write = False
-            found_comment = False
 
             for n, char in enumerate(line):
-                found_comment = False
 
                 if colon_to_write:
                     rewritten.write(":")
@@ -128,7 +112,6 @@ def preprocess(fileObject):
                     continue
 
                 if char == "#":
-                    found_comment = True
                     line = line[:n]
                     break
 
@@ -136,24 +119,7 @@ def preprocess(fileObject):
                     rewritten.write(char)
 
                 if char == "(":
-                    
-                    revalue = rewritten.getvalue()
-                    revalue = revalue[:-1]
-
-                    ident = ""
-                    is_ident = False
-                    while revalue:
-                        ident = revalue[-1] + ident
-                        revalue = revalue[:-1]
-                        if ident.strip().isidentifier():
-                            is_ident = True
-                            break
-                        elif not ident.isspace():
-                            break
-                    if 0 and is_ident:
-                        parsing_stack.append(CallOpenParen())
-                    else:
-                        parsing_stack.append(ExprOpenParen())
+                    parsing_stack.append(OpenParen())
                 elif char == "[":
                     parsing_stack.append(SquareOpen())
                 elif char == "{":
@@ -166,7 +132,7 @@ def preprocess(fileObject):
                     elif isinstance(top, CurlyOpen):
                         if char != "}":
                             raise PreprocessorError("Expected } got " + char, line_number)
-                    elif isinstance(top, (ExprOpenParen, CallOpenParen)):
+                    elif isinstance(top, OpenParen):
                         if char != ")":
                             raise PreprocessorError("Expected ) got " + char, line_number)
                     elif isinstance(top, Indent):
@@ -181,11 +147,7 @@ def preprocess(fileObject):
                     else:
                         parsing_stack.append(DoubleQuote() if char == '"' else SingleQuote())
 
-            #if isinstance(parsing_stack[-1], CallOpenParen) and line.endswith(":"):
-            # ^ this is not the best way due to difficulty parsing indirect calls.
-            # Let's just require a colon at the end of the line (within) any parentheses (type colons spilling over a line can use more parentheses e.g. "x : (
-            # int)
-            if isinstance(parsing_stack[-1], (ExprOpenParen, CallOpenParen)) and line.endswith(":"):
+            if isinstance(parsing_stack[-1], OpenParen) and line.endswith(":"):
                 parsing_stack.append(Indent(current_indent(parsing_stack) + TAB_WIDTH))
                 # block_start
                 gs = '\x1D'
@@ -206,6 +168,7 @@ def preprocess(fileObject):
         parsing_stack.pop()
 
     return rewritten
+
 
 def run(prog):
     fo = StringIO(prog)
