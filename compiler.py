@@ -17,7 +17,8 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
 # (1+2)(:
-#     hi
+#     ")hi"
+    
 # )
 def(y:
     foo(:

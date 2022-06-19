@@ -115,7 +115,7 @@ def preprocess(file_object):
                             raise PreprocessorError("Expected {} got {} ".format(expected, char), line_number)
                     elif top == Indent:
                         raise PreprocessorError("Expected dedent got " + char, line_number)
-                    elif top not in [SingleQuote, DoubleQuote]:
+                    else:
                         raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
                 elif char == ":":
                     colon_to_write = True
