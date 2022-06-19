@@ -7,38 +7,17 @@ from io import StringIO
 TAB_WIDTH = 4
 
 
-class OpenParen:
-    pass
-
-
-class SquareOpen:
-    pass
-
-
-class CurlyOpen:
-    pass
-
-
-class SingleQuote:
-    pass
-
-
-class DoubleQuote:
-    pass
-
-
-class Indent:
-
-    def __init__(self, indent=0):
-        self.indent = indent
+# Tokens
+Indent = 0
+OpenParen = 1
+SquareOpen = 2
+CurlyOpen = 3
+SingleQuote = 4
+DoubleQuote = 5
 
 
 def current_indent(parsing_stack):
-    for t in reversed(parsing_stack):
-        if isinstance(t, Indent):
-            indent = t.indent
-            break
-    return indent
+    return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
 
 
 class PreprocessorError(Exception):
@@ -51,7 +30,7 @@ class IndentError(PreprocessorError):
 
 
 def preprocess(file_object):
-    parsing_stack = [Indent(0)]
+    parsing_stack = [Indent]
 
     rewritten = StringIO()
     began_indent = False
@@ -76,7 +55,7 @@ def preprocess(file_object):
             line = line[indent:] # consume spaces
             curr = current_indent(parsing_stack)
 
-            if isinstance(parsing_stack[-1], Indent):
+            if parsing_stack[-1] == Indent:
 
                 if indent < curr:
                     # dedent
@@ -86,7 +65,7 @@ def preprocess(file_object):
                     if diff % TAB_WIDTH != 0:
                         raise IndentError("Indentation not a multible of {}".format(TAB_WIDTH), line_number)
                     while diff > 0:
-                        if not isinstance(parsing_stack[-1], Indent):
+                        if parsing_stack[-1] != Indent:
                             raise IndentError("Too many de-indents!", line_number)
                         parsing_stack.pop()
                         diff -= TAB_WIDTH
@@ -107,7 +86,7 @@ def preprocess(file_object):
                     rewritten.write(":")
                     colon_to_write = False
 
-                if (isinstance(parsing_stack[-1], SingleQuote) and char != "'") or (isinstance(parsing_stack[-1], DoubleQuote) and char != '"'):
+                if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     rewritten.write(char)
                     continue
 
@@ -119,36 +98,36 @@ def preprocess(file_object):
                     rewritten.write(char)
 
                 if char == "(":
-                    parsing_stack.append(OpenParen())
+                    parsing_stack.append(OpenParen)
                 elif char == "[":
-                    parsing_stack.append(SquareOpen())
+                    parsing_stack.append(SquareOpen)
                 elif char == "{":
-                    parsing_stack.append(CurlyOpen())
+                    parsing_stack.append(CurlyOpen)
                 elif char in ")]}":
                     top = parsing_stack.pop()
-                    if isinstance(top, SquareOpen):
+                    if top == SquareOpen:
                         if char != "]":
                             raise PreprocessorError("Expected ] got " + char, line_number)
-                    elif isinstance(top, CurlyOpen):
+                    elif top == CurlyOpen:
                         if char != "}":
                             raise PreprocessorError("Expected } got " + char, line_number)
-                    elif isinstance(top, OpenParen):
+                    elif top == OpenParen:
                         if char != ")":
                             raise PreprocessorError("Expected ) got " + char, line_number)
-                    elif isinstance(top, Indent):
+                    elif top == Indent:
                         raise PreprocessorError("Expected dedent got " + char, line_number)
-                    elif not isinstance(top, (SingleQuote, DoubleQuote)):
+                    elif top not in [SingleQuote, DoubleQuote]:
                         raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
                 elif char == ":":
                     colon_to_write = True
                 elif char in '"\'':
-                    if isinstance(parsing_stack[-1], (SingleQuote, DoubleQuote)):
+                    if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
                         parsing_stack.pop()
                     else:
-                        parsing_stack.append(DoubleQuote() if char == '"' else SingleQuote())
+                        parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
 
-            if isinstance(parsing_stack[-1], OpenParen) and line.endswith(":"):
-                parsing_stack.append(Indent(current_indent(parsing_stack) + TAB_WIDTH))
+            if parsing_stack[-1] == OpenParen and line.endswith(":"):
+                parsing_stack.append(Indent)
                 # block_start
                 gs = '\x1D'
                 rewritten.write(gs)
@@ -157,7 +136,7 @@ def preprocess(file_object):
             else:
                 began_indent = False
 
-                if isinstance(parsing_stack[-1], Indent) and line.strip():
+                if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
                     rs = '\x1E'
                     rewritten.write(rs)
