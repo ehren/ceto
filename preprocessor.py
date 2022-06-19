@@ -6,6 +6,8 @@ from io import StringIO
  
 TAB_WIDTH = 4
 
+GS = '\x1D'
+RS = '\x1E'
 
 # Tokens
 Indent = 0
@@ -14,6 +16,8 @@ SquareOpen = 2
 CurlyOpen = 3
 SingleQuote = 4
 DoubleQuote = 5
+
+expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}"}
 
 
 def current_indent(parsing_stack):
@@ -52,7 +56,7 @@ def preprocess(file_object):
                 else:
                     break
 
-            line = line[indent:] # consume spaces
+            line = line[indent:]  # consume spaces
             curr = current_indent(parsing_stack)
 
             if parsing_stack[-1] == Indent:
@@ -105,15 +109,10 @@ def preprocess(file_object):
                     parsing_stack.append(CurlyOpen)
                 elif char in ")]}":
                     top = parsing_stack.pop()
-                    if top == SquareOpen:
-                        if char != "]":
-                            raise PreprocessorError("Expected ] got " + char, line_number)
-                    elif top == CurlyOpen:
-                        if char != "}":
-                            raise PreprocessorError("Expected } got " + char, line_number)
-                    elif top == OpenParen:
-                        if char != ")":
-                            raise PreprocessorError("Expected ) got " + char, line_number)
+                    if top in [OpenParen, SquareOpen, CurlyOpen]:
+                        expected = expected_close[top]
+                        if char != expected:
+                            raise PreprocessorError("Expected {} got {} ".format(expected, char), line_number)
                     elif top == Indent:
                         raise PreprocessorError("Expected dedent got " + char, line_number)
                     elif top not in [SingleQuote, DoubleQuote]:
@@ -129,8 +128,7 @@ def preprocess(file_object):
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
                 # block_start
-                gs = '\x1D'
-                rewritten.write(gs)
+                rewritten.write(GS)
                 colon_to_write = False
                 began_indent = True
             else:
@@ -138,8 +136,7 @@ def preprocess(file_object):
 
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
-                    rs = '\x1E'
-                    rewritten.write(rs)
+                    rewritten.write(RS)
 
             if colon_to_write:
                 rewritten.write(":")
