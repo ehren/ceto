@@ -77,7 +77,7 @@ class InfixExpr(Node):
 
 
 # Note: This is not created by the parser (later used to signify non-named parameters)
-class RedundantParens(InfixExpr):
+class RedundantParens(Node):
     def __init__(self, args):
         self.func = "RedundantParens"
         self.args = args
@@ -203,6 +203,7 @@ def create():
             (multop, 2, pp.opAssoc.LEFT, BinOp),
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
+            (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
             ((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
             # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
@@ -261,7 +262,9 @@ def parse(s):
 
     pp.ParserElement.set_default_whitespace_chars(" \t")
 
-    patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "return", "except"]]
+    # patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "except"]]
+    patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
+    # patterns += [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n") | pp.Literal(")"))) for k in ["return"]]
     # patterns += [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal("\n"))) for k in ["except"]]
     pattern = None
     for p in patterns:

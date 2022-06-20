@@ -30,7 +30,7 @@ def (main:
         a[10]
         10[a]()
         10
-        return 15
+        return (15:int)
     )
     
     try (:
@@ -50,6 +50,10 @@ def (main:
         0
         0
     )
+    
+    if ((x=10): 2 elif: (x=2): return 5:int else: return)
+    
+    bar (x=10:foo, (x=10):foo, (x=10:foo))
     
     
     # try(e: 1 except: DarnError: d: 2:int except: 0)
