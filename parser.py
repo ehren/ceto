@@ -61,7 +61,16 @@ class RedundantParens(InfixExpr):
 
 class Call(Node):
     def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str,self.args)))
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+
+    def __init__(self, tokens):
+        self.func = tokens[0]
+        self.args = tokens.as_list()[1:]
+
+
+class ArrayAccess(Node):
+    def __repr__(self):
+        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
         self.func = tokens[0]
@@ -133,6 +142,7 @@ def create():
     list_literal = pp.Forward()
     dictStr = pp.Forward()
     function_call = pp.Forward()
+    array_access = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
@@ -142,6 +152,7 @@ def create():
 
     expr = (
         function_call
+        | array_access
         | real
         | integer
         | quoted_str
@@ -181,8 +192,7 @@ def create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    bel = '\x07'
-    # bs = '\x08'  # for when slice syntax supported
+    bel = pp.Literal('\x07')
 
     dictEntry = pp.Group(infix_expr + bel + infix_expr)
     dictStr <<= (
@@ -196,7 +206,13 @@ def create():
 
     block = block_start + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(infix_expr))) + rparen).set_parse_action(Call)
+    bs = pp.Literal('\x08')  # for when slice syntax supported
+
+    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bs + infix_expr) + pp.Optional(bs + infix_expr) + rbrack).set_parse_action(ArrayAccess)
+
+    Optional = pp.Optional
+
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + Optional(pp.delimitedList(Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(Optional(infix_expr)))) + rparen).set_parse_action(Call)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
     return module
@@ -206,15 +222,43 @@ grammar = create()
 
 def parse(s):
     print(s)
-    sio = io.StringIO(s)
-    transformed = preprocess(sio).getvalue()
-    print("preprocessed", transformed.replace("\x1E", "!!!").replace("\x1D", "+++"))
+    # transformed = io.StringIO(s)
 
     filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()
     qs = pp.QuotedString('"') | pp.QuotedString("'")
     filter_comments = filter_comments.ignore(qs)
-    transformed = filter_comments.transformString(transformed)
+
+    transformed = s
+
+    transformed = filter_comments.transform_string(transformed)
+
+    pp.ParserElement.set_default_whitespace_chars(" \t")
+
+    # transformed = pp.Keyword("elif").setParseAction(lambda t: ":elif:").ignore(qs).transform_string(transformed)
+
+    # transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + str(t) + ":").ignore(qs).transform_string(transformed)
+    # transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + "elif" + ":").ignore(qs).transform_string(transformed)
+    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + "else" + ":").ignore(qs).transform_string(transformed)
+    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + str(t) + ":").ignore(qs).transform_string(transformed)
+
+    transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: "elif:").ignore(qs).transform_string(transformed)
+    transformed = (pp.Keyword("except") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "except:").ignore(qs).transform_string(transformed)
+    transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "else:").ignore(qs).transform_string(transformed)
+
+    transformed = pp.Keyword("elif").set_parse_action(lambda t: ", " + "elif").ignore(qs).transform_string(transformed)
+    transformed = pp.Keyword("else").set_parse_action(lambda t: ", " + "else").ignore(qs).transform_string(transformed)
+    transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
+
+
+    # print(s)
+    # sio = io.StringIO(s)
+    sio = io.StringIO(transformed)
+    transformed = preprocess(sio).getvalue()
+    print("preprocessed", transformed.replace("\x1E", "!!!").replace("\x1D", "+++"))
+
+
+
 
     res = grammar.parseString(transformed, parseAll=True)
 
@@ -230,6 +274,10 @@ def parse(s):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
+        # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
+        #     print("huh")
+        #     op = op.args[0]
+
         if not isinstance(op, Node):
             return op
         op.args = [replacer(arg) for arg in op.args]
@@ -244,6 +292,9 @@ def parse(s):
 
 if __name__ == "__main__":
     parse("""
+if((x=5): print(5) elif x = 4: ohyeah else: "hmm")
+""")
+    parse("""
 # ((((xyz = 12345678))))
 # abc = 5
 (x = ((5+6)*7))     # Parens(=(x,*(Parens(+(5,6)),7)))
@@ -253,7 +304,16 @@ foo(x=5, (y=5))
 
 if ((x=5):
     print(5)
+elif x = 4:
+    ohyeah
+elif x = 5:
+    10
+    10
+else:
+    10
+    10
 )
+
 
 """)
 

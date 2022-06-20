@@ -15,7 +15,38 @@ def compile(s):
 
 
 if __name__ == "__main__":
-    compile("""
+    compile(("""
+def (main:
+    if ((x:int): y=0:int elif (x:int): 5:int else x=2:int) # correct
+    if ((x:int): y=0:int, elif: (x:int): 5:int, else: x=2:int) # correct
+    
+    if (x=5:
+        6
+    elif x = 5:
+        6
+        6
+    else:
+        a[10]
+        10[a]()
+        10
+    )
+    
+    try(e:
+        1
+    except DarnError: d:
+        2
+        2
+    except:
+        0
+        0
+        0
+    )
+    
+    try(e: 1 except: DarnError: d: 2 except: 0)
+)
+    """))
+
+    0 and compile("""
 # (1+2)(:
 #     ")hi"
     
@@ -34,15 +65,16 @@ def(y:
 def (main:
     if (x:
         dostuff()
-    elif: y + 2:
+    elif y + 2:
         otherstuff()
         1 + 5 : (
 int)
     else:
         darn()
     )
+    if ((x:int):y=0:int elif (x:int): 5:int else x=2:int) # correct
     
-    if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
+    # if ((x:int):y=0:int,elif:(x:int):5:int, else:x=2:int) # correct
     
     (foo()+1)(1)
     ((1+redundant))(1)

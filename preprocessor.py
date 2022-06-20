@@ -21,6 +21,8 @@ DoubleQuote = 5
 
 expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}"}
 
+macro_replacements = {"elif": (OpenParen, ":elif:")}
+
 
 def current_indent(parsing_stack):
     return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
@@ -94,11 +96,28 @@ def preprocess(file_object):
 
             colon_to_write = False
 
-            for n, char in enumerate(line):
+            n = -1
+            while n < len(line) - 1:
+
+                n += 1
+
+                char = line[n]
 
                 if colon_to_write:
                     rewritten.write(colon_replacement_char(parsing_stack[-1]))
                     colon_to_write = False
+
+                # for k in macro_replacements.keys():
+                #     if char == k[0]:
+                #         state, replacement = macro_replacements[k]
+                #         if parsing_stack[-1] == state and k == line[n:n + len(k)]:
+                #             if k == replacement[0:len(k)]:
+                #                 # uh oh oh lets do an arbitrary fix
+                #                 line =
+                #
+                #             line = line[:n] + replacement + line[n + len(k):]
+
+
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     rewritten.write(char)
@@ -107,6 +126,8 @@ def preprocess(file_object):
                 if char == "#":
                     line = line[:n]
                     break
+
+
 
                 if char != ":":
                     rewritten.write(char)
