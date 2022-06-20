@@ -33,7 +33,26 @@ class BinOp(Node):
 
 
 class ColonBinOp(BinOp):
-    pass
+    def __init__(self, tokens):
+        super().__init__(tokens)
+        # if self.func == "as":
+        #     self.args = list(reversed(self.args))
+        #     self.func = ":"
+
+
+class RebuiltColon(ColonBinOp):
+    def __init__(self, func, args, _is_as_hack=False):
+        self.func = func
+        self.args = args
+        self._is_as_hack = _is_as_hack
+
+
+
+
+class AsBackwardsOp(BinOp):
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
 
 
 class Assign(BinOp):
@@ -180,7 +199,9 @@ def create():
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
-            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
+            ((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
+            # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
+            # (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
     ).set_parse_action(InfixExpr)
 
@@ -235,23 +256,40 @@ def parse(s):
 
     pp.ParserElement.set_default_whitespace_chars(" \t")
 
-    # transformed = pp.Keyword("elif").setParseAction(lambda t: ":elif:").ignore(qs).transform_string(transformed)
-
-    # transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + str(t) + ":").ignore(qs).transform_string(transformed)
-    # transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + "elif" + ":").ignore(qs).transform_string(transformed)
-    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + "else" + ":").ignore(qs).transform_string(transformed)
-    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: ", " + str(t) + ":").ignore(qs).transform_string(transformed)
-
-    transformed = (pp.Keyword("elif") + ~pp.FollowedBy(pp.Literal(":"))).set_parse_action(lambda t: "elif:").ignore(qs).transform_string(transformed)
-    transformed = (pp.Keyword("except") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "except:").ignore(qs).transform_string(transformed)
-    transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "else:").ignore(qs).transform_string(transformed)
-
-    transformed = pp.Keyword("elif").set_parse_action(lambda t: ", " + "elif").ignore(qs).transform_string(transformed)
-    transformed = pp.Keyword("else").set_parse_action(lambda t: ", " + "else").ignore(qs).transform_string(transformed)
-    transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
+    patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "return", "except"]]
+    # patterns += [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal("\n"))) for k in ["except"]]
+    pattern = None
+    for p in patterns:
+        p = p.set_parse_action(lambda t: t[0] + ":")
+        if pattern is None:
+            pattern = p
+        pattern |= p
+    # transformed = pattern.set_parse_action(lambda t: t[0] + ":")# .ignore(qs).transform_string(transformed)
 
 
-    # print(s)
+    # transformed = pattern pattern.set_parse_action(lambda t: t[0] + ":")# .ignore(qs).transform_string(transformed)
+    transformed = pattern.transform_string(transformed)
+
+    patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
+    pattern = None
+    for p in patterns:
+        p = p.set_parse_action(lambda t: "," + t[0])
+        if pattern is None:
+            pattern = p
+        pattern |= p
+
+    pattern = pattern.ignore(qs)
+    transformed = pattern.transform_string(transformed)
+
+    # transformed = (pp.Keyword("except") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "except:").ignore(qs).transform_string(transformed)
+    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "else:").ignore(qs).transform_string(transformed)
+    #
+    # transformed = pp.Keyword("elif").set_parse_action(lambda t: ", " + "elif").ignore(qs).transform_string(transformed)
+    # transformed = pp.Keyword("else").set_parse_action(lambda t: ", " + "else").ignore(qs).transform_string(transformed)
+    # transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
+
+
+    print("after 'reader macros'", transformed)
     # sio = io.StringIO(s)
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
@@ -277,9 +315,12 @@ def parse(s):
         # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
         #     print("huh")
         #     op = op.args[0]
+        if isinstance(op, ColonBinOp) and op.func == "as":
+            op = RebuiltColon(":", list(reversed(op.args)), _is_as_hack=True)
 
         if not isinstance(op, Node):
             return op
+
         op.args = [replacer(arg) for arg in op.args]
         op.func = replacer(op.func)
         return op
@@ -300,7 +341,9 @@ if((x=5): print(5) elif x = 4: ohyeah else: "hmm")
 (x = ((5+6)*7))     # Parens(=(x,*(Parens(+(5,6)),7)))
 x = ((5+6))*7    # Parens(=(x,Parens(*(Parens(+(5,6)),7))))
 
-foo(x=5, (y=5))
+foo(x=5, 
+
+(y=5))
 
 if ((x=5):
     print(5)

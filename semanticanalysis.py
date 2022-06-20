@@ -1,4 +1,4 @@
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon
 import sys
 
 def isa_or_wrapped(node, NodeClass):
@@ -39,12 +39,6 @@ class RebuiltCall(Call):
 class RebuiltAssign(Assign):
     def __init__(self, args):
         self.func = "Assign"
-        self.args = args
-
-
-class RebuiltColon(ColonBinOp):
-    def __init__(self, func, args):
-        self.func = func
         self.args = args
 
 

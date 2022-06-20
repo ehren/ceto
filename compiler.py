@@ -17,32 +17,42 @@ def compile(s):
 if __name__ == "__main__":
     compile(("""
 def (main:
-    if ((x:int): y=0:int elif (x:int): 5:int else x=2:int) # correct
-    if ((x:int): y=0:int, elif: (x:int): 5:int, else: x=2:int) # correct
-    
+    # if ((x:int): y=0:int elif (x:int): 5:int else x=2:int) # correct
+    # if ((x:int): y=0:int, elif: (x:int): 5:int, else: x=2:int) # correct
+    # 
     if (x=5:
         6
     elif x = 5:
         6
         6
+        return
     else:
         a[10]
         10[a]()
         10
+        return 15
     )
     
-    try(e:
+    try (:
         1
-    except DarnError: d:
+    # except ((DarnError as d): Exception):
+    except DarnError as d: Exception:
+        2
+    except DarnError as d:
         2
         2
+    except e: DarnError:
+        p
+    except e:
+        0
+        0
     except:
         0
         0
-        0
     )
     
-    try(e: 1 except: DarnError: d: 2 except: 0)
+    
+    # try(e: 1 except: DarnError: d: 2:int except: 0)
 )
     """))
 
