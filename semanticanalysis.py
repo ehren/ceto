@@ -1,4 +1,4 @@
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon
+from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon, SyntaxColonBinOp
 import sys
 
 def isa_or_wrapped(node, NodeClass):
@@ -122,7 +122,8 @@ def build_types(node: Node):
             return node
 
         # TODO add NonTypeColonBinOp or SyntaxColonBinOp (to be swapped with e.g. elif ColonBinOp at some stage)
-        if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):  # sure hope you're using 'elif' responsibly!
+        #if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):  # sure hope you're using 'elif' responsibly!
+        if isinstance(node, ColonBinOp) and not isinstance(node, SyntaxColonBinOp):
             lhs, rhs = node.args
             node = lhs
             node.type = rhs  # leaving open possibility this is still a ColonBinOp
@@ -211,6 +212,9 @@ def one_liner_expander(parsed):
 
         if not isinstance(op, Node):
             return False, op
+
+        if isinstance(op, ColonBinOp) and not isinstance(op, SyntaxColonBinOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
+            return True, SyntaxColonBinOp(op.func, op.args)
 
         if isinstance(op, Call):
             if isinstance(op.func, Identifier) and op.func.name == "def":

@@ -35,9 +35,9 @@ class BinOp(Node):
 class ColonBinOp(BinOp):
     def __init__(self, tokens):
         super().__init__(tokens)
-        # if self.func == "as":
-        #     self.args = list(reversed(self.args))
-        #     self.func = ":"
+        if self.func == "as":
+            self.args = list(reversed(self.args))
+            self.func = ":"
 
 
 class RebuiltColon(ColonBinOp):
@@ -47,12 +47,17 @@ class RebuiltColon(ColonBinOp):
         self._is_as_hack = _is_as_hack
 
 
-
-
-class AsBackwardsOp(BinOp):
+class SyntaxColonBinOp(ColonBinOp):
     def __init__(self, func, args):
         self.func = func
         self.args = args
+
+
+class AsOp(BinOp):
+    pass
+    # def __init__(self, func, args):
+    #     self.func = func
+    #     self.args = args
 
 
 class Assign(BinOp):
@@ -315,8 +320,8 @@ def parse(s):
         # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
         #     print("huh")
         #     op = op.args[0]
-        if isinstance(op, ColonBinOp) and op.func == "as":
-            op = RebuiltColon(":", list(reversed(op.args)), _is_as_hack=True)
+        # if isinstance(op, ColonBinOp) and op.func == "as":
+            # op = RebuiltColon(":", list(reversed(op.args)), _is_as_hack=True)
 
         if not isinstance(op, Node):
             return op
