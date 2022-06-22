@@ -100,12 +100,17 @@ class SemanticAnalysisError(Exception):
 def build_parents(node: Node):
 
     def visitor(node):
+        if isinstance(node, Module):
+            node.parent = None
         if not isinstance(node, Node):
             return node
+        if not hasattr(node, "name"):
+            node.name = None
         rebuilt = []
         for arg in node.args:
             if isinstance(arg, Node):
                 arg.parent = node
+                # if arg.scopes = []
                 # arg.rebuild(arg.func, arg.args)
                 arg = visitor(arg)
             rebuilt.append(arg)
@@ -168,8 +173,10 @@ def one_liner_expander(parsed):
                                                  Block):
             if isinstance(ifop.args[0], ColonBinOp):
                 # convert second arg of outermost colon to one element block
-                rebuilt = [ifop.args[0].args[0], RebuiltBlock(
-                    args=[ifop.args[0].args[1]])] + ifop.args[1:]
+                block_arg = ifop.args[0].args[1]
+                if isinstance(block_arg, Assign):
+                    raise SemanticAnalysisError("no assignment statements in if one liners")
+                rebuilt = [ifop.args[0].args[0], RebuiltBlock(args=[block_arg])] + ifop.args[1:]
                 return RebuiltCall(func=ifop.func, args=rebuilt)
             else:
                 raise SemanticAnalysisError("bad first if-args")
@@ -298,20 +305,114 @@ def warn_and_remove_redundant_parens(expr, error=False):
     return replacer(expr)
 
 
-def lowering(expr):
-    # remove all non-"type" use of ColonBinOp (scratch that for now - leave elif as lhs of ColonBinOp)
-    # expr = build_if_nodes(expr) # in fact don't even do this
+# class Environment:
+#     pass
 
-    # convert ColonBinOp (except elif related) to types
-    expr = build_types(expr)
 
-    # (perhaps both of these could have been done earlier)
+def build_environment(node):
+    return node
+    if not isinstance(node, Node):
+        return
+    if not hasattr(node, "scopes"):
+        node.scopes = []
 
-    expr = build_parents(expr)
+r"""
 
-    print("after lowering", expr)
+y = 5
 
-    return expr
+x = 1
+
+x = 2
+
+x = y + 1
+
+print(x)
+
+"""
+
+
+
+def _find_def(parent, child, node_to_find):
+    if parent is None:
+        return None
+    if not isinstance(node_to_find, Identifier):
+        return None
+    if isinstance(parent, Module):
+        return None
+    elif isinstance(parent, Block):
+        index = parent.args.index(child)
+        preceding = parent.args[0:index]
+        for r in reversed(preceding):
+            if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
+                return r.lhs, r
+        call = parent.parent
+        assert isinstance(call, Call)
+        for a in call.args:
+            if a.name == node_to_find.name:
+                return a, call
+
+        return _find_def(parent.parent, parent, node_to_find)
+    elif isinstance(parent, Call):
+        if parent.func.name == "def":
+            for callarg in parent.args:
+                if callarg.name == node_to_find.name:
+                    return callarg, parent
+                elif isinstance(callarg, NamedParameter) and callarg.args[0].name == node_to_find.name:
+                    return callarg, parent
+
+        # index = node.parent.args.index(node)
+        # if
+        return _find_def(parent.parent, parent, node_to_find)
+    # elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name:
+    #     return parent.lhs, parent
+
+
+def find_def(node):
+    res = _find_def(node.parent, node, node)
+    # print(res)
+    return res
+
+
+class LookupTable:
+    def __int__(self):
+        self.parent = None
+        self.defs = {}
+
+        pass
+
+
+def build_scopes(expr):
+    def visitor(node, outer_table):
+        if not isinstance(node, Node):
+            return node
+        rebuilt = []
+
+        if isinstance(node, Assign):
+            outer_table.append(node)
+        else:
+            node.symbol_table = list(outer_table)  # shallow copy
+
+        if isinstance(node, Block):
+            for arg in node.args:
+                if isinstance(node, Assign):
+                    pass
+
+        else:
+
+            for arg in node.args:
+                visitor(arg, node.symbol_table)
+
+        #     if isinstance(arg, Node):
+        #         if not hasattr(node, "symbol_table")
+        #             node.symbol_table = []
+        #         arg.parent = node
+        #         # arg.rebuild(arg.func, arg.args)
+        #         arg = visitor(arg)
+        #     rebuilt.append(arg)
+        # node.args = rebuilt
+        # # node.rebuild(node.func, node.args)
+        return node
+    return visitor(expr, [])
 
 
 def semantic_analysis(expr: Module):
@@ -329,4 +430,36 @@ def semantic_analysis(expr: Module):
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
+
+    # remove all non-"type" use of ColonBinOp (scratch that for now - leave elif as lhs of ColonBinOp)
+    # expr = build_if_nodes(expr) # in fact don't even do this
+
+    # convert ColonBinOp (but not SyntaxColonBinOp) to types
+    expr = build_types(expr)
+    expr = build_parents(expr)
+    # expr = build_scopes(node)
+
+    print("after lowering", expr)
+
+
+    def defs(node):
+        x = find_def(node)
+        if x:
+            print("found def", node, x)
+        else:
+            print("no def for", node)
+
+        for a in node.args:
+            # x = find_def(a)
+            # if x:
+            #     print("found def", a, x)
+            # else:
+            #     print("no def for", a)
+            # print(f"find_immediate_def {find_immediate_def(a)}")
+            defs(a)
+
+    defs(expr)
+    # return expr
+
+
     return expr

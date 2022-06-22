@@ -12,6 +12,12 @@ from preprocessor import preprocess
 
 class Node:
 
+    @property
+    def symbol_table(self):
+        if not hasattr(self, "_symbol_table"):
+            self._symbol_table = []
+        return self._symbol_table
+
     def __repr__(self):
         return "{}({})({!r})".format(self.__class__.__name__,
                                      self.func, self.args)
@@ -30,6 +36,14 @@ class BinOp(Node):
 
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str,self.args)))
+
+    @property
+    def lhs(self):
+        return self.args[0]
+
+    @property
+    def rhs(self):
+        return self.args[1]
 
 
 class ColonBinOp(BinOp):

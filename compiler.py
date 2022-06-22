@@ -1,5 +1,5 @@
 from parser import parse
-from semanticanalysis import semantic_analysis, lowering
+from semanticanalysis import semantic_analysis
 from codegen import codegen
 
 
@@ -9,13 +9,27 @@ def compile(s):
     expr = parse(s)
     expr = semantic_analysis(expr)
     print("semantic", expr)
-    expr = lowering(expr)
     code = codegen(expr)
     print("code:\n", code)
 
 
 if __name__ == "__main__":
-    compile(("""
+    compile("""
+def (main:
+    y = x
+    y
+    x = y
+    x
+    def (blah, c:
+        y
+        c
+        x
+    )
+)
+    """)
+
+    0 and compile("""
+             
 def (main:
     # if ((x:int): y=0:int elif (x:int): 5:int else x=2:int) # correct
     # if ((x:int): y=0:int, elif: (x:int): 5:int, else: x=2:int) # correct
@@ -52,13 +66,15 @@ def (main:
     )
     
     if ((x=10): 2 elif: (x=2): return 5:int else: return)
+    # x as + 5
+    
     
     bar (x=10:foo, (x=10):foo, (x=10:foo))
     
     
     # try(e: 1 except: DarnError: d: 2:int except: 0)
 )
-    """))
+    """)
 
     0 and compile("""
 # (1+2)(:

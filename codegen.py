@@ -14,33 +14,6 @@ class object {
 """
 
 
-def codegen(expr):
-    assert isinstance(expr, Module)
-    s = codegen_node(expr)
-    return cpp_preamble + s
-
-
-def codegen_node(node: Node):
-    cpp = io.StringIO()
-
-    if isinstance(node, Module):
-        for modarg in node.args:
-            if modarg.func.name == "def":
-                defcode = codegen_def(modarg)
-                cpp.write(defcode)
-            else:
-                print("probably should handle", modarg)
-    elif isinstance(node, Call): # not at module level
-        if isinstance(node.func, Identifier) and node.func.name == "if":
-            cpp.write(codegen_if(node))
-    elif isinstance(node, (Identifier, IntegerLiteral)):
-        cpp.write(str(node))
-    elif isinstance(node, BinOp):
-        cpp.write(codegen_node(node.args[0]) + node.func + codegen_node(node.args[1]))
-
-    return cpp.getvalue()
-
-
 def codegen_if(ifcall : Call):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
@@ -99,7 +72,31 @@ def codegen_def(defnode: Call):
     return cpp.getvalue()
 
 
-# class Environment:
-#     def __init__(self):
-#         self.parent
-#         self.
+def codegen(expr):
+    assert isinstance(expr, Module)
+    s = codegen_node(expr)
+    return cpp_preamble + s
+
+
+def codegen_node(node: Node):
+    cpp = io.StringIO()
+
+    if isinstance(node, Module):
+        for modarg in node.args:
+            if modarg.func.name == "def":
+                defcode = codegen_def(modarg)
+                cpp.write(defcode)
+            else:
+                print("probably should handle", modarg)
+    elif isinstance(node, Call): # not at module level
+        if isinstance(node.func, Identifier) and node.func.name == "if":
+            cpp.write(codegen_if(node))
+        else:
+            pass
+
+    elif isinstance(node, (Identifier, IntegerLiteral)):
+        cpp.write(str(node))
+    elif isinstance(node, BinOp):
+        cpp.write(codegen_node(node.args[0]) + node.func + codegen_node(node.args[1]))
+
+    return cpp.getvalue()
