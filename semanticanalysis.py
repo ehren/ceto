@@ -333,6 +333,19 @@ print(x)
 
 
 def _find_def(parent, child, node_to_find):
+    def _find_assign(r, node_to_find):
+        if not isinstance(r, Node):
+            return None
+        if isinstance(r, (Block, Call)):
+            return None
+        if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
+            return r.lhs, r
+        else:
+            for a in r.args:
+                if f := _find_assign(a, node_to_find):
+                    return f
+        return None
+
     if parent is None:
         return None
     if not isinstance(node_to_find, Identifier):
@@ -343,13 +356,17 @@ def _find_def(parent, child, node_to_find):
         index = parent.args.index(child)
         preceding = parent.args[0:index]
         for r in reversed(preceding):
-            if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
-                return r.lhs, r
-        call = parent.parent
-        assert isinstance(call, Call)
-        for a in call.args:
-            if a.name == node_to_find.name:
-                return a, call
+            # if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
+            #     return r.lhs, r
+            f = _find_assign(r, node_to_find)
+            if f is not None:
+                return f
+
+        # call = parent.parent
+        # assert isinstance(call, Call)
+        # for a in call.args:
+        #     if a.name == node_to_find.name:
+        #         return a, call
 
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Call):
@@ -363,8 +380,8 @@ def _find_def(parent, child, node_to_find):
         # index = node.parent.args.index(node)
         # if
         return _find_def(parent.parent, parent, node_to_find)
-    # elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name:
-    #     return parent.lhs, parent
+    elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name:
+        return parent.lhs, parent
 
 
 def find_def(node):

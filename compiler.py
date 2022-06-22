@@ -16,14 +16,18 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
 def (main:
+    w = w
     y = x
     y
     x = y
     x
+    a + (z = y)
+    
     def (blah, c:
         y
         c
         x
+        z
     )
 )
     """)
