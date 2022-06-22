@@ -115,6 +115,9 @@ def build_parents(node: Node):
                 arg = visitor(arg)
             rebuilt.append(arg)
         node.args = rebuilt
+        if isinstance(node.func, Node):
+            node.func.parent = node
+            node.func = visitor(node.func)
         # node.rebuild(node.func, node.args)
         return node
     return visitor(node)
@@ -336,9 +339,9 @@ def _find_def(parent, child, node_to_find):
     def _find_assign(r, node_to_find):
         if not isinstance(r, Node):
             return None
-        if isinstance(r, (Block, Call)):
+        if isinstance(r, Block):
             return None
-        if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
+        if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name and r.lhs is not node_to_find:
             return r.lhs, r
         else:
             for a in r.args:
@@ -372,7 +375,7 @@ def _find_def(parent, child, node_to_find):
     elif isinstance(parent, Call):
         if parent.func.name == "def":
             for callarg in parent.args:
-                if callarg.name == node_to_find.name:
+                if callarg.name == node_to_find.name and callarg is not node_to_find:
                     return callarg, parent
                 elif isinstance(callarg, NamedParameter) and callarg.args[0].name == node_to_find.name:
                     return callarg, parent
@@ -380,13 +383,17 @@ def _find_def(parent, child, node_to_find):
         # index = node.parent.args.index(node)
         # if
         return _find_def(parent.parent, parent, node_to_find)
-    elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name:
+    elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name and parent.lhs is not node_to_find:
         return parent.lhs, parent
 
 
 def find_def(node):
+    if not isinstance(node, Node):
+        return None
     res = _find_def(node.parent, node, node)
     # print(res)
+    if res is not None and res[0] is node:
+        return Node
     return res
 
 
@@ -460,6 +467,9 @@ def semantic_analysis(expr: Module):
 
 
     def defs(node):
+        if not isinstance(node, Node):
+            return
+
         x = find_def(node)
         if x:
             print("found def", node, x)
@@ -474,6 +484,7 @@ def semantic_analysis(expr: Module):
             #     print("no def for", a)
             # print(f"find_immediate_def {find_immediate_def(a)}")
             defs(a)
+            defs(a.func)
 
     defs(expr)
     # return expr

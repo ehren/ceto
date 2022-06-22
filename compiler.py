@@ -19,8 +19,7 @@ def (main:
     w = w
     y = x
     y
-    x = y
-    x
+    # x = y
     a + (z = y)
     
     def (blah, c:
@@ -28,7 +27,10 @@ def (main:
         c
         x
         z
+        blah(z)
     )
+    
+    blah(z)
 )
     """)
 
