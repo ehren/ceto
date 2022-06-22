@@ -28,6 +28,8 @@ def (main:
         x
         z
         blah(z)
+        return blah(x)
+        return: blah(x)
     )
     
     blah(z)
@@ -50,7 +52,7 @@ def (main:
         a[10]
         10[a]()
         10
-        return (15:int)
+        return: 15:int
     )
     
     try (:
@@ -81,6 +83,7 @@ def (main:
     # try(e: 1 except: DarnError: d: 2:int except: 0)
 )
     """)
+
 
     0 and compile("""
 # (1+2)(:
