@@ -14,6 +14,9 @@ class object {
 """
 
 
+# https://brevzin.github.io/c++/2019/12/02/named-arguments/
+
+
 def codegen_if(ifcall : Call):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
@@ -54,8 +57,83 @@ def codegen_block(block: Block):
 def indent(text, amount, ch=' '):
     return textwrap.indent(text, amount * ch)
 
+# unused
+def generate_template_fun(node, body):
+    pass
+    # params = []
+    # for idx, arg in enumerate(node.args.args):
+    #     params.append(("T" + str(idx + 1), arg.id))
+    # typenames = ["typename " + arg[0] for arg in params]
+    #
+    # template = "inline "
+    # if len(typenames) > 0:
+    #     template = "template <{0}>\n".format(", ".join(typenames))
+    # params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
+    #
+    # return_type = "auto"
+    # if is_void_function(node):
+    #     return_type = "void"
+    #
+    # funcdef = "{0}{1} {2}({3})".format(template, return_type, node.name,
+    #                                       ", ".join(params))
+    # return funcdef + " {\n" + body + "\n}"
 
 def codegen_def(defnode: Call):
+    assert defnode.func.name == "def"
+    name = defnode.args[0].name
+    args = defnode.args[1:]
+    block = args.pop()
+    assert isinstance(block, Block)
+
+    # more or less verbatim from py14
+
+    params = []
+    for idx, arg in enumerate(args):
+        params.append(("T" + str(idx + 1), arg.name))
+    typenames = ["typename " + arg[0] for arg in params]
+
+    template = "inline "
+    if name == "main":
+        template = ""
+    if len(typenames) > 0:
+        template = "template <{0}>\n".format(", ".join(typenames))
+    params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
+
+    return_type = "auto"
+    if name == "main":
+        return_type = "int"
+    # if is_void_function(node):
+    #     return_type = "void"
+
+    funcdef = "{0}{1} {2}({3})".format(template, return_type, name,
+                                       ", ".join(params))
+    return funcdef + " {\n" + codegen_block(block) + "\n}"
+
+
+
+    # assert defnode.func.name == "def"
+    # name = defnode.args[0]
+    # cpp = io.StringIO()
+    #
+    # # template < typename T1, typename T2, typename T3 = decltype(5) >
+    #
+    #  # f"auto {name} ("
+    # # cpp.write(f"std::shared_ptr<object> {name} (")
+    # args = defnode.args[1:]
+    # block = args.pop()
+    # assert isinstance(block, Block)
+    # template_preamble = ""
+    # if len(args):
+    #
+    #     template_params = []
+    #     for i, arg in enumerate(args, start=1):
+    #         template_params.append(f"typename T{i} {arg.name}")
+    #     template_preamble = "template <" + ", ".join(template_params) + ">"
+    #     cpp_args = ", ".join([f" {a}" for a in args])
+    #     cpp.write(cpp_args)
+
+# unused
+def _codegen_def_dynamic(defnode: Call):
     assert defnode.func.name == "def"
     name = defnode.args[0]
     cpp = io.StringIO()

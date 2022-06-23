@@ -465,7 +465,6 @@ def semantic_analysis(expr: Module):
 
     print("after lowering", expr)
 
-
     def defs(node):
         if not isinstance(node, Node):
             return
@@ -477,17 +476,9 @@ def semantic_analysis(expr: Module):
             print("no def for", node)
 
         for a in node.args:
-            # x = find_def(a)
-            # if x:
-            #     print("found def", a, x)
-            # else:
-            #     print("no def for", a)
-            # print(f"find_immediate_def {find_immediate_def(a)}")
             defs(a)
             defs(a.func)
 
     defs(expr)
-    # return expr
-
 
     return expr

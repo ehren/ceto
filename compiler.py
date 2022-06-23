@@ -15,6 +15,16 @@ def compile(s):
 
 if __name__ == "__main__":
     compile("""
+def (foo, c:
+    y
+    c
+    x
+    z
+    blah(z)
+    return blah(x)
+    return: blah(x)
+)
+    
 def (main:
     w = w
     y = x
