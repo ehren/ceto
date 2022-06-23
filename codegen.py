@@ -153,10 +153,15 @@ def codegen_node(node: Node):
             else:
                 print("probably should handle", modarg)
     elif isinstance(node, Call): # not at module level
-        if isinstance(node.func, Identifier) and node.func.name == "if":
-            cpp.write(codegen_if(node))
+        if isinstance(node.func, Identifier):
+            if node.func.name == "if":
+                cpp.write(codegen_if(node))
+            elif node.func.name == "def":
+                print("need to handle nested def")
+            else:
+                cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
         else:
-            pass
+            print("need to handle indirect call")
 
     elif isinstance(node, (Identifier, IntegerLiteral)):
         cpp.write(str(node))
