@@ -36,16 +36,17 @@ def codegen_if(ifcall : Call):
         cpp += "} else {\n"
         cpp += codegen_block(ifnode.elseblock)
 
-    cpp += "}"
+    cpp += "}\n"
 
     return cpp
 
 
-def codegen_block(block: Block):
+def codegen_block(block: Block, indent):
     assert isinstance(block, Block)
     cpp = ""
+    indent_str = "    " * indent
     for b in block.args:
-        cpp += codegen_node(b) + ";\n"
+        cpp += indent_str + codegen_node(b, indent) + ";\n"
         # if isinstance(b, Call):
         #     if b.func.name == "if":
         #         cpp += codegen_if(b)
@@ -59,7 +60,7 @@ def codegen_block(block: Block):
 def indent(text, amount, ch=' '):
     return textwrap.indent(text, amount * ch)
 
-def codegen_def(defnode: Call):
+def codegen_def(defnode: Call, indent):
     assert defnode.func.name == "def"
     name = defnode.args[0].name
     args = defnode.args[1:]
@@ -84,7 +85,7 @@ def codegen_def(defnode: Call):
 
     funcdef = "{0}{1} {2}({3})".format(template, return_type, name,
                                        ", ".join(params))
-    return funcdef + " {\n" + codegen_block(block) + "\n}"
+    return funcdef + " {\n" + codegen_block(block, indent + 1) + "}\n\n"
 
 
 def codegen_lambda(node):
@@ -142,13 +143,13 @@ def codegen(expr):
     return cpp_preamble + s
 
 
-def codegen_node(node: Node):
+def codegen_node(node: Node, indent=0):
     cpp = io.StringIO()
 
     if isinstance(node, Module):
         for modarg in node.args:
             if modarg.func.name == "def":
-                defcode = codegen_def(modarg)
+                defcode = codegen_def(modarg, indent)
                 cpp.write(defcode)
             else:
                 print("probably should handle", modarg)
