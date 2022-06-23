@@ -1,4 +1,4 @@
-from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError
+from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp
 import io
 import textwrap
 
@@ -13,6 +13,8 @@ class object {
 
 """
 
+
+# Uses code and ideas from https://github.com/lukasmartinelli/py14
 
 # https://brevzin.github.io/c++/2019/12/02/named-arguments/
 
@@ -57,35 +59,12 @@ def codegen_block(block: Block):
 def indent(text, amount, ch=' '):
     return textwrap.indent(text, amount * ch)
 
-# unused
-def generate_template_fun(node, body):
-    pass
-    # params = []
-    # for idx, arg in enumerate(node.args.args):
-    #     params.append(("T" + str(idx + 1), arg.id))
-    # typenames = ["typename " + arg[0] for arg in params]
-    #
-    # template = "inline "
-    # if len(typenames) > 0:
-    #     template = "template <{0}>\n".format(", ".join(typenames))
-    # params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
-    #
-    # return_type = "auto"
-    # if is_void_function(node):
-    #     return_type = "void"
-    #
-    # funcdef = "{0}{1} {2}({3})".format(template, return_type, node.name,
-    #                                       ", ".join(params))
-    # return funcdef + " {\n" + body + "\n}"
-
 def codegen_def(defnode: Call):
     assert defnode.func.name == "def"
     name = defnode.args[0].name
     args = defnode.args[1:]
     block = args.pop()
     assert isinstance(block, Block)
-
-    # more or less verbatim from py14
 
     params = []
     for idx, arg in enumerate(args):
@@ -95,19 +74,26 @@ def codegen_def(defnode: Call):
     template = "inline "
     if name == "main":
         template = ""
-    if len(typenames) > 0:
+    if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
     params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
 
     return_type = "auto"
     if name == "main":
         return_type = "int"
-    # if is_void_function(node):
-    #     return_type = "void"
 
     funcdef = "{0}{1} {2}({3})".format(template, return_type, name,
                                        ", ".join(params))
     return funcdef + " {\n" + codegen_block(block) + "\n}"
+
+
+def codegen_lambda(node):
+    args = list(node.args)
+    block = args.pop()
+    assert isinstance(block, Block)
+    params = ["auto {0}".format(param.name) for param in args]
+    funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
+    return funcdef + " {\n" + codegen_block(block) + "\n};"
 
 
 
@@ -174,7 +160,17 @@ def codegen_node(node: Node):
 
     elif isinstance(node, (Identifier, IntegerLiteral)):
         cpp.write(str(node))
+    # elif isinstance(node, UnOp):
+        # if node.func == "return":  # TODO fix UnOp func should be an identifier (although UnOp return should be converted to ColonBinOp earlier - or removed from language)
+        #     cpp.write("return")
     elif isinstance(node, BinOp):
-        cpp.write(codegen_node(node.args[0]) + node.func + codegen_node(node.args[1]))
+        if isinstance(node, ColonBinOp):
+            assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
+            if node.args[0].name == "return":
+                cpp.write("return " + codegen_node(node.args[1]))
+            else:
+                assert False
+        else:
+            cpp.write(codegen_node(node.args[0]) + node.func + codegen_node(node.args[1]))
 
     return cpp.getvalue()
