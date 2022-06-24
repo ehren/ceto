@@ -67,6 +67,11 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
+class DotBinOp(BinOp):
+    def __init__(self, tokens):
+        super().__init__(tokens)
+
+
 class AsOp(BinOp):
     pass
     # def __init__(self, func, args):
@@ -125,6 +130,16 @@ class Identifier(Node):
         return str(self.func)
 
 
+class StringLiteral(Node):
+    def __init__(self, token):
+        self.func = str(token[0])
+        self.name = None
+        self.args = []
+
+    def __repr__(self):
+        return + '"' + str(self.func) + '"'
+
+
 class IntegerLiteral(Node):
     def __init__(self, token):
         self.func = int(token[0])
@@ -148,6 +163,13 @@ class ListLiteral(_ListLike):
     def __init__(self, tokens):
         super().__init__(tokens)
         self.func = "List"
+
+
+class TupleLiteral(_ListLike):
+
+    def __init__(self, tokens):
+        super().__init__(tokens)
+        self.func = "Tuple"
 
 
 class Block(_ListLike):
@@ -176,7 +198,7 @@ def create():
 
     integer = pp.Regex(r"[+-]?\d+").setName("integer").set_parse_action(IntegerLiteral)
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
-    tupleStr = pp.Forward()
+    tuple_literal = pp.Forward()
     list_literal = pp.Forward()
     dictStr = pp.Forward()
     function_call = pp.Forward()
@@ -184,9 +206,8 @@ def create():
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
-    #unistr = pp.unicodeString(multiline=True).set_parse_action(lambda t: t[0][2:-1])
-    quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(lambda t: "string:"+t[0])    #.set_parse_action(lambda t: t[0][1:-1])
-    dblquoted_str = pp.QuotedString('"', multiline=True).set_parse_action(lambda t: "string"+t[0])   #  .set_parse_action(lambda t: t[0][1:-1])
+    quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(StringLiteral)
+    dblquoted_str = pp.QuotedString('"', multiline=True).set_parse_action(StringLiteral)
 
     expr = (
         function_call
@@ -196,7 +217,7 @@ def create():
         | quoted_str
         | dblquoted_str
         | list_literal
-        | tupleStr
+        | tuple_literal
         | dictStr
         | ident
     )
@@ -207,10 +228,12 @@ def create():
     plusop = pp.oneOf("+ -")
     factop = pp.Literal("!")
     colon = pp.Literal(":")
+    dot = pp.Literal(".")
 
     infix_expr <<= pp.infix_notation(
         expr,
         [
+            (dot, 2, pp.opAssoc.LEFT, DotBinOp),
             ("!", 1, pp.opAssoc.LEFT, UnOp),
             ("^", 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
@@ -225,9 +248,9 @@ def create():
         ],
     ).set_parse_action(InfixExpr)
 
-    tupleStr <<= (
+    tuple_literal <<= (
         lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
-    )
+    ).set_parse_action(TupleLiteral)
 
     list_literal <<= (
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack

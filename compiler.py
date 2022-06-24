@@ -15,6 +15,26 @@ def compile(s):
 
 if __name__ == "__main__":
     compile("""
+    
+def (map, values, fun:
+    results = []
+   # for v in values:
+   #     results.append(fun(v))
+   # return results
+    i = 0
+    while (i + 5:
+        # results.append(fun(v))
+        results.pop()
+        pass
+    )
+    return results
+)
+    
+    """)
+
+
+
+    0 and compile("""
 def (foo, c:
     y
     c
