@@ -83,12 +83,13 @@ class Assign(BinOp):
     pass
 
 
-# this introduces an "implicit" outer parens around every infix expression
-# but it allows us to preserve truly redundant parentheses (to ascribe special meaning)
-# We remove the implicit outer Parens after parsing
-class InfixExpr(Node):
+# this introduces an implicit wrapper node around every infix expression
+# but it allows us to preserve truly redundant parentheses by checking for
+# double wrapped nodes. (e.g. assignment expression instead of named parameter
+# in call requires one set extra parens)
+class _InfixExpr(Node):
     def __init__(self, t):
-        self.func = "InfixExpr"
+        self.func = "_InfixExpr"
         self.args = [t.as_list()[0]]
 
     def __repr__(self):
@@ -154,7 +155,6 @@ class _ListLike(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
-        self.func = "ListLike"
         self.args = tokens.as_list()
 
 
@@ -246,7 +246,7 @@ def create():
             # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
             # (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
-    ).set_parse_action(InfixExpr)
+    ).set_parse_action(_InfixExpr)
 
     tuple_literal <<= (
         lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
@@ -352,8 +352,8 @@ def parse(s):
     def replacer(op):
         if not isinstance(op, Node):
             return op
-        if isinstance(op, InfixExpr):
-            if isinstance(op.args[0], InfixExpr):
+        if isinstance(op, _InfixExpr):
+            if isinstance(op.args[0], _InfixExpr):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]

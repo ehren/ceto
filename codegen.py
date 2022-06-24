@@ -1,7 +1,7 @@
 from typing import Union, Any
 
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
 import io
@@ -359,17 +359,23 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 assert False
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             found = find_def(node.lhs)
-            assign_str = codegen_node(node.lhs) + node.func + codegen_node(node.rhs)
+
+            assign_str = " ".join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)])
             if found is None:
                 assign_str = "auto " + assign_str
             cpp.write(assign_str)
         else:
-            cpp.write(codegen_node(node.lhs) + node.func + codegen_node(node.rhs))
+            separator = " "
+            if isinstance(node, AttributeAccess):
+                separator = ""
+            cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
     elif isinstance(node, ListLiteral):
-        if len(node.args) > 0:
+        if node.args:
             elements = [codegen_node(e) for e in node.args]
-            # value_type = decltype(node.elts[0])
-
+                # value_type = decltype(node.elts[0])
+            return "std::vector<decltype({})>{{{}}}".format(elements[0], ", ".join(elements))
+                # "std::vector<{0}>{{{1}}}""
+            #
             # "std::vector<decltype({0})>".format(value_type(node))
 
             # return "std::vector<{0}>{{{1}}}".format(value_type,
