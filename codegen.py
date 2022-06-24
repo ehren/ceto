@@ -353,12 +353,18 @@ def codegen_node(node: Union[Node, Any], indent=0):
     elif isinstance(node, BinOp):
         if isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
-            if node.args[0].name == "return":
+            if node.lhs.name == "return":
                 cpp.write("return " + codegen_node(node.args[1]))
             else:
                 assert False
+        elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
+            found = find_def(node.lhs)
+            assign_str = codegen_node(node.lhs) + node.func + codegen_node(node.rhs)
+            if found is None:
+                assign_str = "auto " + assign_str
+            cpp.write(assign_str)
         else:
-            cpp.write(codegen_node(node.args[0]) + node.func + codegen_node(node.args[1]))
+            cpp.write(codegen_node(node.lhs) + node.func + codegen_node(node.rhs))
     elif isinstance(node, ListLiteral):
         if len(node.args) > 0:
             elements = [codegen_node(e) for e in node.args]

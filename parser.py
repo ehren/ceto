@@ -67,7 +67,7 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
-class DotBinOp(BinOp):
+class AttributeAccess(BinOp):
     def __init__(self, tokens):
         super().__init__(tokens)
 
@@ -233,7 +233,7 @@ def create():
     infix_expr <<= pp.infix_notation(
         expr,
         [
-            (dot, 2, pp.opAssoc.LEFT, DotBinOp),
+            (dot, 2, pp.opAssoc.LEFT, AttributeAccess),
             ("!", 1, pp.opAssoc.LEFT, UnOp),
             ("^", 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
