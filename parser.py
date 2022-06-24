@@ -260,7 +260,7 @@ def create():
         # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
         # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
         (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
-        (lparen + comma + rparen)
+        (lparen + pp.Optional(infix_expr) + comma + rparen)
     ).set_parse_action(TupleLiteral)
 
     list_literal <<= (

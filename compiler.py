@@ -29,6 +29,8 @@ def (map, values, fun:
     (x+5)
     (,)
     (1,2)
+    (1,)
+    (1)
     
     while (i + 5:
         results.append(fun(v))
