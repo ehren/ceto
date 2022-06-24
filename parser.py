@@ -35,7 +35,7 @@ class BinOp(Node):
         self.args = tokens[0][::2]
 
     def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str,self.args)))
+        return "({} {} {})".format(self.lhs, self.func, self.rhs)
 
     @property
     def lhs(self):
@@ -68,6 +68,9 @@ class SyntaxColonBinOp(ColonBinOp):
 
 
 class AttributeAccess(BinOp):
+    def __repr__(self):
+        return "{}.{}".format(self.lhs, self.rhs)
+
     def __init__(self, tokens):
         super().__init__(tokens)
 
@@ -81,6 +84,9 @@ class AsOp(BinOp):
 
 class Assign(BinOp):
     pass
+    # def __init__(self, s, loc, tokens):
+    #     print("assign", loc, tokens)
+    #     super().__init__(tokens)
 
 
 # this introduces an implicit wrapper node around every infix expression
@@ -246,10 +252,15 @@ def create():
             # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
             # (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
+        # pp.Literal("("),
+        # pp.Literal(")")
     ).set_parse_action(_InfixExpr)
 
     tuple_literal <<= (
-        lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
+        # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
+        # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
+        (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
+        (lparen + comma + rparen)
     ).set_parse_action(TupleLiteral)
 
     list_literal <<= (

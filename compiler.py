@@ -25,6 +25,11 @@ def (map, values, fun:
     i = 0
     x = i
     i = x
+    (z = i+1)
+    (x+5)
+    (,)
+    (1,2)
+    
     while (i + 5:
         results.append(fun(v))
         results.pop()
