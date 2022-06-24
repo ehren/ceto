@@ -7,7 +7,7 @@ def test_tuple():
     """)
     assert isinstance(m, Module)
     t, = m.args
-    
+
     assert isinstance(t, TupleLiteral)
     assert t.args == []
 

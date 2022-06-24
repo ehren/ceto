@@ -17,8 +17,10 @@ if __name__ == "__main__":
     compile("""
     
 def (map, values, fun:
-    results = [1]
-    results.append(fun(v))
+    # results = [1]
+    results = []
+    # results = 1
+    results.append(fun())
    # for v in values:
    #     results.append(fun(v))
    # return results

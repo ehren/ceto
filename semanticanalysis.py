@@ -389,6 +389,7 @@ def _find_def(parent, child, node_to_find):
         return _find_def(parent.parent, parent, node_to_find)
 
 
+# find closest preceding def
 def find_def(node):
     if not isinstance(node, Node):
         return None
@@ -397,6 +398,21 @@ def find_def(node):
     # if res is not None and res[0] is node:
     #     return None
     return res
+
+# find closest following use
+def find_use(assign: Assign):
+    assert isinstance(assign, Assign)
+    if isinstance(assign.parent, Block):
+        index = assign.parent.args.index(assign)
+        following = assign.parent.args[index + 1:]
+        for f in following:
+            if isinstance(assign.lhs, Identifier) and assign.lhs.name == f:
+                return f, f
+            else:
+                for a in f.args:
+                    if isinstance(assign.lhs, Identifier) and assign.lhs.name == a.name:
+                        return a, f
+    return None
 
 
 class LookupTable:

@@ -1,6 +1,6 @@
 from typing import Union, Any
 
-from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def
+from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
@@ -358,22 +358,59 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 assert False
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
-            found = find_def(node.lhs)
+            found_def = find_def(node.lhs)
 
-            assign_str = " ".join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)])
-            if found is None:
+            if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
+                # need to 'infer' (via decltype) list type of empty list
+                found_use = find_use(node)
+                if found_use is not None:
+                    print("yo")
+
+                    found_use_node, found_use_context = found_use
+
+                    if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
+                        apnd = found_use_context.rhs
+                        assert len(apnd.args) == 1
+                        rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+                    else:
+                        raise CodeGenError("list error, dunno what to do with this:", node)
+                else:
+                    raise CodeGenError("Unused empty list in template codegen", node)
+            else:
+                rhs_str = codegen_node(node.rhs)
+
+            assign_str = " ".join([codegen_node(node.lhs), node.func, rhs_str])
+
+            if found_def is None:
                 assign_str = "auto " + assign_str
             cpp.write(assign_str)
         else:
+            binop_str = None
+
             separator = " "
             if isinstance(node, AttributeAccess):
                 separator = ""
-            cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+
+                if isinstance(node.rhs, Call) and node.rhs.func.name == "append":
+                    apnd = node.rhs
+                    assert len(apnd.args) == 1
+
+                    if isinstance(node.lhs, ListLiteral) or ((found_def := find_def(node.lhs)) is not None and isinstance(found_def[1], Assign) and isinstance(found_def[1].rhs, ListLiteral)):
+                        binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
+
+            if binop_str is None:
+                cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+            else:
+                cpp.write(binop_str)
+
     elif isinstance(node, ListLiteral):
         if node.args:
             elements = [codegen_node(e) for e in node.args]
                 # value_type = decltype(node.elts[0])
             return "std::vector<decltype({})>{{{}}}".format(elements[0], ", ".join(elements))
+        else:
+            assert False
+
                 # "std::vector<{0}>{{{1}}}""
             #
             # "std::vector<decltype({0})>".format(value_type(node))
@@ -381,7 +418,6 @@ def codegen_node(node: Union[Node, Any], indent=0):
             # return "std::vector<{0}>{{{1}}}".format(value_type,
             #                                         ", ".join(elements))
 
-        else:
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
 
 
