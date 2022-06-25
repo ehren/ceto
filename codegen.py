@@ -1,6 +1,6 @@
 from typing import Union, Any
 
-from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use
+from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
@@ -27,22 +27,22 @@ class object {
 # https://brevzin.github.io/c++/2019/12/02/named-arguments/
 
 
-def codegen_if(ifcall : Call):
+def codegen_if(ifcall : Call, indent):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
 
     ifnode = IfNode(ifcall.func, ifcall.args)
 
     cpp = "if (" + codegen_node(ifnode.cond) + ") {\n"
-    cpp += codegen_block(ifnode.thenblock)
+    cpp += codegen_block(ifnode.thenblock, indent)
 
     for elifcond, elifblock in ifnode.eliftuples:
-        cpp += "} else if (" + codegen_node(elifcond) + ") {\n"
-        cpp += codegen_block(elifblock)
+        cpp += "} else if (" + codegen_node(elifcond, indent) + ") {\n"
+        cpp += codegen_block(elifblock, indent)
 
     if ifnode.elseblock:
         cpp += "} else {\n"
-        cpp += codegen_block(ifnode.elseblock)
+        cpp += codegen_block(ifnode.elseblock, indent)
 
     cpp += "}\n"
 
@@ -337,7 +337,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
     elif isinstance(node, Call): # not at module level
         if isinstance(node.func, Identifier):
             if node.func.name == "if":
-                cpp.write(codegen_if(node))
+                cpp.write(codegen_if(node, indent))
             elif node.func.name == "def":
                 print("need to handle nested def")
             else:
@@ -359,23 +359,48 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 assert False
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             found_def = find_def(node.lhs)
+            rhs_str = None
 
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
-                # need to 'infer' (via decltype) list type of empty list
-                found_use = find_use(node)
-                if found_use is not None:
-                    print("yo")
+                found_use = False
 
-                    found_use_node, found_use_context = found_use
+                for found_use_node in find_uses(node):
+                    found_use = True
+                    parent = found_use_node.parent
+                    while rhs_str is None and not isinstance(parent, Block):
+                        found_use_context = parent
 
-                    if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
-                        apnd = found_use_context.rhs
-                        assert len(apnd.args) == 1
-                        rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
-                    else:
+                        if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
+                            apnd = found_use_context.rhs
+                            assert len(apnd.args) == 1
+                            rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+
+                        parent = parent.parent
+
+                    if rhs_str is not None:
+                        break
+
+                if rhs_str is None:
+                    if found_use:
                         raise CodeGenError("list error, dunno what to do with this:", node)
-                else:
-                    raise CodeGenError("Unused empty list in template codegen", node)
+                    else:
+                        raise CodeGenError("Unused empty list in template codegen", node)
+
+            # need to 'infer' (via decltype) list type of empty list
+                # found_use = find_use(node)
+                # if found_use is not None:
+                #     print("yo")
+                #
+                #     found_use_node, found_use_context = found_use
+                #
+                #     if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
+                #         apnd = found_use_context.rhs
+                #         assert len(apnd.args) == 1
+                #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+                #     else:
+                #         raise CodeGenError("list error, dunno what to do with this:", node)
+                # else:
+                #     raise CodeGenError("Unused empty list in template codegen", node)
             else:
                 rhs_str = codegen_node(node.rhs)
 

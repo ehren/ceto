@@ -415,6 +415,45 @@ def find_use(assign: Assign):
     return None
 
 
+def find_nodes(node, search_node):
+    assert isinstance(node, Node)
+    if not isinstance(search_node, Node):
+        return None
+    if node.name == search_node.name:
+        yield search_node
+    else:
+        for arg in search_node.args:
+            yield from find_nodes(node, arg)
+        yield from find_nodes(node, search_node.func)
+
+
+def find_uses(node):
+    return _find_uses(node, node)
+
+
+def _find_uses(node, search_node):
+    # assert isinstance(node, Assign)
+    if not isinstance(node, Assign):
+        return
+    assign = node
+
+    if isinstance(search_node, Identifier) and assign.lhs.name == search_node.name:
+        return (yield search_node)
+
+    if isinstance(search_node.parent, Block):
+        index = search_node.parent.args.index(search_node)
+        following = search_node.parent.args[index + 1:]
+        for f in following:
+            # if isinstance(assign.lhs, Identifier) and assign.lhs.name == f:
+            #     return f, f
+            yield from find_nodes(assign.lhs, f)
+    else:
+        for a in search_node.args:
+            yield from find_nodes(assign.lhs, a)
+        yield from find_nodes(assign.lhs, search_node.func)
+
+
+
 class LookupTable:
     def __int__(self):
         self.parent = None
@@ -492,6 +531,9 @@ def semantic_analysis(expr: Module):
             print("found def", node, x)
         else:
             print("no def for", node)
+
+        for u in find_uses(node):
+            print("found use ", node, u, u.parent, u.parent.parent)
 
         for a in node.args:
             defs(a)

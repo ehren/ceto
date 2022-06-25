@@ -16,26 +16,27 @@ def compile(s):
 if __name__ == "__main__":
     compile("""
     
-def (map, values, fun:
+def (map, values:[int]:positional_only, fun:
     # results = [1]
     results = []
     # results = 1
+    print(results)
     results.append(fun())
     results[0]
    # for v in values:
    #     results.append(fun(v))
    # return results
-    i = 0
-    x = i
-    i = x
-    (z = i+1)
-    (x+5)
-    (,)
-    (1,2)
-    (1,)
-    (1)
+   #  i = 0
+   #  x = i
+   #  i = x
+   #  (z = i+1)
+   #  (x+5)
+   #  (,)
+   #  (1,2)
+   #  (1,)
+   #  (1)
     
-    while (i + 5:
+    if (i + 5:
         results.append(fun(v))
         results.pop()
         pass
