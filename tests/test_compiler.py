@@ -1,6 +1,17 @@
 from compiler import compile
 
 
+def test_append_to_empty_list_type_deduction():
+    assert compile("""
+def (map, values, fun:
+    results = []
+    results.append(fun())
+)
+    """).strip() == """
+
+    """
+
+
 def test_stuff():
 
     compile("""

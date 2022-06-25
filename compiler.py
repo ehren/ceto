@@ -21,6 +21,7 @@ def (map, values, fun:
     results = []
     # results = 1
     results.append(fun())
+    results[0]
    # for v in values:
    #     results.append(fun(v))
    # return results

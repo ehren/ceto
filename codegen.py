@@ -419,6 +419,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
             #                                         ", ".join(elements))
 
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
+    elif isinstance(node, ArrayAccess):
+        if len(node.args) > 1:
+            raise CodeGenError("advanced slicing not supported yet")
+        return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
 
 
     return cpp.getvalue()
