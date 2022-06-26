@@ -52,7 +52,10 @@ def codegen_if(ifcall : Call, indent):
     declarations = {}
 
     for assign in assigns:
+        if hasattr(assign, "already_declared"):
+            continue
         if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+            assign.already_declared = True
             if assign.lhs.name in declarations:
                 continue
             declarations[codegen_node(assign.lhs)] = codegen_node(assign.rhs)
@@ -433,21 +436,20 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             assign_str = " ".join([codegen_node(node.lhs), node.func, rhs_str])
 
-            found_def = find_def(node.lhs)
-            if found_def is None:
+            if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
 
-                # avoid adding auto for if scoped vars (a declaration in outer scope has already been written)
-                parent = node.parent
-                add_auto = False
-                while True:
-                    if isinstance(parent, Block):
-                        if not (isinstance(parent.parent, Call) and parent.parent.func.name == "if"):
-                            add_auto = True
-                        break
-                    parent = parent.parent
+                # # avoid adding auto for if scoped vars (a declaration in outer scope has already been written)
+                # parent = node.parent
+                # add_auto = False
+                # while True:
+                #     if isinstance(parent, Block):
+                #         if not (isinstance(parent.parent, Call) and parent.parent.func.name == "if"):
+                #             add_auto = True
+                #         break
+                #     parent = parent.parent
 
-                if add_auto:
-                    assign_str = "auto " + assign_str
+                # if add_auto:
+                assign_str = "auto " + assign_str
 
             cpp.write(assign_str)
         else:

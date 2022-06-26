@@ -18,6 +18,9 @@ if __name__ == "__main__":
 def (foo, x:
     if (x:
         y = 1
+        if (y:
+            z = 1
+        )
     else:
         y = 2
     )
