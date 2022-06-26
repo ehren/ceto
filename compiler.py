@@ -29,7 +29,38 @@ def compile(s, run=True):
 
 if __name__ == "__main__":
     compile("""
-def (foo, x:
+    
+def (map, lst, foo:
+    foo()
+)
+    
+def (fibonacci, n:
+    if (n == 0:
+        return: 0
+    elif: n == 1:
+        return: 1
+    else:
+        return: fibonacci(n - 1) + fibonacci(n - 2)
+    )
+)
+
+def (blah:
+    printf("blah")
+)
+
+def (main:
+    printf("%d", fibonacci(10))
+    ()
+    (1,2)
+    (1)
+    map(nullptr, blah)
+    return: 0
+)
+    """)
+
+
+    0 and compile("""
+def (foo, x, bar:
     # printf("%d uh oh", w)
     if (x:
         y = 1
@@ -46,11 +77,15 @@ def (foo, x:
     )
     
     printf("here's some more output %d", w)
+    if (x:
+        # bar(x-1, nullptr)
+        foo(x, nullptr)
+    )
 )
 
 def (main:
     printf("hello world! %d", 2)
-    foo(1)
+    foo(5, nullptr)
     return: 0
 )
     """)
