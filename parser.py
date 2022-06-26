@@ -144,7 +144,7 @@ class StringLiteral(Node):
         self.args = []
 
     def __repr__(self):
-        return + '"' + str(self.func) + '"'
+        return '"' + str(self.func) + '"'
 
 
 class IntegerLiteral(Node):

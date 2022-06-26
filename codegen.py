@@ -18,7 +18,7 @@ cpp_preamble = """
 #include <cstdio>
 
 class object {
-    virtual ~{
+    virtual ~object() {
     };
 };
 
@@ -44,8 +44,12 @@ def codegen_if(ifcall : Call, indent):
         scopes.append(elifblock)
 
     assigns = []
+
+    def stop(n):
+        return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
+
     for scope in scopes:
-        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=lambda n: isinstance(n, Block)))
+        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=stop))
 
     print("all if assigns", list(assigns))
 
@@ -491,6 +495,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
+    elif isinstance(node, StringLiteral):
+        return str(node)
 
 
     return cpp.getvalue()

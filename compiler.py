@@ -5,26 +5,53 @@ from codegen import codegen
 
 
 
-def compile(s):
+def compile(s, run=True):
     expr = parse(s)
     expr = semantic_analysis(expr)
     print("semantic", expr)
     code = codegen(expr)
+
     print("code:\n", code)
+
+    if run:
+        with open("cppgenerated.cpp", "w") as file:
+            file.write(code)
+        import os
+        import platform
+        if "Darwin" in platform.system():
+            # need to upgrade
+            os.system("clang++ cppgenerated.cpp -std=c++2a && ./a.out")
+        else:
+            os.system("clang++ cppgenerated.cpp -std=c++20 && ./a.out")
+
+
 
 
 if __name__ == "__main__":
     compile("""
 def (foo, x:
+    # printf("%d uh oh", w)
     if (x:
         y = 1
         if (y:
             z = 1
+            if (z:
+                w = 5
+            else:
+                z = 2
+            )
         )
     else:
         y = 2
     )
     
+    printf("here's some more output %d", w)
+)
+
+def (main:
+    printf("hello world! %d", 2)
+    foo(1)
+    return: 0
 )
     """)
 
