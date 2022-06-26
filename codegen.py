@@ -1,6 +1,9 @@
 from typing import Union, Any
 
-from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses
+from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
+    ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
+    SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
+    find_all
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
@@ -33,18 +36,43 @@ def codegen_if(ifcall : Call, indent):
 
     ifnode = IfNode(ifcall.func, ifcall.args)
 
-    cpp = "if (" + codegen_node(ifnode.cond) + ") {\n"
-    cpp += codegen_block(ifnode.thenblock, indent)
+    indt = ("    " * indent)
+
+    scopes = [ifnode.cond, ifnode.thenblock, ifnode.elseblock]
+    for elifcond, elifblock in ifnode.eliftuples:
+        scopes.append(elifcond)
+        scopes.append(elifblock)
+
+    assigns = []
+    for scope in scopes:
+        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=lambda n: isinstance(n, Block)))
+
+    print("all if assigns", list(assigns))
+
+    declarations = {}
+
+    for assign in assigns:
+        if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+            if assign.lhs.name in declarations:
+                continue
+            declarations[codegen_node(assign.lhs)] = codegen_node(assign.rhs)
+
+    cpp = ""
+    for lhs in declarations:
+        cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
+
+    cpp += "if (" + codegen_node(ifnode.cond) + ") {\n"
+    cpp += codegen_block(ifnode.thenblock, indent + 1)
 
     for elifcond, elifblock in ifnode.eliftuples:
-        cpp += "} else if (" + codegen_node(elifcond, indent) + ") {\n"
-        cpp += codegen_block(elifblock, indent)
+        cpp += indt + "} else if (" + codegen_node(elifcond, indent) + ") {\n"
+        cpp += codegen_block(elifblock, indent + 1)
 
     if ifnode.elseblock:
-        cpp += "} else {\n"
-        cpp += codegen_block(ifnode.elseblock, indent)
+        cpp += indt + "} else {\n"
+        cpp += codegen_block(ifnode.elseblock, indent + 1)
 
-    cpp += "}\n"
+    cpp += indt + "}\n"
 
     return cpp
 
@@ -358,7 +386,6 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 assert False
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
-            found_def = find_def(node.lhs)
             rhs_str = None
 
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
@@ -406,8 +433,22 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             assign_str = " ".join([codegen_node(node.lhs), node.func, rhs_str])
 
+            found_def = find_def(node.lhs)
             if found_def is None:
-                assign_str = "auto " + assign_str
+
+                # avoid adding auto for if scoped vars (a declaration in outer scope has already been written)
+                parent = node.parent
+                add_auto = False
+                while True:
+                    if isinstance(parent, Block):
+                        if not (isinstance(parent.parent, Call) and parent.parent.func.name == "if"):
+                            add_auto = True
+                        break
+                    parent = parent.parent
+
+                if add_auto:
+                    assign_str = "auto " + assign_str
+
             cpp.write(assign_str)
         else:
             binop_str = None

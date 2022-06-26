@@ -15,6 +15,17 @@ def compile(s):
 
 if __name__ == "__main__":
     compile("""
+def (foo, x:
+    if (x:
+        y = 1
+    else:
+        y = 2
+    )
+    
+)
+    """)
+
+    0 and compile("""
     
 def (map, values:[int]:positional_only, fun:
     # results = [1]
