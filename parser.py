@@ -18,6 +18,17 @@ class Node:
             self._symbol_table = []
         return self._symbol_table
 
+    @property
+    def declared_type(self):
+        if not hasattr(self, "_declared_type"):
+            self._declared_type = None
+        return self._declared_type
+
+    @declared_type.setter
+    def declared_type(self, t):
+        self._declared_type = t
+
+
     def __repr__(self):
         return "{}({})({!r})".format(self.__class__.__name__,
                                      self.func, self.args)

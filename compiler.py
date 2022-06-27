@@ -30,30 +30,31 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
     
-def (map, lst, foo:
-    foo()
+def (map, foo, x:
+    return: foo(x: int) : int  # these types do nothing right now
 )
     
-def (fibonacci, n:
-    if (n == 0:
-        return: 0
-    elif: n == 1:
-        return: 1
-    else:
-        return: fibonacci(n - 1) + fibonacci(n - 2)
-    )
-)
+# def (fibonacci, n:
+#     if (n == 0:
+#         return: 0
+#     elif: n == 1:
+#         return: 1
+#     else:
+#         return: fibonacci(n - 1) + fibonacci(n - 2)
+#     )
+# )
 
-def (blah:
-    printf("blah")
+def (blah, x:int :
+    printf("blah %d", x)
+    return: x
 )
 
 def (main:
-    printf("%d", fibonacci(10))
-    ()
-    (1,2)
-    (1)
-    map(nullptr, blah)
+    # printf("%d", fibonacci(10))
+    # ()
+    # (1,2)
+    # (1)
+    map(blah, 15)
     return: 0
 )
     """)

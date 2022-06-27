@@ -106,15 +106,22 @@ def codegen_block(block: Block, indent):
 
 def codegen_def(defnode: Call, indent):
     assert defnode.func.name == "def"
-    name = defnode.args[0].name
+    name_node = defnode.args[0]
+    name = name_node.name
     args = defnode.args[1:]
     block = args.pop()
     assert isinstance(block, Block)
 
     params = []
-    for idx, arg in enumerate(args):
-        params.append(("T" + str(idx + 1), arg.name))
-    typenames = ["typename " + arg[0] for arg in params]
+    typenames = []
+    for i, arg in enumerate(args):
+        if arg.declared_type is None:
+            t = "T" + str(i + 1)
+            params.append((t, arg.name))
+            typenames.append("typename " + t)
+        else:
+            params.append((str(arg.declared_type), codegen_node(arg)))
+    # typenames = ["typename " + arg[0] for arg in params]
 
     template = "inline "
     if name == "main":
@@ -123,9 +130,12 @@ def codegen_def(defnode: Call, indent):
         template = "template <{0}>\n".format(", ".join(typenames))
     params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
 
-    return_type = "auto"
-    if name == "main":
+    if name_node.declared_type is not None:
+        return_type = str(name_node.declared_type)  # brittle
+    elif name == "main":
         return_type = "int"
+    else:
+        return_type = "auto"
 
     funcdef = "{0}{1} {2}({3})".format(template, return_type, name,
                                        ", ".join(params))
