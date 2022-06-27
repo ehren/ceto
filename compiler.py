@@ -54,7 +54,15 @@ def (main:
     # ()
     # (1,2)
     # (1)
+    x = []
+    x.append(5)
     map(blah, 15)
+    
+    y = []
+    z = 5
+    q = z
+    y.append(q)
+    
     return: 0
 )
     """)

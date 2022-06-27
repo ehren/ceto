@@ -16,8 +16,10 @@ class CodeGenError(Exception):
 cpp_preamble = """
 #include <memory>
 #include <cstdio>
+#include <vector>
 
-class object {
+
+struct object {
     virtual ~object() {
     };
 };
@@ -417,7 +419,19 @@ def codegen_node(node: Union[Node, Any], indent=0):
                         if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
                             apnd = found_use_context.rhs
                             assert len(apnd.args) == 1
-                            rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+                            apnd_arg = apnd.args[0]
+
+                            apnd_arg_def = find_def(apnd_arg)
+                            if apnd_arg_def is not None:
+                                apnd_arg_def_node, apnd_arg_def_context = apnd_arg_def
+                                if apnd_arg_def_node.declared_type is not None:
+                                    rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
+                                                                           codegen_node(apnd.args[0]))
+                                elif isinstance(apnd_arg_def_context, Assign):
+                                    rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
+
+                            if rhs_str is None:
+                                rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
 
                         parent = parent.parent
 
