@@ -31,7 +31,7 @@ if __name__ == "__main__":
     compile("""
     
 def (map, foo, x:
-    return: foo(x: int) : int  # these types do nothing right now
+    return: foo(x:int):int  # these types do nothing right now
 )
     
 # def (fibonacci, n:

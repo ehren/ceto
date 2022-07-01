@@ -398,12 +398,14 @@ def codegen_node(node: Union[Node, Any], indent=0):
         # if node.func == "return":  # TODO fix UnOp func should be an identifier (although UnOp return should be converted to ColonBinOp earlier - or removed from language)
         #     cpp.write("return")
     elif isinstance(node, BinOp):
+
         if isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
                 cpp.write("return " + codegen_node(node.args[1]))
             else:
                 assert False
+
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             rhs_str = None
 
@@ -444,39 +446,12 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     else:
                         raise CodeGenError("Unused empty list in template codegen", node)
 
-            # need to 'infer' (via decltype) list type of empty list
-                # found_use = find_use(node)
-                # if found_use is not None:
-                #     print("yo")
-                #
-                #     found_use_node, found_use_context = found_use
-                #
-                #     if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
-                #         apnd = found_use_context.rhs
-                #         assert len(apnd.args) == 1
-                #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
-                #     else:
-                #         raise CodeGenError("list error, dunno what to do with this:", node)
-                # else:
-                #     raise CodeGenError("Unused empty list in template codegen", node)
             else:
                 rhs_str = codegen_node(node.rhs)
 
             assign_str = " ".join([codegen_node(node.lhs), node.func, rhs_str])
 
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-
-                # # avoid adding auto for if scoped vars (a declaration in outer scope has already been written)
-                # parent = node.parent
-                # add_auto = False
-                # while True:
-                #     if isinstance(parent, Block):
-                #         if not (isinstance(parent.parent, Call) and parent.parent.func.name == "if"):
-                #             add_auto = True
-                #         break
-                #     parent = parent.parent
-
-                # if add_auto:
                 assign_str = "auto " + assign_str
 
             cpp.write(assign_str)
