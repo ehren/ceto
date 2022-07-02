@@ -368,29 +368,54 @@ def value_type(node):
 #         else:
 #             return self.visit(node.value)
 
-def find_value_for_decltype(node):
+def decltype_str(node):
+
+    if isinstance(node, (IntegerLiteral, StringLiteral)):
+        return str(node)
+
+    if isinstance(node, BinOp):
+        binop = node
+        return decltype_str(binop.lhs) + str(binop.func) + decltype_str(binop.rhs)
+    elif isinstance(node, Call):
+        call = node
+        return codegen_node(call.func) + "(" + ", ".join([decltype_str(a) for a in call.args]) + ")"
+
+    if not isinstance(node, Identifier):
+        print("uh oh")
+        assert 0
 
     defs = list(find_defs(node))
     if not defs:
-        return
+        return str(node)
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return def_node.declared_type
+            return str(def_node.declared_type)
 
     last_ident, last_context = defs[-1]
+
+    # return decltype_str(last_ident)
+
     if isinstance(last_context, Assign):
         assign = last_context
+
+        return decltype_str(assign.rhs)
+
         if isinstance(assign.rhs, BinOp):
-            for arg in assign.rhs.args:
-                if found := find_value_for_decltype(arg):
-                    return found
-        # elif isinstance(assign.rhs, Call):
-        #     return assign.rhs
+            # for arg in assign.rhs.args:
+            #     if found := decltype_str(arg):
+            #         return found
+            binop = assign.rhs
+            return decltype_str(binop.lhs) + str(binop.func) + decltype_str(binop.rhs)
+        elif isinstance(assign.rhs, Call):
+            call = assign.rhs
+            return codegen_node(call.func) + "(" + ", ".join([decltype_str(a) for a in call.args]) + ")"
         else:
-            return assign.rhs
+            print("hmm?1")
+            return codegen_node(assign.rhs)
     else:
-        return last_ident
+        print("hmm?2")
+        return codegen_node(last_ident)
 
 
 
@@ -450,8 +475,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
                             # for apnd_arg_def in find_defs(apnd_arg):
 
-                            val = find_value_for_decltype(apnd_arg)
-                            rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(val))
+                            val = decltype_str(apnd_arg)
+                            rhs_str = "std::vector<decltype({})>{{}}".format(val)
 
                             # if apnd_arg_defs := list(find_defs(apnd_arg)):
                             #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
