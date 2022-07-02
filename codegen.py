@@ -3,7 +3,7 @@ from typing import Union, Any
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
-    find_all
+    find_all, find_defs
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
@@ -409,6 +409,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             rhs_str = None
 
+            # Handle template declaration for an empty list by searching for uses
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
                 found_use = False
 
@@ -422,6 +423,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
                             apnd = found_use_context.rhs
                             assert len(apnd.args) == 1
                             apnd_arg = apnd.args[0]
+
+                            # for apnd_arg_def in find_defs(apnd_arg):
 
                             apnd_arg_def = find_def(apnd_arg)
                             if apnd_arg_def is not None:

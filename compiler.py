@@ -30,6 +30,19 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
     
+def (main:
+    x = []
+    z = 5
+    w = z
+    q = w+1
+    x.append(q)
+    return: 0
+)
+    
+    """)
+
+    0 and compile("""
+    
 def (map, foo, x:
     return: foo(x:int):int  # these types do nothing right now
 )

@@ -399,6 +399,121 @@ def find_def(node):
     #     return None
     return res
 
+
+def find_defs(node):
+
+    found = find_def(node)
+
+    if found is not None:
+        yield found
+
+        found_node, found_context = found
+        if isinstance(found_context, Assign):
+            if isinstance(found_context.rhs, Identifier):
+                yield from find_defs(found_context.rhs)
+            else:
+                print("stopping at complex definition")
+        else:
+            print("are we handling this correctly? (def args)", found_node, found_context)
+
+
+# def find_defs(node):
+#     print("find_defs", node)
+#
+#     while True:
+#         found = find_def(node)
+#
+#         if found is not None:
+#             yield found
+#
+#             found_node, found_context = found
+#             if isinstance(found_context, Assign):
+#                 pass
+#             else:
+#                 print("are we handling this correctly? (def args)", found_node, found_context)
+#
+#             node = found_node
+#
+#         else:
+#             break
+
+def find_defs_wrong1(node):
+    return _find_defs(node, node)
+
+def _find_defs_wrong1(node, search_node):
+    # assert isinstance(node, Assign)
+    if not isinstance(node, Identifier):
+        return
+
+    if isinstance(search_node, Identifier) and node.name == search_node.name:
+        return (yield search_node)
+
+    def stop(n):
+        return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
+
+    def test(n):
+        return isinstance(n, Assign) and isinstance(n.lhs, Identifier) and n.lhs.name == search_node.name
+
+    yield from find_all(search_node, test=test, stop=stop)
+
+    if isinstance(search_node.parent, Block):
+        index = search_node.parent.args.index(search_node)
+        preceding = search_node.parent.args[0:index]
+        for p in preceding:
+            # yield from _find_defs(node, p)
+            yield from find_all(p, test=test, stop=stop)
+    else:
+        parent = search_node.parent
+
+        while True:
+
+            if isinstance(parent, Block):
+                for arg in reversed(parent.args):
+                    yield from find_all(arg, test=test, stop=stop)
+            else:
+                yield from find_all(parent, test=test, stop=stop)
+
+            parent = parent.parent
+
+    #
+    #
+    # parent = None
+    # while True:
+    #     if parent is None:
+    #         parent = search_node.parent
+    #     else:
+    #         parent = parent.parent
+    #
+    #     if isinstance(parent, Block):
+    #         index = search_node.parent.args.index(search_node)
+    #         preceding = search_node.parent.args[0:index]
+    #         for p in preceding:
+    #             yield from _find_defs(node, p)
+    #     else:
+    #         parent = search_node.parent
+    #         while True:
+    #             parent = parent.parent
+    #
+    #
+    # if isinstance(search_node.parent, Block):
+    #     index = search_node.parent.args.index(search_node)
+    #     preceding = search_node.parent.args[0:index]
+    #     for p in preceding:
+    #         yield from _find_defs(node, p)
+    # else:
+    #     parent = search_node.parent
+    #     while True:
+    #         parent = parent.parent
+    #
+
+
+
+
+
+
+
+
+
 # find closest following use
 def find_use(assign: Assign):
     assert isinstance(assign, Assign)
@@ -545,10 +660,15 @@ def semantic_analysis(expr: Module):
         if x:
             print("found def", node, x)
         else:
-            print("no def for", node)
+            pass
+            # print("no def for", node)
 
         for u in find_uses(node):
             print("found use ", node, u, u.parent, u.parent.parent)
+
+        d = list(find_defs(node))
+        if d:
+            print("defs list ", node, d)
 
         for a in node.args:
             defs(a)
