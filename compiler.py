@@ -30,11 +30,15 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
     
+def (foo, x:
+    return: x + 1
+)
+    
 def (main:
     x = []
     z = 5
     w = z
-    q = w # +1
+    q = foo(w + 1)
     x.append(q)
     return: 0
 )

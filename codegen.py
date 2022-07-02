@@ -368,6 +368,30 @@ def value_type(node):
 #         else:
 #             return self.visit(node.value)
 
+def find_value_for_decltype(node):
+
+    defs = list(find_defs(node))
+    if not defs:
+        return
+
+    for def_node, def_context in defs:
+        if def_node.declared_type:
+            return def_node.declared_type
+
+    last_ident, last_context = defs[-1]
+    if isinstance(last_context, Assign):
+        assign = last_context
+        if isinstance(assign.rhs, BinOp):
+            for arg in assign.rhs.args:
+                if found := find_value_for_decltype(arg):
+                    return found
+        # elif isinstance(assign.rhs, Call):
+        #     return assign.rhs
+        else:
+            return assign.rhs
+    else:
+        return last_ident
+
 
 
 
@@ -426,16 +450,19 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
                             # for apnd_arg_def in find_defs(apnd_arg):
 
-                            if apnd_arg_defs := list(find_defs(apnd_arg)):
-                                apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
-                                if apnd_arg_def_node.declared_type is not None:
-                                    rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
-                                                                           codegen_node(apnd.args[0]))
-                                elif isinstance(apnd_arg_def_context, Assign):
-                                    rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
+                            val = find_value_for_decltype(apnd_arg)
+                            rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(val))
 
-                            if rhs_str is None:
-                                rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+                            # if apnd_arg_defs := list(find_defs(apnd_arg)):
+                            #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
+                            #     if apnd_arg_def_node.declared_type is not None:
+                            #         rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
+                            #                                                codegen_node(apnd.args[0]))
+                            #     elif isinstance(apnd_arg_def_context, Assign):
+                            #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
+                            #
+                            # if rhs_str is None:
+                            #     rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
 
                         parent = parent.parent
 
