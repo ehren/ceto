@@ -390,7 +390,11 @@ def decltype_str(node):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return str(def_node.declared_type)
+            return "std::declval<{}>()".format(def_node.declared_type)
+        if isinstance(def_context, Assign) and def_context.declared_type:
+            # return str(def_context.declared_type)
+            return "std::declval<{}>()".format(def_context.declared_type)
+
 
     last_ident, last_context = defs[-1]
 

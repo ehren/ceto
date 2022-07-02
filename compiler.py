@@ -37,9 +37,12 @@ def (foo, x:
 def (main:
     x = []
     z = 5
-    w = z
+    (w:int) = z 
+    w = z : int
     q = foo(w + 1)
+    # x.append(w)
     x.append(q)
+    printf("ohsnap %d", x[0])
     return: 0
 )
     
