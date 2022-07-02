@@ -426,9 +426,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
                             # for apnd_arg_def in find_defs(apnd_arg):
 
-                            apnd_arg_def = find_def(apnd_arg)
-                            if apnd_arg_def is not None:
-                                apnd_arg_def_node, apnd_arg_def_context = apnd_arg_def
+                            if apnd_arg_defs := list(find_defs(apnd_arg)):
+                                apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
                                 if apnd_arg_def_node.declared_type is not None:
                                     rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
                                                                            codegen_node(apnd.args[0]))
