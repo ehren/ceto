@@ -53,12 +53,13 @@ def (main:
     else:
         x.append(foo(w-1))
     )
-    printf("ohsnap %d", x[0])
+    printf("ohsnap 
+%d", x[0])
     
     
     y = [x[0], foo(w), w+25, ]
     
-    printf("ohsnap2 %d %d", stuff(y), y[1])
+    printf("ohsnap2 %d %d\n", stuff(y), y[1])
     
     return: 0
 )

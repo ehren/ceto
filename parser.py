@@ -155,7 +155,10 @@ class StringLiteral(Node):
         self.args = []
 
     def __repr__(self):
-        return '"' + str(self.func) + '"'
+        # escaped = self.func.translate(str.maketrans({"\n": r"\n" }))
+        escaped = self.func.replace("\n", r"\n")
+
+        return '"' + escaped + '"'
 
 
 class IntegerLiteral(Node):
