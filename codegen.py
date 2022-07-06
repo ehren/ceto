@@ -369,16 +369,29 @@ def value_type(node):
 #             return self.visit(node.value)
 
 def decltype_str(node):
+    if isinstance(node, ArrayAccess):
+        for d in find_defs(node.func):
+            print("array def", d)
+
+        return "decltype({})::value_type".format(codegen_node(node.func))
+    else:
+        return "decltype({})".format(_decltype_str(node))
+
+
+def _decltype_str(node):
 
     if isinstance(node, (IntegerLiteral, StringLiteral)):
         return str(node)
 
     if isinstance(node, BinOp):
         binop = node
-        return decltype_str(binop.lhs) + str(binop.func) + decltype_str(binop.rhs)
+        return _decltype_str(binop.lhs) + str(binop.func) + _decltype_str(binop.rhs)
     elif isinstance(node, Call):
         call = node
-        return codegen_node(call.func) + "(" + ", ".join([decltype_str(a) for a in call.args]) + ")"
+        return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
+    # elif isinstance(node, ArrayAccess):
+    #     return "decltype({})::value_type".format(codegen_node(node.func))
+        # return "[&](){{ return {}; }}".format(codegen_node(node))
 
     if not isinstance(node, Identifier):
         print("uh oh")
@@ -403,7 +416,7 @@ def decltype_str(node):
     if isinstance(last_context, Assign):
         assign = last_context
 
-        return decltype_str(assign.rhs)
+        return _decltype_str(assign.rhs)
 
         if isinstance(assign.rhs, BinOp):
             # for arg in assign.rhs.args:
@@ -480,7 +493,12 @@ def codegen_node(node: Union[Node, Any], indent=0):
                             # for apnd_arg_def in find_defs(apnd_arg):
 
                             val = decltype_str(apnd_arg)
-                            rhs_str = "std::vector<decltype({})>{{}}".format(val)
+                            # using arrElemType = decltype([&](){return arr[0];}());
+                            # rhs_str = f"using arr_elem_type = decltype([&](){{return {val};}}());"
+                            # rhs_str = f"std::vector<decltype([&](){{return {val};}})>"
+                            # rhs_str = "std::vector<decltype({})>{{}}".format(val)
+                            rhs_str = "std::vector<{}>{{}}".format(val)
+
 
                             # if apnd_arg_defs := list(find_defs(apnd_arg)):
                             #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
@@ -536,7 +554,14 @@ def codegen_node(node: Union[Node, Any], indent=0):
         if node.args:
             elements = [codegen_node(e) for e in node.args]
                 # value_type = decltype(node.elts[0])
-            return "std::vector<decltype({})>{{{}}}".format(elements[0], ", ".join(elements))
+
+
+
+            # return "std::vector<decltype({})>{{{}}}".format(elements[0], ", ".join(elements))
+            # return "std::vector<decltype([&](){{return {};}})>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
+            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
+
+
         else:
             assert False
 

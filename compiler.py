@@ -30,19 +30,36 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
     
+def (stuff, a:
+    return: a[0]
+)
+    
 def (foo, x:
     return: x + 1
 )
     
 def (main:
+    zz = [1,2,3]
     x = []
+    # x = [1,2,3]
     z = 5
-    (w:int) = z 
-    w = z : int
+    # (w:int) = z 
+    w = z# : int
     q = foo(w + 1)
     # x.append(w)
-    x.append(q)
+    if (1:
+        # x.append(foo(w+1))
+        x.append(zz[1])
+    else:
+        x.append(foo(w-1))
+    )
     printf("ohsnap %d", x[0])
+    
+    
+    y = [x[0], foo(w), w+25, ]
+    
+    printf("ohsnap2 %d %d", stuff(y), y[1])
+    
     return: 0
 )
     
