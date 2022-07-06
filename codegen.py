@@ -481,7 +481,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             # Handle template declaration for an empty list by searching for uses
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
-                rhs_str = vector_decltype_str(node)
+                rhs_str = "std::vector<" + vector_decltype_str(node) + ">()"
 
             else:
                 rhs_str = codegen_node(node.rhs)
@@ -573,9 +573,10 @@ def vector_decltype_str(node : Assign):
                 # rhs_str = f"using arr_elem_type = decltype([&](){{return {val};}}());"
                 # rhs_str = f"std::vector<decltype([&](){{return {val};}})>"
                 # rhs_str = "std::vector<decltype({})>{{}}".format(val)
-                node.rhs._element_decltype_str = val
+                # node.rhs._element_decltype_str = val
 
                 rhs_str = "std::vector<{}>{{}}".format(val)
+                rhs_str = val
 
                 # if apnd_arg_defs := list(find_defs(apnd_arg)):
                 #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]

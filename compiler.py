@@ -41,6 +41,7 @@ def (foo, x:
 def (main:
     x = []
     zz = [1,2,3]
+    # yy = [zz[0], foo(zz[0])]
     # x = [1,2,3]
     z = 5
     # (w:int) = z 
@@ -56,10 +57,11 @@ def (main:
     printf("ohsnap 
 %d", x[0])
     
+    yy = [x[0], foo(x[0])]
     
     y = [x[0], foo(w), w+25, ]
     
-    printf("ohsnap2 %d %d\n", stuff(y), y[1])
+    printf("ohsnap2 %d %d %d\n", stuff(y), y[1], yy[0])
     
     return: 0
 )
