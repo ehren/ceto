@@ -39,8 +39,8 @@ def (foo, x:
 )
     
 def (main:
-    zz = [1,2,3]
     x = []
+    zz = [1,2,3]
     # x = [1,2,3]
     z = 5
     # (w:int) = z 

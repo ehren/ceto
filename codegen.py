@@ -370,8 +370,12 @@ def value_type(node):
 
 def decltype_str(node):
     if isinstance(node, ArrayAccess):
-        for d in find_defs(node.func):
-            print("array def", d)
+        for n, c in find_defs(node.func):
+            if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
+                if vds := vector_decltype_str(c):
+                    return vds
+                # return c.rhs._element_decltype_str
+            # print("array def", d)
 
         return "decltype({})::value_type".format(codegen_node(node.func))
     else:
@@ -477,50 +481,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             # Handle template declaration for an empty list by searching for uses
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
-                found_use = False
-
-                for found_use_node in find_uses(node):
-                    found_use = True
-                    parent = found_use_node.parent
-                    while rhs_str is None and not isinstance(parent, Block):
-                        found_use_context = parent
-
-                        if isinstance(found_use_context, AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(found_use_context.rhs, Call) and found_use_context.rhs.func.name == "append":
-                            apnd = found_use_context.rhs
-                            assert len(apnd.args) == 1
-                            apnd_arg = apnd.args[0]
-
-                            # for apnd_arg_def in find_defs(apnd_arg):
-
-                            val = decltype_str(apnd_arg)
-                            # using arrElemType = decltype([&](){return arr[0];}());
-                            # rhs_str = f"using arr_elem_type = decltype([&](){{return {val};}}());"
-                            # rhs_str = f"std::vector<decltype([&](){{return {val};}})>"
-                            # rhs_str = "std::vector<decltype({})>{{}}".format(val)
-                            rhs_str = "std::vector<{}>{{}}".format(val)
-
-
-                            # if apnd_arg_defs := list(find_defs(apnd_arg)):
-                            #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
-                            #     if apnd_arg_def_node.declared_type is not None:
-                            #         rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
-                            #                                                codegen_node(apnd.args[0]))
-                            #     elif isinstance(apnd_arg_def_context, Assign):
-                            #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
-                            #
-                            # if rhs_str is None:
-                            #     rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
-
-                        parent = parent.parent
-
-                    if rhs_str is not None:
-                        break
-
-                if rhs_str is None:
-                    if found_use:
-                        raise CodeGenError("list error, dunno what to do with this:", node)
-                    else:
-                        raise CodeGenError("Unused empty list in template codegen", node)
+                rhs_str = vector_decltype_str(node)
 
             else:
                 rhs_str = codegen_node(node.rhs)
@@ -582,3 +543,60 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
 
     return cpp.getvalue()
+
+
+def vector_decltype_str(node : Assign):
+    rhs_str = None
+    found_use = False
+
+    if isinstance(node.rhs, ListLiteral) and node.rhs.args:
+        return decltype_str(node.rhs.args[0])
+
+    for found_use_node in find_uses(node):
+        found_use = True
+        parent = found_use_node.parent
+        while rhs_str is None and not isinstance(parent, Block):
+            found_use_context = parent
+
+            if isinstance(found_use_context,
+                          AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(
+                    found_use_context.rhs,
+                    Call) and found_use_context.rhs.func.name == "append":
+                apnd = found_use_context.rhs
+                assert len(apnd.args) == 1
+                apnd_arg = apnd.args[0]
+
+                # for apnd_arg_def in find_defs(apnd_arg):
+
+                val = decltype_str(apnd_arg)
+                # using arrElemType = decltype([&](){return arr[0];}());
+                # rhs_str = f"using arr_elem_type = decltype([&](){{return {val};}}());"
+                # rhs_str = f"std::vector<decltype([&](){{return {val};}})>"
+                # rhs_str = "std::vector<decltype({})>{{}}".format(val)
+                node.rhs._element_decltype_str = val
+
+                rhs_str = "std::vector<{}>{{}}".format(val)
+
+                # if apnd_arg_defs := list(find_defs(apnd_arg)):
+                #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
+                #     if apnd_arg_def_node.declared_type is not None:
+                #         rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
+                #                                                codegen_node(apnd.args[0]))
+                #     elif isinstance(apnd_arg_def_context, Assign):
+                #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
+                #
+                # if rhs_str is None:
+                #     rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+
+            parent = parent.parent
+
+        if rhs_str is not None:
+            break
+    if rhs_str is None:
+        if found_use:
+            # raise CodeGenError("list error, dunno what to do with this:", node)
+            print("list error, dunno what to do with this:", node)
+
+        else:
+            raise CodeGenError("Unused empty list in template codegen", node)
+    return rhs_str
