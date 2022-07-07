@@ -34,6 +34,10 @@ def (stuff, a:
     return: a[0]
 )
 
+def (takes_func_arg, func, arg:
+    return: func(arg)
+)
+
 # unnecessarilly_higher_order_def(foo) (x:
 #     pass
 # )
@@ -59,8 +63,14 @@ def (main:
     printf("xxanother2 %d\n", xxanother2[0][0])
     printf("xxanother %d\n", xxanother[0][0])
     
+    lfunc = lambda (x:
+        return: x + 1
+    )
+    
+    huh = takes_func_arg(lfunc, 14)
+    
     printf("yo:
-            %d\n", xxx[0][0][0]) 
+            %d %d\n", xxx[0][0][0], huh) 
     z = 5
     # (w:int) = z 
     w = z# : int

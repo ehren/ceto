@@ -144,13 +144,19 @@ def codegen_def(defnode: Call, indent):
     return funcdef + " {\n" + codegen_block(block, indent + 1) + "}\n\n"
 
 
-def codegen_lambda(node):
+def codegen_lambda(node, indent):
     args = list(node.args)
     block = args.pop()
     assert isinstance(block, Block)
-    params = ["auto {0}".format(param.name) for param in args]
-    funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
-    return funcdef + " {\n" + codegen_block(block) + "\n};"
+    # params = ["auto {0}".format(param.name) for param in args]
+    # funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
+    # return funcdef + " {\n" + codegen_block(block, indent + 1) + "\n};"
+    params = ["auto " + codegen_node(a) for a in args]
+    # funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
+    indent += 1 # huh?
+    indt = "    " * indent
+    return ("[=](" + ", ".join(params) + ") {\n" +
+            codegen_block(block, indent + 1) + indt + "}")
 
 
 
@@ -487,6 +493,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 cpp.write(codegen_if(node, indent))
             elif node.func.name == "def":
                 print("need to handle nested def")
+            elif node.func.name == "lambda":
+                cpp.write(codegen_lambda(node, indent))
             else:
                 cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
         else:
