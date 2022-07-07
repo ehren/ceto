@@ -43,6 +43,11 @@ def (main:
     zz = [1,2,3]
     # yy = [zz[0], foo(zz[0])]
     xx = [[1,2],[2,3]]
+    xxx = []
+    xxx.append(xx)
+    
+    printf("yo:
+            %d\n", xxx[0][0][0]) 
     z = 5
     # (w:int) = z 
     w = z# : int

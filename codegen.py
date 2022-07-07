@@ -380,6 +380,25 @@ def decltype_str(node):
         return "decltype({})::value_type".format(codegen_node(node.func))
     elif isinstance(node, ListLiteral):
         return "std::vector<" + decltype_str(node.args[0]) + ">"
+
+        result = "" # "std::vector<"
+        end = ">"
+        ll = node#.args[0]
+
+        while isinstance(ll, ListLiteral):
+            result += "std::vector<" #+ _decltype_str(node.args[0])
+            end += ">"
+            ll = ll.args[0]
+
+        result += decltype_str(ll)
+        result += end
+
+        # if isinstance(node.args[0], ListLiteral):
+        #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
+        # else:
+        #     return "std::vector<" + decltype_str(node.args[0]) + ">"
+        return result
+
     else:
         return "decltype({})".format(_decltype_str(node))
 
@@ -398,9 +417,13 @@ def _decltype_str(node):
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
         # return "[&](){{ return {}; }}".format(codegen_node(node))
-    # elif isinstance(node, ListLiteral):
-    #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
-    #     return _decltype_str(node.args[0])
+    elif isinstance(node, ListLiteral):
+        # if isinstance(node.args[0], ListLiteral):
+        #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
+        # else:
+        #     return "std::vector<" + decltype_str(node.args[0]) + ">"
+        return "std::vector<" + decltype_str(node.args[0]) + "> {}"
+        # return _decltype_str(node.args[0])
 
 
 
