@@ -65,10 +65,11 @@ def (main:
     
     lfunc = lambda (x, y, return: x + y )
     lfunc2 = lambda (x, y: 
+        printf("x %d y %d\n", x, y)
         return x + y 
     )
     
-    huh = takes_func_arg_arg(lfunc, 14, 15)
+    huh = takes_func_arg_arg(lfunc2, 14, 15)
     
     printf("yo:
             %d %d\n", xxx[0][0][0], huh) 
@@ -77,12 +78,16 @@ def (main:
     w = z# : int
     q = foo(w + 1)
     # x.append(w)
-    if (1:
-        # x.append(foo(w+1))
-        x.append(zz[1])
-    else:
-        x.append(foo(w-1))
-    )
+    # if (1:
+    #     # x.append(foo(w+1))
+    #     x.append(zz[1])
+    # else:
+    #     x.append(foo(w-1))
+    # )
+    if ((1:int): x.append(zz[1]) : some_type_lol elif z == 4: x.append(105) else: x.append(foo(w-1)) )
+    
+    if (1: x.append(zz[1]) elif z == 4: x.append(105) else: x.append(foo(w-1)))
+    
     printf("ohsnap 
 %d", x[0])
     

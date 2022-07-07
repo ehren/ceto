@@ -221,13 +221,13 @@ def one_liner_expander(parsed):
     def visitor(op):
 
         if not isinstance(op, Node):
-            return False, op
+            return op
 
         if isinstance(op, ColonBinOp) and not isinstance(op, SyntaxColonBinOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
-            return True, SyntaxColonBinOp(op.func, op.args)
+            op = SyntaxColonBinOp(op.func, op.args)
 
         if isinstance(op, UnOp) and op.func == "return":
-            return True, SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
+            op = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
 
         if isinstance(op, Call):
             if isinstance(op.func, Identifier):
@@ -240,34 +240,21 @@ def one_liner_expander(parsed):
                     if not op.args:
                         raise SemanticAnalysisError("not enough lambda args")
                 elif op.func.name == "if":
-                    new = ifreplacer(op)
-                    if new is not op:
-                        return True, new
+                    while True:
+                        new = ifreplacer(op)
+                        if new is not op:
+                            op = new
+                        else:
+                            break
                 if op.func.name in ["def", "lambda"]:
                     if not isinstance(op.args[-1], Block):
                         # last arg becomes one-element block
-                        return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
+                        op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
 
-        rebuilt = []
-        changed = False
+        op.args = [visitor(arg) for arg in op.args]
+        return op
 
-        for arg in op.args:
-            arg_change, arg = visitor(arg)
-            if arg_change:
-                changed = True
-            rebuilt.append(arg)
-
-        if changed:
-            op.args = rebuilt
-
-        return changed, op
-
-    while True:
-        did_change, parsed = visitor(parsed)
-        if not did_change:
-            break
-
-    return parsed
+    return visitor(parsed)
 
 
 def assign_to_named_parameter(expr):
