@@ -42,7 +42,7 @@ def (main:
     x = []
     zz = [1,2,3]
     # yy = [zz[0], foo(zz[0])]
-    # x = [1,2,3]
+    xx = [[1,2],[2,3]]
     z = 5
     # (w:int) = z 
     w = z# : int

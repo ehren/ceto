@@ -81,7 +81,7 @@ def codegen_if(ifcall : Call, indent):
         cpp += indt + "} else {\n"
         cpp += codegen_block(ifnode.elseblock, indent + 1)
 
-    cpp += indt + "}\n"
+    cpp += indt + "}"
 
     return cpp
 
@@ -378,6 +378,8 @@ def decltype_str(node):
             # print("array def", d)
 
         return "decltype({})::value_type".format(codegen_node(node.func))
+    elif isinstance(node, ListLiteral):
+        return "std::vector<" + decltype_str(node.args[0]) + ">"
     else:
         return "decltype({})".format(_decltype_str(node))
 
@@ -396,9 +398,14 @@ def _decltype_str(node):
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
         # return "[&](){{ return {}; }}".format(codegen_node(node))
+    # elif isinstance(node, ListLiteral):
+    #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
+    #     return _decltype_str(node.args[0])
+
+
 
     if not isinstance(node, Identifier):
-        print("uh oh")
+        print("uh oh", node)
         assert 0
 
     defs = list(find_defs(node))
