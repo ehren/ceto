@@ -533,7 +533,15 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     apnd = node.rhs
                     assert len(apnd.args) == 1
 
-                    if isinstance(node.lhs, ListLiteral) or ((found_def := find_def(node.lhs)) is not None and isinstance(found_def[1], Assign) and isinstance(found_def[1].rhs, ListLiteral)):
+                    is_list = False
+                    if isinstance(node.lhs, ListLiteral):
+                        is_list = True
+                    else:
+                        for d in find_defs(node.lhs):
+                            if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
+                                is_list = True
+                                break
+                    if is_list:
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
 
             if binop_str is None:

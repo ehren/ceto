@@ -33,10 +33,18 @@ if __name__ == "__main__":
 def (stuff, a:
     return: a[0]
 )
+
+# unnecessarilly_higher_order_def(foo) (x:
+#     pass
+# )
     
 def (foo, x:
     return: x + 1
 )
+
+# def (default_args, x=1:
+#     return: x
+# )
     
 def (main:
     x = []
@@ -44,7 +52,12 @@ def (main:
     # yy = [zz[0], foo(zz[0])]
     xx = [[1,2],[2,3]]
     xxx = []
-    xxx.append(xx)
+    xxanother = xx
+    xxanother2 = xxanother
+    xxx.append(xxanother2)
+    xxanother2[0] = [7,7,7]
+    printf("xxanother2 %d\n", xxanother2[0][0])
+    printf("xxanother %d\n", xxanother[0][0])
     
     printf("yo:
             %d\n", xxx[0][0][0]) 
