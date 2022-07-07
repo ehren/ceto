@@ -226,19 +226,27 @@ def one_liner_expander(parsed):
         if isinstance(op, ColonBinOp) and not isinstance(op, SyntaxColonBinOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
             return True, SyntaxColonBinOp(op.func, op.args)
 
+        if isinstance(op, UnOp) and op.func == "return":
+            return True, SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
+
         if isinstance(op, Call):
-            if isinstance(op.func, Identifier) and op.func.name == "def":
-                if len(op.args) < 2:
-                    raise SemanticAnalysisError("not enough def args")
-                if not isinstance(op.args[0], Identifier):
-                    raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
-                if not isinstance(op.args[-1], Block):
-                    # last arg becomes one-element block
-                    return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
-            elif isinstance(op.func, Identifier) and op.func.name == "if":
-                new = ifreplacer(op)
-                if new is not op:
-                    return True, new
+            if isinstance(op.func, Identifier):
+                if op.func.name == "def":
+                    if len(op.args) < 2:
+                        raise SemanticAnalysisError("not enough def args")
+                    if not isinstance(op.args[0], Identifier):
+                        raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
+                elif op.func.name == "lambda":
+                    if not op.args:
+                        raise SemanticAnalysisError("not enough lambda args")
+                elif op.func.name == "if":
+                    new = ifreplacer(op)
+                    if new is not op:
+                        return True, new
+                if op.func.name in ["def", "lambda"]:
+                    if not isinstance(op.args[-1], Block):
+                        # last arg becomes one-element block
+                        return True, RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
 
         rebuilt = []
         changed = False

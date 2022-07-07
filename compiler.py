@@ -34,8 +34,8 @@ def (stuff, a:
     return: a[0]
 )
 
-def (takes_func_arg, func, arg:
-    return: func(arg)
+def (takes_func_arg_arg, func, arg1, arg2:
+    return: func(arg1, arg2)
 )
 
 # unnecessarilly_higher_order_def(foo) (x:
@@ -43,7 +43,7 @@ def (takes_func_arg, func, arg:
 # )
     
 def (foo, x:
-    return: x + 1
+    return x + 1
 )
 
 # def (default_args, x=1:
@@ -63,11 +63,12 @@ def (main:
     printf("xxanother2 %d\n", xxanother2[0][0])
     printf("xxanother %d\n", xxanother[0][0])
     
-    lfunc = lambda (x:
-        return: x + 1
+    lfunc = lambda (x, y, return: x + y )
+    lfunc2 = lambda (x, y: 
+        return x + y 
     )
     
-    huh = takes_func_arg(lfunc, 14)
+    huh = takes_func_arg_arg(lfunc, 14, 15)
     
     printf("yo:
             %d %d\n", xxx[0][0][0], huh) 
