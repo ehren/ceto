@@ -29,6 +29,13 @@ def compile(s, run=True):
 
 if __name__ == "__main__":
     compile("""
+def (default_args, x=[1], y=2:
+    x.append(2)
+    return x
+)
+    """)
+
+    0 and compile("""
     
 def (stuff, a:
     return: a[0]
@@ -46,8 +53,9 @@ def (foo, x:
     return x + 1
 )
 
-# def (default_args, x=1:
-#     return: x
+# def (default_args, x=[], y = 2:
+#     x.append(2)
+#     return x
 # )
     
 def (main:
@@ -86,7 +94,7 @@ def (main:
     # )
     if ((1:int): x.append(zz[1]) : some_type_lol elif z == 4: x.append(105) else: x.append(foo(w-1)) )
     
-    if (1: x.append(zz[1]) elif z == 4: x.append(105) else: x.append(foo(w-1)))
+    if (1: x.append(zz[1]) elif z == 4: if (q == 6: 1 else: 10) else: x.append(foo(w-1)))
     
     printf("ohsnap 
 %d", x[0])

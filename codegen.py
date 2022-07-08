@@ -117,12 +117,26 @@ def codegen_def(defnode: Call, indent):
     params = []
     typenames = []
     for i, arg in enumerate(args):
-        if arg.declared_type is None:
+        if arg.declared_type is not None:
+            params.append((str(arg.declared_type), codegen_node(arg)))
+        elif isinstance(arg, NamedParameter):
+            if isinstance(arg.rhs, ListLiteral):
+                params.append(("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}", ""))
+                # if arg.rhs.args:
+                #     valuepart = "= " + codegen_node(arg.rhs)
+                #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
+                # else:
+                #     valuepart = ""
+                #     declpart = "std::vector<" + decltype_str(arg.rhs) + "> " + codegen_node(arg.lhs)
+                #
+                # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
+                # params.append((declpart, valuepart))
+            else:
+                params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
+        else:
             t = "T" + str(i + 1)
             params.append((t, arg.name))
             typenames.append("typename " + t)
-        else:
-            params.append((str(arg.declared_type), codegen_node(arg)))
     # typenames = ["typename " + arg[0] for arg in params]
 
     template = "inline "
@@ -148,16 +162,11 @@ def codegen_lambda(node, indent):
     args = list(node.args)
     block = args.pop()
     assert isinstance(block, Block)
-    # params = ["auto {0}".format(param.name) for param in args]
-    # funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
-    # return funcdef + " {\n" + codegen_block(block, indent + 1) + "\n};"
     params = ["auto " + codegen_node(a) for a in args]
-    # funcdef = "auto {0} = []({1})".format(node.name, ", ".join(params))
-    indent += 1 # huh?
+    indent += 1
     indt = "    " * indent
     return ("[=](" + ", ".join(params) + ") {\n" +
             codegen_block(block, indent + 1) + indt + "}")
-
 
 
     # assert defnode.func.name == "def"
@@ -385,7 +394,14 @@ def decltype_str(node):
 
         return "decltype({})::value_type".format(codegen_node(node.func))
     elif isinstance(node, ListLiteral):
+        # never succeeded
+        # if not node.args:
+        #     if isinstance(node.parent, Assign):
+        #         if vds := vector_decltype_str(node.parent):
+        #             return vds
+
         return "std::vector<" + decltype_str(node.args[0]) + ">"
+        # return vector_decltype_str(node)
 
         result = "" # "std::vector<"
         end = ">"
@@ -571,6 +587,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
         else:
             assert False
+            return "{}" # lol hope this works
 
                 # "std::vector<{0}>{{{1}}}""
             #
@@ -591,11 +608,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
     return cpp.getvalue()
 
 
-def vector_decltype_str(node : Assign):
+def vector_decltype_str(node):
     rhs_str = None
     found_use = False
 
-    if isinstance(node.rhs, ListLiteral) and node.rhs.args:
+    if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
         return decltype_str(node.rhs.args[0])
 
     for found_use_node in find_uses(node):

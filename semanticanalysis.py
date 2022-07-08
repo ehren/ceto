@@ -42,7 +42,7 @@ class RebuiltAssign(Assign):
         self.args = args
 
 
-class NamedParameter(Node):
+class NamedParameter(Assign):
     def __init__(self, args):
         self.func = "NamedParameter"
         self.args = args  # [lhs, rhs]
@@ -252,6 +252,7 @@ def one_liner_expander(parsed):
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
 
         op.args = [visitor(arg) for arg in op.args]
+        op.func = visitor(op.func)
         return op
 
     return visitor(parsed)
@@ -347,6 +348,8 @@ def _find_def(parent, child, node_to_find):
     if parent is None:
         return None
     if not isinstance(node_to_find, Identifier):
+        return None
+    if not isinstance(node_to_find, Node):
         return None
     if isinstance(parent, Module):
         return None
@@ -568,7 +571,15 @@ def _find_uses(node, search_node):
     if isinstance(search_node, Identifier) and assign.lhs.name == search_node.name:
         return (yield search_node)
 
-    if isinstance(search_node.parent, Block):
+    if isinstance(search_node.parent, Call) and search_node.parent.func.name in ["def", "lambda"]:
+        block = search_node.parent.args[-1]
+        assert isinstance(block, Block)
+        for f in block.args:
+            # if isinstance(assign.lhs, Identifier) and assign.lhs.name == f:
+            #     return f, f
+            yield from find_nodes(assign.lhs, f)
+
+    elif isinstance(search_node.parent, Block):
         index = search_node.parent.args.index(search_node)
         following = search_node.parent.args[index + 1:]
         for f in following:
