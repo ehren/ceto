@@ -19,7 +19,7 @@ def compile(s, run=True):
         import os
         import platform
         if "Darwin" in platform.system():
-            # need to upgrade
+            # need to upgrade (and this doesn't like auto args)
             os.system("clang++ cppgenerated.cpp -std=c++2a && ./a.out")
         else:
             os.system("clang++ cppgenerated.cpp -std=c++20 && ./a.out")
@@ -29,9 +29,35 @@ def compile(s, run=True):
 
 if __name__ == "__main__":
     compile("""
+
+def (foo, x:
+    return 1
+)
+
+# def (default_args, x=[1], y=2, z = lambda (zz, return 1):
 def (default_args, x=[1], y=2:
-    x.append(2)
+    # x.append(2)
+    x.push_back(2)
+    x.push_back(2)
+    printf("%d %d\n", x[0], x[1])
     return x
+)
+
+def (main:
+    default_args()
+)
+        """)
+    0 and compile("""
+# def (default_args, x=[1], y=2, z = lambda (zz, return 1):
+def (default_args, x=[1], y=2, z = lambda (1):
+    # x.append(2)
+    x.push_back(2)
+    printf("%d\n", z(y))
+    return x
+)
+
+def (main:
+    default_args()
 )
     """)
 

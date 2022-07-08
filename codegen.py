@@ -88,8 +88,11 @@ def codegen_if(ifcall : Call, indent):
 
 def codegen_block(block: Block, indent):
     assert isinstance(block, Block)
+    assert block.args
     cpp = ""
     indent_str = "    " * indent
+
+
     for b in block.args:
         cpp += indent_str + codegen_node(b, indent) + ";\n"
         # if isinstance(b, Call):
@@ -99,6 +102,13 @@ def codegen_block(block: Block, indent):
         #     pass
         # elif isinstance(b, UnOp):
         #     pass
+
+    if isinstance(block.parent, Call) and block.parent.func.name == "def":
+        last_statement = block.args[-1]
+
+        if not ((isinstance(last_statement, ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return")):
+            cpp += indent_str + "return {};\n"
+
     return cpp
 
 
@@ -118,10 +128,12 @@ def codegen_def(defnode: Call, indent):
     typenames = []
     for i, arg in enumerate(args):
         if arg.declared_type is not None:
-            params.append((str(arg.declared_type), codegen_node(arg)))
+            params.append(str(arg.declared_type) + " " + codegen_node(arg))
+        elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
+            raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
             if isinstance(arg.rhs, ListLiteral):
-                params.append(("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}", ""))
+                params.append("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
                 # if arg.rhs.args:
                 #     valuepart = "= " + codegen_node(arg.rhs)
                 #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
@@ -131,20 +143,21 @@ def codegen_def(defnode: Call, indent):
                 #
                 # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
                 # params.append((declpart, valuepart))
+            elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
+                params.append("auto " + codegen_node(arg.lhs) + "= " + codegen_node(arg.rhs))
             else:
-                params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
+                params.append(decltype_str(arg.rhs) + " " + codegen_node(arg.lhs) + "= " + codegen_node(arg.rhs))
+
         else:
             t = "T" + str(i + 1)
-            params.append((t, arg.name))
+            params.append(t + " " + arg.name)
             typenames.append("typename " + t)
-    # typenames = ["typename " + arg[0] for arg in params]
 
     template = "inline "
     if name == "main":
         template = ""
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
-    params = ["{0} {1}".format(arg[0], arg[1]) for arg in params]
 
     if name_node.declared_type is not None:
         return_type = str(name_node.declared_type)  # brittle
@@ -153,8 +166,9 @@ def codegen_def(defnode: Call, indent):
     else:
         return_type = "auto"
 
-    funcdef = "{0}{1} {2}({3})".format(template, return_type, name,
-                                       ", ".join(params))
+    defnode.cpp_return_type = return_type
+    funcdef = "{} auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+
     return funcdef + " {\n" + codegen_block(block, indent + 1) + "}\n\n"
 
 
@@ -165,7 +179,7 @@ def codegen_lambda(node, indent):
     params = ["auto " + codegen_node(a) for a in args]
     indent += 1
     indt = "    " * indent
-    return ("[=](" + ", ".join(params) + ") {\n" +
+    return ("[](" + ", ".join(params) + ") {\n" +
             codegen_block(block, indent + 1) + indt + "}")
 
 
@@ -435,6 +449,8 @@ def _decltype_str(node):
         return _decltype_str(binop.lhs) + str(binop.func) + _decltype_str(binop.rhs)
     elif isinstance(node, Call):
         call = node
+        # if call.func.name == "lambda":
+        #     return codegen_node(call)
         return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
@@ -446,7 +462,6 @@ def _decltype_str(node):
         #     return "std::vector<" + decltype_str(node.args[0]) + ">"
         return "std::vector<" + decltype_str(node.args[0]) + "> {}"
         # return _decltype_str(node.args[0])
-
 
 
     if not isinstance(node, Identifier):
@@ -516,8 +531,14 @@ def codegen_node(node: Union[Node, Any], indent=0):
         else:
             print("need to handle indirect call")
 
-    elif isinstance(node, (Identifier, IntegerLiteral)):
+    elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
+    elif isinstance(node, Identifier):
+        if node.name == "None":
+        #     cpp.write(r"{}") # tempting
+            cpp.write("nullptr")
+        else:
+            cpp.write(str(node))
     # elif isinstance(node, UnOp):
         # if node.func == "return":  # TODO fix UnOp func should be an identifier (although UnOp return should be converted to ColonBinOp earlier - or removed from language)
         #     cpp.write("return")
@@ -603,7 +624,6 @@ def codegen_node(node: Union[Node, Any], indent=0):
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
     elif isinstance(node, StringLiteral):
         return str(node)
-
 
     return cpp.getvalue()
 

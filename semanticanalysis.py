@@ -250,6 +250,15 @@ def one_liner_expander(parsed):
                     if not isinstance(op.args[-1], Block):
                         # last arg becomes one-element block
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
+                    block = op.args[-1]
+                    if not ((isinstance(last_statement := block.args[-1], ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return") or (isinstance(last_statement, UnOp) and last_statement.func == "return")):
+                        if op.func.name == "lambda":
+                            # last 'statement' becomes return
+                            block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
+                        else:
+                            pass # wait for code generation to return {}
+                            # implicit return None like python
+                            # block.args.append(SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
 
         op.args = [visitor(arg) for arg in op.args]
         op.func = visitor(op.func)
