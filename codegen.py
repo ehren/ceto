@@ -19,7 +19,7 @@ cpp_preamble = """
 #include <vector>
 
 
-struct object {
+struct object : std::enable_shared_from_this<object> {
     virtual ~object() {
     };
 };
@@ -95,7 +95,7 @@ def codegen_block(block: Block, indent):
 
     for b in block.args:
         if isinstance(b, Identifier) and b.name == "pass":
-            cpp += indent_str + ";\n"
+            cpp += indent_str + "; // pass\n"
         else:
             cpp += indent_str + codegen_node(b, indent) + ";\n"
         # if isinstance(b, Call):
@@ -109,7 +109,7 @@ def codegen_block(block: Block, indent):
     if isinstance(block.parent, Call) and block.parent.func.name == "def":
         last_statement = block.args[-1]
 
-        if not ((isinstance(last_statement, ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return")):
+        if not is_return(last_statement):
             cpp += indent_str + "return {};\n"
 
     return cpp
