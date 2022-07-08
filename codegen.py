@@ -167,7 +167,7 @@ def codegen_def(defnode: Call, indent):
         return_type = "auto"
 
     defnode.cpp_return_type = return_type
-    funcdef = "{} auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+    funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
 
     return funcdef + " {\n" + codegen_block(block, indent + 1) + "}\n\n"
 
@@ -435,6 +435,9 @@ def decltype_str(node):
         #     return "std::vector<" + decltype_str(node.args[0]) + ">"
         return result
 
+    # elif isinstance(node, IntegerLiteral):  # this is nice for readability but not so much debugging output
+    #     return "int"
+
     else:
         return "decltype({})".format(_decltype_str(node))
 
@@ -536,7 +539,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
     elif isinstance(node, Identifier):
         if node.name == "None":
         #     cpp.write(r"{}") # tempting
-            cpp.write("nullptr")
+            cpp.write("(std::shared_ptr<object> ())")
         else:
             cpp.write(str(node))
     # elif isinstance(node, UnOp):
@@ -583,6 +586,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                         is_list = True
                     else:
                         for d in find_defs(node.lhs):
+                            # print("found def", d, "when determining if an append is really a push_back")
                             if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
                                 is_list = True
                                 break

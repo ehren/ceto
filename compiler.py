@@ -3,6 +3,23 @@ from semanticanalysis import semantic_analysis
 from codegen import codegen
 
 
+def safe_unique_filename(name, extension, basepath=""):
+    """
+    :return:sanitized pathname with numeric suffixes added if file already exists
+    """
+    import glob
+    import os
+    name = "".join(i for i in name if i not in r'\/:*?"<>|')
+    path_name = os.path.join(basepath, name)
+    suffix = 1
+    unique = path_name# + extension
+    while glob.glob(unique + "*"):
+    #while os.path.exists(unique):
+        unique = path_name + "_" + str(suffix)# + extension
+        suffix += 1
+    return unique + extension
+
+
 
 
 def compile(s, run=True):
@@ -14,15 +31,17 @@ def compile(s, run=True):
     print("code:\n", code)
 
     if run:
-        with open("cppgenerated.cpp", "w") as file:
+        filename = safe_unique_filename("generatedcode", ".cpp")
+
+        with open(filename, "w") as file:
             file.write(code)
         import os
         import platform
         if "Darwin" in platform.system():
-            # need to upgrade (and this doesn't like auto args)
-            os.system("clang++ cppgenerated.cpp -std=c++2a && ./a.out")
+            # need to upgrade
+            os.system("clang++ " + filename + " -std=c++2a && echo 'done compile' && ./a.out")
         else:
-            os.system("clang++ cppgenerated.cpp -std=c++20 && ./a.out")
+            os.system("clang++ " + filename + " -std=c++20 && echo 'done compile' && ./a.out")
 
 
 
@@ -30,21 +49,30 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
 
-def (foo, x:
-    return 1
+def (foo:
+    return None
+)
+
+def (bar:
+    if (foo() == 0:
+        printf("hi")
+    )
+    return None
 )
 
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
-def (default_args, x=[1], y=2:
+def (default_args, x=[], y=2:
     # x.append(2)
-    x.push_back(2)
-    x.push_back(2)
+    x.append(2)
+    # x.push_back(2)
+    # x.push_back(2)
     printf("%d %d\n", x[0], x[1])
     return x
 )
 
 def (main:
     default_args()
+    bar()
 )
         """)
     0 and compile("""

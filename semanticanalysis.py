@@ -384,8 +384,9 @@ def _find_def(parent, child, node_to_find):
             for callarg in parent.args:
                 if callarg.name == node_to_find.name and callarg is not node_to_find:
                     return callarg, parent
-                elif isinstance(callarg, NamedParameter) and callarg.args[0].name == node_to_find.name:
-                    return callarg, parent
+                elif isinstance(callarg, NamedParameter) and callarg.lhs.name == node_to_find.name:
+                    # return callarg, parent
+                    return callarg.lhs, callarg
 
         # index = node.parent.args.index(node)
         # if
@@ -404,6 +405,7 @@ def find_def(node):
     # print(res)
     # if res is not None and res[0] is node:
     #     return None
+
     return res
 
 
