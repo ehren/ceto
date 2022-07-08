@@ -251,7 +251,9 @@ def one_liner_expander(parsed):
                         # last arg becomes one-element block
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
                     block = op.args[-1]
-                    if not ((isinstance(last_statement := block.args[-1], ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return") or (isinstance(last_statement, UnOp) and last_statement.func == "return")):
+                    last_statement = block.args[-1]
+                    # if not ((isinstance(last_statement := block.args[-1], ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return") or (isinstance(last_statement, UnOp) and last_statement.func == "return")):
+                    if is_return(last_statement):
                         if op.func.name == "lambda":
                             # last 'statement' becomes return
                             block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
@@ -408,6 +410,15 @@ def find_def(node):
 
     return res
 
+
+def is_return(node):
+    return ((isinstance(node, ColonBinOp) and node.lhs.name == "return") or (
+            isinstance(node, Identifier) and node.name == "return") or (
+            isinstance(node, UnOp) and node.func == "return"))
+
+# whatever 'void' means - but syntactically this is 'return' (just an identifier)
+def is_void_return(node):
+    return not isinstance(node, ColonBinOp) and is_return(node) and not (isinstance(node.parent, ColonBinOp) and node.parent.lhs is node)
 
 def find_defs(node):
 

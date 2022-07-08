@@ -50,7 +50,8 @@ if __name__ == "__main__":
     compile("""
 
 def (foo:
-    return None
+    # return None
+    pass
 )
 
 def (bar:

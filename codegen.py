@@ -3,7 +3,7 @@ from typing import Union, Any
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
-    find_all, find_defs
+    find_all, find_defs, is_return, is_void_return
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
 
 
@@ -94,7 +94,10 @@ def codegen_block(block: Block, indent):
 
 
     for b in block.args:
-        cpp += indent_str + codegen_node(b, indent) + ";\n"
+        if isinstance(b, Identifier) and b.name == "pass":
+            cpp += indent_str + ";\n"
+        else:
+            cpp += indent_str + codegen_node(b, indent) + ";\n"
         # if isinstance(b, Call):
         #     if b.func.name == "if":
         #         cpp += codegen_if(b)
@@ -164,7 +167,21 @@ def codegen_def(defnode: Call, indent):
     elif name == "main":
         return_type = "int"
     else:
+        def stop(n):
+            return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
+
         return_type = "auto"
+        found_return = False
+        for b in block.args:
+            for ret in find_all(b, test=is_return, stop=stop):
+                found_return = True
+                if is_void_return(ret):
+                    # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
+                    return_type = 'std::shared_ptr<object>'
+                    break
+
+        if not found_return:
+            return_type = 'std::shared_ptr<object>'
 
     defnode.cpp_return_type = return_type
     funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
