@@ -19,7 +19,18 @@ cpp_preamble = """
 #include <vector>
 
 
+// https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
+template<typename T>
+T* ptr(T & obj) { return &obj; } // turn reference into pointer!
+
+template<typename T>
+std::shared_ptr<T> ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+
+
 struct object : std::enable_shared_from_this<object> {
+    virtual std::shared_ptr<object> foo() {
+        return shared_from_this();
+    }
     virtual ~object() {
     };
 };

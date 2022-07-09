@@ -44,14 +44,16 @@ def compile(s, run=True):
             os.system("clang++ " + filename + " -std=c++20 && echo 'done compile' && ./a.out")
 
 
-
-
 if __name__ == "__main__":
     compile("""
 
 def (foo:
     # return None
     pass
+)
+
+def (calls_method, x:
+    return x.foo()
 )
 
 def (bar:
@@ -61,6 +63,7 @@ def (bar:
     return None
 )
 
+# https://stackoverflow.com/questions/30240131/lambda-as-default-argument-fails
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
 def (default_args, x=[], y=2:
     # x.append(2)
@@ -74,6 +77,7 @@ def (default_args, x=[], y=2:
 def (main:
     default_args()
     bar()
+    calls_method(object())
 )
         """)
     0 and compile("""
