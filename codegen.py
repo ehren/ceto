@@ -21,10 +21,10 @@ cpp_preamble = """
 
 // https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
 template<typename T>
-T* ptr(T & obj) { return &obj; } // turn reference into pointer!
+T* ensure_ptr(T & obj) { return &obj; } // turn reference into pointer!
 
 template<typename T>
-std::shared_ptr<T> ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+std::shared_ptr<T> ensure_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
 
 
 struct object : std::enable_shared_from_this<object> {
@@ -622,7 +622,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
 
             if binop_str is None:
-                cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+
+                if isinstance(node, AttributeAccess):
+                    cpp.write("(*ensure_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
+                else:
+                    cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
             else:
                 cpp.write(binop_str)
 
