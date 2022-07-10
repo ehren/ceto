@@ -68,6 +68,7 @@ def codegen_if(ifcall : Call, indent):
         return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
 
     for scope in scopes:
+        # assigns.extend(find_all(scope, test=lambda n: (isinstance(n, Assign) and not (isinstance(n.parent, Call) and n.parent.func.name == 'if')), stop=stop))
         assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=stop))
 
     print("all if assigns", list(assigns))
@@ -77,6 +78,10 @@ def codegen_if(ifcall : Call, indent):
     for assign in assigns:
         if hasattr(assign, "already_declared"):
             continue
+        # if not isinstance(assign.parent, Block):
+            # don't do any funky auto auto declarations for non-block scoped assigns
+            # uh or not
+        #     continue
         if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
             assign.already_declared = True
             if assign.lhs.name in declarations:
@@ -235,32 +240,6 @@ def codegen(expr: Node):
     return cpp_preamble + s
 
 
-def decltype(node):
-    """Create C++ decltype statement"""
-    if is_list(node):
-        return "std::vector<decltype({0})>".format(value_type(node))
-    else:
-        return "decltype({0})".format(value_type(node))
-
-
-def is_list(node):
-    """Check if a node was assigned as a list"""
-    if isinstance(node, ListLiteral):
-        return True
-    # elif isinstance(node, Assign):
-    #     return is_list(node.rhs)  # dunno about this one
-    elif isinstance(node, Identifier):
-        # var = node.scopes.find(node.id)
-        found_node, defining_context = find_def(node)
-        if isinstance(defining_context, Assign) and is_list(defining_context.rhs):
-            return True
-        return (hasattr(var, "assigned_from") and not
-        isinstance(var.assigned_from, ast.FunctionDef) and
-                is_list(var.assigned_from.value))
-    else:
-        return False
-
-
 def decltype_str(node):
     if isinstance(node, ArrayAccess):
         for n, c in find_defs(node.func):
@@ -407,7 +386,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
             cpp.write(str(node))
     elif isinstance(node, BinOp):
 
-        if isinstance(node, ColonBinOp):
+        if isinstance(node, NamedParameter):
+            raise SemanticAnalysisError("Unparenthesized assignment treated like named parameter in this context (you need '(' and ')'):", node)
+
+        elif isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
                 cpp.write("return " + codegen_node(node.args[1]))
@@ -474,6 +456,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
     elif isinstance(node, StringLiteral):
         return str(node)
+    # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
+    #     return "(" + codegen_node(node.args[0]) + ")"
 
     return cpp.getvalue()
 

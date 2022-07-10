@@ -39,7 +39,7 @@ def compile(s, run=True):
         import platform
         if "Darwin" in platform.system():
             # need to upgrade
-            os.system("clang++ " + filename + " -std=c++2a && echo 'done compile' && ./a.out")
+            os.system("clang++ " + filename + " -std=c++2a -Wno-parentheses && echo 'done compile' && ./a.out")
         else:
             os.system("clang++ " + filename + " -std=c++20 && echo 'done compile' && ./a.out")
 
@@ -49,6 +49,14 @@ if __name__ == "__main__":
 
 def (foo:
     # return None
+    
+    if (1:
+        x = [2]
+    else:
+        x = [1,2]
+    )
+    printf("%d\n", x[0])
+    printf("%d\n", x.at(0))
     pass
 )
 
@@ -56,11 +64,25 @@ def (calls_method, x:
     return x.foo()
 )
 
-def (bar:
-    if (foo() == 0:
+def (calls_size, x:
+    return x.size()
+)
+
+def (bar, x:
+    # if ((foo() = 0): # insane gotcha (template instantiates to always false?)
+    # if ((foo() = 1): # this is the appropriate error in c++
+    # if ((x = 1):
+    if ((y = 1):
         printf("hi"); printf("bye\n")
+        x=x+1
+        y=2
+        x=(x+1)
+        (x=x+1)
+        foo()
+        printf("size: %ld\n", calls_size([1,2,3]))
     )
-    return None
+    
+    return y
 )
 
 # https://stackoverflow.com/questions/30240131/lambda-as-default-argument-fails
@@ -76,7 +98,7 @@ def (default_args, x=[], y=2:
 
 def (main:
     default_args()
-    bar()
+    printf("bar:%d",bar(1))
     calls_method(object())
 )
         """)
