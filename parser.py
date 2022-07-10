@@ -250,16 +250,26 @@ def create():
     colon = pp.Literal(":")
     dot = pp.Literal(".")
 
+
+    compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
+    compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
+    comparisons = compar_atoms[0]
+    for c in compar_atoms:
+        comparisons |= c
+
     infix_expr <<= pp.infix_notation(
         expr,
         [
             (dot, 2, pp.opAssoc.LEFT, AttributeAccess),
-            ("!", 1, pp.opAssoc.LEFT, UnOp),
+            # ("!", 1, pp.opAssoc.LEFT, UnOp),
             ("^", 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, BinOp),
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
-            ("==", 2, pp.opAssoc.RIGHT, BinOp),
+            (comparisons, 2, pp.opAssoc.LEFT, BinOp),
+            (pp.Keyword("not"), 1, pp.opAssoc.RIGHT, UnOp),
+            (pp.Keyword("and"), 2, pp.opAssoc.LEFT, BinOp),
+            (pp.Keyword("or"), 2, pp.opAssoc.LEFT, BinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary

@@ -46,6 +46,24 @@ def compile(s, run=True):
 
 if __name__ == "__main__":
     compile("""
+def (main:
+    l = [1,2,3]
+    
+    # if (1 not in l and 0 in l or 0 not in l:
+    #     1
+    # )
+    
+    x in x
+    
+    # for (x not in l not in not in l:
+    #     1
+    # )
+    printf("%d\n", l[0])
+)
+    """)
+
+
+    0 and compile("""
 
 def (foo:
     # return None
