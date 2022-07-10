@@ -58,7 +58,7 @@ def (calls_method, x:
 
 def (bar:
     if (foo() == 0:
-        printf("hi")
+        printf("hi"); printf("bye\n")
     )
     return None
 )

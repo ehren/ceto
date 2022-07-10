@@ -6,10 +6,7 @@ from io import StringIO
  
 TAB_WIDTH = 4
 
-GS = '\x1D'
-RS = '\x1E'
 BEL = '\x07'
-BS = '\x08'
 
 # Tokens
 Indent = 0
@@ -29,10 +26,8 @@ def current_indent(parsing_stack):
 
 
 def colon_replacement_char(current_state):
-    if current_state == CurlyOpen:
+    if current_state in [CurlyOpen, SquareOpen]:
         return BEL
-    elif current_state == SquareOpen:
-        return BS
     return ":"
 
 
@@ -123,6 +118,9 @@ def preprocess(file_object):
                     rewritten.write(char)
                     continue
 
+                if char == BEL:
+                    raise PreprocessorError("no BEL", line_number)
+
                 if char == "#":
                     line = line[:n]
                     break
@@ -159,7 +157,7 @@ def preprocess(file_object):
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
                 # block_start
-                rewritten.write(GS)
+                rewritten.write(BEL)
                 colon_to_write = False
                 began_indent = True
             else:
@@ -167,7 +165,7 @@ def preprocess(file_object):
 
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
-                    rewritten.write(RS)
+                    rewritten.write(";")
 
             if colon_to_write:
                 rewritten.write(colon_replacement_char(parsing_stack[-1]))

@@ -283,23 +283,19 @@ def create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    bel = pp.Literal('\x07')
+    bel = pp.Suppress('\x07')
 
     dictEntry = pp.Group(infix_expr + bel + infix_expr)
     dictStr <<= (
         lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
     )
 
-    gs = '\x1D'
-    rs = '\x1E'
-    block_start = pp.Suppress(gs)
-    block_line_end = pp.Suppress(rs)
-
+    block_start = bel
+    block_line_end = pp.Suppress(";")
+    # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
     block = block_start + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
-    bs = pp.Literal('\x08')  # for when slice syntax supported
-
-    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bs + infix_expr) + pp.Optional(bs + infix_expr) + rbrack).set_parse_action(ArrayAccess)
+    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
     Optional = pp.Optional
 
@@ -361,18 +357,15 @@ def parse(s):
     # transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
 
 
-    print("after 'reader macros'", transformed)
+    # print("after 'reader macros'", transformed)
     # sio = io.StringIO(s)
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
-    print("preprocessed", transformed.replace("\x1E", "!!!").replace("\x1D", "+++"))
-
-
-
+    # print("preprocessed", transformed.replace("\x07", "!!!"))
 
     res = grammar.parseString(transformed, parseAll=True)
 
-    print("parser:", res)
+    # print("parser:", res)
 
     res = res[0]
 
