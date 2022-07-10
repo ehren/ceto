@@ -5,17 +5,11 @@ def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, ColonBinOp) and isinstance(node.args[0], NodeClass))
 
 
-# def _monkey_ident(self, name:str):
-#     self.func = name
-
-
 class RebuiltIdentifer(Identifier):
     def __init__(self, name):
         self.func = name
         self.args = []
         self.name = name
-
-# Identifier.__init__ = _monkey_ident
 
 
 class RebuiltBlock(Block):
@@ -31,11 +25,6 @@ class RebuiltCall(Call):
         self.args = args
 
 
-# def _monkey(self, func, args):
-#     self.func = func
-#     self.args = args
-
-# Assign.__init__ = _monkey
 class RebuiltAssign(Assign):
     def __init__(self, args):
         self.func = "Assign"
@@ -93,8 +82,6 @@ class IfNode:#(Call):  # just a helper class for now (avoid adding to ast)
 
 class SemanticAnalysisError(Exception):
     pass
-    #def __init__(self, message, line_number):
-    #    super().__init__("{}. Line {}.".format(message, line_number))
 
 
 def build_parents(node: Node):
@@ -110,15 +97,12 @@ def build_parents(node: Node):
         for arg in node.args:
             if isinstance(arg, Node):
                 arg.parent = node
-                # if arg.scopes = []
-                # arg.rebuild(arg.func, arg.args)
                 arg = visitor(arg)
             rebuilt.append(arg)
         node.args = rebuilt
         if isinstance(node.func, Node):
             node.func.parent = node
             node.func = visitor(node.func)
-        # node.rebuild(node.func, node.args)
         return node
     return visitor(node)
 
@@ -129,40 +113,15 @@ def build_types(node: Node):
         if not isinstance(node, Node):
             return node
 
-        # TODO add NonTypeColonBinOp or SyntaxColonBinOp (to be swapped with e.g. elif ColonBinOp at some stage)
-        #if isinstance(node, ColonBinOp) and not (isinstance(node.args[0], Identifier) and node.args[0].name == "elif"):  # sure hope you're using 'elif' responsibly!
         if isinstance(node, ColonBinOp) and not isinstance(node, SyntaxColonBinOp):
             lhs, rhs = node.args
             node = lhs
             node.declared_type = rhs  # leaving open possibility this is still a ColonBinOp
 
         node.args = [visitor(arg) for arg in node.args]
-        # node.rebuild(node.func, node.args)
-
         return node
 
     return visitor(node)
-
-
-
-def build_if_nodes(expr):
-    assert False
-
-    def visitor(node):
-        if not isinstance(node, Node):
-            return node
-
-        # visit args before conversion to IfNode
-        # (should no longer be necessary)
-
-        if isinstance(node, Call) and node.func.name == "if":
-            node = IfNode(node.func, node.args)
-
-        node.args = [visitor(arg) for arg in node.args]
-
-        return node
-
-    return visitor(expr)
 
 
 def one_liner_expander(parsed):
@@ -252,14 +211,13 @@ def one_liner_expander(parsed):
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
                     block = op.args[-1]
                     last_statement = block.args[-1]
-                    # if not ((isinstance(last_statement := block.args[-1], ColonBinOp) and last_statement.lhs.name == "return") or (isinstance(last_statement, Identifier) and last_statement.name == "return") or (isinstance(last_statement, UnOp) and last_statement.func == "return")):
-                    if is_return(last_statement):
+                    if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
                         if op.func.name == "lambda":
                             # last 'statement' becomes return
                             block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
                         else:
-                            pass # wait for code generation to return {}
-                            # implicit return None like python
+                            # We'd like implicit return None like python - but perhaps return 'default value for type' allows more pythonic c++ code
+                            pass # so wait for code generation to 'return {}'
                             # block.args.append(SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
 
         op.args = [visitor(arg) for arg in op.args]
@@ -315,33 +273,6 @@ def warn_and_remove_redundant_parens(expr, error=False):
     return replacer(expr)
 
 
-# class Environment:
-#     pass
-
-
-def build_environment(node):
-    return node
-    if not isinstance(node, Node):
-        return
-    if not hasattr(node, "scopes"):
-        node.scopes = []
-
-r"""
-
-y = 5
-
-x = 1
-
-x = 2
-
-x = y + 1
-
-print(x)
-
-"""
-
-
-
 def _find_def(parent, child, node_to_find):
     def _find_assign(r, node_to_find):
         if not isinstance(r, Node):
@@ -387,11 +318,8 @@ def _find_def(parent, child, node_to_find):
                 if callarg.name == node_to_find.name and callarg is not node_to_find:
                     return callarg, parent
                 elif isinstance(callarg, NamedParameter) and callarg.lhs.name == node_to_find.name:
-                    # return callarg, parent
                     return callarg.lhs, callarg
 
-        # index = node.parent.args.index(node)
-        # if
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name and parent.lhs is not node_to_find:
         return parent.lhs, parent
@@ -404,10 +332,6 @@ def find_def(node):
     if not isinstance(node, Node):
         return None
     res = _find_def(node.parent, node, node)
-    # print(res)
-    # if res is not None and res[0] is node:
-    #     return None
-
     return res
 
 
@@ -417,6 +341,7 @@ def is_return(node):
             isinstance(node, UnOp) and node.func == "return"))
 
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
+# (NOTE: requires prior replacing of UnOp return)
 def is_void_return(node):
     return not isinstance(node, ColonBinOp) and is_return(node) and not (isinstance(node.parent, ColonBinOp) and node.parent.lhs is node)
 

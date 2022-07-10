@@ -13,6 +13,12 @@ import io
 class CodeGenError(Exception):
     pass
 
+# A : :T.func()
+# A of type :T.func()
+# (A::T).func() # (A of Type :T).func()
+# (A::T).(func:int)()
+# namespace(A, T).template_instantiate(int, func())
+
 cpp_preamble = """
 #include <memory>
 #include <cstdio>
@@ -109,13 +115,11 @@ def codegen_block(block: Block, indent):
             cpp += indent_str + "; // pass\n"
         else:
             cpp += indent_str + codegen_node(b, indent) + ";\n"
+
+        # should still do this (handle non-expr if _statements_ separately)
         # if isinstance(b, Call):
         #     if b.func.name == "if":
         #         cpp += codegen_if(b)
-        # elif isinstance(b, BinOp):
-        #     pass
-        # elif isinstance(b, UnOp):
-        #     pass
 
     if isinstance(block.parent, Call) and block.parent.func.name == "def":
         last_statement = block.args[-1]
@@ -124,10 +128,6 @@ def codegen_block(block: Block, indent):
             cpp += indent_str + "return {};\n"
 
     return cpp
-
-
-# def indent(text, amount, ch=' '):
-    # return textwrap.indent(text, amount * ch)
 
 
 def codegen_def(defnode: Call, indent):
@@ -211,27 +211,6 @@ def codegen_lambda(node, indent):
             codegen_block(block, indent + 1) + indt + "}")
 
 
-    # assert defnode.func.name == "def"
-    # name = defnode.args[0]
-    # cpp = io.StringIO()
-    #
-    # # template < typename T1, typename T2, typename T3 = decltype(5) >
-    #
-    #  # f"auto {name} ("
-    # # cpp.write(f"std::shared_ptr<object> {name} (")
-    # args = defnode.args[1:]
-    # block = args.pop()
-    # assert isinstance(block, Block)
-    # template_preamble = ""
-    # if len(args):
-    #
-    #     template_params = []
-    #     for i, arg in enumerate(args, start=1):
-    #         template_params.append(f"typename T{i} {arg.name}")
-    #     template_preamble = "template <" + ", ".join(template_params) + ">"
-    #     cpp_args = ", ".join([f" {a}" for a in args])
-    #     cpp.write(cpp_args)
-
 # unused
 def _codegen_def_dynamic(defnode: Call):
     assert defnode.func.name == "def"
@@ -281,149 +260,6 @@ def is_list(node):
     else:
         return False
 
-
-
-def value_expr(node):
-    """
-    Follow all assignments down the rabbit hole in order to find
-    the value expression of a name.
-    The boundary is set to the current scope.
-    """
-    # return ValueExpressionVisitor().visit(node)
-
-
-def value_type(node):
-    """
-    Guess the value type of a node based on the manipulations or assignments
-    in the current scope.
-    Special case: If node is a container like a list the value type inside the
-    list is returned not the list type itself.
-    """
-
-    if not isinstance(node, Node):
-        return
-    elif isinstance(node, (IntegerLiteral, StringLiteral)):
-        return value_expr(node)
-    elif isinstance(node, Identifier):
-        if node.name == 'True' or node.name == 'False':
-            # return CLikeTranspiler().visit(node)
-            return "true" if node.name == 'True' else "false"  # XXX??
-
-            # var = node.scopes.find(node.id)
-            found_node, defining_context = find_def(node)
-            # if isinstance(defining_context, Assign) and is_list(
-            #         defining_context.rhs):
-
-            # if defined_before(var, node):
-            #     return node.id
-            # else:
-            # return self.visit(var.assigned_from.value)
-
-            # this is wrong
-            return str(found_node)
-            # return value_expr(found_node)
-
-    # class ValueTypeVisitor(ast.NodeVisitor):
-    #     def visit_Num(self, node):
-    #         return value_expr(node)
-    #
-    #     def visit_Str(self, node):
-    #         return value_expr(node)
-    #
-    #     def visit_Name(self, node):
-    #         if node.id == 'True' or node.id == 'False':
-    #             return CLikeTranspiler().visit(node)
-    #
-    #         var = node.scopes.find(node.id)
-    #         if defined_before(var, node):
-    #             return node.id
-    #         else:
-    #             return self.visit(var.assigned_from.value)
-    #
-    #     def visit_Call(self, node):
-    #         params = ",".join([self.visit(arg) for arg in node.args])
-    #         return "{0}({1})".format(node.func.id, params)
-    #
-    #     def visit_Assign(self, node):
-    #         if isinstance(node.value, ast.List):
-    #             if len(node.value.elts) > 0:
-    #                 val = node.value.elts[0]
-    #                 return self.visit(val)
-    #             else:
-    #                 target = node.targets[0]
-    #                 var = node.scopes.find(target.id)
-    #                 first_added_value = var.calls[0].args[0]
-    #                 return value_expr(first_added_value)
-    #         else:
-    #             return self.visit(node.value)
-
-
-# class ValueExpressionVisitor(ast.NodeVisitor):
-#     def visit_Num(self, node):
-#         return str(node.n)
-#
-#     def visit_Str(self, node):
-#         return node.s
-#
-#     def visit_Name(self, node):
-#         var = node.scopes.find(node.id)
-#         if isinstance(var.assigned_from, ast.For):
-#             it = var.assigned_from.iter
-#             return "std::declval<typename decltype({0})::value_type>()".format(
-#                    self.visit(it))
-#         elif isinstance(var.assigned_from, ast.FunctionDef):
-#             return var.id
-#         else:
-#             return self.visit(var.assigned_from.value)
-#
-#     def visit_Call(self, node):
-#         params = ",".join([self.visit(arg) for arg in node.args])
-#         return "{0}({1})".format(node.func.id, params)
-#
-#     def visit_Assign(self, node):
-#         return self.visit(node.value)
-#
-#     def visit_BinOp(self, node):
-#         return "{0} {1} {2}".format(self.visit(node.left),
-#                                     CLikeTranspiler().visit(node.op),
-#                                     self.visit(node.right))
-#
-
-
-
-# class ValueTypeVisitor(ast.NodeVisitor):
-#     def visit_Num(self, node):
-#         return value_expr(node)
-#
-#     def visit_Str(self, node):
-#         return value_expr(node)
-#
-#     def visit_Name(self, node):
-#         if node.id == 'True' or node.id == 'False':
-#             return CLikeTranspiler().visit(node)
-#
-#         var = node.scopes.find(node.id)
-#         if defined_before(var, node):
-#             return node.id
-#         else:
-#             return self.visit(var.assigned_from.value)
-#
-#     def visit_Call(self, node):
-#         params = ",".join([self.visit(arg) for arg in node.args])
-#         return "{0}({1})".format(node.func.id, params)
-#
-#     def visit_Assign(self, node):
-#         if isinstance(node.value, ast.List):
-#             if len(node.value.elts) > 0:
-#                 val = node.value.elts[0]
-#                 return self.visit(val)
-#             else:
-#                 target = node.targets[0]
-#                 var = node.scopes.find(target.id)
-#                 first_added_value = var.calls[0].args[0]
-#                 return value_expr(first_added_value)
-#         else:
-#             return self.visit(node.value)
 
 def decltype_str(node):
     if isinstance(node, ArrayAccess):
@@ -566,13 +402,9 @@ def codegen_node(node: Union[Node, Any], indent=0):
         cpp.write(str(node))
     elif isinstance(node, Identifier):
         if node.name == "None":
-        #     cpp.write(r"{}") # tempting
             cpp.write("(std::shared_ptr<object> ())")
         else:
             cpp.write(str(node))
-    # elif isinstance(node, UnOp):
-        # if node.func == "return":  # TODO fix UnOp func should be an identifier (although UnOp return should be converted to ColonBinOp earlier - or removed from language)
-        #     cpp.write("return")
     elif isinstance(node, BinOp):
 
         if isinstance(node, ColonBinOp):
@@ -633,26 +465,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
     elif isinstance(node, ListLiteral):
         if node.args:
             elements = [codegen_node(e) for e in node.args]
-                # value_type = decltype(node.elts[0])
-
-
-
-            # return "std::vector<decltype({})>{{{}}}".format(elements[0], ", ".join(elements))
-            # return "std::vector<decltype([&](){{return {};}})>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
             return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
-
-
         else:
-            assert False
-            return "{}" # lol hope this works
-
-                # "std::vector<{0}>{{{1}}}""
-            #
-            # "std::vector<decltype({0})>".format(value_type(node))
-
-            # return "std::vector<{0}>{{{1}}}".format(value_type,
-            #                                         ", ".join(elements))
-
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
     elif isinstance(node, ArrayAccess):
         if len(node.args) > 1:
@@ -683,30 +497,7 @@ def vector_decltype_str(node):
                     Call) and found_use_context.rhs.func.name == "append":
                 apnd = found_use_context.rhs
                 assert len(apnd.args) == 1
-                apnd_arg = apnd.args[0]
-
-                # for apnd_arg_def in find_defs(apnd_arg):
-
-                val = decltype_str(apnd_arg)
-                # using arrElemType = decltype([&](){return arr[0];}());
-                # rhs_str = f"using arr_elem_type = decltype([&](){{return {val};}}());"
-                # rhs_str = f"std::vector<decltype([&](){{return {val};}})>"
-                # rhs_str = "std::vector<decltype({})>{{}}".format(val)
-                # node.rhs._element_decltype_str = val
-
-                rhs_str = "std::vector<{}>{{}}".format(val)
-                rhs_str = val
-
-                # if apnd_arg_defs := list(find_defs(apnd_arg)):
-                #     apnd_arg_def_node, apnd_arg_def_context = apnd_arg_defs[-1]
-                #     if apnd_arg_def_node.declared_type is not None:
-                #         rhs_str = "std::vector<{}>{{}}".format(codegen_node(apnd_arg_def_node.declared_type),  # need to figure out printing of types...
-                #                                                codegen_node(apnd.args[0]))
-                #     elif isinstance(apnd_arg_def_context, Assign):
-                #         rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd_arg_def_context.rhs))
-                #
-                # if rhs_str is None:
-                #     rhs_str = "std::vector<decltype({})>{{}}".format(codegen_node(apnd.args[0]))
+                rhs_str = decltype_str(apnd.args[0])
 
             parent = parent.parent
 
@@ -716,7 +507,6 @@ def vector_decltype_str(node):
         if found_use:
             # raise CodeGenError("list error, dunno what to do with this:", node)
             print("list error, dunno what to do with this:", node)
-
         else:
             raise CodeGenError("Unused empty list in template codegen", node)
     return rhs_str
