@@ -39,9 +39,9 @@ def compile(s, run=True):
         import platform
         if "Darwin" in platform.system():
             # need to upgrade
-            os.system("clang++ " + filename + " -std=c++2a -Wno-parentheses && echo 'done compile' && ./a.out")
+            os.system("clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile' && ./a.out")
         else:
-            os.system("clang++ " + filename + " -std=c++20 && echo 'done compile' && ./a.out")
+            os.system("clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile' && ./a.out")
 
 
 if __name__ == "__main__":
@@ -75,12 +75,19 @@ def (bar, x:
     if ((y = 1):
         printf("hi"); printf("bye\n")
         x=x+1
-        y=2
+        # y=2
         x=(x+1)
         (x=x+1)
+        z = 1
+        y = x + 1
         foo()
         printf("size: %ld\n", calls_size([1,2,3]))
     )
+    
+    if (0:
+        un = 5
+    )
+    printf("uninit %d", un)
     
     return y
 )
