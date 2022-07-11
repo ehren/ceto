@@ -209,15 +209,19 @@ def one_liner_expander(parsed):
                     if not isinstance(op.args[-1], Block):
                         # last arg becomes one-element block
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
-                    block = op.args[-1]
-                    last_statement = block.args[-1]
-                    if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
-                        if op.func.name == "lambda":
-                            # last 'statement' becomes return
+                    if op.func.name == "lambda":
+                        block = op.args[-1]
+                        last_statement = block.args[-1]
+                        if not is_return(last_statement):
                             block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
-                        else:
+                    # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
+                        # if op.func.name == "lambda":
+                            # last 'statement' becomes return
+                            # block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
+
+                        # else:
                             # We'd like implicit return None like python - but perhaps return 'default value for type' allows more pythonic c++ code
-                            pass # so wait for code generation to 'return {}'
+                            # pass # so wait for code generation to 'return {}'
                             # block.args.append(SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
 
         op.args = [visitor(arg) for arg in op.args]

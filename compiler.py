@@ -47,18 +47,46 @@ def compile(s, run=True):
 if __name__ == "__main__":
     compile("""
 def (main:
+    printf("hi")
+    x = 1
+    printf("%d", x)
+)
+    
+    """)
+
+
+    compile("""
+
+def (foo, bar:
+    return bar
+)
+
+def (blah, x:int:
+    return x
+)
+    
+def (main:
     l = [1,2,3]
     
     # if (1 not in l and 0 in l or 0 not in l:
     #     1
     # )
     
-    x in x
+    # x in x
     
-    # for (x not in l not in not in l:
-    #     1
-    # )
+    for (x not in l not in not in l:
+        1
+    )
     printf("%d\n", l[0])
+    f = lambda(:
+        printf("%d\n", main)
+        0
+    )
+    foo(f)()
+    foo(printf)
+    # foo(f)
+    blah(1)
+    printf
 )
     """)
 
@@ -129,9 +157,9 @@ def (main:
         """)
     0 and compile("""
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
-def (default_args, x=[1], y=2, z = lambda (1):
-    # x.append(2)
-    x.push_back(2)
+def (default_args, x=[1], y=2: #, z = lambda (1):
+    x.append(2)
+    # x.push_back(2)
     printf("%d\n", z(y))
     return x
 )

@@ -23,15 +23,120 @@ cpp_preamble = """
 #include <memory>
 #include <cstdio>
 #include <vector>
+#include <iostream>
+#include <type_traits>
+#include <utility>
 
 
 // https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
+/*
 template<typename T>
 T* ensure_ptr(T & obj) { return &obj; } // turn reference into pointer!
 
 template<typename T>
 std::shared_ptr<T> ensure_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
 
+*/
+
+//template<typename T>
+//T* ensure_ptr(T* obj) { return obj; } // obj is already pointer, return it!
+
+
+template <typename Fun>
+struct is_fun_ptr
+    : std::integral_constant<bool, std::is_pointer<Fun>::value
+                            && std::is_function<
+                                   typename std::remove_pointer<Fun>::type
+                               >::value>
+{
+};
+
+// https://stackoverflow.com/questions/18666218/stdenable-if-is-function-pointer-how
+// https://stackoverflow.com/questions/41853159/how-to-detect-if-a-type-is-shared-ptr-at-compile-time
+// https://stackoverflow.com/questions/20709896/how-do-i-use-stdenable-if-with-a-self-deducing-return-type
+enum class enabler_t {};
+
+template<typename T>
+using EnableIf = typename std::enable_if<T::value, enabler_t>::type;
+
+
+
+template<class T>
+struct is_shared_ptr : std::false_type {};
+
+template<class T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+
+/*
+//template <class Fun&, typename = typename std::enable_if<!is_fun_ptr<std::remove_reference<Fun>>::value && !is_shared_ptr<std::remove_reference<Fun>>::value, void>::type>
+template <class Fun, typename = typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type>
+//typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value>::type
+auto ensure_ptr(Fun& f, typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
+//Fun* ensure_ptr(Fun f) {
+    return &f;
+}
+
+template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
+auto ensure_ptr(Fun f, typename std::enable_if<is_fun_ptr<Fun>::value, void>::type * dummy = nullptr) {
+    return f;
+}
+
+template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
+auto ensure_ptr(Fun f, typename std::enable_if<is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
+    return f;
+}*/
+
+template<typename T>
+T* ensure_ptr(T & obj) { return &obj; } // turn reference into pointer!
+
+template<typename T>
+std::shared_ptr<T> ensure_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+
+/*
+template<typename Obj>
+Obj* ensure_ptr(Obj& o)
+{
+    if constexpr (is_fun_ptr<std::remove_reference<Obj>>::value) {
+        return o;
+    } else {
+        return &o;
+    }
+
+    if constexpr (std::is_function_v<std::remove_pointer_t<Obj>>)
+    #     o();
+    # else
+    #     o.print();
+}
+*/
+/*
+template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
+auto ensure_ptr(Fun f) -> Fun {
+//Fun* ensure_ptr(Fun f) {
+    return f;
+}
+
+template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
+auto ensure_ptr(Fun f) -> Fun{
+//Fun* ensure_ptr(Fun f) {
+    return f;
+}*/
+
+/*
+template <typename Fun>
+typename std::enable_if<is_fun_ptr<Fun>::value>::type
+//auto ensure_ptr(Fun f)  -> Fun {
+Fun ensure_ptr(Fun f) {
+    return f;
+}
+
+ template <typename Fun>
+ typename std::enable_if<is_shared_ptr<Fun>::value>::type
+//auto ensure_ptr(Fun f) -> Fun {
+Fun ensure_ptr(Fun f) {
+     return f;
+}
+*/
 
 struct object : std::enable_shared_from_this<object> {
     virtual std::shared_ptr<object> foo() {
@@ -86,7 +191,7 @@ def codegen_if(ifcall : Call, indent):
             assign.already_declared = True
             if assign.lhs.name in declarations:
                 continue
-            declarations[codegen_node(assign.lhs)] = codegen_node(assign.rhs)
+            declarations[str(assign.lhs)] = codegen_node(assign.rhs)
 
     cpp = ""
     for lhs in declarations:
@@ -108,6 +213,10 @@ def codegen_if(ifcall : Call, indent):
     return cpp
 
 
+def codegen_for(node, indent):
+    return ""
+
+
 def codegen_block(block: Block, indent):
     assert isinstance(block, Block)
     assert block.args
@@ -118,13 +227,17 @@ def codegen_block(block: Block, indent):
     for b in block.args:
         if isinstance(b, Identifier) and b.name == "pass":
             cpp += indent_str + "; // pass\n"
-        else:
-            cpp += indent_str + codegen_node(b, indent) + ";\n"
+            continue
+        elif isinstance(b, Call):
+            # should still do this (handle non-expr if _statements_ separately)
+            # if b.func.name == "if":
+            #     cpp += codegen_if(b)
 
-        # should still do this (handle non-expr if _statements_ separately)
-        # if isinstance(b, Call):
-        #     if b.func.name == "if":
-        #         cpp += codegen_if(b)
+            if b.func.name == "for":
+                cpp += codegen_for(b, indent)
+                continue
+
+        cpp += indent_str + codegen_node(b, indent) + ";\n"
 
     if isinstance(block.parent, Call) and block.parent.func.name == "def":
         last_statement = block.args[-1]
@@ -147,12 +260,18 @@ def codegen_def(defnode: Call, indent):
     typenames = []
     for i, arg in enumerate(args):
         if arg.declared_type is not None:
-            params.append(str(arg.declared_type) + " " + codegen_node(arg))
+            if isinstance(arg, Identifier):
+                params.append(str(arg.declared_type) + " " + str(arg))
+            else:
+                params.append(str(arg.declared_type) + " " + codegen_node(arg))
         elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
             raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
             if isinstance(arg.rhs, ListLiteral):
-                params.append("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
+                if isinstance(arg.lhs, Identifier):
+                    params.append("std::vector<" + vector_decltype_str(arg) + ">" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
+                else:
+                    params.append("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
                 # if arg.rhs.args:
                 #     valuepart = "= " + codegen_node(arg.rhs)
                 #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
@@ -165,7 +284,10 @@ def codegen_def(defnode: Call, indent):
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
                 params.append("auto " + codegen_node(arg.lhs) + "= " + codegen_node(arg.rhs))
             else:
-                params.append(decltype_str(arg.rhs) + " " + codegen_node(arg.lhs) + "= " + codegen_node(arg.rhs))
+                if isinstance(arg.lhs, Identifier):
+                    params.append(decltype_str(arg.rhs) + " " + str(arg.lhs) + " = " + codegen_node(arg.rhs))
+                else:
+                    params.append(decltype_str(arg.rhs) + " " + codegen_node(arg.lhs) + " = " + codegen_node(arg.rhs))
 
         else:
             t = "T" + str(i + 1)
@@ -242,6 +364,9 @@ def codegen(expr: Node):
 
 def decltype_str(node):
     if isinstance(node, ArrayAccess):
+        if not isinstance(node.func, Identifier):
+            raise CodeGenError("no idea what to do with this indirect array access when printing decltypes")
+
         for n, c in find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c):
@@ -249,7 +374,7 @@ def decltype_str(node):
                 # return c.rhs._element_decltype_str
             # print("array def", d)
 
-        return "decltype({})::value_type".format(codegen_node(node.func))
+        return "decltype({})::value_type".format(str(node.func))
     elif isinstance(node, ListLiteral):
         # never succeeded
         # if not node.args:
@@ -293,11 +418,12 @@ def _decltype_str(node):
     if isinstance(node, BinOp):
         binop = node
         return _decltype_str(binop.lhs) + str(binop.func) + _decltype_str(binop.rhs)
-    elif isinstance(node, Call):
+    elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
         # if call.func.name == "lambda":
         #     return codegen_node(call)
-        return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
+        #return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
+        return call.func.name + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
         # return "[&](){{ return {}; }}".format(codegen_node(node))
@@ -349,9 +475,42 @@ def _decltype_str(node):
             return codegen_node(assign.rhs)
     else:
         print("hmm?2")
+        assert 0
         return codegen_node(last_ident)
 
 
+def vector_decltype_str(node):
+    rhs_str = None
+    found_use = False
+
+    if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
+        return decltype_str(node.rhs.args[0])
+
+    for found_use_node in find_uses(node):
+        found_use = True
+        parent = found_use_node.parent
+        while rhs_str is None and not isinstance(parent, Block):
+            found_use_context = parent
+
+            if isinstance(found_use_context,
+                          AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(
+                found_use_context.rhs,
+                Call) and found_use_context.rhs.func.name == "append":
+                apnd = found_use_context.rhs
+                assert len(apnd.args) == 1
+                rhs_str = decltype_str(apnd.args[0])
+
+            parent = parent.parent
+
+        if rhs_str is not None:
+            break
+    if rhs_str is None:
+        if found_use:
+            # raise CodeGenError("list error, dunno what to do with this:", node)
+            print("list error, dunno what to do with this:", node)
+        else:
+            raise CodeGenError("Unused empty list in template codegen", node)
+    return rhs_str
 
 
 def codegen_node(node: Union[Node, Any], indent=0):
@@ -373,17 +532,24 @@ def codegen_node(node: Union[Node, Any], indent=0):
             elif node.func.name == "lambda":
                 cpp.write(codegen_lambda(node, indent))
             else:
-                cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
+                if isinstance(node.func, Identifier):
+                    cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
+                else:
+                    cpp.write(codegen_node(node.func) + "(" + ", ".join(map(codegen_node, node.args)) + ")")
         else:
-            print("need to handle indirect call")
+            # print("need to handle indirect call")
+            cpp.write(codegen_node(node.func) + "(" + ", ".join( map(codegen_node, node.args)) + ")")
 
     elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
     elif isinstance(node, Identifier):
         if node.name == "None":
             cpp.write("(std::shared_ptr<object> ())")
+        elif not isinstance(node.parent, NamedParameter):
+            cpp.write("(*ensure_ptr(" + node.name + "))")
         else:
             cpp.write(str(node))
+
     elif isinstance(node, BinOp):
 
         if isinstance(node, NamedParameter):
@@ -406,7 +572,12 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 rhs_str = codegen_node(node.rhs)
 
-            assign_str = " ".join([codegen_node(node.lhs), node.func, rhs_str])
+            if isinstance(node.lhs, Identifier):
+                lhs_str = node.lhs.name
+            else:
+                lhs_str = codegen_node(node.lhs)
+
+            assign_str = " ".join([lhs_str, node.func, rhs_str])
 
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
                 assign_str = "auto " + assign_str
@@ -461,36 +632,3 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
     return cpp.getvalue()
 
-
-def vector_decltype_str(node):
-    rhs_str = None
-    found_use = False
-
-    if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
-        return decltype_str(node.rhs.args[0])
-
-    for found_use_node in find_uses(node):
-        found_use = True
-        parent = found_use_node.parent
-        while rhs_str is None and not isinstance(parent, Block):
-            found_use_context = parent
-
-            if isinstance(found_use_context,
-                          AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(
-                    found_use_context.rhs,
-                    Call) and found_use_context.rhs.func.name == "append":
-                apnd = found_use_context.rhs
-                assert len(apnd.args) == 1
-                rhs_str = decltype_str(apnd.args[0])
-
-            parent = parent.parent
-
-        if rhs_str is not None:
-            break
-    if rhs_str is None:
-        if found_use:
-            # raise CodeGenError("list error, dunno what to do with this:", node)
-            print("list error, dunno what to do with this:", node)
-        else:
-            raise CodeGenError("Unused empty list in template codegen", node)
-    return rhs_str
