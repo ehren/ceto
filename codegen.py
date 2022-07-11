@@ -31,15 +31,15 @@ cpp_preamble = """
 // https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
 /*
 template<typename T>
-T* ensure_ptr(T & obj) { return &obj; } // turn reference into pointer!
+T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
 
 template<typename T>
-std::shared_ptr<T> ensure_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
 
 */
 
 //template<typename T>
-//T* ensure_ptr(T* obj) { return obj; } // obj is already pointer, return it!
+//T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
 
 
 template <typename Fun>
@@ -72,30 +72,30 @@ struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 //template <class Fun&, typename = typename std::enable_if<!is_fun_ptr<std::remove_reference<Fun>>::value && !is_shared_ptr<std::remove_reference<Fun>>::value, void>::type>
 template <class Fun, typename = typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type>
 //typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value>::type
-auto ensure_ptr(Fun& f, typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
-//Fun* ensure_ptr(Fun f) {
+auto get_ptr(Fun& f, typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
+//Fun* get_ptr(Fun f) {
     return &f;
 }
 
 template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
-auto ensure_ptr(Fun f, typename std::enable_if<is_fun_ptr<Fun>::value, void>::type * dummy = nullptr) {
+auto get_ptr(Fun f, typename std::enable_if<is_fun_ptr<Fun>::value, void>::type * dummy = nullptr) {
     return f;
 }
 
 template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
-auto ensure_ptr(Fun f, typename std::enable_if<is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
+auto get_ptr(Fun f, typename std::enable_if<is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
     return f;
 }*/
 
 template<typename T>
-T* ensure_ptr(T & obj) { return &obj; } // turn reference into pointer!
+T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
 
 template<typename T>
-std::shared_ptr<T> ensure_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
 
 /*
 template<typename Obj>
-Obj* ensure_ptr(Obj& o)
+Obj* get_ptr(Obj& o)
 {
     if constexpr (is_fun_ptr<std::remove_reference<Obj>>::value) {
         return o;
@@ -111,29 +111,29 @@ Obj* ensure_ptr(Obj& o)
 */
 /*
 template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
-auto ensure_ptr(Fun f) -> Fun {
-//Fun* ensure_ptr(Fun f) {
+auto get_ptr(Fun f) -> Fun {
+//Fun* get_ptr(Fun f) {
     return f;
 }
 
 template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
-auto ensure_ptr(Fun f) -> Fun{
-//Fun* ensure_ptr(Fun f) {
+auto get_ptr(Fun f) -> Fun{
+//Fun* get_ptr(Fun f) {
     return f;
 }*/
 
 /*
 template <typename Fun>
 typename std::enable_if<is_fun_ptr<Fun>::value>::type
-//auto ensure_ptr(Fun f)  -> Fun {
-Fun ensure_ptr(Fun f) {
+//auto get_ptr(Fun f)  -> Fun {
+Fun get_ptr(Fun f) {
     return f;
 }
 
  template <typename Fun>
  typename std::enable_if<is_shared_ptr<Fun>::value>::type
-//auto ensure_ptr(Fun f) -> Fun {
-Fun ensure_ptr(Fun f) {
+//auto get_ptr(Fun f) -> Fun {
+Fun get_ptr(Fun f) {
      return f;
 }
 */
@@ -533,6 +533,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 cpp.write(codegen_lambda(node, indent))
             else:
                 if isinstance(node.func, Identifier):
+                    # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
                     cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
                 else:
                     cpp.write(codegen_node(node.func) + "(" + ", ".join(map(codegen_node, node.args)) + ")")
@@ -546,7 +547,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
         if node.name == "None":
             cpp.write("(std::shared_ptr<object> ())")
         elif not isinstance(node.parent, NamedParameter):
-            cpp.write("(*ensure_ptr(" + node.name + "))")
+            cpp.write("(*get_ptr(" + node.name + "))")
         else:
             cpp.write(str(node))
 
@@ -608,10 +609,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             if binop_str is None:
 
-                if isinstance(node, AttributeAccess):
-                    cpp.write("(*ensure_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
-                else:
-                    cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+                # if isinstance(node, AttributeAccess):
+                #     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
+                # else: # No need for ^ any more (all identifiers are now wrapped in get_ptr (except Call funcs)
+                cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
             else:
                 cpp.write(binop_str)
 
