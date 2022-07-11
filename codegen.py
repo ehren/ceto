@@ -331,7 +331,11 @@ def codegen_lambda(node, indent):
     args = list(node.args)
     block = args.pop()
     assert isinstance(block, Block)
-    params = ["auto " + codegen_node(a) for a in args]
+    # params = ["auto " + codegen_node(a) for a in args]
+    params = []
+    for a in args:
+        assert isinstance(a, Identifier)
+        params.append("auto " + str(a))
     indent += 1
     indt = "    " * indent
     return ("[](" + ", ".join(params) + ") {\n" +
