@@ -113,8 +113,7 @@ def (main:
 )
     """)
 
-def _test_ifscopes_methodcalls_lottastuff():
-    # pytest doesn't like this (to be fair a.out crashes until 'class' implemented)
+def test_ifscopes_methodcalls_classes_lottastuff():
     compile("""
 
 def (foo:
@@ -173,10 +172,17 @@ def (default_args, x=[], y=2:
     return x
 )
 
+class (Foo:
+    def (foo:
+        printf("in foo method\n")
+    )
+)
+
 def (main:
     default_args()
     printf("bar:%d",bar(1))
-    calls_method(object())
+    # calls_method(object())
+    calls_method(Foo())
 )
     """)
 

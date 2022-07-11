@@ -601,12 +601,14 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 if isinstance(node.func, Identifier):
 
                     func_str = None
+                    is_class = False
 
                     for defnode, defcontext in find_defs(node.func):
                         if isinstance(defcontext, Call) and defcontext.func.name == "class":
                             class_name = defcontext.args[0]
                             assert isinstance(class_name, Identifier)
                             func_str = "std::make_shared<" + class_name.name + ">"
+                            is_class = True
                             break
 
                     if func_str is None:
@@ -615,7 +617,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 else:
                     func_str = codegen_node(node.func)
 
-                cpp.write(func_str + "(" + ", ".join(map(codegen_node, node.args)) + ")")
+                func_str += "(" + ", ".join(map(codegen_node, node.args)) + ")"
+                if is_class:
+                    func_str = "(*get_ptr(" + func_str + "))"
+
+                cpp.write(func_str)
         else:
             # print("need to handle indirect call")
             cpp.write(codegen_node(node.func) + "(" + ", ".join( map(codegen_node, node.args)) + ")")
@@ -688,10 +694,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             if binop_str is None:
 
-                if isinstance(node, AttributeAccess):
-                    cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
-                else: # this is wrong (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except Call funcs)
-                    cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+                # if isinstance(node, AttributeAccess):
+                #     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
+                # else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
+                cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
             else:
                 cpp.write(binop_str)
 
