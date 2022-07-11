@@ -176,7 +176,6 @@ struct object : public std::enable_shared_from_this<object> {
     virtual ~object() {
     };
     
-protected:
     template <typename Derived>
     std::shared_ptr<Derived> shared_from_base() {
         return std::static_pointer_cast<Derived>(shared_from_this());
@@ -261,7 +260,7 @@ def codegen_class(node : Call, indent):
     block = node.args[-1]
     assert isinstance(block, Block)
 
-    cpp = "struct " + str(name) + " : protected object {\n"
+    cpp = "struct " + str(name) + " : public object {\n\n"
 
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
@@ -600,10 +599,23 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 cpp.write(codegen_lambda(node, indent))
             else:
                 if isinstance(node.func, Identifier):
-                    # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
-                    cpp.write(node.func.name + "(" + ", ".join(map(codegen_node, node.args)) + ")")
+
+                    func_str = None
+
+                    for defnode, defcontext in find_defs(node.func):
+                        if isinstance(defcontext, Call) and defcontext.func.name == "class":
+                            class_name = defcontext.args[0]
+                            assert isinstance(class_name, Identifier)
+                            func_str = "std::make_shared<" + class_name.name + ">"
+                            break
+
+                    if func_str is None:
+                        # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
+                        func_str = node.func.name
                 else:
-                    cpp.write(codegen_node(node.func) + "(" + ", ".join(map(codegen_node, node.args)) + ")")
+                    func_str = codegen_node(node.func)
+
+                cpp.write(func_str + "(" + ", ".join(map(codegen_node, node.args)) + ")")
         else:
             # print("need to handle indirect call")
             cpp.write(codegen_node(node.func) + "(" + ", ".join( map(codegen_node, node.args)) + ")")
@@ -676,10 +688,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             if binop_str is None:
 
-                # if isinstance(node, AttributeAccess):
-                #     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
-                # else: # No need for ^ any more (all identifiers are now wrapped in get_ptr (except Call funcs)
-                cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+                if isinstance(node, AttributeAccess):
+                    cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
+                else: # this is wrong (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except Call funcs)
+                    cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
             else:
                 cpp.write(binop_str)
 

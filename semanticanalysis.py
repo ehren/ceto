@@ -285,6 +285,10 @@ def _find_def(parent, child, node_to_find):
             return None
         if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name and r.lhs is not node_to_find:
             return r.lhs, r
+        if isinstance(r, Call) and r.func.name == "class":
+            class_name = r.args[0]
+            if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
+                return class_name, r
         else:
             for a in r.args:
                 if f := _find_assign(a, node_to_find):
@@ -297,8 +301,11 @@ def _find_def(parent, child, node_to_find):
         return None
     if not isinstance(node_to_find, Node):
         return None
-    if isinstance(parent, Module):
-        return None
+    # if isinstance(parent, Module):
+    #
+    #     # need to handle this like a block
+    #
+    #     return None
     elif isinstance(parent, Block):
         index = parent.args.index(child)
         preceding = parent.args[0:index]
@@ -318,11 +325,18 @@ def _find_def(parent, child, node_to_find):
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Call):
         if parent.func.name == "def":
+            # should handle the def of the function name.... (or not?)
+
             for callarg in parent.args:
                 if callarg.name == node_to_find.name and callarg is not node_to_find:
                     return callarg, parent
                 elif isinstance(callarg, NamedParameter) and callarg.lhs.name == node_to_find.name:
                     return callarg.lhs, callarg
+        elif parent.func.name == "class":
+            class_name = parent.args[0]
+            if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
+                assert 0
+                return class_name, parent
 
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name and parent.lhs is not node_to_find:

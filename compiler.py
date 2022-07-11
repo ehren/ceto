@@ -63,14 +63,15 @@ class (Foo: #Bar :
     
     def (foo:
         printf("in foo method\n")
+        # shared_from_base()
     )
 )
     
     
 def (main:
-    printf("hi")
-    x = 1
-    printf("%d", x)
+    # printf("hi")
+    # x = 1
+    # printf("%d", x)
     Foo().foo()
 )
     
