@@ -2,13 +2,14 @@ from parser import parse
 from semanticanalysis import semantic_analysis
 from codegen import codegen
 
+import os
+
 
 def safe_unique_filename(name, extension, basepath=""):
     """
     :return:sanitized pathname with numeric suffixes added if file already exists
     """
     import glob
-    import os
     name = "".join(i for i in name if i not in r'\/:*?"<>|')
     path_name = os.path.join(basepath, name)
     suffix = 1
@@ -31,11 +32,10 @@ def compile(s, run=True):
     print("code:\n", code)
 
     if run:
-        filename = safe_unique_filename("generatedcode", ".cpp", basepath="build")
+        filename = safe_unique_filename("generatedcode", ".cpp", basepath=os.path.join(os.path.abspath(os.path.dirname(__file__)), "build"))
 
         with open(filename, "w") as file:
             file.write(code)
-        import os
         import platform
         if "Darwin" in platform.system():
             # need to upgrade

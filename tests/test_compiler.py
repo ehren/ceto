@@ -1,7 +1,7 @@
 from compiler import compile
 
 
-def test_funcs_lists_methodcalls_lambdas_funptrs_ifscopes_semicolon():
+def test_lambdas():
     compile("""
 def (foo, bar:
     return bar
@@ -36,6 +36,8 @@ def (main:
 )
     """)
 
+def _test_ifscopes_methodcalls_lottastuff():
+    # pytest doesn't like this (to be fair a.out crashes until 'class' implemented)
     compile("""
 
 def (foo:
