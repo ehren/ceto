@@ -47,11 +47,31 @@ def compile(s, run=True):
 
 
 if __name__ == "__main__":
-    compile("""
+    compile(r"""
+    
+class (Foo: #Bar :
+    # x = 1
+    # y = 2
+    
+    # def (init:
+    #     printf("init\n")
+    # )
+    
+    # def (destruct:
+    #     printf("destruct\n")
+    # )
+    
+    def (foo:
+        printf("in foo method\n")
+    )
+)
+    
+    
 def (main:
     printf("hi")
     x = 1
     printf("%d", x)
+    Foo().foo()
 )
     
     """)

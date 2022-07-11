@@ -19,15 +19,7 @@ class CodeGenError(Exception):
 # (A::T).(func:int)()
 # namespace(A, T).template_instantiate(int, func())
 
-cpp_preamble = """
-#include <memory>
-#include <cstdio>
-#include <vector>
-#include <iostream>
-#include <type_traits>
-#include <utility>
-
-
+unused_cpp = """
 // https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
 /*
 template<typename T>
@@ -87,12 +79,6 @@ auto get_ptr(Fun f, typename std::enable_if<is_shared_ptr<Fun>::value, void>::ty
     return f;
 }*/
 
-template<typename T>
-T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
-
-template<typename T>
-std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
-
 /*
 template<typename Obj>
 Obj* get_ptr(Obj& o)
@@ -138,12 +124,63 @@ Fun get_ptr(Fun f) {
 }
 */
 
+/*
 struct object : std::enable_shared_from_this<object> {
     virtual std::shared_ptr<object> foo() {
         return shared_from_this();
     }
     virtual ~object() {
     };
+};*/
+
+/*
+// https://stackoverflow.com/questions/657155/how-to-enable-shared-from-this-of-both-parent-and-derived/32172486#32172486
+template <class Base>
+class enable_shared_from_base
+  : public std::enable_shared_from_this<Base>
+{
+protected:
+    template <class Derived>
+    std::shared_ptr<Derived> shared_from_base()
+    {
+        return std::static_pointer_cast<Derived>(shared_from_this());
+    }
+};
+
+struct object : public enable_shared_from_base<object> {
+    virtual ~object() {
+    };
+};
+*/
+
+
+"""
+
+
+cpp_preamble = """
+#include <memory>
+#include <cstdio>
+#include <vector>
+#include <iostream>
+#include <type_traits>
+#include <utility>
+
+
+template<typename T>
+T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
+
+template<typename T>
+std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+
+struct object : public std::enable_shared_from_this<object> {
+    virtual ~object() {
+    };
+    
+protected:
+    template <typename Derived>
+    std::shared_ptr<Derived> shared_from_base() {
+        return std::static_pointer_cast<Derived>(shared_from_this());
+    }
 };
 
 """
@@ -217,6 +254,24 @@ def codegen_for(node, indent):
     return ""
 
 
+def codegen_class(node : Call, indent):
+    assert isinstance(node, Call)
+    name = node.args[0]
+    assert isinstance(name, Identifier)
+    block = node.args[-1]
+    assert isinstance(block, Block)
+
+    cpp = "struct " + str(name) + " : protected object {\n"
+
+    for b in block.args:
+        if isinstance(b, Call) and b.func.name == "def":
+            cpp += codegen_def(b, indent + 1)
+
+    cpp += "    "*indent + "};\n\n"
+
+    return cpp
+
+
 def codegen_block(block: Block, indent):
     assert isinstance(block, Block)
     assert block.args
@@ -236,6 +291,10 @@ def codegen_block(block: Block, indent):
             if b.func.name == "for":
                 cpp += codegen_for(b, indent)
                 continue
+            elif b.func.name == "class":
+                cpp += codegen_class(b, indent)
+                continue
+
 
         cpp += indent_str + codegen_node(b, indent) + ";\n"
 
@@ -323,8 +382,9 @@ def codegen_def(defnode: Call, indent):
 
     defnode.cpp_return_type = return_type
     funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+    indt = indent * "    "
 
-    return funcdef + " {\n" + codegen_block(block, indent + 1) + "}\n\n"
+    return indt + funcdef + " {\n" + codegen_block(block, indent + 1) + indt + "}\n\n"
 
 
 def codegen_lambda(node, indent):
@@ -525,6 +585,9 @@ def codegen_node(node: Union[Node, Any], indent=0):
             if modarg.func.name == "def":
                 defcode = codegen_def(modarg, indent)
                 cpp.write(defcode)
+            elif modarg.func.name == "class":
+                classcode = codegen_class(modarg, indent)
+                cpp.write(classcode)
             else:
                 print("probably should handle", modarg)
     elif isinstance(node, Call): # not at module level
