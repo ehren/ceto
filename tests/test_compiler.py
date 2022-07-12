@@ -1,6 +1,50 @@
 from compiler import compile
 
 
+def test_class_def_escapes():
+    assert "144" in compile(r"""
+class (Foo:
+
+    def (doit:
+        printf("%d\n", 55 + 89)
+        return 1
+    )
+)
+
+    
+def (huh, x:  #   : Foo :
+    x.doit()
+)
+
+def (main:
+
+    f = Foo()
+    huh(f)
+    
+    o = f #: object
+    huh(o)
+    
+    l = [ f, o ]
+)
+    """)
+
+
+def test_class_def_in_func():
+    assert "144" in compile(r"""
+def (main:
+
+    class (Foo:
+
+        def (doit:
+            printf("%d\n", 55 + 89)
+        )
+
+    )
+
+    Foo().doit()
+)
+    """)
+
 
 def test_add_stuff():
     output = compile(r"""
@@ -52,6 +96,9 @@ def (main:
     
     # add(add (y, f),
     # add (a, b))
+    n = 1
+    k = 2
+    printf("%d\n", add(n,k))
 )
     """)
 
@@ -119,7 +166,7 @@ def (main:
 
 
 def test_lottastuff_lambdas_lists():
-    compile("""
+    output = compile("""
 
 def (stuff, a:
     return: a[0]
@@ -192,7 +239,17 @@ def (main:
     return: 0
 )
 
-        """)
+    """)
+
+    assert output.strip().endswith("""
+xxanother2 7
+xxanother 1
+x 14 y 15
+yo:
+            1 29
+ohsnap
+2ohsnap2 2 6 2
+    """.strip())
 
 
 def test_lambdas():
@@ -231,6 +288,8 @@ def (main:
     """)
 
 def test_ifscopes_methodcalls_classes_lottastuff():
+    # pytest doesn't like this and it's not the uninitialized access:
+
     compile("""
 
 def (foo:
@@ -347,10 +406,8 @@ def (map, values, fun:
     """)
 
 
-# my pytest is messed up or pytest is trying to interpret the strings as python...
-
 # https://stackoverflow.com/questions/28643534/is-there-a-way-in-python-to-execute-all-functions-in-a-file-without-explicitly-c/28644772#28644772
-def some_magic(mod):
+def _some_magic(mod):
     import inspect
     all_functions = inspect.getmembers(mod, inspect.isfunction)
     for key, value in all_functions:
@@ -359,4 +416,6 @@ def some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    # test_class_def_in_func()
+    test_class_def_escapes()

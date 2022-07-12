@@ -3,8 +3,8 @@ from typing import Union, Any
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
-    find_all, find_defs, is_return, is_void_return
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess
+    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral
 
 
 import io
@@ -190,6 +190,7 @@ public:
         return {};
     }    
     
+    ___PLACE_TO_PUT_JUNK
     
 };
 
@@ -230,6 +231,9 @@ auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
 # Uses code and ideas from https://github.com/lukasmartinelli/py14
 
 # https://brevzin.github.io/c++/2019/12/02/named-arguments/
+
+
+method_declarations = []
 
 
 def codegen_if(ifcall : Call, indent):
@@ -312,6 +316,12 @@ def codegen_class(node : Call, indent):
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
             cpp += codegen_def(b, indent + 1)
+            new = RebuiltCall(b.func, b.args)
+            new.parent = b.parent
+            new = build_parents(new)
+            assert isinstance(new.args[-1], Block)
+            new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
+            method_declarations.append(codegen_def(new, indent))
 
     cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const {{\n"
     # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
@@ -497,7 +507,10 @@ def _codegen_def_dynamic(defnode: Call):
 def codegen(expr: Node):
     assert isinstance(expr, Module)
     s = codegen_node(expr)
-    return cpp_preamble + s
+    s = cpp_preamble + s
+    # s = s.replace("___PLACE_TO_PUT_JUNK", "\n".join(method_declarations))
+    s = s.replace("___PLACE_TO_PUT_JUNK", "")
+    return s
 
 
 def decltype_str(node):
@@ -654,8 +667,22 @@ def vector_decltype_str(node):
 def codegen_type(type_node):
     if isinstance(type_node, Identifier):
         name = type_node.name
-        if name == "object":
-            return "std::shared_ptr<object>"
+
+        # assert isinstance(type_node.parent, ColonBinOp)
+        # is_list = isinstance(assign := type_node.parent.parent, Assign) and isinstance(assign.rhs, ListLiteral) or isinstance(assign, ListLiteral)
+
+
+
+        # if name == "object":
+        #     return "std::shared_ptr<object>"
+        if name in ["int", "float", "double", "char", "bool"]:
+            s = name
+        else:
+            s = f"std::shared_ptr<{name}>"
+        return s
+
+        # if is_list:
+        #     s = f"std::vector<{s}>"
     return codegen_node(type_node)
 
 

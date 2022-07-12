@@ -39,9 +39,11 @@ def compile(s, run=True):
         import platform
         if "Darwin" in platform.system():
             # need to upgrade
-            rc = os.system("clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'")
+            command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
         else:
-            rc = os.system("clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'")
+            command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
+        print(command)
+        rc = os.system(command)
         assert rc == 0
         import subprocess
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
@@ -53,9 +55,6 @@ if __name__ == "__main__":
 
     # x + y = x.add(y)? or rather x.oper=(y)
 
-    compile("""
-    
-    """)
 
     0 and compile("""
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):

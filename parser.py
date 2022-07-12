@@ -13,10 +13,24 @@ from preprocessor import preprocess
 class Node:
 
     @property
-    def symbol_table(self):
-        if not hasattr(self, "_symbol_table"):
-            self._symbol_table = []
-        return self._symbol_table
+    def name(self):
+        if not hasattr(self, "_name"):
+            self._name = None
+        return self._name
+
+    @name.setter
+    def name(self, n):
+        self._name = n
+
+    @property
+    def parent(self):
+        if not hasattr(self, "_parent"):
+            self._parent = None
+        return self._parent
+
+    @parent.setter
+    def parent(self, n):
+        self._parent = n
 
     @property
     def declared_type(self):
@@ -161,6 +175,19 @@ class StringLiteral(Node):
         return '"' + escaped + '"'
 
 
+class RebuiltStringLiteral(StringLiteral):
+    def __init__(self, s):
+        self.func = s
+        self.name = None
+        self.args = []
+
+    def __repr__(self):
+        # escaped = self.func.translate(str.maketrans({"\n": r"\n" }))
+        escaped = self.func.replace("\n", r"\n")
+
+        return '"' + escaped + '"'
+
+
 class IntegerLiteral(Node):
     def __init__(self, token):
         self.func = int(token[0])
@@ -248,23 +275,21 @@ def _create():
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* /")
     plusop = pp.oneOf("+ -")
-    factop = pp.Literal("!")
     colon = pp.Literal(":")
     dot = pp.Literal(".")
 
 
-    compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
-    compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
-    comparisons = compar_atoms[0]
-    for c in compar_atoms:
+    _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
+    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
+    comparisons = _compar_atoms.pop()
+    for c in _compar_atoms:
         comparisons |= c
 
     infix_expr <<= pp.infix_notation(
         expr,
         [
             (dot, 2, pp.opAssoc.LEFT, AttributeAccess),
-            # ("!", 1, pp.opAssoc.LEFT, UnOp),
-            ("^", 2, pp.opAssoc.RIGHT, BinOp),
+            (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, BinOp),
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
