@@ -1,6 +1,61 @@
 from compiler import compile
 
 
+
+def test_add_stuff():
+    output = compile(r"""
+
+class (Foo: #Bar :
+    # x = 1
+    # y = 2
+
+    # def (init:
+    #     printf("init\n")
+    # )
+
+    # def (destruct:
+    #     printf("destruct\n")
+    # )
+
+    def (foo:
+        printf("in foo method %p\n", this)
+        return this
+    )
+
+
+)
+
+def (calls_foo, x:
+    x.foo()
+    return x
+)
+
+def (main:
+    # printf("hi")
+    # x = 1
+    # printf("%d", x)
+    Foo().foo()
+    y = Foo()
+    f = y
+    f.foo()
+    f.x = 55
+    f.foo()
+    calls_foo(y).foo().foo()
+    
+    # a 
+    
+    a = f : object
+    b = y : object
+    
+    add (y, f)
+    add (a, b)
+    
+    # add(add (y, f),
+    # add (a, b))
+)
+    """)
+
+
 def test_correct_shared_ptr():
     output = compile(r"""
 

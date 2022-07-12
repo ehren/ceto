@@ -175,7 +175,8 @@ std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is alr
 template<typename T>
 T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
 
-struct object : public std::enable_shared_from_this<object> {
+class object : public std::enable_shared_from_this<object> {
+public:
     virtual ~object() {
     };
     
@@ -183,7 +184,45 @@ struct object : public std::enable_shared_from_this<object> {
     std::shared_ptr<Derived> shared_from_base() {
         return std::static_pointer_cast<Derived>(shared_from_this());
     }
+    
+    virtual std::shared_ptr<object> operator+(const object& other) const {
+        printf("not implemented\\n");
+        return {};
+    }    
+    
+    
 };
+
+class Integer : public object {
+private:
+    long long integer;
+public:
+    Integer() : integer(0) {}
+    
+    Integer(long long i) : integer(i) {}
+    
+    std::shared_ptr<Integer> operator+(const Integer & other) const {
+        return std::make_shared<Integer>(this->integer + other.integer);
+    }    
+
+};
+
+
+template<typename T>
+T add(T a, T b) {
+    return a + b;
+}
+
+template<typename T>
+//std::shared_ptr<T> add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
+auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
+//std::shared_ptr<object> add(std::shared_ptr<object> a, std::shared_ptr<object> b) {
+    return *a + *b;
+    // return std::static_pointer_cast<*a + *b;
+    //return (*a).T::operator+(*b);
+}
+
+
 
 """
 
@@ -263,7 +302,10 @@ def codegen_class(node : Call, indent):
     block = node.args[-1]
     assert isinstance(block, Block)
 
-    cpp = "struct " + str(name) + " : public object {\n\n"
+    indt = "    "*indent
+
+    cpp = "class " + str(name) + " : public object {\n\n"
+    cpp += indt + "public:"
 
     cpp += "int x;\n\n"
 
@@ -271,9 +313,35 @@ def codegen_class(node : Call, indent):
         if isinstance(b, Call) and b.func.name == "def":
             cpp += codegen_def(b, indent + 1)
 
+    cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const {{\n"
+    # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+    cpp += indt + f'    printf("adding {name} and object");\n'
+    # cpp += indt + "    return *this + other;\n"
+    cpp += indt + f"    auto o = dynamic_cast<{name} const*>(&other);"
+    cpp += indt + f'    if (!o) {{ printf("damn"); return {{}}; }}'
+    cpp += indt + f'    return *this + *o;\n';
+
+    # cpp += indt + "    return other.operator+(*this);\n"
+    cpp += indt + "    \n"
+
+    # cpp += indt + "return {};\n"
+    cpp += indt + "}\n\n"
+
+    cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
+    # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+    # cpp += indt + "    other + *this;\n"
+    cpp += indt + f'    printf("adding {name} and {name}");\n'
+    cpp += indt + "return {};\n"
+    cpp += indt + "}\n\n"
+    #
+    # cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
+    # # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+    # cpp += indt + f'    printf("adding two {name}");\n'
+    # cpp += indt + "}"
+
     cpp += "virtual ~" + str(name) + "() { printf(\"dead %p\\n\", this); }; "
 
-    cpp += "    "*indent + "};\n\n"
+    cpp += indt + "};\n\n"
 
     return cpp
 
@@ -326,9 +394,9 @@ def codegen_def(defnode: Call, indent):
     for i, arg in enumerate(args):
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
-                params.append(str(arg.declared_type) + " " + str(arg))
+                params.append(codegen_type(arg.declared_type) + " " + str(arg))
             else:
-                params.append(str(arg.declared_type) + " " + codegen_node(arg))
+                params.append(codegen_type(arg.declared_type) + " " + codegen_node(arg))
         elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
             raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
@@ -366,7 +434,7 @@ def codegen_def(defnode: Call, indent):
         template = "template <{0}>\n".format(", ".join(typenames))
 
     if name_node.declared_type is not None:
-        return_type = str(name_node.declared_type)  # brittle
+        return_type = codegen_type(name_node.declared_type)
     elif name == "main":
         return_type = "int"
     else:
@@ -516,10 +584,10 @@ def _decltype_str(node):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return "std::declval<{}>()".format(def_node.declared_type)
+            return "std::declval<{}>()".format(codegen_type(def_node.declared_type))
         if isinstance(def_context, Assign) and def_context.declared_type:
             # return str(def_context.declared_type)
-            return "std::declval<{}>()".format(def_context.declared_type)
+            return "std::declval<{}>()".format(codegen_type(def_context.declared_type))
 
 
     last_ident, last_context = defs[-1]
@@ -581,6 +649,14 @@ def vector_decltype_str(node):
         else:
             raise CodeGenError("Unused empty list in template codegen", node)
     return rhs_str
+
+
+def codegen_type(type_node):
+    if isinstance(type_node, Identifier):
+        name = type_node.name
+        if name == "object":
+            return "std::shared_ptr<object>"
+    return codegen_node(type_node)
 
 
 def codegen_node(node: Union[Node, Any], indent=0):
@@ -668,14 +744,21 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 rhs_str = codegen_node(node.rhs)
 
+            declared_type = False
+
             if isinstance(node.lhs, Identifier):
                 lhs_str = node.lhs.name
+                types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
+                if any(types):
+                    assert len(set(types)) == 1
+                    lhs_str = codegen_type(types[0]) + lhs_str
+                    declared_type = True
             else:
                 lhs_str = codegen_node(node.lhs)
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
 
-            if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+            if not declared_type and not hasattr(node, "already_declared") and find_def(node.lhs) is None:
                 assign_str = "auto " + assign_str
 
             cpp.write(assign_str)

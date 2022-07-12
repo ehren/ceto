@@ -205,9 +205,11 @@ class Module(Block):
         self.func = "Module"
 
 
-def create():
+pp.ParserElement.enableLeftRecursion()
 
-    pp.ParserElement.enableLeftRecursion()
+
+def _create():
+
 
     cvtReal = lambda toks: float(toks[0])
 
@@ -300,26 +302,24 @@ def create():
         lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
     )
 
-    block_start = bel
     block_line_end = pp.Suppress(";")
     # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
-    block = block_start + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
+    block = bel + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
     array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
-    Optional = pp.Optional
-
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + Optional(pp.delimitedList(Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(Optional(infix_expr)))) + rparen).set_parse_action(Call)
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))) + rparen).set_parse_action(Call)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
     return module
 
-grammar = create()
+grammar = _create()
 
 
 def parse(s):
     print(s)
     # transformed = io.StringIO(s)
+    pp.ParserElement.set_default_whitespace_chars(" \t\n")
 
     filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()

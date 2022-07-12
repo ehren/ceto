@@ -51,6 +51,12 @@ def compile(s, run=True):
 
 if __name__ == "__main__":
 
+    # x + y = x.add(y)? or rather x.oper=(y)
+
+    compile("""
+    
+    """)
+
     0 and compile("""
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
 def (default_args, x=[1], y=2: #, z = lambda (1):
