@@ -271,6 +271,8 @@ def codegen_class(node : Call, indent):
         if isinstance(b, Call) and b.func.name == "def":
             cpp += codegen_def(b, indent + 1)
 
+    cpp += "virtual ~" + str(name) + "() { printf(\"dead %ld\", this); }; "
+
     cpp += "    "*indent + "};\n\n"
 
     return cpp
@@ -623,8 +625,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     func_str = codegen_node(node.func)
 
                 func_str += "(" + ", ".join(map(codegen_node, node.args)) + ")"
-                if is_class:
-                    func_str = "(*get_ptr(" + func_str + "))"
+                # if is_class:
+                #     func_str = "(*get_ptr(" + func_str + "))"
 
                 cpp.write(func_str)
         else:
@@ -638,8 +640,9 @@ def codegen_node(node: Union[Node, Any], indent=0):
             cpp.write("(std::shared_ptr<object> ())")
         elif node.name == "this":
             cpp.write("this")
-        elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, AttributeAccess) and node.parent.rhs is node):
-            cpp.write("(*get_ptr(" + node.name + "))")
+        #elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, (AttributeAccess) and node.parent.rhs is node):
+        # elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess)) and node.parent.rhs is node):
+        #     cpp.write("(*get_ptr(" + node.name + "))")
         else:
             cpp.write(str(node))
 
@@ -701,7 +704,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             if binop_str is None:
 
-                if isinstance(node, AttributeAccess) and node.lhs.name == "this":
+                if isinstance(node, AttributeAccess) :#and node.lhs.name == "this":
                     # don't wrap just 'this' but 'this.foo' gets wrapped
                     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)

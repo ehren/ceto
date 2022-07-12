@@ -70,8 +70,8 @@ class (Foo: #Bar :
         
         bar()
         this.bar()
-        printf("bar address %ld\n", this.x)
-        printf("bar address %ld\n", x)
+        printf("bar attribute access %ld\n", this.x)
+        printf("bar attribute access %ld\n", x)
         # shared_from_base()
     )
     
@@ -81,6 +81,7 @@ class (Foo: #Bar :
 
 def (calls_foo, x:
     x.foo()
+    return x
 )
 
     
@@ -92,7 +93,9 @@ def (main:
     y = Foo()
     f = y
     f.foo()
-    calls_foo(f)
+    f.x = 55
+    f.foo()
+    calls_foo(y).foo()
 )
     
     """)
