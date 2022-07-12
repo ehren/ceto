@@ -61,18 +61,38 @@ class (Foo: #Bar :
     #     printf("destruct\n")
     # )
     
+    def (bar:
+        printf("in bar\n")
+    )
+    
     def (foo:
-        printf("in foo method\n")
+        printf("in foo method %d\n", this)
+        
+        bar()
+        this.bar()
+        printf("bar address %ld\n", this.x)
+        printf("bar address %ld\n", x)
         # shared_from_base()
     )
+    
+    
 )
     
+
+def (calls_foo, x:
+    x.foo()
+)
+
     
 def (main:
     # printf("hi")
     # x = 1
     # printf("%d", x)
     Foo().foo()
+    y = Foo()
+    f = y
+    f.foo()
+    calls_foo(f)
 )
     
     """)
