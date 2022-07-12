@@ -21,13 +21,14 @@ class (Foo: #Bar :
     )
 
     def (foo:
-        printf("in foo method %d\n", this)
+        printf("in foo method %p\n", this)
 
         bar()
         this.bar()
-        printf("bar attribute access %ld\n", this.x)
-        printf("bar attribute access %ld\n", x)
+        printf("bar attribute access %d\n", this.x)
+        printf("bar attribute access %d\n", x)
         # shared_from_base()
+        return this
     )
 
 
@@ -50,13 +51,16 @@ def (main:
     f.foo()
     f.x = 55
     f.foo()
-    calls_foo(y).foo()
+    calls_foo(y).foo().foo()
 )
     """)
 
     import re
     deadlines = list(re.findall("dead.*", output))
     assert len(deadlines) == 2
+
+    attrib_accesses = list(re.findall("bar attribute access.*", output))
+    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*6
 
 
 def test_lottastuff_lambdas_lists():
