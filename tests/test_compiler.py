@@ -1,6 +1,64 @@
 from compiler import compile
 
 
+def test_correct_shared_ptr():
+    output = compile(r"""
+
+class (Foo: #Bar :
+    # x = 1
+    # y = 2
+
+    # def (init:
+    #     printf("init\n")
+    # )
+
+    # def (destruct:
+    #     printf("destruct\n")
+    # )
+
+    def (bar:
+        printf("in bar\n")
+    )
+
+    def (foo:
+        printf("in foo method %d\n", this)
+
+        bar()
+        this.bar()
+        printf("bar attribute access %ld\n", this.x)
+        printf("bar attribute access %ld\n", x)
+        # shared_from_base()
+    )
+
+
+)
+
+
+def (calls_foo, x:
+    x.foo()
+    return x
+)
+
+
+def (main:
+    # printf("hi")
+    # x = 1
+    # printf("%d", x)
+    Foo().foo()
+    y = Foo()
+    f = y
+    f.foo()
+    f.x = 55
+    f.foo()
+    calls_foo(y).foo()
+)
+    """)
+
+    import re
+    deadlines = list(re.findall("dead.*", output))
+    assert len(deadlines) == 2
+
+
 def test_lottastuff_lambdas_lists():
     compile("""
 

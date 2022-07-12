@@ -271,7 +271,7 @@ def codegen_class(node : Call, indent):
         if isinstance(b, Call) and b.func.name == "def":
             cpp += codegen_def(b, indent + 1)
 
-    cpp += "virtual ~" + str(name) + "() { printf(\"dead %ld\", this); }; "
+    cpp += "virtual ~" + str(name) + "() { printf(\"dead %ld\\n\", this); }; "
 
     cpp += "    "*indent + "};\n\n"
 

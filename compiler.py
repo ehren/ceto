@@ -43,62 +43,13 @@ def compile(s, run=True):
         else:
             rc = os.system("clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'")
         assert rc == 0
-        os.system("./a.out")
+        import subprocess
+        output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
+        print(output)
+        return output
 
 
 if __name__ == "__main__":
-    compile(r"""
-    
-class (Foo: #Bar :
-    # x = 1
-    # y = 2
-    
-    # def (init:
-    #     printf("init\n")
-    # )
-    
-    # def (destruct:
-    #     printf("destruct\n")
-    # )
-    
-    def (bar:
-        printf("in bar\n")
-    )
-    
-    def (foo:
-        printf("in foo method %d\n", this)
-        
-        bar()
-        this.bar()
-        printf("bar attribute access %ld\n", this.x)
-        printf("bar attribute access %ld\n", x)
-        # shared_from_base()
-    )
-    
-    
-)
-    
-
-def (calls_foo, x:
-    x.foo()
-    return x
-)
-
-    
-def (main:
-    # printf("hi")
-    # x = 1
-    # printf("%d", x)
-    Foo().foo()
-    y = Foo()
-    f = y
-    f.foo()
-    f.x = 55
-    f.foo()
-    calls_foo(y).foo()
-)
-    
-    """)
 
     0 and compile("""
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
