@@ -416,6 +416,6 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
+    _some_magic(sys.modules[__name__])
     # test_class_def_in_func()
-    test_class_def_escapes()
+    # test_class_def_escapes()

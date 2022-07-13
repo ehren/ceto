@@ -703,8 +703,8 @@ def codegen_type(expr_node, type_node):
 
 
 
-        # if name == "object":
-        #     return "std::shared_ptr<object>"
+        if name == "object":
+            return "std::shared_ptr<object>"
         # if name in ["int", "float", "double", "char", "bool"]:
         #     s = name
         # else:
@@ -813,7 +813,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
                 if any(types):
                     assert len(set(types)) == 1
-                    lhs_str = codegen_type(node.lhs, types[0]) + lhs_str
+                    lhs_str = codegen_type(node.lhs, types[0]) + " " + lhs_str
                     declared_type = True
             else:
                 lhs_str = codegen_node(node.lhs)
