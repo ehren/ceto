@@ -404,9 +404,9 @@ def codegen_def(defnode: Call, indent):
     for i, arg in enumerate(args):
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
-                params.append(codegen_type(arg.declared_type) + " " + str(arg))
+                params.append(codegen_type(arg, arg.declared_type) + " " + str(arg))
             else:
-                params.append(codegen_type(arg.declared_type) + " " + codegen_node(arg))
+                params.append(codegen_type(arg, arg.declared_type) + " " + codegen_node(arg))
         elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
             raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
@@ -444,7 +444,7 @@ def codegen_def(defnode: Call, indent):
         template = "template <{0}>\n".format(", ".join(typenames))
 
     if name_node.declared_type is not None:
-        return_type = codegen_type(name_node.declared_type)
+        return_type = codegen_type(name_node, name_node.declared_type)
     elif name == "main":
         return_type = "int"
     else:
@@ -513,6 +513,12 @@ def codegen(expr: Node):
     return s
 
 
+# should probably adjust the callers of decltype_str instead of this hackery
+class _NoDeclTypeNeeded(Exception):
+    def __init__(self, result):
+        self.result = result
+
+
 def decltype_str(node):
     if isinstance(node, ArrayAccess):
         if not isinstance(node.func, Identifier):
@@ -526,6 +532,10 @@ def decltype_str(node):
             # print("array def", d)
 
         return "decltype({})::value_type".format(str(node.func))
+
+    # elif isinstance(node, Call) and isinstance(node.func, Identifier) and is_defined_by_class(node.func):
+    #     return f"std::declval<std::shared_ptr<{node.func.name}>> ()"
+
     elif isinstance(node, ListLiteral):
         # never succeeded
         # if not node.args:
@@ -558,7 +568,21 @@ def decltype_str(node):
     #     return "int"
 
     else:
-        return "decltype({})".format(_decltype_str(node))
+        try:
+            return "decltype({})".format(_decltype_str(node))
+        except _NoDeclTypeNeeded as n:
+            return n.result
+
+
+def is_defined_by_class(node):
+    if not isinstance(node, Identifier):
+        return False
+    for defnode, defcontext in find_defs(node):
+        if isinstance(defcontext, Call) and defcontext.func.name == "class":
+            class_name = defcontext.args[0]
+            assert isinstance(class_name, Identifier)
+            return True
+    return False
 
 
 def _decltype_str(node):
@@ -574,6 +598,12 @@ def _decltype_str(node):
         # if call.func.name == "lambda":
         #     return codegen_node(call)
         #return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
+
+        if is_defined_by_class(node.func):
+
+            result = f"std::shared_ptr<{node.func.name}>"
+            raise _NoDeclTypeNeeded(result)
+
         return call.func.name + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
@@ -597,10 +627,10 @@ def _decltype_str(node):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return "std::declval<{}>()".format(codegen_type(def_node.declared_type))
+            return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type))
         if isinstance(def_context, Assign) and def_context.declared_type:
             # return str(def_context.declared_type)
-            return "std::declval<{}>()".format(codegen_type(def_context.declared_type))
+            return "std::declval<{}>()".format(codegen_type(def_context, def_context.declared_type))
 
 
     last_ident, last_context = defs[-1]
@@ -664,7 +694,7 @@ def vector_decltype_str(node):
     return rhs_str
 
 
-def codegen_type(type_node):
+def codegen_type(expr_node, type_node):
     if isinstance(type_node, Identifier):
         name = type_node.name
 
@@ -675,11 +705,16 @@ def codegen_type(type_node):
 
         # if name == "object":
         #     return "std::shared_ptr<object>"
-        if name in ["int", "float", "double", "char", "bool"]:
-            s = name
+        # if name in ["int", "float", "double", "char", "bool"]:
+        #     s = name
+        # else:
+        if is_defined_by_class(expr_node):
+            assert 0 # are we using this?
+            name = f"std::shared_ptr<{name}>"
         else:
-            s = f"std::shared_ptr<{name}>"
-        return s
+            return name
+
+        # return s
 
         # if is_list:
         #     s = f"std::vector<{s}>"
@@ -778,7 +813,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
                 if any(types):
                     assert len(set(types)) == 1
-                    lhs_str = codegen_type(types[0]) + lhs_str
+                    lhs_str = codegen_type(node.lhs, types[0]) + lhs_str
                     declared_type = True
             else:
                 lhs_str = codegen_node(node.lhs)
