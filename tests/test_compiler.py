@@ -25,8 +25,8 @@ def (main:
         """)
 
 
-def test_vector_explicit_type():
-    assert "in foo method" in compile(r"""
+def test_vector_explicit_type_plus_mixing_char_star_and_string():
+    c = compile(r"""
 class (Blah:
     def (foo:
         printf("in foo method\n")
@@ -38,8 +38,12 @@ def (main:
     b = Blah()
     l = [a, b] : Blah
     l[1].foo()
+    
+    s = ['a', 'b', 'c'] : string
+    printf('is the last element %s\n', s[2].c_str())
 )
     """)
+    assert "in foo method" in c and "c is the last element" in c
 
 def test_class_def_escapes():
     assert "144" in compile(r"""
@@ -456,6 +460,7 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    #_some_magic(sys.modules[__name__])
     # test_class_def_in_func()
     # test_class_def_escapes()
+    test_vector_explicit_type()

@@ -162,6 +162,7 @@ cpp_preamble = """
 #include <cstdio>
 #include <vector>
 #include <iostream>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -221,6 +222,14 @@ auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
     return *a + *b;
     // return std::static_pointer_cast<*a + *b;
     //return (*a).T::operator+(*b);
+}
+
+
+
+template<typename T, typename ...TAIL>
+void print(const T &t, TAIL... tail) {
+    std::cout << t << ' ';
+    print(tail...);
 }
 
 
@@ -320,8 +329,9 @@ def codegen_class(node : Call, indent):
             new.parent = b.parent
             new = build_parents(new)
             assert isinstance(new.args[-1], Block)
-            new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
-            method_declarations.append(codegen_def(new, indent))
+            # needs to build parents: (anyway forget this)
+            # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
+            # method_declarations.append(codegen_def(new, indent))
 
     cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const {{\n"
     # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
@@ -600,8 +610,11 @@ def is_type_defined_by_class(typenode, searchnode):
 
 def _decltype_str(node):
 
-    if isinstance(node, (IntegerLiteral, StringLiteral)):
+    if isinstance(node, IntegerLiteral):
         return str(node)
+    elif isinstance(node, StringLiteral):
+        # return "std::declval(" + str(node) + "sv" + ")"
+        return "std::string {" + str(node) + "}"
 
     if isinstance(node, BinOp):
         binop = node
@@ -714,7 +727,8 @@ def codegen_type(expr_node, type_node):
         # assert isinstance(type_node.parent, ColonBinOp)
         # is_list = isinstance(assign := type_node.parent.parent, Assign) and isinstance(assign.rhs, ListLiteral) or isinstance(assign, ListLiteral)
 
-
+        if name == "string":
+            return "std::string"
 
         if name == "object":
             return "std::shared_ptr<object>"
@@ -889,7 +903,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
     elif isinstance(node, StringLiteral):
-        return str(node)
+        if isinstance(node.parent, Call) and node.parent.func.name == "printf":
+            # haha (bad idea: look at the uses of vars defined by string literals, they're const char* if they flow to C lib)
+            return str(node)  # const char * !
+        return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
 
