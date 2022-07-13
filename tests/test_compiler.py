@@ -1,5 +1,45 @@
 from compiler import compile
 
+def test_interfaces():
+    compile(r"""
+class (Blah:
+    def (foo:
+        printf("Blah foo\n")
+    ) : A
+)
+
+class (Blah2:
+    def (foo:
+        printf("Blah foo\n")
+    ) : A
+)
+
+def (main:
+    a = Blah()
+    # b = Blah2()
+    b = Blah()
+    # l = [a, b] : Blah
+    l = [a, b] : Blah
+    l[1].foo()
+)
+        """)
+
+
+def test_vector_explicit_type():
+    assert "in foo method" in compile(r"""
+class (Blah:
+    def (foo:
+        printf("in foo method\n")
+    )
+)
+
+def (main:
+    a = Blah()
+    b = Blah()
+    l = [a, b] : Blah
+    l[1].foo()
+)
+    """)
 
 def test_class_def_escapes():
     assert "144" in compile(r"""

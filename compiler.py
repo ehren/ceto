@@ -29,7 +29,7 @@ def compile(s, run=True):
     print("semantic", expr)
     code = codegen(expr)
 
-    print("code:\n", code)
+    # print("code:\n", code)
 
     if run:
         filename = safe_unique_filename("generatedcode", ".cpp", basepath=os.path.join(os.path.abspath(os.path.dirname(__file__)), "build"))

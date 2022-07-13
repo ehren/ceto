@@ -3,7 +3,7 @@ from typing import Union, Any
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
-    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents
+    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral
 
 
@@ -507,8 +507,9 @@ def _codegen_def_dynamic(defnode: Call):
 def codegen(expr: Node):
     assert isinstance(expr, Module)
     s = codegen_node(expr)
-    s = cpp_preamble + s
     # s = s.replace("___PLACE_TO_PUT_JUNK", "\n".join(method_declarations))
+    print(s)
+    s = cpp_preamble + s
     s = s.replace("___PLACE_TO_PUT_JUNK", "")
     return s
 
@@ -578,6 +579,18 @@ def is_defined_by_class(node):
     if not isinstance(node, Identifier):
         return False
     for defnode, defcontext in find_defs(node):
+        if isinstance(defcontext, Call) and defcontext.func.name == "class":
+            class_name = defcontext.args[0]
+            assert isinstance(class_name, Identifier)
+            return True
+    return False
+
+
+def is_type_defined_by_class(typenode, searchnode):
+    # if not isinstance(node, Identifier):
+    #     return False
+    if res := find_def_starting_from(searchnode, typenode):
+        defnode, defcontext = res
         if isinstance(defcontext, Call) and defcontext.func.name == "class":
             class_name = defcontext.args[0]
             assert isinstance(class_name, Identifier)
@@ -708,7 +721,12 @@ def codegen_type(expr_node, type_node):
         # if name in ["int", "float", "double", "char", "bool"]:
         #     s = name
         # else:
-        if is_defined_by_class(expr_node):
+
+        if is_type_defined_by_class(type_node, expr_node):
+            name = f"std::shared_ptr<{name}>"
+
+
+        if 0 and is_defined_by_class(expr_node):
             assert 0 # are we using this?
             name = f"std::shared_ptr<{name}>"
         else:
@@ -745,20 +763,13 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 if isinstance(node.func, Identifier):
 
-                    func_str = None
-                    is_class = False
-
-                    for defnode, defcontext in find_defs(node.func):
-                        if isinstance(defcontext, Call) and defcontext.func.name == "class":
-                            class_name = defcontext.args[0]
-                            assert isinstance(class_name, Identifier)
-                            func_str = "std::make_shared<" + class_name.name + ">"
-                            is_class = True
-                            break
-
-                    if func_str is None:
+                    if is_defined_by_class(node.func):
+                        func_str = "std::make_shared<" + node.func.name + ">"
+                    else:
                         # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
-                        func_str = node.func.name
+                        # # this is not longer the case ^
+                        # func_str = node.func.name
+                        func_str = codegen_node(node.func)
                 else:
                     func_str = codegen_node(node.func)
 
@@ -808,12 +819,15 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             declared_type = False
 
-            if isinstance(node.lhs, Identifier):
+            if isinstance(node.lhs, Identifier) and not isinstance(node.rhs, ListLiteral):
                 lhs_str = node.lhs.name
                 types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
                 if any(types):
                     assert len(set(types)) == 1
-                    lhs_str = codegen_type(node.lhs, types[0]) + " " + lhs_str
+                    lhs_type_str = codegen_type(node.lhs, types[0])
+                    # if isinstance(node.rhs, ListLiteral):
+                    #     lhs_type_str = f"std::vector::<{lhs_str}>"
+                    lhs_str = lhs_type_str + " " + lhs_str
                     declared_type = True
             else:
                 lhs_str = codegen_node(node.lhs)
@@ -858,8 +872,15 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 cpp.write(binop_str)
 
     elif isinstance(node, ListLiteral):
-        if node.args:
-            elements = [codegen_node(e) for e in node.args]
+
+        type = node.declared_type
+        if type is None and isinstance(node.parent, Assign):
+            type = node.parent.rhs.declared_type or node.parent.lhs.declared_type
+        elements = [codegen_node(e) for e in node.args]
+
+        if type is not None:
+            return "std::vector<{}>{{{}}}".format(codegen_type(node, type), ", ".join(elements))
+        elif elements:
             return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
         else:
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
