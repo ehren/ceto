@@ -1,9 +1,34 @@
 from compiler import compile
 
 
+def test_clearing_pointers_assignment():
+    c = compile("""
+    
+class (Foo:
+    def (foo:
+        printf("foo\n")
+        return 5
+    )
+)
+
+def (main:
+    f = Foo()
+    f.foo()
+    f2 = f
+    printf("second alive\n")
+    f2.foo()
+    f2 = nullptr
+    f = None
+    f = nullptr
+    f.foo()  # i guess this makes sense (overloaded assignment op ftw)
+    f2.foo()
+)
+    """)
+
+
 def test_stress_parser():
     # at least clang hangs on this before we do
-    limit = 20
+    limit = 5
     c = compile(r"""
 
 def (list_size, lst:
@@ -549,8 +574,9 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_stress_parser()
+    _some_magic(sys.modules[__name__])
+    # test_add_stuff()
+    # test_stress_parser()
     # test_correct_nested_left_associative_bin_op()
     # test_ifscopes_methodcalls_classes_lottastuff()
     # test_cstdlib()

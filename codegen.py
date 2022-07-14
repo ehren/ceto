@@ -206,7 +206,7 @@ public:
 };
 
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<object>>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 get_ptr(std::shared_ptr<T> obj) { return obj; }
 
 
@@ -355,7 +355,7 @@ def codegen_class(node : Call, indent):
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
-        interface_def_str += "struct " + str(interface_type) + "{"
+        interface_def_str += "struct " + str(interface_type) + " : public object {"
         for method in defined_interfaces[interface_type]:
             print("method",method)
             interface_def_str += indt + interface_method_declaration_str(method)
@@ -896,7 +896,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
         cpp.write(str(node))
     elif isinstance(node, Identifier):
         if node.name == "None":
-            cpp.write("(std::shared_ptr<object> ())")
+            # cpp.write("(std::shared_ptr<object> ())")
+            cpp.write("nullptr")
         elif node.name == "this":
             cpp.write("this")
         #elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, (AttributeAccess) and node.parent.rhs is node):

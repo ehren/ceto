@@ -140,7 +140,9 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
-class AttributeAccess(_LeftAssociativeBinOp):
+# class AttributeAccess(_LeftAssociativeBinOp):
+class AttributeAccess(BinOp):
+
     def __repr__(self):
         return "{}.{}".format(self.lhs, self.rhs)
 
