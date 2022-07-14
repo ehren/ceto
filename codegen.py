@@ -8,6 +8,7 @@ from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, Attrib
 
 
 import io
+from collections import defaultdict
 
 
 class CodeGenError(Exception):
@@ -243,6 +244,7 @@ void print(const T &t, TAIL... tail) {
 
 
 method_declarations = []
+interfaces = defaultdict(list)
 
 
 def codegen_if(ifcall : Call, indent):
@@ -317,23 +319,44 @@ def codegen_class(node : Call, indent):
 
     indt = "    "*indent
 
-    cpp = "class " + str(name) + " : public object {\n\n"
-    cpp += indt + "public:"
+    cpp = indt
 
     cpp += "int x;\n\n"
 
+    defined_interfaces = defaultdict(list)
+    local_interfaces = set()
+
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
+            if b.declared_type is not None:
+                assert isinstance(b.declared_type, Identifier)
+
+                if b.declared_type.name in defined_interfaces or not any(t == b.declared_type.name for t in interfaces):
+                    defined_interfaces[b.declared_type.name].append(b)
+
+                interfaces[b.declared_type.name].append(b)
+                local_interfaces.add(b.declared_type.name)
             cpp += codegen_def(b, indent + 1)
-            new = RebuiltCall(b.func, b.args)
-            new.parent = b.parent
-            new = build_parents(new)
-            assert isinstance(new.args[-1], Block)
+
+    interface_def_str = ""
+    for interface_type in defined_interfaces:
+        interface_def_str += "struct " + str(interface_type) + "{"
+        for method in defined_interfaces[interface_type]:
+            print("method",method)
+            interface_def_str += indt + interface_method_declaration_str(method)
+        interface_def_str +=  "};\n\n"
+
+        # interface_cpp = "class "
+        #
+        # new = RebuiltCall(b.func, b.args)
+            # new.parent = b.parent
+            # new = build_parents(new)
+            # assert isinstance(new.args[-1], Block)
             # needs to build parents: (anyway forget this)
             # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
             # method_declarations.append(codegen_def(new, indent))
 
-    cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const {{\n"
+    cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const override {{\n"
     # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
     cpp += indt + f'    printf("adding {name} and object");\n'
     # cpp += indt + "    return *this + other;\n"
@@ -363,7 +386,12 @@ def codegen_class(node : Call, indent):
 
     cpp += indt + "};\n\n"
 
-    return cpp
+    class_header = "struct " + str(name) + " : public object"
+    for interface_type in local_interfaces:
+        class_header += ", " + str(interface_type)
+    class_header += " {\n\n"
+
+    return interface_def_str + class_header + cpp
 
 
 def codegen_block(block: Block, indent):
@@ -401,6 +429,32 @@ def codegen_block(block: Block, indent):
     return cpp
 
 
+def interface_method_declaration_str(defnode: Call):
+    assert defnode.func.name == "def"
+    name_node = defnode.args[0]
+    name = name_node.name
+    args = defnode.args[1:]
+    block = args.pop()
+    assert isinstance(block, Block)
+
+    params = []
+
+    assert isinstance(defnode.declared_type, Identifier)
+    if name_node.declared_type is None:
+        raise CodeGenError("must specify return type of interface method")
+    return_type = codegen_type(name_node, name_node.declared_type)
+
+    for i, arg in enumerate(args):
+        if arg.declared_type is None:
+            raise CodeGenError("parameter types must be specified for interface methods")
+        if not isinstance(arg, Identifier):
+            raise CodeGenError("Only simple args allowed for interface method (you don't want c++ virtual functions with default arguments)")
+        params.append(codegen_type(arg, arg.declared_type) + " " + str(arg))
+
+    return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
+
+
+
 def codegen_def(defnode: Call, indent):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -411,7 +465,18 @@ def codegen_def(defnode: Call, indent):
 
     params = []
     typenames = []
+
+    is_interface_method = isinstance(defnode.declared_type, Identifier)
+    if is_interface_method and name_node.declared_type is None:
+        raise CodeGenError("must specify return type of interface method")
+
     for i, arg in enumerate(args):
+        if is_interface_method:
+            if arg.declared_type is None:
+                raise CodeGenError("parameter types must be specified for interface methods")
+            if not isinstance(arg, Identifier):
+                raise CodeGenError("Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
+
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
                 params.append(codegen_type(arg, arg.declared_type) + " " + str(arg))
@@ -448,7 +513,7 @@ def codegen_def(defnode: Call, indent):
             typenames.append("typename " + t)
 
     template = "inline "
-    if name == "main":
+    if is_interface_method or name == "main":
         template = ""
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
@@ -476,6 +541,10 @@ def codegen_def(defnode: Call, indent):
 
     defnode.cpp_return_type = return_type
     funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+
+    if is_interface_method:
+        funcdef += " override" # maybe later: use final if method not 'overridable'
+
     indt = indent * "    "
 
     return indt + funcdef + " {\n" + codegen_block(block, indent + 1) + indt + "}\n\n"
@@ -736,7 +805,7 @@ def codegen_type(expr_node, type_node):
         #     s = name
         # else:
 
-        if is_type_defined_by_class(type_node, expr_node):
+        if name in interfaces or is_type_defined_by_class(type_node, expr_node):
             name = f"std::shared_ptr<{name}>"
 
 
@@ -887,13 +956,13 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
     elif isinstance(node, ListLiteral):
 
-        type = node.declared_type
-        if type is None and isinstance(node.parent, Assign):
-            type = node.parent.rhs.declared_type or node.parent.lhs.declared_type
+        list_type = node.declared_type
+        if list_type is None and isinstance(node.parent, Assign):
+            list_type = node.parent.declared_type or node.parent.rhs.declared_type or node.parent.lhs.declared_type
         elements = [codegen_node(e) for e in node.args]
 
-        if type is not None:
-            return "std::vector<{}>{{{}}}".format(codegen_type(node, type), ", ".join(elements))
+        if list_type is not None:
+            return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type), ", ".join(elements))
         elif elements:
             return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
         else:

@@ -1,28 +1,43 @@
 from compiler import compile
 
 def test_interfaces():
-    compile(r"""
-class (Blah:
-    def (foo:
-        printf("Blah foo\n")
-    ) : A
+    c = compile(r"""
+class (Blah1:
+    # (def:A) (foo, x:A :
+    #     printf("Blah1 foo\n")
+    # ):int
+    
+    # def (foo, x:A :
+    #     printf("Blah1 foo\n")
+    # ):int:A
+    
+    def (foo:int, x:A :
+        printf("Blah1 foo\n")
+    ):A
+    
+    # def (huh:A:
+        
 )
 
 class (Blah2:
-    def (foo:
-        printf("Blah foo\n")
-    ) : A
+    def (foo:int, x:A :
+        printf("Blah2 foo\n")
+        if (x == 0:
+            pass
+        )
+    ):A
 )
 
 def (main:
-    a = Blah()
-    # b = Blah2()
-    b = Blah()
-    # l = [a, b] : Blah
-    l = [a, b] : Blah
-    l[1].foo()
+    a = Blah1()
+    b = Blah2()
+    l = [a, b] : A
+    l[0].foo(l[1])
+    l[1].foo(l[0])
 )
-        """)
+    """)
+
+    assert "Blah1 foo" in c and "Blah2 foo" in c
 
 
 def test_vector_explicit_type_plus_mixing_char_star_and_string():
@@ -40,10 +55,11 @@ def (main:
     l[1].foo()
     
     s = ['a', 'b', 'c'] : string
-    printf('is the last element %s\n', s[2].c_str())
+    printf('%s is the last element. %c is the first.\n', s[2].c_str(), s[0][0])
+    # print("hello", "world")
 )
     """)
-    assert "in foo method" in c and "c is the last element" in c
+    assert "in foo method" in c and "c is the last element. a is the first." in c
 
 def test_class_def_escapes():
     assert "144" in compile(r"""
@@ -460,7 +476,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    #_some_magic(sys.modules[__name__])
+    _some_magic(sys.modules[__name__])
+    # test_interfaces()
     # test_class_def_in_func()
     # test_class_def_escapes()
-    test_vector_explicit_type()
+    #test_vector_explicit_type_plus_mixing_char_star_and_string()
