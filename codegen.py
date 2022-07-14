@@ -328,14 +328,14 @@ def codegen_class(node : Call, indent):
 
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
-            if b.declared_type is not None:
-                assert isinstance(b.declared_type, Identifier)
+            if isinstance(b.declared_type, ColonBinOp):
+                return_type, interface_type = b.declared_type.args
 
-                if b.declared_type.name in defined_interfaces or not any(t == b.declared_type.name for t in interfaces):
-                    defined_interfaces[b.declared_type.name].append(b)
+                if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in interfaces):
+                    defined_interfaces[interface_type.name].append(b)
 
-                interfaces[b.declared_type.name].append(b)
-                local_interfaces.add(b.declared_type.name)
+                interfaces[interface_type.name].append(b)
+                local_interfaces.add(interface_type.name)
             cpp += codegen_def(b, indent + 1)
 
     interface_def_str = ""
@@ -439,10 +439,13 @@ def interface_method_declaration_str(defnode: Call):
 
     params = []
 
-    assert isinstance(defnode.declared_type, Identifier)
-    if name_node.declared_type is None:
+    assert isinstance(defnode.declared_type, ColonBinOp)
+    return_type_node = defnode.declared_type.lhs
+    # interface_type_node = defnode.declared_type.rhs
+
+    if return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
-    return_type = codegen_type(name_node, name_node.declared_type)
+    return_type = codegen_type(defnode, return_type_node)
 
     for i, arg in enumerate(args):
         if arg.declared_type is None:
@@ -466,8 +469,16 @@ def codegen_def(defnode: Call, indent):
     params = []
     typenames = []
 
-    is_interface_method = isinstance(defnode.declared_type, Identifier)
-    if is_interface_method and name_node.declared_type is None:
+    is_interface_method = isinstance(defnode.declared_type, ColonBinOp)
+    if is_interface_method:
+        return_type_node = defnode.declared_type.lhs
+        interface_type_node = defnode.declared_type.rhs
+        assert isinstance(return_type_node, Identifier)
+        assert isinstance(interface_type_node, Identifier)
+    else:
+        return_type_node = defnode.declared_type
+
+    if is_interface_method and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
 
     for i, arg in enumerate(args):
@@ -518,8 +529,9 @@ def codegen_def(defnode: Call, indent):
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
 
-    if name_node.declared_type is not None:
-        return_type = codegen_type(name_node, name_node.declared_type)
+    if return_type_node is not None:
+        # return_type = codegen_type(name_node, name_node.declared_type)
+        return_type = codegen_type(defnode, return_type_node)
     elif name == "main":
         return_type = "int"
     else:
@@ -539,7 +551,7 @@ def codegen_def(defnode: Call, indent):
         if not found_return:
             return_type = 'std::shared_ptr<object>'
 
-    defnode.cpp_return_type = return_type
+    # defnode.cpp_return_type = return_type
     funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
 
     if is_interface_method:

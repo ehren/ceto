@@ -11,21 +11,28 @@ class (Blah1:
     #     printf("Blah1 foo\n")
     # ):int:A
     
-    def (foo:int, x:A :
+    def (foo, x:A :
         printf("Blah1 foo\n")
-    ):A
+        x.huh()
+    ):int:A
+    
+    def (huh:
+        printf("huh 1\n")
+    ):int:A
     
     # def (huh:A:
         
 )
 
 class (Blah2:
-    def (foo:int, x:A :
+    def (foo, x:A :
         printf("Blah2 foo\n")
-        if (x == 0:
-            pass
-        )
-    ):A
+        x.huh()
+    ):int:A
+    
+    def (huh:
+        printf("huh 2\n")
+    ):int:A
 )
 
 def (main:
@@ -37,7 +44,12 @@ def (main:
 )
     """)
 
-    assert "Blah1 foo" in c and "Blah2 foo" in c
+    assert """
+Blah1 foo
+huh 2
+Blah2 foo
+huh 1
+    """.strip() in c
 
 
 def test_vector_explicit_type_plus_mixing_char_star_and_string():
