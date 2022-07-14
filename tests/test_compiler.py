@@ -1,11 +1,37 @@
 from compiler import compile
 
-def test_stream_operator():
+
+def test_stress_parser():
+    # at least clang hangs on this before we do
+    limit = 20
     c = compile(r"""
+
+def (list_size, lst:
+    std.cout << "list size: " << lst.size() << std.endl
+)
+
 def (main:
-    pass
+    list_size(""" + "["*limit + "1,2,3,4" + "]"*limit + """)
 )
     """)
+
+    assert "list size: 1" in c
+
+def test_correct_nested_left_associative_bin_op():
+    # prev implementation was just ('ignore all args except first two')
+    c = compile(r"""
+
+def (list_size, lst:
+    std.cout << "list size: " << lst.size() << " uh huh" << std.endl
+    printf("add: %d", 1+2+3+4)
+)
+
+def (main:
+    list_size([1,2,3,4])
+)
+    """)
+
+    assert "list size: 4 uh huh\nadd: 10" in c
 
 def test_cstdlib():
     c = compile(r"""
@@ -25,9 +51,15 @@ def (main:
     # printf("Blah addr %p", b.get()) # not going to happen
     
     cs = "file.txt".c_str()
-    # t = std.ifstream(cs)
+    t = std.ifstream(c"file.txt")
+    buffer = std.stringstream()
+    buffer << t.rdbuf()
+    s = buffer.str()
+    std.cout << s << "\n"
+    
 )
     """)
+    assert "hello world\n" in c
 
 
 def test_interfaces():
@@ -518,7 +550,10 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     # _some_magic(sys.modules[__name__])
-    test_ifscopes_methodcalls_classes_lottastuff()
+    test_stress_parser()
+    # test_correct_nested_left_associative_bin_op()
+    # test_ifscopes_methodcalls_classes_lottastuff()
+    # test_cstdlib()
     # test_interfaces()
     # test_class_def_in_func()
     # test_class_def_escapes()

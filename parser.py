@@ -56,8 +56,8 @@ class UnOp(Node):
 
 class BinOp(Node):
     def __init__(self, tokens):
-        self.func = tokens[0][1]
         self.args = tokens[0][::2]
+        self.func = tokens[0][1]
 
     def __repr__(self):
         return "({} {} {})".format(self.lhs, self.func, self.rhs)
@@ -69,6 +69,54 @@ class BinOp(Node):
     @property
     def rhs(self):
         return self.args[1]
+
+
+class _LeftAssociativeBinOp(BinOp):
+
+    def __init__(self, tokens):
+        self.func = tokens[0][1]
+
+        first_arg = tokens[0][0]
+        rest = tokens[0][2:]
+
+        if len(rest) > 1:
+            others = [rest[0], self.func] + rest[2:]
+            self.args = [first_arg, _LeftAssociativeBinOp(pp.ParseResults([others]))]
+        else:
+            self.args = [first_arg, rest[0]]
+
+        # self.args = tokens[0][::2]
+        # self.args = [tokens[0][0], tokens[0][1:]]
+        # print("binop args", self.args)
+
+
+# https://stackoverflow.com/questions/4571441/recursive-expressions-with-pyparsing/4589920#4589920
+# parse action -maker
+def make_LR_like(numterms, AstClass):
+    if numterms is None:
+        # None operator can only by binary op
+        initlen = 2
+        incr = 1
+    else:
+        initlen = {0:1,1:2,2:3,3:5}[numterms]
+        incr = {0:1,1:1,2:2,3:4}[numterms]
+
+    # define parse action for this number of terms,
+    # to convert flat list of tokens into nested list
+    def pa(s,l,t):
+        t = t[0]
+        if len(t) > initlen:
+            # ret = pp.ParseResults(t[:initlen])
+            ret = AstClass(t[:initlen])
+            i = initlen
+            while i < len(t):
+                # ret = pp.ParseResults([ret] + t[i:i+incr])
+                ret = AstClass([ret] + t[i:i+incr])
+                i += incr
+            # return pp.ParseResults([ret])
+            return AstClass([ret])
+    return pa
+
 
 
 class ColonBinOp(BinOp):
@@ -92,7 +140,7 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
-class AttributeAccess(BinOp):
+class AttributeAccess(_LeftAssociativeBinOp):
     def __repr__(self):
         return "{}.{}".format(self.lhs, self.rhs)
 
@@ -175,6 +223,13 @@ class StringLiteral(Node):
         return '"' + escaped + '"'
 
 
+class CStringLiteral(StringLiteral):
+    def __init__(self, token):
+        self.func = str(token[0])
+        self.name = None
+        self.args = []
+
+
 class RebuiltStringLiteral(StringLiteral):
     def __init__(self, s):
         self.func = s
@@ -233,7 +288,8 @@ class Module(Block):
 
 
 import sys
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(100000)
+
 pp.ParserElement.enable_left_recursion()
 
 
@@ -259,12 +315,14 @@ def _create():
 
     quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(StringLiteral)
     dblquoted_str = pp.QuotedString('"', multiline=True).set_parse_action(StringLiteral)
+    cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     expr = (
         function_call
         | array_access
         | real
         | integer
+        | cdblquoted_str
         | quoted_str
         | dblquoted_str
         | list_literal
@@ -293,14 +351,15 @@ def _create():
             (dot, 2, pp.opAssoc.LEFT, AttributeAccess),
             (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
-            (multop, 2, pp.opAssoc.LEFT, BinOp),
-            (plusop, 2, pp.opAssoc.LEFT, BinOp),
-            ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, BinOp),
+            (multop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            # (plusop, 2, pp.opAssoc.LEFT, make_LR_like(2, BinOp)),
+            (plusop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             # ((pp.Keyword("left_shift")|pp.Keyword("right_shift")), 2, pp.opAssoc.LEFT, BinOp),
-            (comparisons, 2, pp.opAssoc.LEFT, BinOp),
+            (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("not"), 1, pp.opAssoc.RIGHT, UnOp),
-            (pp.Keyword("and"), 2, pp.opAssoc.LEFT, BinOp),
-            (pp.Keyword("or"), 2, pp.opAssoc.LEFT, BinOp),
+            (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
             (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
@@ -311,6 +370,8 @@ def _create():
         # pp.Literal("("),
         # pp.Literal(")")
     ).set_parse_action(_InfixExpr)
+
+    # plusop.add_parse_action(BinOp)
 
     tuple_literal <<= (
         # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen

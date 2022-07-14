@@ -4,7 +4,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral
 
 
 import io
@@ -165,6 +165,8 @@ cpp_preamble = """
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 
@@ -991,6 +993,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
+    elif isinstance(node, CStringLiteral):
+        return str(node)
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib
