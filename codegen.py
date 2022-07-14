@@ -160,19 +160,23 @@ struct object : public enable_shared_from_base<object> {
 
 cpp_preamble = """
 #include <memory>
-#include <cstdio>
 #include <vector>
-#include <iostream>
 #include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
 #include <type_traits>
 #include <utility>
 
 
 template<typename T>
-T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
+T* get_ptr(T && obj) { return &obj; }
 
 template<typename T>
-std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
+T* get_ptr(T & obj) { return &obj; }
+
+template<typename T>
+std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; }
 
 template<typename T>
 T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
@@ -245,6 +249,7 @@ void print(const T &t, TAIL... tail) {
 
 method_declarations = []
 interfaces = defaultdict(list)
+cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
 
 
 def codegen_if(ifcall : Call, indent):
@@ -938,6 +943,9 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             separator = " "
             if isinstance(node, AttributeAccess):
+                if isinstance(node.lhs, Identifier) and node.lhs.name == "std":
+                    return "std::" + codegen_node(node.rhs)
+
                 separator = ""
 
                 if isinstance(node.rhs, Call) and node.rhs.func.name == "append":
@@ -984,8 +992,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
     elif isinstance(node, StringLiteral):
-        if isinstance(node.parent, Call) and node.parent.func.name == "printf":
-            # haha (bad idea: look at the uses of vars defined by string literals, they're const char* if they flow to C lib)
+        if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
+            # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib
             return str(node)  # const char * !
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens

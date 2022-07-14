@@ -232,7 +232,9 @@ class Module(Block):
         self.func = "Module"
 
 
-pp.ParserElement.enableLeftRecursion()
+import sys
+sys.setrecursionlimit(10000)
+pp.ParserElement.enable_left_recursion()
 
 
 def _create():
@@ -293,6 +295,8 @@ def _create():
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, BinOp),
             (plusop, 2, pp.opAssoc.LEFT, BinOp),
+            ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, BinOp),
+            # ((pp.Keyword("left_shift")|pp.Keyword("right_shift")), 2, pp.opAssoc.LEFT, BinOp),
             (comparisons, 2, pp.opAssoc.LEFT, BinOp),
             (pp.Keyword("not"), 1, pp.opAssoc.RIGHT, UnOp),
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, BinOp),

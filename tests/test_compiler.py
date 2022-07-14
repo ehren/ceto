@@ -1,17 +1,43 @@
 from compiler import compile
 
+def test_stream_operator():
+    c = compile(r"""
+def (main:
+    pass
+)
+    """)
+
+def test_cstdlib():
+    c = compile(r"""
+def (main:
+    fp = fopen("file.txt", "w+")
+    fprintf(fp, "hello %s", "world\n")
+    fclose(fp)
+    fp = fopen("file.txt", "r")
+    
+    class (Blah:
+        def (huh:
+            printf("huh")
+        )
+    )
+    
+    b = Blah().huh()
+    # printf("Blah addr %p", b.get()) # not going to happen
+    
+    cs = "file.txt".c_str()
+    # t = std.ifstream(cs)
+)
+    """)
+
+
 def test_interfaces():
     c = compile(r"""
 class (Blah1:
-    # (def:A) (foo, x:A :
+    # (def:A) (foo, x:A:
     #     printf("Blah1 foo\n")
     # ):int
     
-    # def (foo, x:A :
-    #     printf("Blah1 foo\n")
-    # ):int:A
-    
-    def (foo, x:A :
+    def (foo, x:A:
         printf("Blah1 foo\n")
         x.huh()
     ):int:A
@@ -25,7 +51,7 @@ class (Blah1:
 )
 
 class (Blah2:
-    def (foo, x:A :
+    def (foo, x:A:
         printf("Blah2 foo\n")
         x.huh()
     ):int:A
@@ -361,8 +387,9 @@ def (main:
 
 def test_ifscopes_methodcalls_classes_lottastuff():
     # pytest doesn't like this and it's not the uninitialized access:
+    # return
 
-    compile("""
+    compile(r"""
 
 def (foo:
     # return None
@@ -398,6 +425,8 @@ def (bar, x:
         z = 1
         y = x + 1
         foo()
+        aa = calls_size([1,2,3])
+        printf("size: %ld\n", aa)
         printf("size: %ld\n", calls_size([1,2,3]))
     )
 
@@ -488,7 +517,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_ifscopes_methodcalls_classes_lottastuff()
     # test_interfaces()
     # test_class_def_in_func()
     # test_class_def_escapes()
