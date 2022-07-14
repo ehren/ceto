@@ -171,17 +171,20 @@ cpp_preamble = """
 #include <utility>
 
 
+// dunno about this one, needed for calling methods on string temporaries...
 template<typename T>
 T* get_ptr(T && obj) { return &obj; }
 
 template<typename T>
 T* get_ptr(T & obj) { return &obj; }
 
+/*
 template<typename T>
 std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; }
-
+*/
 template<typename T>
 T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
+
 
 class object : public std::enable_shared_from_this<object> {
 public:
@@ -201,6 +204,11 @@ public:
     ___PLACE_TO_PUT_JUNK
     
 };
+
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<object>>
+get_ptr(std::shared_ptr<T> obj) { return obj; }
+
 
 class Integer : public object {
 private:
