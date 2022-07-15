@@ -243,7 +243,7 @@ def (main:
     
     add(Foo(), 2)
     # add(2, Foo())
-    # add(Foo(), Foo())
+    add(Foo(), Foo())
 )
     """)
 
@@ -625,8 +625,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
-    # test_add_stuff()
+    # _some_magic(sys.modules[__name__])
+    test_add_stuff()
     # test_stress_parser()
     # test_correct_nested_left_associative_bin_op()
     # test_ifscopes_methodcalls_classes_lottastuff()

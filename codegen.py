@@ -291,17 +291,73 @@ auto add(std::shared_ptr<T> a, Y b) {
     return *a + b;
 }*/
 
-
-template<typename T>
-auto add(T a, T b) {
-    return a + b;
-}
-
+// kinda works (but no return type deduction):
+/*
 template<typename T, typename Y>
 std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<object, Y>, std::shared_ptr<object>>
 add(std::shared_ptr<T> a, Y b) {
     return *a + b;
+}*/
+
+/*
+template<class T, typename = typename std::enable_if<std::is_base_of_v<object, T>, void>::type>, class Y, typename = typename std::enable_if<!std::is_base_of_v<object, Y>, void>::type>
+auto add(T t, typename std::enable_if<std::is_base_of_v<object, T>::value, void>::type* dummy1 = nullptr, Y y, typename std::enable_if<!std::is_base_of_v<object, Y>::value, void>::type* dummy2 = nullptr) {
+    return *t + y;
+}*/
+
+
+/*
+template<class T, typename = typename std::enable_if<std::is_integral<T>::value, void>::type>
+auto function(T t, typename std::enable_if<std::is_integral<T>::value, void>::type* dummy = nullptr) {
+    std::cout << "integral" << std::endl;
+    return 0;
+}*/
+
+
+
+/*template<typename T>
+auto add(T a, T b) {
+    static_assert
+    return a + b;
+}*/
+
+template <typename T>
+std::enable_if_t<!std::is_convertible_v<T, std::shared_ptr<object>>, T>
+add(T a, T b)
+{
+    return a + b;
 }
+
+
+
+/*template<typename T  >
+auto add(T a, T b) {
+    static_assert
+    return a + b;
+}*/
+
+
+template <typename T, typename Y>
+auto add(std::shared_ptr<T> t, Y y)
+{
+    if constexpr (std::is_base_of_v<object, T>) {
+        return  (*t) + y;
+    } else {
+        return t + y;
+    }
+}
+
+/*
+template <typename T, typename Y>
+auto add(std::shared_ptr<T> t, std::shared_ptr<Y> y)
+{
+    if constexpr (std::is_base_of_v<object, T>) {
+        return  (*t) + y;
+    } else {
+        return t + y;
+    }
+}
+*/
 
 
 
