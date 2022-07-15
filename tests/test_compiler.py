@@ -225,6 +225,7 @@ def test_add_stuff():
 class (Foo:
     def (operator("+"), other:
         printf("adding foo and other\n")
+        return 5
     )
 )
 
@@ -241,9 +242,9 @@ def (main:
     k = 2
     printf("%d\n", add(n,k))
     
-    add(Foo(), 2)
-    add(Foo(), Foo())
-    add(2, Foo())
+    std.cout << add(Foo(), 2) << std.endl
+    std.cout << add(Foo(), Foo()) << std.endl
+    std.cout << add(2, Foo()) << std.endl
 )
     """)
 
