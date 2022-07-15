@@ -347,6 +347,26 @@ auto add(std::shared_ptr<T> t, Y y)
     }
 }
 
+template <typename Y, typename T>
+auto add(Y y, std::shared_ptr<T> t)
+{
+    if constexpr (std::is_base_of_v<object, T>) {
+        return  (*t) + y;
+    } else {
+        return t + y;
+    }
+}
+
+template <typename T>
+auto add(std::shared_ptr<T> t, std::shared_ptr<T> y)
+{
+    if constexpr (std::is_base_of_v<object, T>) {
+        return  (*t) + y;
+    } else {
+        return t + y;
+    }
+}
+
 /*
 template <typename T, typename Y>
 auto add(std::shared_ptr<T> t, std::shared_ptr<Y> y)

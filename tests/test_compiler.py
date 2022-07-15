@@ -242,8 +242,8 @@ def (main:
     printf("%d\n", add(n,k))
     
     add(Foo(), 2)
-    # add(2, Foo())
     add(Foo(), Foo())
+    add(2, Foo())
 )
     """)
 
