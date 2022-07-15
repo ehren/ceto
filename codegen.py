@@ -196,10 +196,11 @@ public:
         return std::static_pointer_cast<Derived>(shared_from_this());
     }
     
+    /*
     virtual std::shared_ptr<object> operator+(const object& other) const {
         printf("not implemented\\n");
         return {};
-    }    
+    }*/    
     
     ___PLACE_TO_PUT_JUNK
     
@@ -225,18 +226,81 @@ public:
 };
 
 
+/*
+//template<typename T>
+template<typename T, typename Y>
+//std::shared_ptr<T> add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
+//auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
+auto add(std::shared_ptr<T> a, Y b) {
+//std::shared_ptr<object> add(std::shared_ptr<object> a, std::shared_ptr<object> b) {
+    //return *a + *b;  // works with traditional c++ double dispatch implementation (other arg taken by const reference)
+    
+    // but if we allow java style implementation in our language:
+    // oh also see changes to second arg above
+    return *a + b;
+    
+    
+    
+    // just no:
+    // return std::static_pointer_cast<*a + *b;
+    //return (*a).T::operator+(*b);
+}*/
+
+/*
 template<typename T>
+std::enable_if_t<!std::is_base_of_v<object, T>, std::shared_ptr<T>>
 T add(T a, T b) {
+    return a + b;
+}*/
+
+
+template<typename T> struct is_shared_ptr : std::false_type {};
+template<typename T> struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+/*
+template <class T> 
+typename std::enable_if<is_shared_ptr<decltype(std::declval<T>().value)>::value, void>::type
+func( T t )
+{
+    std::cout << "shared ptr" << std::endl;
+}
+
+template <class T> 
+typename std::enable_if<!is_shared_ptr<decltype(std::declval<T>().value)>::value, void>::type
+func( T t )
+{
+    std::cout << "non shared" << std::endl;
+}
+*/
+
+/*
+template<typename T>
+std::enable_if<!is_shared_ptr<decltype(std::declval<T>().value)>::value, T>::type
+add(T a, T b) {
     return a + b;
 }
 
+
 template<typename T>
-//std::shared_ptr<T> add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
-auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
-//std::shared_ptr<object> add(std::shared_ptr<object> a, std::shared_ptr<object> b) {
-    return *a + *b;
-    // return std::static_pointer_cast<*a + *b;
-    //return (*a).T::operator+(*b);
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+get_ptr(std::shared_ptr<T> obj) { return obj; }
+
+
+template<typename T, typename Y>
+auto add(std::shared_ptr<T> a, Y b) {
+    return *a + b;
+}*/
+
+
+template<typename T>
+auto add(T a, T b) {
+    return a + b;
+}
+
+template<typename T, typename Y>
+std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<object, Y>, std::shared_ptr<object>>
+add(std::shared_ptr<T> a, Y b) {
+    return *a + b;
 }
 
 
@@ -371,31 +435,32 @@ def codegen_class(node : Call, indent):
             # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
             # method_declarations.append(codegen_def(new, indent))
 
-    cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const override {{\n"
-    # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-    cpp += indt + f'    printf("adding {name} and object");\n'
-    # cpp += indt + "    return *this + other;\n"
-    cpp += indt + f"    auto o = dynamic_cast<{name} const*>(&other);"
-    cpp += indt + f'    if (!o) {{ printf("damn"); return {{}}; }}'
-    cpp += indt + f'    return *this + *o;\n';
+    def good_but_disable():
+        cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const override {{\n"
+        # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+        cpp += indt + f'    printf("adding {name} and object");\n'
+        # cpp += indt + "    return *this + other;\n"
+        cpp += indt + f"    auto o = dynamic_cast<{name} const*>(&other);"
+        cpp += indt + f'    if (!o) {{ printf("damn"); return {{}}; }}'
+        cpp += indt + f'    return *this + *o;\n';
 
-    # cpp += indt + "    return other.operator+(*this);\n"
-    cpp += indt + "    \n"
+        # cpp += indt + "    return other.operator+(*this);\n"
+        cpp += indt + "    \n"
 
-    # cpp += indt + "return {};\n"
-    cpp += indt + "}\n\n"
+        # cpp += indt + "return {};\n"
+        cpp += indt + "}\n\n"
 
-    cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
-    # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-    # cpp += indt + "    other + *this;\n"
-    cpp += indt + f'    printf("adding {name} and {name}");\n'
-    cpp += indt + "return {};\n"
-    cpp += indt + "}\n\n"
-    #
-    # cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
-    # # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-    # cpp += indt + f'    printf("adding two {name}");\n'
-    # cpp += indt + "}"
+        cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
+        # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+        # cpp += indt + "    other + *this;\n"
+        cpp += indt + f'    printf("adding {name} and {name}");\n'
+        cpp += indt + "return {};\n"
+        cpp += indt + "}\n\n"
+        #
+        # cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
+        # # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
+        # cpp += indt + f'    printf("adding two {name}");\n'
+        # cpp += indt + "}"
 
     cpp += "virtual ~" + str(name) + "() { printf(\"dead %p\\n\", this); }; "
 
@@ -481,6 +546,12 @@ def codegen_def(defnode: Call, indent):
     args = defnode.args[1:]
     block = args.pop()
     assert isinstance(block, Block)
+
+    if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
+        name = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+
+    if name is None:
+        raise CodeGenError(f"can't handle name {name_node} in def {defnode}")
 
     params = []
     typenames = []

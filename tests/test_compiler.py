@@ -44,6 +44,8 @@ def (main:
 
 def test_stress_parser():
     # at least clang hangs on this before we do
+    # limit = 50
+
     limit = 5
     c = compile(r"""
 
@@ -220,6 +222,38 @@ def (main:
 def test_add_stuff():
     output = compile(r"""
 
+class (Foo:
+    def (operator("+"), other:
+        printf("adding foo and other\n")
+    )
+)
+
+
+def (main:
+    #a = f : object
+    #b = y : object
+    #add (y, f)
+    #add (a, b)
+    # add(add (y, f),
+    # add (a, b))
+    
+    n = 1
+    k = 2
+    printf("%d\n", add(n,k))
+    
+    add(Foo(), 2)
+    # add(2, Foo())
+    # add(Foo(), Foo())
+)
+    """)
+
+    assert "3\nadding foo and other" in output
+
+
+def test_add_stuff_old():
+    return
+    output = compile(r"""
+
 class (Foo: #Bar :
     # x = 1
     # y = 2
@@ -274,6 +308,7 @@ def (main:
     """)
 
 
+# really attribute access test
 def test_correct_shared_ptr():
     output = compile(r"""
 

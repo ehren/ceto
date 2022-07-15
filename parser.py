@@ -290,7 +290,7 @@ class Module(Block):
 
 
 import sys
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(20000)
 
 pp.ParserElement.enable_left_recursion()
 
