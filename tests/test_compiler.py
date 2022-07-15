@@ -1,6 +1,22 @@
 from compiler import compile
 
 
+def test_parser_left_accociativity():
+    c = compile(r"""
+def (main:
+    std.cout << 9+3 << "\n" << 9-3-2 << "\n" << - 5 - 2 - 2 << "\n" << (( -5) - 2) - 2 << "\n" << 7-3-2 << std.endl
+)
+    """)
+
+    assert """
+12
+4
+-4
+-4
+2
+    """.strip() in c
+
+
 def test_clearing_pointers_assignment():
     c = compile("""
     

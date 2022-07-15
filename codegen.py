@@ -401,9 +401,10 @@ def codegen_class(node : Call, indent):
 
     cpp += indt + "};\n\n"
 
-    class_header = "struct " + str(name) + " : public object"
-    for interface_type in local_interfaces:
-        class_header += ", " + str(interface_type)
+    if local_interfaces:
+        class_header = "struct " + str(name) + " : " + ", ".join([str(i) for i in local_interfaces])
+    else:
+        class_header = "struct " + str(name) + " : public object"
     class_header += " {\n\n"
 
     return interface_def_str + class_header + cpp
