@@ -1,6 +1,28 @@
 from compiler import compile
 
 
+def test_reset_ptr():
+    c = compile("""
+    
+class (Foo:
+    def (bar:
+        printf("bar %d\n", this.x)
+    )
+)
+def (main:
+    f = Foo()
+    f.bar()
+    f = nullptr
+    if (f == nullptr:
+        printf("we're dead\n")
+        # f.bar()
+    )
+)
+    """)
+
+    assert "we're dead" in c
+
+
 def test_parser_left_accociativity():
     c = compile(r"""
 def (main:
@@ -676,7 +698,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()
     # test_correct_nested_left_associative_bin_op()
