@@ -335,7 +335,7 @@ def _create():
 
     expop = pp.Literal("^")
     signop = pp.oneOf("+ -")
-    multop = pp.oneOf("* /")
+    multop = pp.oneOf("* / %")
     plusop = pp.oneOf("+ -")
     colon = pp.Literal(":")
     dot = pp.Literal(".")
@@ -358,7 +358,7 @@ def _create():
             ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             # ((pp.Keyword("left_shift")|pp.Keyword("right_shift")), 2, pp.opAssoc.LEFT, BinOp),
             (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            (pp.Keyword("not"), 1, pp.opAssoc.RIGHT, UnOp),
+            (pp.Keyword("not")|pp.Literal("*")|pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),

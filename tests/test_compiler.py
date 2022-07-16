@@ -1,6 +1,46 @@
 from compiler import compile
 
+def test_deref_address_of():
+    c = compile(r"""
+    
+class (Blah:
+    def (huh:
+        std.cout << "huh" << "\n"
+    )
+)
 
+# def (hmm, x: int:ref:const:
+#     pass
+# )
+    
+def (main:
+    Blah().huh()
+    b = Blah()
+    printf("addr %p\n", (&b).get())
+    printf("use_count %ld\n", (&b).use_count())
+    b_addr = &b
+    printf("addr of shared_ptr instance %p\n", b_addr)
+    printf("addr %p\n", b_addr.get())
+    printf("use_count %ld\n", b_addr.use_count())
+    (*b_addr).huh()
+)
+    """)
+
+
+
+def test_for():
+    c = compile(r"""
+def (main:
+    for (x in [1, 2, 3]:
+        printf("%d\n", x)
+    )
+)
+    """)
+
+
+# need to change uniq_ptr managed classes/structs to use separate class hierarchy than object (even though it doesn't inherit from shared_object (enable_shared_from_this) I'm not sure you
+# ever want to be upcasting to base of both shared and uniq ptr managed hierarchies.
+# probably want to make 'unique' require 'struct' instead of 'func' (note that you still want get_ptr to work (compile to nothing) with uniq instances)
 def test_uniq_ptr():
     c = compile(r"""
 class (Foo:
@@ -17,6 +57,8 @@ def (baz, f: Foo:
 
 def (main:
     Foo().bar()
+    
+    baz(Foo())
     
     f = Foo()
     f.bar()
@@ -37,9 +79,6 @@ def (main:
     
     lst[0].bar()
     lst[1].bar()
-    
-    
-    
 )
     """)
 
@@ -802,8 +841,9 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_uniq_ptr()
+    _some_magic(sys.modules[__name__])
+    # test_deref_address_of()
+    # test_uniq_ptr()
     # test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()

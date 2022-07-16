@@ -474,7 +474,17 @@ def codegen_if(ifcall : Call, indent):
 
 
 def codegen_for(node, indent):
+    # target = self.visit(node.target)
+    # it = self.visit(node.iter)
+    # buf = []
+    # buf.append('for(auto {0} : {1}) {{'.format(target, it))
+    # buf.extend([self.visit(c) for c in node.body])
+    # buf.append("}")
+    # return "\n".join(buf)
+
     return ""
+    # node
+
 
 
 def codegen_class(node : Call, indent):
@@ -566,6 +576,7 @@ def codegen_class(node : Call, indent):
 def codegen_block(block: Block, indent):
     assert isinstance(block, Block)
     assert block.args
+    assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
     indent_str = "    " * indent
 
