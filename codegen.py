@@ -1186,6 +1186,14 @@ def codegen_node(node: Union[Node, Any], indent=0):
         return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
     elif isinstance(node, CStringLiteral):
         return str(node)
+    elif isinstance(node, UnOp):
+        opername = node.func
+        if opername == ":":
+            assert 0
+        elif opername == "not":
+            return "!" + codegen_node(node.args[0])
+        else:
+            return opername + codegen_node(node.args[0])
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib

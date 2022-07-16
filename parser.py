@@ -340,7 +340,6 @@ def _create():
     colon = pp.Literal(":")
     dot = pp.Literal(".")
 
-
     _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
     _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
     comparisons = _compar_atoms.pop()

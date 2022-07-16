@@ -9,13 +9,14 @@ class (Foo:
         printf("bar %d\n", this.x)
     )
     
-    def (handleComp, other:Foo:
+    def (handleComp, other: Foo:
         printf("in handleComp - both foo\n")
         return this.x == other.x
     )
     def (handleComp, other:
         printf("in handleComp - other not foo\n")
-        return false
+        # return false
+        return other == 5
     )
     
     def (operator("=="), other:
@@ -30,7 +31,7 @@ class (Foo:
 def (operator("=="), f: Foo, other:
     return f.operator("==")(other)
 )
-def (operator("=="), f: Foo, other:Foo:
+def (operator("=="), f: Foo, other: Foo:
     return f.operator("==")(other)
 )
 
@@ -58,8 +59,28 @@ def (main:
         printf("we're dead\n")
         # f.bar()  # crashes as expected
     )
+    
+    if (not f:
+        printf("we're dead\n")
+        # f.bar()  # crashes as expected
+    )
 )
     """)
+
+#
+#     """bar 0
+# in oper ==
+# in handleComp - other not foo
+# overload == works
+# in oper ==
+# in handleComp - both foo
+# same
+# dead 0x7ff2714017a8
+# dead 0x7ff2714017e8
+# testing for null...
+# we're dead
+# we're dead
+#     """
 
     assert "we're dead" in c
 
@@ -74,8 +95,8 @@ def (main:
     assert """
 12
 4
--4
--4
+-9
+-9
 2
     """.strip() in c
 
@@ -739,8 +760,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_reset_ptr()
+    _some_magic(sys.modules[__name__])
+    # test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()
     # test_correct_nested_left_associative_bin_op()
