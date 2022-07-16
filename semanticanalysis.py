@@ -335,7 +335,8 @@ def _find_def(parent, child, node_to_find):
         elif parent.func.name == "class":
             class_name = parent.args[0]
             if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
-                assert 0
+                # assert 0
+                print("why was this commented out?")
                 return class_name, parent
 
         return _find_def(parent.parent, parent, node_to_find)

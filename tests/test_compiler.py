@@ -2,20 +2,61 @@ from compiler import compile
 
 
 def test_reset_ptr():
-    c = compile("""
+    c = compile(r"""
     
 class (Foo:
     def (bar:
         printf("bar %d\n", this.x)
     )
+    
+    def (handleComp, other:Foo:
+        printf("in handleComp - both foo\n")
+        return this.x == other.x
+    )
+    def (handleComp, other:
+        printf("in handleComp - other not foo\n")
+        return false
+    )
+    
+    def (operator("=="), other:
+        printf("in oper ==\n")
+        # return true
+        # return handleComp(other)
+        # return other.handleComp(this)
+        return this.handleComp(other)
+    )
 )
+
+def (operator("=="), f: Foo, other:
+    return f.operator("==")(other)
+)
+def (operator("=="), f: Foo, other:Foo:
+    return f.operator("==")(other)
+)
+
+def (operator("=="), f: Foo, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
+    # return f.operator("==")(other)
+    return nullptr == f   # i think this is safeish
+)
+
 def (main:
     f = Foo()
     f.bar()
-    f = nullptr
-    if (f == nullptr:
+    if (f == 5:
+        printf("overload == works\n")
+    )
+    b = Foo()
+    if (f == b:
+        printf("same\n")
+    else:
+        printf("not same\n")
+    )
+    f = None
+    b = None
+    printf("testing for null...\n")
+    if (f == None:
         printf("we're dead\n")
-        # f.bar()
+        # f.bar()  # crashes as expected
     )
 )
     """)
