@@ -155,60 +155,30 @@ struct object : public enable_shared_from_base<object> {
 */
 
 
-"""
 
 
-cpp_preamble = """
-#include <memory>
-#include <vector>
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <type_traits>
-#include <utility>
-
-
-// dunno about this one, needed for calling methods on string temporaries...
-template<typename T>
-T* get_ptr(T && obj) { return &obj; }
-
-template<typename T>
-T* get_ptr(T & obj) { return &obj; }
 
 /*
-template<typename T>
-std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; }
-*/
-template<typename T>
-T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
-
-
-class object : public std::enable_shared_from_this<object> {
-public:
-    virtual ~object() {
-    };
-    
-    template <typename Derived>
-    std::shared_ptr<Derived> shared_from_base() {
-        return std::static_pointer_cast<Derived>(shared_from_this());
+template <typename T, typename Y>
+auto add(std::shared_ptr<T> t, std::shared_ptr<Y> y)
+{
+    if constexpr (std::is_base_of_v<object, T>) {
+        return  (*t) + y;
+    } else {
+        return t + y;
     }
-    
-    /*
-    virtual std::shared_ptr<object> operator+(const object& other) const {
-        printf("not implemented\\n");
-        return {};
-    }*/    
-    
-    ___PLACE_TO_PUT_JUNK
-    
-};
+}
+*/
 
-template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-get_ptr(std::shared_ptr<T> obj) { return obj; }
+
+
+template<typename T, typename ...TAIL>
+void print(const T &t, TAIL... tail) {
+    std::cout << t << ' ';
+    print(tail...);
+}
+
+
 
 
 class Integer : public object {
@@ -321,13 +291,6 @@ auto add(T a, T b) {
     return a + b;
 }*/
 
-template <typename T>
-std::enable_if_t<!std::is_convertible_v<T, std::shared_ptr<object>>, T>
-add(T a, T b)
-{
-    return a + b;
-}
-
 
 
 /*template<typename T  >
@@ -336,12 +299,68 @@ auto add(T a, T b) {
     return a + b;
 }*/
 
+/*
+template<typename T>
+std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; }
+*/
+
+"""
+
+
+cpp_preamble = """
+#include <memory>
+#include <vector>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <type_traits>
+#include <utility>
+
+
+
+class object : public std::enable_shared_from_this<object> {
+public:
+    virtual ~object() {
+    };
+    
+    template <typename Derived>
+    std::shared_ptr<Derived> shared_from_base() {
+        return std::static_pointer_cast<Derived>(shared_from_this());
+    }
+    
+    /*
+    virtual std::shared_ptr<object> operator+(const object& other) const {
+        printf("not implemented\\n");
+        return {};
+    }*/    
+    
+    ___PLACE_TO_PUT_JUNK
+    
+};
+
+// dunno about this one, needed for calling methods on string temporaries...
+template<typename T>
+T* get_ptr(T && obj) { return &obj; }
+
+template<typename T>
+T* get_ptr(T & obj) { return &obj; }
+
+template<typename T>
+T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
+
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+get_ptr(std::shared_ptr<T> obj) { return obj; }
+
 
 template <typename T, typename Y>
 auto add(std::shared_ptr<T> t, Y y)
 {
     if constexpr (std::is_base_of_v<object, T>) {
-        return  (*t) + y;
+        return  *t + y;
     } else {
         return t + y;
     }
@@ -351,9 +370,9 @@ template <typename Y, typename T>
 auto add(Y y, std::shared_ptr<T> t)
 {
     if constexpr (std::is_base_of_v<object, T>) {
-        return  (*t) + y;
+        return y + *t;
     } else {
-        return t + y;
+        return y + t;
     }
 }
 
@@ -361,31 +380,20 @@ template <typename T>
 auto add(std::shared_ptr<T> t, std::shared_ptr<T> y)
 {
     if constexpr (std::is_base_of_v<object, T>) {
-        return  (*t) + y;
+        return *t + y;
     } else {
         return t + y;
     }
 }
 
-/*
-template <typename T, typename Y>
-auto add(std::shared_ptr<T> t, std::shared_ptr<Y> y)
+template <typename T>
+std::enable_if_t<!std::is_convertible_v<T, std::shared_ptr<object>>, T>
+add(T a, T b)
 {
-    if constexpr (std::is_base_of_v<object, T>) {
-        return  (*t) + y;
-    } else {
-        return t + y;
-    }
+    return a + b;
 }
-*/
 
 
-
-template<typename T, typename ...TAIL>
-void print(const T &t, TAIL... tail) {
-    std::cout << t << ' ';
-    print(tail...);
-}
 
 
 
@@ -1029,7 +1037,12 @@ def codegen_node(node: Union[Node, Any], indent=0):
                         # func_str = node.func.name
                         func_str = codegen_node(node.func)
                 else:
-                    func_str = codegen_node(node.func)
+
+                    if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.func.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+                        assert 0
+                        func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+                    else:
+                        func_str = codegen_node(node.func)
 
                 func_str += "(" + ", ".join(map(codegen_node, node.args)) + ")"
                 # if is_class:
@@ -1050,6 +1063,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
             cpp.write("this")
         #elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, (AttributeAccess) and node.parent.rhs is node):
         # elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess)) and node.parent.rhs is node):
+
+        # this stuff doesn't work with temporaries of various sorts (requires too many checks e.g. am i not a list element etc.
+        #elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess))) and not (isinstance(node.parent, Call) and node.parent.func is node):
+
+
         #     cpp.write("(*get_ptr(" + node.name + "))")
         else:
             cpp.write(str(node))
@@ -1123,12 +1141,18 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     if is_list:
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
 
+                elif isinstance(node.rhs, Call) and isinstance(operator_node := node.rhs.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+                    binop_str = "(*get_ptr(" + codegen_node(node.lhs) + ")).operator" + operator_name_node.func + "(" + ",".join(codegen_node(a) for a in node.rhs.args) + ")"
+
+
             if binop_str is None:
 
                 if isinstance(node, AttributeAccess) :#and node.lhs.name == "this":
                     # don't wrap just 'this' but 'this.foo' gets wrapped
                     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
+                    # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+                    # cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))" + node.func + "(*get_ptr(" + codegen_node(node.rhs) + "))")  # no matching call to get_ptr for std::endl etc
                     cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
             else:
                 cpp.write(binop_str)
