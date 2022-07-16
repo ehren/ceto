@@ -247,6 +247,10 @@ def (operator("+"), x:Foo, f:Foo:
     return f.operator("+")(x)
     # return 10
 )
+def (operator("+"), x, y:
+    printf("adding any and any\n")
+    return std.operator("+")(x, y)
+)
 
 # def (operator("+"), x, f:Foo:
 #     printf("adding other and foo\n")
@@ -281,7 +285,20 @@ def (main:
 )
     """)
 
-    assert "3\nadding foo and other" in output
+    output = output.strip()
+
+    assert output.endswith("3")
+
+    import re
+    addinglines = list(re.findall("adding.*", output))
+    assert len(addinglines) == 6
+
+    assert "\n".join(addinglines) == """adding foo and other
+adding foo and other (in the member function)
+adding other and foo
+adding foo and other (in the member function)
+adding foo and foo
+adding foo and other (in the member function)"""
 
 
 def test_add_stuff_old():
@@ -659,8 +676,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_add_stuff()
+    _some_magic(sys.modules[__name__])
+    # test_add_stuff()
     # test_stress_parser()
     # test_correct_nested_left_associative_bin_op()
     # test_ifscopes_methodcalls_classes_lottastuff()

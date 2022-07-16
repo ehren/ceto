@@ -1027,22 +1027,24 @@ def codegen_node(node: Union[Node, Any], indent=0):
             elif node.func.name == "lambda":
                 cpp.write(codegen_lambda(node, indent))
             else:
-                if isinstance(node.func, Identifier):
+                # if isinstance(node.func, Identifier):
 
-                    if is_defined_by_class(node.func):
-                        func_str = "std::make_shared<" + node.func.name + ">"
-                    else:
-                        # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
-                        # # this is not longer the case ^
-                        # func_str = node.func.name
-                        func_str = codegen_node(node.func)
+                if is_defined_by_class(node.func):
+                    func_str = "std::make_shared<" + node.func.name + ">"
                 else:
+                    # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
+                    # # this is not longer the case ^
+                    # func_str = node.func.name
+                    func_str = codegen_node(node.func)
+                # else:
+                    # unreachable...
+                    # pass
 
-                    if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.func.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                        assert 0
-                        func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-                    else:
-                        func_str = codegen_node(node.func)
+                    # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.func.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+                    #     assert 0
+                    #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+                    # else:
+                    #     func_str = codegen_node(node.func)
 
                 func_str += "(" + ", ".join(map(codegen_node, node.args)) + ")"
                 # if is_class:
@@ -1051,7 +1053,15 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 cpp.write(func_str)
         else:
             # print("need to handle indirect call")
-            cpp.write(codegen_node(node.func) + "(" + ", ".join( map(codegen_node, node.args)) + ")")
+
+            if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+                # assert 0
+                func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+                # cpp.write(func_str)
+            else:
+                func_str = codegen_node(node.func)
+
+            cpp.write(func_str + "(" + ", ".join( map(codegen_node, node.args)) + ")")
 
     elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
@@ -1141,8 +1151,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     if is_list:
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
 
-                elif isinstance(node.rhs, Call) and isinstance(operator_node := node.rhs.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                    binop_str = "(*get_ptr(" + codegen_node(node.lhs) + ")).operator" + operator_name_node.func + "(" + ",".join(codegen_node(a) for a in node.rhs.args) + ")"
+                # elif isinstance(node.rhs, Call) and isinstance(operator_node := node.rhs.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+                #     binop_str = "(*get_ptr(" + codegen_node(node.lhs) + ")).operator" + operator_name_node.func + "(" + ",".join(codegen_node(a) for a in node.rhs.args) + ")"
 
 
             if binop_str is None:
