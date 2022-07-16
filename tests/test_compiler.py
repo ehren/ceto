@@ -1,9 +1,37 @@
 from compiler import compile
 
 
+def test_uniq_ptr():
+    c = compile(r"""
+class (Foo:
+    def (bar:
+        printf("bar %d\n", this.x)
+        return 5
+    )
+): unique
+
+
+def (baz, f: Foo:
+    f.bar()
+)
+
+def (main:
+    Foo().bar()
+    
+    f = Foo()
+    f.bar()
+    
+    f2 = Foo()
+    f2.bar()
+    
+    # baz(f2)  # error
+    baz(std.move(f2))
+)
+    """)
+
+
 def test_reset_ptr():
     c = compile(r"""
-    
 class (Foo:
     def (bar:
         printf("bar %d\n", this.x)
@@ -760,7 +788,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_uniq_ptr()
     # test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()

@@ -320,10 +320,11 @@ cpp_preamble = """
 #include <utility>
 
 
+struct object {
+};
 
-class object : public std::enable_shared_from_this<object> {
-public:
-    virtual ~object() {
+struct shared_object : public std::enable_shared_from_this<shared_object>, object {
+    virtual ~shared_object() {
     };
     
     template <typename Derived>
@@ -338,7 +339,6 @@ public:
     }*/    
     
     ___PLACE_TO_PUT_JUNK
-    
 };
 
 // dunno about this one, needed for calling methods on string temporaries...
@@ -355,7 +355,11 @@ template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 get_ptr(std::shared_ptr<T> obj) { return obj; }
 
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
+get_ptr(std::unique_ptr<T>& obj) { return obj; }
 
+/*
 template <typename T, typename Y>
 auto add(std::shared_ptr<T> t, Y y)
 {
@@ -391,7 +395,7 @@ std::enable_if_t<!std::is_convertible_v<T, std::shared_ptr<object>>, T>
 add(T a, T b)
 {
     return a + b;
-}
+}*/
 
 
 
@@ -837,18 +841,18 @@ def decltype_str(node):
             return n.result
 
 
-def is_defined_by_class(node):
+def find_defining_class(node):
     if not isinstance(node, Identifier):
-        return False
+        return None
     for defnode, defcontext in find_defs(node):
         if isinstance(defcontext, Call) and defcontext.func.name == "class":
             class_name = defcontext.args[0]
             assert isinstance(class_name, Identifier)
-            return True
-    return False
+            return defcontext
+    return None
 
 
-def is_type_defined_by_class(typenode, searchnode):
+def find_defining_class_of_type(typenode, searchnode):
     # if not isinstance(node, Identifier):
     #     return False
     if res := find_def_starting_from(searchnode, typenode):
@@ -856,8 +860,8 @@ def is_type_defined_by_class(typenode, searchnode):
         if isinstance(defcontext, Call) and defcontext.func.name == "class":
             class_name = defcontext.args[0]
             assert isinstance(class_name, Identifier)
-            return True
-    return False
+            return defcontext
+    return None
 
 
 def _decltype_str(node):
@@ -877,9 +881,11 @@ def _decltype_str(node):
         #     return codegen_node(call)
         #return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
 
-        if is_defined_by_class(node.func):
-
-            result = f"std::shared_ptr<{node.func.name}>"
+        if class_node := find_defining_class(node.func):
+            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                result = f"std::unique_ptr<{node.func.name}>"
+            else:
+                result = f"std::shared_ptr<{node.func.name}>"
             raise _NoDeclTypeNeeded(result)
 
         return call.func.name + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
@@ -988,9 +994,13 @@ def codegen_type(expr_node, type_node):
         #     s = name
         # else:
 
-        if name in interfaces or is_type_defined_by_class(type_node, expr_node):
+        if name in interfaces:
             name = f"std::shared_ptr<{name}>"
-
+        elif class_node := find_defining_class_of_type(type_node, expr_node):
+            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                name = f"std::unique_ptr<{name}>"
+            else:
+                name = f"std::shared_ptr<{name}>"
 
         if 0 and is_defined_by_class(expr_node):
             assert 0 # are we using this?
@@ -1029,8 +1039,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
             else:
                 # if isinstance(node.func, Identifier):
 
-                if is_defined_by_class(node.func):
-                    func_str = "std::make_shared<" + node.func.name + ">"
+                if class_node := find_defining_class(node.func):
+                    if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                        func_str = f"std::make_unique<{node.func.name}>"
+                    else:
+                        func_str = "std::make_shared<" + node.func.name + ">"
                 else:
                     # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
                     # # this is not longer the case ^
@@ -1159,6 +1172,11 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
                 if isinstance(node, AttributeAccess) :#and node.lhs.name == "this":
                     # don't wrap just 'this' but 'this.foo' gets wrapped
+
+                    if isinstance(node.lhs, Call):
+                        if class_node := find_defining_class(node.lhs.func):
+                            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                                return separator.join([codegen_node(node.lhs), "->", codegen_node(node.rhs)])
                     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
                     # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))

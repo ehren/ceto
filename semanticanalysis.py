@@ -610,14 +610,14 @@ def build_scopes(expr):
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
 
-    for modarg in expr.args:
-        if isinstance(modarg, Call):
-            if modarg.func.name not in ["def", "class"]:
-                raise SemanticAnalysisError("Only defs or classes at module level (for now)")
-        elif isinstance(modarg, Assign):
-            pass
-        else:
-            raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
+    # for modarg in expr.args:
+    #     if isinstance(modarg, Call):
+    #         if modarg.func.name not in ["def", "class"]:
+    #             raise SemanticAnalysisError("Only defs or classes at module level (for now)")
+    #     elif isinstance(modarg, Assign):
+    #         pass
+    #     else:
+    #         raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
 
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
