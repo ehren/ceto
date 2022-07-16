@@ -1175,6 +1175,8 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
                     if isinstance(node.lhs, Call):
                         if class_node := find_defining_class(node.lhs.func):
+                            # template get_ptr stuff (which is a bit dubious taking unique_ptr by reference then taking address...) won't work with a temporary
+                            # so detect attribute access of constructor call to class marked unique and print '->' instead
                             if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
                                 return separator.join([codegen_node(node.lhs), "->", codegen_node(node.rhs)])
                     cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))

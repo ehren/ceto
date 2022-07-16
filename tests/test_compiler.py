@@ -26,6 +26,20 @@ def (main:
     
     # baz(f2)  # error
     baz(std.move(f2))
+    
+    # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
+    # lst = [std.move(Foo()), std.move(Foo()), std.move(Foo())]
+    lst = []
+    lst.append(Foo())
+    f = Foo()
+    # lst.append(f)  # error
+    lst.append(std.move(f))
+    
+    lst[0].bar()
+    lst[1].bar()
+    
+    
+    
 )
     """)
 
