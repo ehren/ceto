@@ -41,7 +41,9 @@ def (main:
     b.huh()  # auto unwrap via template magic
     b->huh() # no magic
     printf("addr %p\n", (&b).get())
+    # printf("addr temp %p\n", (&Blah()).get())  #  error: taking the address of a temporary object of type 'typename enable_if<!is_array<Blah> ... - good error
     printf("use_count %ld\n", (&b).use_count())
+    printf("use_count %ld\n", (&b)->use_count())
     b_addr = &b
     printf("addr of shared_ptr instance %p\n", b_addr)
     printf("addr %p\n", b_addr.get())
@@ -57,9 +59,87 @@ def (main:
 
 def test_for():
     c = compile(r"""
+
+class (Uniq:
+    def (bar:
+        this.x = this.x + 1
+        printf("in bar %d %p\n", this.x, this)
+        return this.x
+    )
+): unique
+
+
+class (Shared:
+    def (foo:
+        printf("foo\n")
+        return 10
+    )
+)
+
 def (main:
+    x = 5
     for (x in [1, 2, 3]:
         printf("%d\n", x)
+        x = x + 1
+    )
+    
+    lst = [1,2,3]
+    for (x in lst:
+        printf("%d\n", x)
+        x = x + 1
+    )
+    for (x in lst:
+        printf("%d\n", x)
+        x = x + 1
+    )
+    
+    
+    u = []
+    s = []
+    for (x in [1, 2, 3, 4, 5]:
+        u.append(Uniq())
+        s.append(Shared())
+    )
+    
+    for (x in u:
+        printf("%d\n", x->bar())  # should not be encouraged
+        printf("%d\n", x.bar())
+        # zz = x # correct error
+    )
+    
+    n = 0
+    for (x in u:
+        printf("bar again: %d\n", x.bar())
+        # zz = x # correct error
+        x = Uniq()
+        n = n + 1
+        if (n % 2 == 0:
+            x.bar()
+        )
+    )
+    for (x in u:
+        printf("bar again again: %d\n", x.bar())
+        # zz = x # correct error
+        x = Uniq()
+    )
+    
+    # v = [] #fix decltype(i)
+    v = [Shared()]
+    
+    for (i in s:
+        i.foo()
+        # n = i
+        v.append(i)
+    )
+    
+    s1 = Shared()
+    
+    # for (v in v:  # shadowing...
+    for (v1 in v:
+        v1.x = 55
+        
+        std.cout << "v:" << v1.foo()
+        # v1 = s1
     )
 )
     """)
@@ -868,7 +948,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_for()
     # three_way_compare()
     # test_deref_address_of()
     # test_uniq_ptr()

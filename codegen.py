@@ -475,17 +475,22 @@ def codegen_if(ifcall : Call, indent):
 
 
 def codegen_for(node, indent):
-    # target = self.visit(node.target)
-    # it = self.visit(node.iter)
-    # buf = []
-    # buf.append('for(auto {0} : {1}) {{'.format(target, it))
-    # buf.extend([self.visit(c) for c in node.body])
-    # buf.append("}")
-    # return "\n".join(buf)
-
-    return ""
-    # node
-
+    assert isinstance(node, Call)
+    assert len(node.args) == 2
+    instmt = node.args[0]
+    block = node.args[1]
+    if not isinstance(block, Block):
+        raise CodeGenError("expected block as last arg of if", node)
+    if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
+        raise CodeGenError("unexpected 1st argument to for", node)
+    var = instmt.lhs
+    iterable = instmt.rhs
+    indt = indent * "   "
+    # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
+    forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
+    forstr += codegen_block(block, indent + 1)
+    forstr += indt + "}\n"
+    return forstr
 
 
 def codegen_class(node : Call, indent):
