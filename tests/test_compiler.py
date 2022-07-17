@@ -1,5 +1,27 @@
 from compiler import compile
 
+
+def three_way_compare():
+    # https://en.cppreference.com/w/cpp/language/operator_comparison#Three-way_comparison
+    c = compile(r"""
+def (main:
+    foo = 1 # -0.0
+    bar = 0 # 0.0
+    res = foo <=> bar
+    if (res < 0:
+        std.cout << "-0 is less than 0"
+    elif res > 0:
+        std.cout << "-0 is greater than 0"
+    elif res == 0:
+        std.cout << "-0 and 0 are equal"
+    else:
+        std.cout << "-0 and 0 are unordered"
+    )
+)
+    
+    """)
+
+
 def test_deref_address_of():
     c = compile(r"""
     
@@ -16,16 +38,21 @@ class (Blah:
 def (main:
     Blah().huh()
     b = Blah()
+    b.huh()  # auto unwrap via template magic
+    b->huh() # no magic
     printf("addr %p\n", (&b).get())
     printf("use_count %ld\n", (&b).use_count())
     b_addr = &b
     printf("addr of shared_ptr instance %p\n", b_addr)
     printf("addr %p\n", b_addr.get())
     printf("use_count %ld\n", b_addr.use_count())
-    (*b_addr).huh()
+    printf("use_count %ld\n", b_addr->use_count())
+    (*b_addr).huh()  # note *b_addr is a shared_ptr<Blah> so accessing via '.' already does deref magic
+    (*b_addr)->huh()  # no deref magic is performed here
 )
     """)
 
+    assert c.count("huh") == 5
 
 
 def test_for():
@@ -693,9 +720,9 @@ def (main:
 
     # x in x
 
-    for (x not in l not in not in l:
-        1
-    )
+    # for (x not in l not in not in l:
+    #     1
+    # )
     printf("%d\n", l[0])
     f = lambda (:
         printf("%d\n", main)
@@ -842,6 +869,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # three_way_compare()
     # test_deref_address_of()
     # test_uniq_ptr()
     # test_reset_ptr()

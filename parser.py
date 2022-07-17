@@ -142,12 +142,18 @@ class SyntaxColonBinOp(ColonBinOp):
 
 # class AttributeAccess(_LeftAssociativeBinOp):
 class AttributeAccess(BinOp):
-
     def __repr__(self):
         return "{}.{}".format(self.lhs, self.rhs)
 
     def __init__(self, tokens):
         super().__init__(tokens)
+
+
+# not created by parser
+class ArrowOp(BinOp):  # doesn't get special auto deref logic of '.' (use at own risk)
+    def __init__(self, args):
+        self.func = "->"
+        self.args = args
 
 
 class AsOp(BinOp):
@@ -349,7 +355,8 @@ def _create():
     infix_expr <<= pp.infix_notation(
         expr,
         [
-            (dot, 2, pp.opAssoc.LEFT, AttributeAccess),
+            (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
+            (dot|pp.Literal("->"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
@@ -357,8 +364,9 @@ def _create():
             (plusop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             # ((pp.Keyword("left_shift")|pp.Keyword("right_shift")), 2, pp.opAssoc.LEFT, BinOp),
+            (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            (pp.Keyword("not")|pp.Literal("*")|pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
+            # this is where python puts 'not' ??
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
@@ -473,11 +481,15 @@ def parse(s):
     def replacer(op):
         if not isinstance(op, Node):
             return op
+
         if isinstance(op, _InfixExpr):
             if isinstance(op.args[0], _InfixExpr):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
+
+        if isinstance(op, AttributeAccess) and op.func == "->":
+            op = ArrowOp(op.args)
         # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
         #     print("huh")
         #     op = op.args[0]
