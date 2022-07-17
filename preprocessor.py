@@ -157,7 +157,8 @@ def preprocess(file_object):
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
                 # block_start
-                rewritten.write(BEL)
+                # rewritten.write(BEL)
+                rewritten.write(":")
                 colon_to_write = False
                 began_indent = True
             else:
@@ -165,7 +166,8 @@ def preprocess(file_object):
 
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
-                    rewritten.write(";")
+                    # rewritten.write(";")
+                    pass
 
             if colon_to_write:
                 rewritten.write(colon_replacement_char(parsing_stack[-1]))

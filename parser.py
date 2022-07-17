@@ -282,23 +282,27 @@ class TupleLiteral(_ListLike):
         self.func = "Tuple"
 
 
-class Block(_ListLike):
+class Block(Node):
 
     def __init__(self, tokens):
-        super().__init__(tokens)
+        # super().__init__(tokens)
+        # super().__init__(tokens)
+        self.args = tokens.as_list()[0]
         self.func = "Block"
 
 
 class Module(Block):
     def __init__(self, tokens):
-        super().__init__(tokens)
+        # super().__init__(tokens)
         self.func = "Module"
+        self.args = tokens.as_list()
 
 
 import sys
 sys.setrecursionlimit(20000)
 
 pp.ParserElement.enable_left_recursion()
+pp.ParserElement.set_default_whitespace_chars(" \t")
 
 
 def _create():
@@ -315,7 +319,7 @@ def _create():
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
-    dictStr = pp.Forward()
+    dict_literal = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
     infix_expr = pp.Forward()
@@ -335,7 +339,7 @@ def _create():
         | dblquoted_str
         | list_literal
         | tuple_literal
-        | dictStr
+        | dict_literal
         | ident
     )
 
@@ -394,22 +398,27 @@ def _create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    bel = pp.Suppress('\x07')
-
-    dictEntry = pp.Group(infix_expr + bel + infix_expr)
-    dictStr <<= (
-        lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
-    )
-
-    block_line_end = pp.Suppress(";")
+    # block_line_end = pp.Suppress(";")
+    newline = pp.Suppress("\n")
+    # block_line_end = newline
     # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
-    block = bel + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
-    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
+    block_statement = infix_expr|(lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)
 
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))) + rparen).set_parse_action(Call)
+    block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=True).set_parse_action(Block)
 
-    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
+    bel = pp.Suppress('\x07')
+    dict_entry = pp.Group(block_statement + bel + block_statement)
+    dict_literal <<= (
+        lbrace + pp.Optional(pp.delimitedList(dict_entry) + pp.Optional(comma)) + rbrace
+    )#.set_parse_action(DictLiteral)
+
+    # array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + block_statement + pp.Optional(colon + block_statement) + pp.Optional(colon + block_statement) + rbrack).set_parse_action(ArrayAccess)
+    array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + block_statement + pp.Optional(colon + block_statement) + pp.Optional(colon + block_statement) + rbrack).set_parse_action(ArrayAccess)
+
+    function_call <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(block_statement))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(block_statement)))) + rparen).set_parse_action(Call)
+
+    module = pp.OneOrMore(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)).set_parse_action(Module)
     return module
 
 grammar = _create()
@@ -418,18 +427,34 @@ grammar = _create()
 def parse(s):
     print(s)
     # transformed = io.StringIO(s)
-    pp.ParserElement.set_default_whitespace_chars(" \t\n")
+    # pp.ParserElement.set_default_whitespace_chars(" \t\n")
 
-    filter_comments = pp.Regex(r"#.*")
+    filter_comments = pp.Regex(r"\#.*")
     filter_comments = filter_comments.suppress()
     qs = pp.QuotedString('"') | pp.QuotedString("'")
+
+    def replace_colon(t):
+        return "!!!"
+
+    # replace_dict = pp.Regex(r".*\n*") + pp.Optional(pp.Literal("{") + pp.OneOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(pp.replace_with("!!!")) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.Regex(r".*\n*")
+    # replace_dict = pp.Regex(r".*\n*") + pp.Optional(pp.Literal("{") + pp.OneOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.Regex(r".*\n*")
+    # filter_comments = filter_comments|replace_dict
     filter_comments = filter_comments.ignore(qs)
 
     transformed = s
 
     transformed = filter_comments.transform_string(transformed)
 
-    pp.ParserElement.set_default_whitespace_chars(" \t")
+    # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
+    # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
+    # replace_dict = pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}"))
+
+    # print("huh:", replace_dict.parseString(transformed, parse_all=True))
+    # transformed = replace_dict.transform_string(transformed)
+
+    print("no comments:", transformed)
+
+    # pp.ParserElement.set_default_whitespace_chars(" \t")
 
     # patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "except"]]
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
@@ -471,8 +496,14 @@ def parse(s):
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
     # print("preprocessed", transformed.replace("\x07", "!!!"))
-
     res = grammar.parseString(transformed, parseAll=True)
+
+    # try:
+    #     res = grammar.parseString(transformed, parseAll=True)
+    # except pp.ParseException:
+    #     sio = io.StringIO(transformed)
+    #     pre = preprocess(sio).getvalue()  # run better indent checking only if there's a parse error
+    #     raise
 
     # print("parser:", res)
 
@@ -510,33 +541,6 @@ def parse(s):
     return res
 
 if __name__ == "__main__":
-    parse("""
-if((x=5): print(5) elif x = 4: ohyeah else: "hmm")
-""")
-    parse("""
-# ((((xyz = 12345678))))
-# abc = 5
-(x = ((5+6)*7))     # Parens(=(x,*(Parens(+(5,6)),7)))
-x = ((5+6))*7    # Parens(=(x,Parens(*(Parens(+(5,6)),7))))
-
-foo(x=5, 
-
-(y=5))
-
-if ((x=5):
-    print(5)
-elif x = 4:
-    ohyeah
-elif x = 5:
-    10
-    10
-else:
-    10
-    10
-)
-
-
-""")
 
 
     0 and parse("""

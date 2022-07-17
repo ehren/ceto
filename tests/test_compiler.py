@@ -17,6 +17,7 @@ def (main:
     else:
         std.cout << "-0 and 0 are unordered"
     )
+    x = [1,2,3]
 )
     
     """)
@@ -848,7 +849,7 @@ def (bar, x:
     # if ((foo() = 1): # this is the appropriate error in c++
     # if ((x = 1):
     if ((y = 1):
-        printf("hi"); printf("bye\n")
+        # printf("hi"); printf("bye\n")  # 'need' to add ; as first class operator
         x=x+1
         # y=2
         x=(x+1)
@@ -948,8 +949,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_for()
+    _some_magic(sys.modules[__name__])
+    # test_for()
     # three_way_compare()
     # test_deref_address_of()
     # test_uniq_ptr()
