@@ -500,11 +500,11 @@ def parse(s):
 
     # print("after 'reader macros'", transformed)
     # sio = io.StringIO(s)
-    sio = io.StringIO(transformed)
+    # sio = io.StringIO(transformed)
     #transformed = preprocess(sio).getvalue()
     # print("preprocessed", transformed.replace("\x07", "!!!"))
     res = grammar.parseString(transformed, parseAll=True)
-    preprocess(sio).getvalue() # still have to run the preprocessor (
+    # preprocess(sio).getvalue() # still have to run the preprocessor (
 
     # try:
     #     res = grammar.parseString(transformed, parseAll=True)

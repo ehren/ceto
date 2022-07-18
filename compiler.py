@@ -1,6 +1,7 @@
 from parser import parse
 from semanticanalysis import semantic_analysis
 from codegen import codegen
+from preprocessor import preprocess
 
 import os
 
@@ -30,6 +31,7 @@ def compile(s, run=True):
     code = codegen(expr)
 
     # print("code:\n", code)
+    output = None
 
     if run:
         filename = safe_unique_filename("generatedcode", ".cpp", basepath=os.path.join(os.path.abspath(os.path.dirname(__file__)), "build"))
@@ -48,7 +50,12 @@ def compile(s, run=True):
         import subprocess
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
         print(output)
-        return output
+
+    import io
+    sio = io.StringIO(s)
+    preprocess(sio).getvalue() # still have to run the preprocessor :(
+
+    return output
 
 
 if __name__ == "__main__":

@@ -1,6 +1,31 @@
 from compiler import compile
 
 
+def test_bad_indent():
+    try:
+        c = compile("""
+def (main:
+    foo = 1 # -0.0
+    bar = 0 # 0.0
+    res = foo <=> bar
+    if (res < 0:
+        std.cout << "-0 is less than 0"
+    elif res > 0:
+        std.cout << "-0 is greater than 0"
+    elif res == 0:
+        std.cout << "-0 and 0 are equal"
+        else:
+            std.cout << "-0 and 0 are unordered"
+    )
+)
+    """)
+    except Exception as e:
+        assert "Indentation error. Expected: 8 got: 12." in str(e)
+
+    else:
+        assert 0
+
+
 def test_three_way_compare():
     # https://en.cppreference.com/w/cpp/language/operator_comparison#Three-way_comparison
     c = compile(r"""
@@ -14,8 +39,8 @@ def (main:
         std.cout << "-0 is greater than 0"
     elif res == 0:
         std.cout << "-0 and 0 are equal"
-        else:
-                std.cout << "-0 and 0 are unordered"
+    else:
+        std.cout << "-0 and 0 are unordered"
     )
     # x = [1,2,3]
     # x[1:2:3]

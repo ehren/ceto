@@ -1,6 +1,7 @@
 from parser import parse, TupleLiteral, Module
 
 
+
 def test_call_arrayaccess_newline():
     parse(r"""
 foo(x,
@@ -26,10 +27,10 @@ def (foo:
     # l = [1, 2, 3]
     # l[0:1:2]
     # l[0:(1:1)]
-        d = {1:2, 1:2}
-        a = []
-        a[1:2:3]
-        pass
+    d = {1:2, 1:2}
+    a = []
+    a[1:2:3]
+    pass
 )
 def (foo:
     # l = [1, 2, 3]
