@@ -1,7 +1,7 @@
 from compiler import compile
 
 
-def three_way_compare():
+def test_three_way_compare():
     # https://en.cppreference.com/w/cpp/language/operator_comparison#Three-way_comparison
     c = compile(r"""
 def (main:
@@ -17,7 +17,8 @@ def (main:
     else:
         std.cout << "-0 and 0 are unordered"
     )
-    x = [1,2,3]
+    # x = [1,2,3]
+    # x[1:2:3]
 )
     
     """)
@@ -777,7 +778,7 @@ xxanother 1
 x 14 y 15
 yo:
             1 29
-ohsnap
+ohsnap 
 2ohsnap2 2 6 2
     """.strip())
 

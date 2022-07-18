@@ -323,6 +323,7 @@ def _create():
     function_call = pp.Forward()
     array_access = pp.Forward()
     infix_expr = pp.Forward()
+    untyped_infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
     quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(StringLiteral)
@@ -356,7 +357,7 @@ def _create():
     for c in _compar_atoms:
         comparisons |= c
 
-    infix_expr <<= pp.infix_notation(
+    untyped_infix_expr <<= pp.infix_notation(
         expr,
         [
             (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
@@ -375,14 +376,24 @@ def _create():
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
-            (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
-            ((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
+            #(colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
+            #((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
             # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
             # (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
         # pp.Literal("("),
         # pp.Literal(")")
     ).set_parse_action(_InfixExpr)
+
+    infix_expr <<= pp.infix_notation(
+        untyped_infix_expr,
+        [
+            (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
+            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
+        ],
+        # pp.Literal("("),
+        # pp.Literal(")")
+    )#.set_parse_action(_InfixExpr)
 
     # plusop.add_parse_action(BinOp)
 
@@ -398,25 +409,21 @@ def _create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    # block_line_end = pp.Suppress(";")
     newline = pp.Suppress("\n")
-    # block_line_end = newline
-    # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
 
     block_statement = infix_expr|(lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)
 
     block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=True).set_parse_action(Block)
 
-    bel = pp.Suppress('\x07')
-    dict_entry = pp.Group(block_statement + bel + block_statement)
+    safe_expr_for_dict = pp.ZeroOrMore(newline) + (untyped_infix_expr | (lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)) + pp.ZeroOrMore(newline)
+    dict_entry = pp.Group(safe_expr_for_dict + pp.Suppress(":") + safe_expr_for_dict)
     dict_literal <<= (
-        lbrace + pp.Optional(pp.delimitedList(dict_entry) + pp.Optional(comma)) + rbrace
+        lbrace + pp.Optional(pp.delimitedList(dict_entry) + pp.Optional(comma)) + pp.ZeroOrMore(newline) + rbrace
     )#.set_parse_action(DictLiteral)
 
-    # array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + block_statement + pp.Optional(colon + block_statement) + pp.Optional(colon + block_statement) + rbrack).set_parse_action(ArrayAccess)
-    array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + block_statement + pp.Optional(colon + block_statement) + pp.Optional(colon + block_statement) + rbrack).set_parse_action(ArrayAccess)
+    array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + safe_expr_for_dict + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + rbrack).set_parse_action(ArrayAccess)
 
-    function_call <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(block_statement))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(block_statement)))) + rparen).set_parse_action(Call)
+    function_call <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lparen  + pp.Optional(pp.delimitedList(pp.ZeroOrMore(newline) + pp.Optional(block_statement))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(block_statement)))) + rparen).set_parse_action(Call)
 
     module = pp.OneOrMore(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)).set_parse_action(Module)
     return module
@@ -452,7 +459,7 @@ def parse(s):
     # print("huh:", replace_dict.parseString(transformed, parse_all=True))
     # transformed = replace_dict.transform_string(transformed)
 
-    print("no comments:", transformed)
+    #print("no comments:", transformed)
 
     # pp.ParserElement.set_default_whitespace_chars(" \t")
 
@@ -493,8 +500,8 @@ def parse(s):
 
     # print("after 'reader macros'", transformed)
     # sio = io.StringIO(s)
-    sio = io.StringIO(transformed)
-    transformed = preprocess(sio).getvalue()
+    #sio = io.StringIO(transformed)
+    #transformed = preprocess(sio).getvalue()
     # print("preprocessed", transformed.replace("\x07", "!!!"))
     res = grammar.parseString(transformed, parseAll=True)
 
