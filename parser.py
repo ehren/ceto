@@ -282,7 +282,7 @@ class TupleLiteral(_ListLike):
         self.func = "Tuple"
 
 
-class Block(Node):
+class Block(_ListLike):
 
     def __init__(self, tokens):
         # super().__init__(tokens)
@@ -413,7 +413,7 @@ def _create():
 
     block_statement = infix_expr|(lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)
 
-    block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=True).set_parse_action(Block)
+    block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=False).set_parse_action(Block)
 
     safe_expr_for_dict = pp.ZeroOrMore(newline) + (untyped_infix_expr | (lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)) + pp.ZeroOrMore(newline)
     dict_entry = pp.Group(safe_expr_for_dict + pp.Suppress(":") + safe_expr_for_dict)
@@ -500,10 +500,11 @@ def parse(s):
 
     # print("after 'reader macros'", transformed)
     # sio = io.StringIO(s)
-    #sio = io.StringIO(transformed)
+    sio = io.StringIO(transformed)
     #transformed = preprocess(sio).getvalue()
     # print("preprocessed", transformed.replace("\x07", "!!!"))
     res = grammar.parseString(transformed, parseAll=True)
+    preprocess(sio).getvalue() # still have to run the preprocessor (
 
     # try:
     #     res = grammar.parseString(transformed, parseAll=True)

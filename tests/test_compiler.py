@@ -14,14 +14,22 @@ def (main:
         std.cout << "-0 is greater than 0"
     elif res == 0:
         std.cout << "-0 and 0 are equal"
-    else:
-        std.cout << "-0 and 0 are unordered"
+        else:
+                std.cout << "-0 and 0 are unordered"
     )
     # x = [1,2,3]
     # x[1:2:3]
 )
     
     """)
+
+    # note that for better or worse this is valid python indentation:
+    if 1 == 5:
+        pass
+    else:
+            pass
+
+    # we've got the same rules now
 
 
 def test_deref_address_of():
