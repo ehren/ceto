@@ -413,6 +413,9 @@ def _create():
 
     block_statement = infix_expr|(lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)
 
+    # not quite strict enough without specifying the rest of the indentation logic in the grammar (which would require set_default_whitespace_chars("") everywhere).
+    # however, this allows us to parse valid code as valid, and reject seemingly valid code with invalid indentation later (which we'll do when waiting on c++ compilation)
+    # though maybe could reuse old pp.indentedBlock (deprecated) implementation (not successful with one attempt though)
     block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=False).set_parse_action(Block)
 
     safe_expr_for_dict = pp.ZeroOrMore(newline) + (untyped_infix_expr | (lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)) + pp.ZeroOrMore(newline)
@@ -451,6 +454,8 @@ def parse(s):
     transformed = s
 
     transformed = filter_comments.transform_string(transformed)
+
+    # print(transformed)
 
     # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
     # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
@@ -498,12 +503,17 @@ def parse(s):
     # transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
 
 
-    # print("after 'reader macros'", transformed)
-    # sio = io.StringIO(s)
-    # sio = io.StringIO(transformed)
-    #transformed = preprocess(sio).getvalue()
+    sio = io.StringIO(transformed)
+    transformed = preprocess(sio).getvalue()
+
+    # transformed = filter_comments.transform_string(transformed)
     # print("preprocessed", transformed.replace("\x07", "!!!"))
+
+    from time import perf_counter
+
+    t = perf_counter()
     res = grammar.parseString(transformed, parseAll=True)
+    print("pyparsing parse time", perf_counter() - t)
     # preprocess(sio).getvalue() # still have to run the preprocessor (
 
     # try:

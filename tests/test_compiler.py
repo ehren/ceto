@@ -676,6 +676,8 @@ def (main:
 
 
 # really attribute access test
+# also something about the comments requires that comments are
+# stripped by the manual preprocessing before parsing
 def test_correct_shared_ptr():
     output = compile(r"""
 
@@ -820,7 +822,7 @@ xxanother 1
 x 14 y 15
 yo:
             1 29
-ohsnap 
+ohsnap
 2ohsnap2 2 6 2
     """.strip())
 
@@ -993,6 +995,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_correct_shared_ptr()
     # test_bad_indent()
     # test_for()
     # three_way_compare()

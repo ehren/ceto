@@ -4,6 +4,10 @@ from codegen import codegen
 from preprocessor import preprocess
 
 import os
+import subprocess
+import io
+
+from time import perf_counter
 
 
 def safe_unique_filename(name, extension, basepath=""):
@@ -24,16 +28,24 @@ def safe_unique_filename(name, extension, basepath=""):
 
 
 
-def compile(s, run=True):
+def compile(s, compile_cpp=True, run=True):
+    t = perf_counter()
     expr = parse(s)
+    print("parse time", perf_counter() - t)
+    t = perf_counter()
     expr = semantic_analysis(expr)
+    print("semantic time", perf_counter() - t)
     print("semantic", expr)
+    t = perf_counter()
     code = codegen(expr)
+    print("codegen time", perf_counter() - t)
 
     # print("code:\n", code)
     output = None
-
     if run:
+        compile_cpp = True
+
+    if compile_cpp:
         filename = safe_unique_filename("generatedcode", ".cpp", basepath=os.path.join(os.path.abspath(os.path.dirname(__file__)), "build"))
 
         with open(filename, "w") as file:
@@ -44,16 +56,20 @@ def compile(s, run=True):
             command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
         else:
             command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
-        print(command)
-        rc = os.system(command)
-        assert rc == 0
-        import subprocess
+
+        t1 = perf_counter()
+        p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # sio = io.StringIO(s)
+        # t = perf_counter()
+        # preprocess(sio).getvalue()  # still have to run the 'pre'processor due to insufficient indent checking in current grammar
+        # print("indent checking time", perf_counter() - t)
+
+        output, error = p.communicate()
+        print("c++ compiling time", perf_counter() - t1)
+
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
         print(output)
-
-    import io
-    sio = io.StringIO(s)
-    preprocess(sio).getvalue() # still have to run the preprocessor :(
 
     return output
 
