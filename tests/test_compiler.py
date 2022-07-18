@@ -3,7 +3,12 @@ from compiler import compile
 
 def test_bad_indent():
     try:
-        c = compile("""
+        c = compile(r"""
+        
+def (func, x, y:
+    pass
+)
+        
 def (main:
     foo = 1 # -0.0
     bar = 0 # 0.0
@@ -17,6 +22,10 @@ def (main:
         else:
             std.cout << "-0 and 0 are unordered"
     )
+    
+    func(1,
+1)
+    
 )
     """)
     except Exception as e:
@@ -984,6 +993,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_bad_indent()
     # test_for()
     # three_way_compare()
     # test_deref_address_of()
