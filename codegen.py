@@ -585,8 +585,6 @@ def codegen_class(node : Call, cx):
         # cpp += indt + f'    printf("adding two {name}");\n'
         # cpp += indt + "}"
 
-    cpp += "virtual ~" + str(name) + "() { printf(\"dead %p\\n\", this); }; "
-
     cpp += indt + "};\n\n"
 
     if local_interfaces:
@@ -622,14 +620,7 @@ def codegen_block(block: Block, cx):
                 cpp += codegen_class(b, cx)
                 continue
 
-
         cpp += indent_str + codegen_node(b, cx) + ";\n"
-
-    if isinstance(block.parent, Call) and block.parent.func.name == "def":
-        last_statement = block.args[-1]
-
-        if not is_return(last_statement):
-            cpp += indent_str + "return {};\n"
 
     return cpp
 
@@ -679,6 +670,16 @@ def codegen_def(defnode: Call, cx):
 
     params = []
     typenames = []
+
+    is_destructor = False
+    if name == "destruct" and isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class":
+        class_identifier = defnode.parent.parent.args[0]
+        assert isinstance(class_identifier, Identifier)
+        class_name = class_identifier.name
+        if args:
+            raise CodeGenError("destructors can't take arguments")
+        is_destructor = True
+
 
     is_interface_method = isinstance(defnode.declared_type, ColonBinOp)
     if is_interface_method:
@@ -762,15 +763,22 @@ def codegen_def(defnode: Call, cx):
         if not found_return:
             return_type = 'std::shared_ptr<object>'
 
-    # defnode.cpp_return_type = return_type
-    funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
 
-    if is_interface_method:
-        funcdef += " override" # maybe later: use final if method not 'overridable'
+    if is_destructor:
+        # revisit non-virtual for unique_ptr and value structs
+        funcdef = "virtual ~" + str(class_name) + "()"
+    else:
+        funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+        if is_interface_method:
+            funcdef += " override" # maybe later: use final if method not 'overridable'
 
     indt = cx.indent_str()
+    block_cx = cx.new_scope_context()
+    block_str = codegen_block(block, block_cx)
+    if not is_destructor and not is_return(block.args[-1]):  # should just not do this or at least only if explicit type given?
+        block_str += block_cx.indent_str() + "return {};\n"
 
-    return indt + funcdef + " {\n" + codegen_block(block, cx.new_scope_context()) + indt + "}\n\n"
+    return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 
 
 def codegen_lambda(node, cx):

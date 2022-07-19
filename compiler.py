@@ -75,6 +75,8 @@ def compile(s, compile_cpp=True, run=True):
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
         print(output)
 
+        os.remove(filename)
+
     return output
 
 

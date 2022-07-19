@@ -697,9 +697,9 @@ class (Foo: #Bar :
     #     printf("init\n")
     # )
 
-    # def (destruct:
-    #     printf("destruct\n")
-    # )
+    def (destruct:
+        printf("dead %p\n", this)
+    )
 
     def (bar:
         printf("in bar\n")
