@@ -29,16 +29,17 @@ def safe_unique_filename(name, extension, basepath=""):
 
 
 def compile(s, compile_cpp=True, run=True):
+    perf_messages = []
     t = perf_counter()
     expr = parse(s)
-    print("parse time", perf_counter() - t)
+    perf_messages.append(f"parse time {perf_counter() - t}")
     t = perf_counter()
     expr = semantic_analysis(expr)
-    print("semantic time", perf_counter() - t)
+    perf_messages.append(f"semantic time {perf_counter() - t}")
     print("semantic", expr)
     t = perf_counter()
     code = codegen(expr)
-    print("codegen time", perf_counter() - t)
+    perf_messages.append(f"codegen time {perf_counter() - t}")
 
     # print("code:\n", code)
     output = None
@@ -57,6 +58,8 @@ def compile(s, compile_cpp=True, run=True):
         else:
             command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
 
+        print("\n".join(perf_messages))
+
         t1 = perf_counter()
         p = subprocess.Popen(command, shell=True)
 
@@ -64,6 +67,7 @@ def compile(s, compile_cpp=True, run=True):
         # t = perf_counter()
         # preprocess(sio).getvalue()  # still have to run the 'pre'processor due to insufficient indent checking in current grammar
         # print("indent checking time", perf_counter() - t)
+
 
         output, error = p.communicate()
         print("c++ compiling time", perf_counter() - t1)

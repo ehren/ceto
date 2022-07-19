@@ -71,7 +71,7 @@ def preprocess(file_object):
                 if indent < curr:
                     # dedent
                     if began_indent:
-                        raise IndentError("Error in what should be the first indented expression. Expected indent: {}. Got: {}".format(curr, indent), line_number)
+                        raise IndentError("Error in what should be the first indented expression. Expected indent_str: {}. Got: {}".format(curr, indent), line_number)
                     diff = curr - indent
                     if diff % TAB_WIDTH != 0:
                         raise IndentError("Indentation not a multible of {}".format(TAB_WIDTH), line_number)

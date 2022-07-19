@@ -1,3 +1,4 @@
+import typing
 from typing import Union, Any
 
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
@@ -410,18 +411,36 @@ add(T a, T b)
 # https://brevzin.github.io/c++/2019/12/02/named-arguments/
 
 
-method_declarations = []
-interfaces = defaultdict(list)
+
+class Context:
+
+    def __init__(self):
+        self.interfaces = defaultdict(list)
+        self._indent = 0
+        self.parent = None
+
+    def indent_str(self):
+        return "    " * self._indent
+
+    def new_scope_context(self):
+        c = Context()
+        c.interfaces = self.interfaces  # shallow copy
+        c.parent = self
+        c._indent += 1
+        return c
+
+
+# method_declarations = []
 cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
 
 
-def codegen_if(ifcall : Call, indent):
+def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
 
     ifnode = IfNode(ifcall.func, ifcall.args)
 
-    indt = ("    " * indent)
+    indt = cx.indent_str()
 
     scopes = [ifnode.cond, ifnode.thenblock, ifnode.elseblock]
     for elifcond, elifblock in ifnode.eliftuples:
@@ -452,29 +471,29 @@ def codegen_if(ifcall : Call, indent):
             assign.already_declared = True
             if assign.lhs.name in declarations:
                 continue
-            declarations[str(assign.lhs)] = codegen_node(assign.rhs)
+            declarations[str(assign.lhs)] = codegen_node(assign.rhs, cx)
 
     cpp = ""
     for lhs in declarations:
         cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
 
-    cpp += "if (" + codegen_node(ifnode.cond) + ") {\n"
-    cpp += codegen_block(ifnode.thenblock, indent + 1)
+    cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
+    cpp += codegen_block(ifnode.thenblock, cx.new_scope_context())
 
     for elifcond, elifblock in ifnode.eliftuples:
-        cpp += indt + "} else if (" + codegen_node(elifcond, indent) + ") {\n"
-        cpp += codegen_block(elifblock, indent + 1)
+        cpp += indt + "} else if (" + codegen_node(elifcond, cx.new_scope_context()) + ") {\n"
+        cpp += codegen_block(elifblock, cx.new_scope_context())
 
     if ifnode.elseblock:
         cpp += indt + "} else {\n"
-        cpp += codegen_block(ifnode.elseblock, indent + 1)
+        cpp += codegen_block(ifnode.elseblock, cx.new_scope_context())
 
     cpp += indt + "}"
 
     return cpp
 
 
-def codegen_for(node, indent):
+def codegen_for(node, cx):
     assert isinstance(node, Call)
     assert len(node.args) == 2
     instmt = node.args[0]
@@ -485,22 +504,22 @@ def codegen_for(node, indent):
         raise CodeGenError("unexpected 1st argument to for", node)
     var = instmt.lhs
     iterable = instmt.rhs
-    indt = indent * "   "
+    indt = cx.indent_str()
     # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
-    forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
-    forstr += codegen_block(block, indent + 1)
+    forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
+    forstr += codegen_block(block, cx.new_scope_context())
     forstr += indt + "}\n"
     return forstr
 
 
-def codegen_class(node : Call, indent):
+def codegen_class(node : Call, cx):
     assert isinstance(node, Call)
     name = node.args[0]
     assert isinstance(name, Identifier)
     block = node.args[-1]
     assert isinstance(block, Block)
 
-    indt = "    "*indent
+    indt = cx.indent_str()
 
     cpp = indt
 
@@ -514,19 +533,19 @@ def codegen_class(node : Call, indent):
             if isinstance(b.declared_type, ColonBinOp):
                 return_type, interface_type = b.declared_type.args
 
-                if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in interfaces):
+                if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
                     defined_interfaces[interface_type.name].append(b)
 
-                interfaces[interface_type.name].append(b)
+                cx.interfaces[interface_type.name].append(b)
                 local_interfaces.add(interface_type.name)
-            cpp += codegen_def(b, indent + 1)
+            cpp += codegen_def(b, cx.new_scope_context())
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
         interface_def_str += "struct " + str(interface_type) + " : public object {"
         for method in defined_interfaces[interface_type]:
             print("method",method)
-            interface_def_str += indt + interface_method_declaration_str(method)
+            interface_def_str += indt + interface_method_declaration_str(method, cx)
         interface_def_str +=  "};\n\n"
 
         # interface_cpp = "class "
@@ -537,7 +556,7 @@ def codegen_class(node : Call, indent):
             # assert isinstance(new.args[-1], Block)
             # needs to build parents: (anyway forget this)
             # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
-            # method_declarations.append(codegen_def(new, indent))
+            # method_declarations.append(codegen_def(new, indent_str))
 
     def good_but_disable():
         cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const override {{\n"
@@ -579,12 +598,12 @@ def codegen_class(node : Call, indent):
     return interface_def_str + class_header + cpp
 
 
-def codegen_block(block: Block, indent):
+def codegen_block(block: Block, cx):
     assert isinstance(block, Block)
     assert block.args
     assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
-    indent_str = "    " * indent
+    indent_str = cx.indent_str()
 
 
     for b in block.args:
@@ -597,14 +616,14 @@ def codegen_block(block: Block, indent):
             #     cpp += codegen_if(b)
 
             if b.func.name == "for":
-                cpp += codegen_for(b, indent)
+                cpp += codegen_for(b, cx)
                 continue
             elif b.func.name == "class":
-                cpp += codegen_class(b, indent)
+                cpp += codegen_class(b, cx)
                 continue
 
 
-        cpp += indent_str + codegen_node(b, indent) + ";\n"
+        cpp += indent_str + codegen_node(b, cx) + ";\n"
 
     if isinstance(block.parent, Call) and block.parent.func.name == "def":
         last_statement = block.args[-1]
@@ -615,7 +634,7 @@ def codegen_block(block: Block, indent):
     return cpp
 
 
-def interface_method_declaration_str(defnode: Call):
+def interface_method_declaration_str(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
     name = name_node.name
@@ -631,20 +650,20 @@ def interface_method_declaration_str(defnode: Call):
 
     if return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
-    return_type = codegen_type(defnode, return_type_node)
+    return_type = codegen_type(defnode, return_type_node, cx)
 
     for i, arg in enumerate(args):
         if arg.declared_type is None:
             raise CodeGenError("parameter types must be specified for interface methods")
         if not isinstance(arg, Identifier):
             raise CodeGenError("Only simple args allowed for interface method (you don't want c++ virtual functions with default arguments)")
-        params.append(codegen_type(arg, arg.declared_type) + " " + str(arg))
+        params.append(codegen_type(arg, arg.declared_type, cx) + " " + str(arg))
 
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
 
 
 
-def codegen_def(defnode: Call, indent):
+def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
     name = name_node.name
@@ -682,17 +701,17 @@ def codegen_def(defnode: Call, indent):
 
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
-                params.append(codegen_type(arg, arg.declared_type) + " " + str(arg))
+                params.append(codegen_type(arg, arg.declared_type, cx) + " " + str(arg))
             else:
-                params.append(codegen_type(arg, arg.declared_type) + " " + codegen_node(arg))
+                params.append(codegen_type(arg, arg.declared_type, cx) + " " + codegen_node(arg, cx))
         elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
             raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
             if isinstance(arg.rhs, ListLiteral):
                 if isinstance(arg.lhs, Identifier):
-                    params.append("std::vector<" + vector_decltype_str(arg) + ">" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
+                    params.append("std::vector<" + vector_decltype_str(arg, cx) + ">" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
                 else:
-                    params.append("std::vector<" + vector_decltype_str(arg) + ">" + codegen_node(arg.lhs) + " = {" + ", ".join([codegen_node(a) for a in arg.rhs.args]) + "}")
+                    params.append("std::vector<" + vector_decltype_str(arg, cx) + ">" + codegen_node(arg.lhs, cx) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
                 # if arg.rhs.args:
                 #     valuepart = "= " + codegen_node(arg.rhs)
                 #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
@@ -703,12 +722,12 @@ def codegen_def(defnode: Call, indent):
                 # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
                 # params.append((declpart, valuepart))
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
-                params.append("auto " + codegen_node(arg.lhs) + "= " + codegen_node(arg.rhs))
+                params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
             else:
                 if isinstance(arg.lhs, Identifier):
-                    params.append(decltype_str(arg.rhs) + " " + str(arg.lhs) + " = " + codegen_node(arg.rhs))
+                    params.append(decltype_str(arg.rhs, cx) + " " + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
                 else:
-                    params.append(decltype_str(arg.rhs) + " " + codegen_node(arg.lhs) + " = " + codegen_node(arg.rhs))
+                    params.append(decltype_str(arg.rhs, cx) + " " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
 
         else:
             t = "T" + str(i + 1)
@@ -723,7 +742,7 @@ def codegen_def(defnode: Call, indent):
 
     if return_type_node is not None:
         # return_type = codegen_type(name_node, name_node.declared_type)
-        return_type = codegen_type(defnode, return_type_node)
+        return_type = codegen_type(defnode, return_type_node, cx)
     elif name == "main":
         return_type = "int"
     else:
@@ -749,12 +768,12 @@ def codegen_def(defnode: Call, indent):
     if is_interface_method:
         funcdef += " override" # maybe later: use final if method not 'overridable'
 
-    indt = indent * "    "
+    indt = cx.indent_str()
 
-    return indt + funcdef + " {\n" + codegen_block(block, indent + 1) + indt + "}\n\n"
+    return indt + funcdef + " {\n" + codegen_block(block, cx.new_scope_context()) + indt + "}\n\n"
 
 
-def codegen_lambda(node, indent):
+def codegen_lambda(node, cx):
     args = list(node.args)
     block = args.pop()
     assert isinstance(block, Block)
@@ -763,15 +782,15 @@ def codegen_lambda(node, indent):
     for a in args:
         assert isinstance(a, Identifier)
         params.append("auto " + str(a))
-    indent += 1
-    indt = "    " * indent
+    newcx = cx.new_scope_context()
     return ("[](" + ", ".join(params) + ") {\n" +
-            codegen_block(block, indent + 1) + indt + "}")
+            codegen_block(block, newcx) + newcx.indent_str() + "}")
 
 
 def codegen(expr: Node):
     assert isinstance(expr, Module)
-    s = codegen_node(expr)
+    cx = Context()
+    s = codegen_node(expr, cx)
     # s = s.replace("___PLACE_TO_PUT_JUNK", "\n".join(method_declarations))
     print(s)
     s = cpp_preamble + s
@@ -785,14 +804,14 @@ class _NoDeclTypeNeeded(Exception):
         self.result = result
 
 
-def decltype_str(node):
+def decltype_str(node, cx):
     if isinstance(node, ArrayAccess):
         if not isinstance(node.func, Identifier):
             raise CodeGenError("no idea what to do with this indirect array access when printing decltypes")
 
         for n, c in find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
-                if vds := vector_decltype_str(c):
+                if vds := vector_decltype_str(c, cx):
                     return vds
                 # return c.rhs._element_decltype_str
             # print("array def", d)
@@ -809,7 +828,7 @@ def decltype_str(node):
         #         if vds := vector_decltype_str(node.parent):
         #             return vds
 
-        return "std::vector<" + decltype_str(node.args[0]) + ">"
+        return "std::vector<" + decltype_str(node.args[0], cx) + ">"
         # return vector_decltype_str(node)
 
         result = "" # "std::vector<"
@@ -835,7 +854,7 @@ def decltype_str(node):
 
     else:
         try:
-            return "decltype({})".format(_decltype_str(node))
+            return "decltype({})".format(_decltype_str(node, cx))
         except _NoDeclTypeNeeded as n:
             return n.result
 
@@ -863,7 +882,7 @@ def find_defining_class_of_type(typenode, searchnode):
     return None
 
 
-def _decltype_str(node):
+def _decltype_str(node, cx):
 
     if isinstance(node, IntegerLiteral):
         return str(node)
@@ -873,7 +892,7 @@ def _decltype_str(node):
 
     if isinstance(node, BinOp):
         binop = node
-        return _decltype_str(binop.lhs) + str(binop.func) + _decltype_str(binop.rhs)
+        return _decltype_str(binop.lhs, cx) + str(binop.func) + _decltype_str(binop.rhs, cx)
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
         # if call.func.name == "lambda":
@@ -887,7 +906,7 @@ def _decltype_str(node):
                 result = f"std::shared_ptr<{node.func.name}>"
             raise _NoDeclTypeNeeded(result)
 
-        return call.func.name + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
+        return call.func.name + "(" + ", ".join([_decltype_str(a, cx) for a in call.args]) + ")"
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
         # return "[&](){{ return {}; }}".format(codegen_node(node))
@@ -896,7 +915,7 @@ def _decltype_str(node):
         #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
         # else:
         #     return "std::vector<" + decltype_str(node.args[0]) + ">"
-        return "std::vector<" + decltype_str(node.args[0]) + "> {}"
+        return "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
         # return _decltype_str(node.args[0])
 
 
@@ -910,10 +929,10 @@ def _decltype_str(node):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type))
+            return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type, cx))
         if isinstance(def_context, Assign) and def_context.declared_type:
             # return str(def_context.declared_type)
-            return "std::declval<{}>()".format(codegen_type(def_context, def_context.declared_type))
+            return "std::declval<{}>()".format(codegen_type(def_context, def_context.declared_type, cx))
 
 
     last_ident, last_context = defs[-1]
@@ -923,7 +942,7 @@ def _decltype_str(node):
     if isinstance(last_context, Assign):
         assign = last_context
 
-        return _decltype_str(assign.rhs)
+        return _decltype_str(assign.rhs, cx)
 
         if isinstance(assign.rhs, BinOp):
             # for arg in assign.rhs.args:
@@ -943,12 +962,12 @@ def _decltype_str(node):
         return codegen_node(last_ident)
 
 
-def vector_decltype_str(node):
+def vector_decltype_str(node, cx):
     rhs_str = None
     found_use = False
 
     if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
-        return decltype_str(node.rhs.args[0])
+        return decltype_str(node.rhs.args[0], cx)
 
     for found_use_node in find_uses(node):
         found_use = True
@@ -962,7 +981,7 @@ def vector_decltype_str(node):
                 Call) and found_use_context.rhs.func.name == "append":
                 apnd = found_use_context.rhs
                 assert len(apnd.args) == 1
-                rhs_str = decltype_str(apnd.args[0])
+                rhs_str = decltype_str(apnd.args[0], cx)
 
             parent = parent.parent
 
@@ -977,7 +996,7 @@ def vector_decltype_str(node):
     return rhs_str
 
 
-def codegen_type(expr_node, type_node):
+def codegen_type(expr_node, type_node, cx):
     if isinstance(type_node, Identifier):
         name = type_node.name
 
@@ -993,7 +1012,7 @@ def codegen_type(expr_node, type_node):
         #     s = name
         # else:
 
-        if name in interfaces:
+        if name in cx.interfaces:
             name = f"std::shared_ptr<{name}>"
         elif class_node := find_defining_class_of_type(type_node, expr_node):
             if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
@@ -1011,30 +1030,30 @@ def codegen_type(expr_node, type_node):
 
         # if is_list:
         #     s = f"std::vector<{s}>"
-    return codegen_node(type_node)
+    return codegen_node(type_node, cx)
 
 
-def codegen_node(node: Union[Node, Any], indent=0):
+def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
     cpp = io.StringIO()
 
     if isinstance(node, Module):
         for modarg in node.args:
             if modarg.func.name == "def":
-                defcode = codegen_def(modarg, indent)
+                defcode = codegen_def(modarg, cx)
                 cpp.write(defcode)
             elif modarg.func.name == "class":
-                classcode = codegen_class(modarg, indent)
+                classcode = codegen_class(modarg, cx)
                 cpp.write(classcode)
             else:
                 print("probably should handle", modarg)
     elif isinstance(node, Call): # not at module level
         if isinstance(node.func, Identifier):
             if node.func.name == "if":
-                cpp.write(codegen_if(node, indent))
+                cpp.write(codegen_if(node, cx))
             elif node.func.name == "def":
                 print("need to handle nested def")
             elif node.func.name == "lambda":
-                cpp.write(codegen_lambda(node, indent))
+                cpp.write(codegen_lambda(node, cx))
             else:
                 # if isinstance(node.func, Identifier):
 
@@ -1047,7 +1066,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
                     # # this is not longer the case ^
                     # func_str = node.func.name
-                    func_str = codegen_node(node.func)
+                    func_str = codegen_node(node.func, cx)
                 # else:
                     # unreachable...
                     # pass
@@ -1058,7 +1077,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     # else:
                     #     func_str = codegen_node(node.func)
 
-                func_str += "(" + ", ".join(map(codegen_node, node.args)) + ")"
+                func_str += "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
                 # if is_class:
                 #     func_str = "(*get_ptr(" + func_str + "))"
 
@@ -1071,7 +1090,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                 func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
                 # cpp.write(func_str)
             else:
-                func_str = codegen_node(node.func)
+                func_str = codegen_node(node.func, cx)
 
             cpp.write(func_str + "(" + ", ".join( map(codegen_node, node.args)) + ")")
 
@@ -1111,10 +1130,10 @@ def codegen_node(node: Union[Node, Any], indent=0):
 
             # Handle template declaration for an empty list by searching for uses
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
-                rhs_str = "std::vector<" + vector_decltype_str(node) + ">()"
+                rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
 
             else:
-                rhs_str = codegen_node(node.rhs)
+                rhs_str = codegen_node(node.rhs, cx)
 
             declared_type = False
 
@@ -1129,7 +1148,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                     lhs_str = lhs_type_str + " " + lhs_str
                     declared_type = True
             else:
-                lhs_str = codegen_node(node.lhs)
+                lhs_str = codegen_node(node.lhs, cx)
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
 
@@ -1143,7 +1162,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
             separator = " "
             if isinstance(node, AttributeAccess):
                 if isinstance(node.lhs, Identifier) and node.lhs.name == "std":
-                    return "std::" + codegen_node(node.rhs)
+                    return "std::" + codegen_node(node.rhs, cx)
 
                 separator = ""
 
@@ -1161,7 +1180,7 @@ def codegen_node(node: Union[Node, Any], indent=0):
                                 is_list = True
                                 break
                     if is_list:
-                        binop_str = "{}.push_back({})".format(codegen_node(node.lhs), codegen_node(apnd.args[0]))
+                        binop_str = "{}.push_back({})".format(codegen_node(node.lhs, cx), codegen_node(apnd.args[0], cx))
 
                 # elif isinstance(node.rhs, Call) and isinstance(operator_node := node.rhs.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
                 #     binop_str = "(*get_ptr(" + codegen_node(node.lhs) + ")).operator" + operator_name_node.func + "(" + ",".join(codegen_node(a) for a in node.rhs.args) + ")"
@@ -1177,12 +1196,12 @@ def codegen_node(node: Union[Node, Any], indent=0):
                             # template get_ptr stuff (which is a bit dubious taking unique_ptr by reference then taking address...) won't work with a temporary
                             # so detect attribute access of constructor call to class marked unique and print '->' instead
                             if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                                return separator.join([codegen_node(node.lhs), "->", codegen_node(node.rhs)])
-                    cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))." + codegen_node(node.rhs))
+                                return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
+                    cpp.write("(*get_ptr(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
                     # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
                     # cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))" + node.func + "(*get_ptr(" + codegen_node(node.rhs) + "))")  # no matching call to get_ptr for std::endl etc
-                    cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
+                    cpp.write(separator.join([codegen_node(node.lhs, cx), node.func, codegen_node(node.rhs, cx)]))
             else:
                 cpp.write(binop_str)
 
@@ -1191,18 +1210,18 @@ def codegen_node(node: Union[Node, Any], indent=0):
         list_type = node.declared_type
         if list_type is None and isinstance(node.parent, Assign):
             list_type = node.parent.declared_type or node.parent.rhs.declared_type or node.parent.lhs.declared_type
-        elements = [codegen_node(e) for e in node.args]
+        elements = [codegen_node(e, cx) for e in node.args]
 
         if list_type is not None:
-            return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type), ", ".join(elements))
+            return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type, cx), ", ".join(elements))
         elif elements:
-            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0]), ", ".join(elements))
+            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
     elif isinstance(node, ArrayAccess):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
-        return codegen_node(node.func) + "[" + codegen_node(node.args[0]) + "]"
+        return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
     elif isinstance(node, CStringLiteral):
         return str(node)
     elif isinstance(node, UnOp):
@@ -1210,9 +1229,9 @@ def codegen_node(node: Union[Node, Any], indent=0):
         if opername == ":":
             assert 0
         elif opername == "not":
-            return "!" + codegen_node(node.args[0])
+            return "!" + codegen_node(node.args[0], cx)
         else:
-            return "(" + opername + codegen_node(node.args[0]) + ")"
+            return "(" + opername + codegen_node(node.args[0], cx) + ")"
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib
