@@ -359,16 +359,17 @@ def find_def_starting_from(search_node, node_to_find):
     return res
 
 
-
 def is_return(node):
     return ((isinstance(node, ColonBinOp) and node.lhs.name == "return") or (
             isinstance(node, Identifier) and node.name == "return") or (
             isinstance(node, UnOp) and node.func == "return"))
 
+
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
 # (NOTE: requires prior replacing of UnOp return)
 def is_void_return(node):
     return not isinstance(node, ColonBinOp) and is_return(node) and not (isinstance(node.parent, ColonBinOp) and node.parent.lhs is node)
+
 
 def find_defs(node):
 
@@ -385,106 +386,6 @@ def find_defs(node):
                 print("stopping at complex definition")
         else:
             print("are we handling this correctly? (def args)", found_node, found_context)
-
-
-
-
-
-# def find_defs(node):
-#     print("find_defs", node)
-#
-#     while True:
-#         found = find_def(node)
-#
-#         if found is not None:
-#             yield found
-#
-#             found_node, found_context = found
-#             if isinstance(found_context, Assign):
-#                 pass
-#             else:
-#                 print("are we handling this correctly? (def args)", found_node, found_context)
-#
-#             node = found_node
-#
-#         else:
-#             break
-
-def find_defs_wrong1(node):
-    return _find_defs(node, node)
-
-def _find_defs_wrong1(node, search_node):
-    # assert isinstance(node, Assign)
-    if not isinstance(node, Identifier):
-        return
-
-    if isinstance(search_node, Identifier) and node.name == search_node.name:
-        return (yield search_node)
-
-    def stop(n):
-        return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
-
-    def test(n):
-        return isinstance(n, Assign) and isinstance(n.lhs, Identifier) and n.lhs.name == search_node.name
-
-    yield from find_all(search_node, test=test, stop=stop)
-
-    if isinstance(search_node.parent, Block):
-        index = search_node.parent.args.index(search_node)
-        preceding = search_node.parent.args[0:index]
-        for p in preceding:
-            # yield from _find_defs(node, p)
-            yield from find_all(p, test=test, stop=stop)
-    else:
-        parent = search_node.parent
-
-        while True:
-
-            if isinstance(parent, Block):
-                for arg in reversed(parent.args):
-                    yield from find_all(arg, test=test, stop=stop)
-            else:
-                yield from find_all(parent, test=test, stop=stop)
-
-            parent = parent.parent
-
-    #
-    #
-    # parent = None
-    # while True:
-    #     if parent is None:
-    #         parent = search_node.parent
-    #     else:
-    #         parent = parent.parent
-    #
-    #     if isinstance(parent, Block):
-    #         index = search_node.parent.args.index(search_node)
-    #         preceding = search_node.parent.args[0:index]
-    #         for p in preceding:
-    #             yield from _find_defs(node, p)
-    #     else:
-    #         parent = search_node.parent
-    #         while True:
-    #             parent = parent.parent
-    #
-    #
-    # if isinstance(search_node.parent, Block):
-    #     index = search_node.parent.args.index(search_node)
-    #     preceding = search_node.parent.args[0:index]
-    #     for p in preceding:
-    #         yield from _find_defs(node, p)
-    # else:
-    #     parent = search_node.parent
-    #     while True:
-    #         parent = parent.parent
-    #
-
-
-
-
-
-
-
 
 
 # find closest following use
@@ -564,72 +465,15 @@ def _find_uses(node, search_node):
         yield from find_nodes(assign.lhs, search_node.func)
 
 
-
-class LookupTable:
-    def __int__(self):
-        self.parent = None
-        self.defs = {}
-
-        pass
-
-
-def build_scopes(expr):
-    def visitor(node, outer_table):
-        if not isinstance(node, Node):
-            return node
-        rebuilt = []
-
-        if isinstance(node, Assign):
-            outer_table.append(node)
-        else:
-            node.symbol_table = list(outer_table)  # shallow copy
-
-        if isinstance(node, Block):
-            for arg in node.args:
-                if isinstance(node, Assign):
-                    pass
-
-        else:
-
-            for arg in node.args:
-                visitor(arg, node.symbol_table)
-
-        #     if isinstance(arg, Node):
-        #         if not hasattr(node, "symbol_table")
-        #             node.symbol_table = []
-        #         arg.parent = node
-        #         # arg.rebuild(arg.func, arg.args)
-        #         arg = visitor(arg)
-        #     rebuilt.append(arg)
-        # node.args = rebuilt
-        # # node.rebuild(node.func, node.args)
-        return node
-    return visitor(expr, [])
-
-
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
-
-    # for modarg in expr.args:
-    #     if isinstance(modarg, Call):
-    #         if modarg.func.name not in ["def", "class"]:
-    #             raise SemanticAnalysisError("Only defs or classes at module level (for now)")
-    #     elif isinstance(modarg, Assign):
-    #         pass
-    #     else:
-    #         raise SemanticAnalysisError("Only calls and assignments at module level (for now)")
 
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
-    # remove all non-"type" use of ColonBinOp (scratch that for now - leave elif as lhs of ColonBinOp)
-    # expr = build_if_nodes(expr) # in fact don't even do this
-
-    # convert ColonBinOp (but not SyntaxColonBinOp) to types
     expr = build_types(expr)
     expr = build_parents(expr)
-    # expr = build_scopes(node)
 
     print("after lowering", expr)
 

@@ -769,24 +769,6 @@ def codegen_lambda(node, indent):
             codegen_block(block, indent + 1) + indt + "}")
 
 
-# unused
-def _codegen_def_dynamic(defnode: Call):
-    assert defnode.func.name == "def"
-    name = defnode.args[0]
-    cpp = io.StringIO()
-    cpp.write(f"std::shared_ptr<object> {name} (")
-    args = defnode.args[1:]
-    block = args.pop()
-    assert isinstance(block, Block)
-    if len(args):
-        cpp_args = ", ".join([f"std::shared_ptr<object> {a}" for a in args])
-        cpp.write(cpp_args)
-    cpp.write(") {\n")
-    cpp.write(codegen_block(block))
-    cpp.write("}")
-    return cpp.getvalue()
-
-
 def codegen(expr: Node):
     assert isinstance(expr, Module)
     s = codegen_node(expr)

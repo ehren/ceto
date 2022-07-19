@@ -1,6 +1,13 @@
 from compiler import compile
 
 
+def test_indent_checker():
+    pass
+    # c = compile(r"""
+
+    # """)
+
+
 def test_bad_indent():
     try:
         c = compile(r"""
@@ -84,9 +91,10 @@ def (main:
     b = Blah()
     b.huh()  # auto unwrap via template magic
     b->huh() # no magic
-    printf("addr %p\n", (&b).get())
-    # printf("addr temp %p\n", (&Blah()).get())  #  error: taking the address of a temporary object of type 'typename enable_if<!is_array<Blah> ... - good error
-    printf("use_count %ld\n", (&b).use_count())
+    printf("addr %p\n", (&b)->get())
+    printf("addr %p\n", (&b).get()) # possible to tighten def of get_ptr so that dot syntax doesn't work here?
+    # printf("addr temp %p\n", (&Blah())->get())  #  error: taking the address of a temporary object of type 'typename enable_if<!is_array<Blah> ... - good error
+    printf("use_count %ld\n", (&b).use_count())  # that this works is a bit of an unintended consequence
     printf("use_count %ld\n", (&b)->use_count())
     b_addr = &b
     printf("addr of shared_ptr instance %p\n", b_addr)

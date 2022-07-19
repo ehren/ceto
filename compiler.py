@@ -58,7 +58,7 @@ def compile(s, compile_cpp=True, run=True):
             command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
 
         t1 = perf_counter()
-        p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(command, shell=True)
 
         # sio = io.StringIO(s)
         # t = perf_counter()
