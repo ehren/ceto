@@ -426,7 +426,7 @@ class Context:
         c = Context()
         c.interfaces = self.interfaces  # shallow copy
         c.parent = self
-        c._indent += 1
+        c._indent = self._indent + 1
         return c
 
 
@@ -499,7 +499,7 @@ def codegen_for(node, cx):
     instmt = node.args[0]
     block = node.args[1]
     if not isinstance(block, Block):
-        raise CodeGenError("expected block as last arg of if", node)
+        raise CodeGenError("expected block as last arg of for", node)
     if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
         raise CodeGenError("unexpected 1st argument to for", node)
     var = instmt.lhs

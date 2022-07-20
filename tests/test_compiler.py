@@ -1,6 +1,32 @@
 from compiler import compile
 
 
+def test_for_scope():
+    c = compile("""
+def (main:
+    x = 5
+    
+    l = [1,2,3]
+    for (x in l:
+        x = x + 1
+    )
+    
+    for (x in l:
+        printf("%d", x)
+    )
+    
+    for (x in [1, 2, 3]:
+        x = x + 1
+        printf("%d", x)
+    )
+        
+    printf("%d", x)
+)
+    """)
+
+    assert c == "2342345"
+
+
 def test_indent_checker():
     pass
     # c = compile(r"""
@@ -1003,6 +1029,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_for_scope()
     # test_correct_shared_ptr()
     # test_bad_indent()
     # test_for()

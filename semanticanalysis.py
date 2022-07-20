@@ -285,14 +285,21 @@ def _find_def(parent, child, node_to_find):
             return None
         if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name and r.lhs is not node_to_find:
             return r.lhs, r
-        if isinstance(r, Call) and r.func.name == "class":
-            class_name = r.args[0]
-            if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
-                return class_name, r
-        else:
-            for a in r.args:
-                if f := _find_assign(a, node_to_find):
-                    return f
+        if isinstance(r, Call):
+            call_func_name = r.func.name
+            if call_func_name == "class":
+                class_name = r.args[0]
+                if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
+                    return class_name, r
+            elif call_func_name == "for":
+                instmt = r.args[0]
+                if isinstance(instmt, BinOp) and instmt.func == "in":
+                    itervar = instmt.args[0]
+                    if isinstance(itervar, Identifier) and itervar == node_to_find.name:
+                        return itervar, r
+        for a in r.args:
+            if f := _find_assign(a, node_to_find):
+                return f
         return None
 
     if parent is None:
@@ -338,6 +345,14 @@ def _find_def(parent, child, node_to_find):
                 # assert 0
                 print("why was this commented out?")
                 return class_name, parent
+        elif parent.func.name == "for":
+            instmt = parent.args[0]
+            if isinstance(instmt, BinOp) and instmt.func == "in":
+                itervar = instmt.args[0]
+                if isinstance(itervar, Identifier) and itervar.name == node_to_find.name:
+                    return itervar, parent
+            else:
+                assert 0 # remove when func str fixed
 
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name and parent.lhs is not node_to_find:
