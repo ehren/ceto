@@ -343,15 +343,12 @@ struct shared_object : public std::enable_shared_from_this<shared_object>, objec
     ___PLACE_TO_PUT_JUNK
 };
 
+template<typename T>
+T* get_ptr(T & obj) { return &obj; }  // should be compiled away when immediately derefed
+
 // dunno about this one, needed for calling methods on string temporaries...
 template<typename T>
 T* get_ptr(T && obj) { return &obj; }
-
-template<typename T>
-T* get_ptr(T & obj) { return &obj; }
-
-template<typename T>
-T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
@@ -360,6 +357,16 @@ get_ptr(std::shared_ptr<T> obj) { return obj; }
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
 get_ptr(std::unique_ptr<T>& obj) { return obj; }
+
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, T*>
+get_ptr(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
+
+template<typename T>
+std::enable_if_t<!std::is_base_of_v<object, T>, T**>
+get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
+
+
 
 /*
 template <typename T, typename Y>

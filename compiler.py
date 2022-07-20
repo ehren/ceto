@@ -76,6 +76,7 @@ def compile(s, compile_cpp=True, run=True):
         print(output)
 
         os.remove(filename)
+        os.remove('./a.out')
 
     return output
 
