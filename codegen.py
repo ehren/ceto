@@ -502,7 +502,8 @@ def codegen_if(ifcall : Call, cx):
 
 def codegen_for(node, cx):
     assert isinstance(node, Call)
-    assert len(node.args) == 2
+    if len(node.args) != 2:
+        raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
     instmt = node.args[0]
     block = node.args[1]
     if not isinstance(block, Block):
@@ -1018,10 +1019,15 @@ def codegen_type(expr_node, type_node, cx):
         # assert isinstance(type_node.parent, ColonBinOp)
         # is_list = isinstance(assign := type_node.parent.parent, Assign) and isinstance(assign.rhs, ListLiteral) or isinstance(assign, ListLiteral)
 
-        if name == "string":
+        if name == "ptr":
+            return "*"
+        elif name == "const":
+            return "const"
+        elif name == "ref":
+            return "&"
+        elif name == "string":
             return "std::string"
-
-        if name == "object":
+        elif name == "object":
             return "std::shared_ptr<object>"
         # if name in ["int", "float", "double", "char", "bool"]:
         #     s = name
@@ -1045,6 +1051,18 @@ def codegen_type(expr_node, type_node, cx):
 
         # if is_list:
         #     s = f"std::vector<{s}>"
+
+    elif isinstance(type_node, ColonBinOp):
+        lhs = type_node.lhs
+        rhs = type_node.rhs
+        # if isinstance(lhs, ListLiteral) and lhs.name == "list":  # not like 'vector' is any more accurate
+        #     return "std::vector<" + codegen_type(expr_node, rhs, cx) + ">"
+        return codegen_type(expr_node, lhs, cx) + " " + codegen_type(expr_node, rhs, cx)
+    elif isinstance(type_node, ListLiteral):
+        if len(type_node.args) != 1:
+            raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
+        return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
+
     return codegen_node(type_node, cx)
 
 

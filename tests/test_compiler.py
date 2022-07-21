@@ -1,6 +1,43 @@
 from compiler import compile
 
 
+
+def test_complex_arguments():
+    c = compile("""
+    
+def (bar, x:int:const:ref:
+    printf("int by const ref %d", x)
+)
+    
+# def (foo, items:list:string:  # pretty annoying but works or did (no longer does)
+def (foo, items:[string]:
+    std.cout << "size: " << items.size() << "\n"
+    
+    for (s in items:
+        std.cout << s << "\n"
+    )
+)
+    
+def (main, argc: int, argv: char:ptr:ptr:
+    printf("argc %d\n", argc)
+    printf("%s\n", argv[0])
+    
+    lst = ["hello", "world"] 
+    foo(lst)
+    bar(lst.size())
+)
+    """)
+
+    assert c.strip() == """
+argc 1
+./a.out
+size: 2
+hello
+world
+int by const ref 2
+    """.strip()
+
+
 def test_for_scope():
     c = compile("""
 def (main:
@@ -1020,6 +1057,7 @@ def (map, values, fun:
 
 
 # https://stackoverflow.com/questions/28643534/is-there-a-way-in-python-to-execute-all-functions-in-a-file-without-explicitly-c/28644772#28644772
+# (sometimes want to bypass pytest on slow computer)
 def _some_magic(mod):
     import inspect
     all_functions = inspect.getmembers(mod, inspect.isfunction)
@@ -1030,6 +1068,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_complex_arguments()
     # test_for_scope()
     # test_correct_shared_ptr()
     # test_bad_indent()
