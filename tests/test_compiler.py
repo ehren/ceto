@@ -1,6 +1,48 @@
 from compiler import compile
 
 
+def alternate_syntax():
+    # meh these examples make searching defs vs uses eg (foo  vs foo( more difficult
+    # also
+    # f = lambda (x:
+    #    1
+    # )
+    # or one liner
+    # f = lambda (x, 1)
+    # should these better be thought of as application of unary op 'lambda' to a tuple
+    # or as a call to a higher order function? keeping def the same as lambda is better.
+    c = compile("""
+
+# def as a unary oparator (same precedence as return ...
+def bar(x:int:const:ref:
+    printf("int by const ref %d", x)
+)
+
+# ugly: call to the func as the type of the def
+def: foo(items:[string]:
+    std.cout << "size: " << items.size() << "\n"
+
+    # barely makes sense if syntactically valid
+    for: s in items(:
+        std.cout << s << "\n"
+    )
+    
+    # for as a unary operator
+    for s in items(:
+        std.cout << s << "\n"
+    )
+)
+
+def main(argc: int, argv: char:ptr:ptr:
+    printf("argc %d\n", argc)
+    printf("%s\n", argv[0])
+
+    lst = ["hello", "world"] 
+    foo(lst)
+    bar(lst.size())
+)
+    """)
+
 
 def test_complex_arguments():
     c = compile("""
