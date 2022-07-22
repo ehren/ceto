@@ -1,7 +1,29 @@
 from compiler import compile
 
 
-def alternate_syntax():
+def test_range_iota():
+    c = compile("""
+
+def (main:
+    for (i in range(10):
+        std.cout << i
+    )
+    for (i in range(0, 10):
+        std.cout << i
+    )
+    for (i in range(-10, 10):
+        std.cout << i
+    )
+)
+
+""")
+
+    assert c.strip() == "01234567890123456789-10-9-8-7-6-5-4-3-2-10123456789"
+
+
+
+def _alternate_syntax():
+    return
     # meh these examples make searching defs vs uses eg (foo  vs foo( more difficult
     # also
     # f = lambda (x:
@@ -31,6 +53,14 @@ def: foo(items:[string]:
     for s in items(:
         std.cout << s << "\n"
     )
+    
+    if (x == 1) (:   # would parse ok now but def not
+        pass
+    elif x == 5:
+        pass
+    else:
+        0
+    )
 )
 
 def main(argc: int, argv: char:ptr:ptr:
@@ -47,11 +77,49 @@ def main(argc: int, argv: char:ptr:ptr:
 def test_complex_arguments():
     c = compile("""
     
+# User Naumann: https://stackoverflow.com/a/54911828/1391250
+
+
+# char *(*fp)( int, float *)
+# def (test, fp: fp(int,float:ptr):char:ptr:
+# def (test, fp: ptr(int,float:ptr):char:ptr:
+# def (test, fp: ptr(int,float:ptr):char:ptr
+#     pass
+# )
+
+
+    
+# int const *    // pointer to const int
+def (test, p: int: const: ptr:
+    std.cout << p << "\n"
+)
+
+# int * const    // const pointer to int
+def (test, p: int: ptr: const:
+    std.cout << p << "\n"
+)
+
+# int const * const   // const pointer to const int
+def (test2, p: int: const: ptr: const:
+    std.cout << p << "\n"
+)
+
+# int * const * p3;   // pointer to const pointer to int
+def (test, p: int: ptr: const: ptr:
+    std.cout << p << "\n"
+)
+    
+# const int * const * p4;       // pointer to const pointer to const int
+def (test3, p: const: int: ptr: const:
+    std.cout << p << "\n"
+)
+
 def (bar, x:int:const:ref:
     printf("int by const ref %d", x)
 )
     
 # def (foo, items:list:string:  # pretty annoying but works or did (no longer does)
+# maybe that should be string:list anyway given the above
 def (foo, items:[string]:
     std.cout << "size: " << items.size() << "\n"
     
@@ -359,6 +427,11 @@ class (Foo:
         printf("in handleComp - both foo\n")
         return this.x == other.x
     )
+    #def (handleComp, other: nullptr_t:
+    #    printf("in handleComp - other nullptr\n")
+        # return false
+    #    return other == 5
+    #)
     def (handleComp, other:
         printf("in handleComp - other not foo\n")
         # return false
@@ -382,8 +455,9 @@ def (operator("=="), f: Foo, other: Foo:
 )
 
 def (operator("=="), f: Foo, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
-    # return f.operator("==")(other)
-    return nullptr == f   # i think this is safeish
+    return not f
+    #return f.operator("==")(other)
+    #return nullptr == f   # i think this is safeish
 )
 
 def (main:
@@ -1110,6 +1184,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    #test_range_iota()
     # test_complex_arguments()
     # test_for_scope()
     # test_correct_shared_ptr()
@@ -1117,7 +1192,7 @@ if __name__ == '__main__':
     # test_for()
     # three_way_compare()
     # test_deref_address_of()
-    # test_uniq_ptr()
+    #test_uniq_ptr()
     # test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()

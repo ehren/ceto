@@ -320,6 +320,8 @@ cpp_preamble = """
 #include <type_traits>
 #include <utility>
 #include <compare> // for <=>
+#include <ranges>
+//#include <numeric>
 
 
 struct object {
@@ -1066,6 +1068,7 @@ def codegen_type(expr_node, type_node, cx):
     return codegen_node(type_node, cx)
 
 
+
 def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
     cpp = io.StringIO()
 
@@ -1087,6 +1090,15 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
                 print("need to handle nested def")
             elif node.func.name == "lambda":
                 cpp.write(codegen_lambda(node, cx))
+            elif node.func.name == "range":
+                if len(node.args) == 1:
+                    return "std::views::iota(0, " + codegen_node(node.args[0], cx) + ")"
+                    # return "std::ranges:iota_view(0, " + codegen_node(node.args[0], cx) + ")"
+                elif len(node.args) == 2:
+                    return "std::views::iota(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
+                    # return "std::ranges:iota_view(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
+                else:
+                    raise CodeGenError("range args not supported:", node)
             else:
                 # if isinstance(node.func, Identifier):
 

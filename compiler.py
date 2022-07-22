@@ -56,7 +56,8 @@ def compile(s, compile_cpp=True, run=True):
             # need to upgrade
             command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
         else:
-            command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
+            # command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
+            command = "g++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
 
         print("\n".join(perf_messages))
 
