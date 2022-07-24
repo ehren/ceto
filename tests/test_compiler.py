@@ -1184,7 +1184,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
-    #test_range_iota()
+    # test_range_iota()
     # test_complex_arguments()
     # test_for_scope()
     # test_correct_shared_ptr()

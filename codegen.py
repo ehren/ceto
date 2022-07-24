@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger
 
 
 import io
@@ -320,7 +320,7 @@ cpp_preamble = """
 #include <type_traits>
 #include <utility>
 #include <compare> // for <=>
-#include <ranges>
+//#include <ranges>
 //#include <numeric>
 
 
@@ -409,6 +409,11 @@ add(T a, T b)
 }*/
 
 
+template <typename T>
+constexpr bool is_signed(const T& t)
+{
+  return std::numeric_limits<T>::is_signed;
+}
 
 
 
@@ -441,6 +446,12 @@ class Context:
 
 # method_declarations = []
 cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
+counter = 0
+
+def gensym():
+    global counter
+    counter += 1
+    return "_langsym" + str(counter)
 
 
 def codegen_if(ifcall : Call, cx):
@@ -516,7 +527,46 @@ def codegen_for(node, cx):
     iterable = instmt.rhs
     indt = cx.indent_str()
     # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
-    forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
+    var_str = codegen_node(var, cx)
+
+    if isinstance(iterable, Call) and iterable.func.name == "range":
+        if not 0 <= len(iterable.args) <= 2:
+            raise CodeGenError("unsupported range args", iterable)
+
+        # is_signed = False
+        # for arg in iterable.args:
+        #     if isinstance(arg, IntegerLiteral) and arg.integer < 0:
+        #         is_signed = True
+
+        start = iterable.args[0]
+        if len(iterable.args) == 2:
+            end = iterable.args[1]
+        else:
+            end = start
+            start = RebuiltInteger(integer=0)
+            start.parent = end.parent
+        sub = RebuiltBinOp(func="-", args=[end, start])
+        sub.parent = start.parent
+        ds = decltype_str(sub, cx)
+        startstr = codegen_node(start, cx)
+        endstr = codegen_node(end, cx)
+        forstr = f"for ({ds} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
+        #     start_str = codegen_node(start, cx)
+        #     end_str = codegen_node(end, cx)
+        #     preamble = "{\n"
+        #     # constexpr = indt + "if constexpr (is_signed(" + start_str + ") {\n"
+        #     # constexpr += indt + decltype_str(start) + ";\n"
+        #     # constexpr += indt + "else {"
+        #     # constexpr += indt + decltype_str(end_str) + ";\n"
+        #     # constexpr +=  indt + f"for ({decliter} {i})"
+        # else:
+        #     end = start
+        #     start = 0
+        # itertype = "decltype("
+        # forstr +=
+    else:
+        forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
+
     forstr += codegen_block(block, cx.new_scope_context())
     forstr += indt + "}\n"
     return forstr
@@ -911,6 +961,8 @@ def _decltype_str(node, cx):
     if isinstance(node, BinOp):
         binop = node
         return _decltype_str(binop.lhs, cx) + str(binop.func) + _decltype_str(binop.rhs, cx)
+    elif isinstance(node, UnOp):
+        return "(" + str(node.func) + _decltype_str(node.args[0], cx) + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
         # if call.func.name == "lambda":
@@ -1242,7 +1294,7 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
                             # so detect attribute access of constructor call to class marked unique and print '->' instead
                             if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
                                 return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
-                    cpp.write("(*get_ptr(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx))
+                    cpp.write("get_ptr(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
                     # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
                     # cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))" + node.func + "(*get_ptr(" + codegen_node(node.rhs) + "))")  # no matching call to get_ptr for std::endl etc
@@ -1277,6 +1329,7 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
             return "!" + codegen_node(node.args[0], cx)
         else:
             return "(" + opername + codegen_node(node.args[0], cx) + ")"
+            # return opername + codegen_node(node.args[0], cx)
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib

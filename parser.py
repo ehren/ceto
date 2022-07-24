@@ -71,6 +71,12 @@ class BinOp(Node):
         return self.args[1]
 
 
+class RebuiltBinOp(BinOp):
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+
 class _LeftAssociativeBinOp(BinOp):
 
     def __init__(self, tokens):
@@ -253,11 +259,21 @@ class RebuiltStringLiteral(StringLiteral):
 
 class IntegerLiteral(Node):
     def __init__(self, token):
-        self.func = int(token[0])
+        self.func = None #int(token[0])
         self.args = []
+        self.integer = int(token[0])
 
     def __repr__(self):
-        return str(self.func)
+        return str(self.integer)
+
+
+class RebuiltInteger(IntegerLiteral):
+
+    def __init__(self, integer):
+        self.integer = integer
+        self.func = None
+        self.args = []
+
 
 
 class _ListLike(Node):
