@@ -1,6 +1,47 @@
 from compiler import compile
 
 
+def test_py14_map_example():
+    c = compile(r"""
+def (map, values, fun:
+    results = []
+    for (v in values:
+        results.append(fun(v))
+    )
+    return results
+)
+
+def (foo, x:int:
+    std.cout << x
+    return x
+)
+
+def (main:
+    l = [1, 2, 3, 4]
+    map(l, lambda (x:int:
+        std.cout << x
+        return x
+    ))
+    map(l, foo)
+)
+	""")
+
+    assert c == "12341234"
+
+
+# let's fix the existing vector/decltype bugs before this madness:
+# def test_c_array_types():
+#     c = compile("""
+#
+# def (main:
+#     ar = [[1,2,3,4], [2,3,4,5]] : int[2][4]
+#     for (i in ar:
+#         std.cout << i
+#     )
+# )
+#     """)
+
+
 def test_range_iota():
     c = compile("""
 
@@ -1184,6 +1225,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_py14_map_example()
     # test_range_iota()
     # test_complex_arguments()
     # test_for_scope()
