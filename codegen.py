@@ -1247,7 +1247,7 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
                 types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
                 if any(types):
                     assert len(set(types)) == 1
-                    lhs_type_str = codegen_type(node.lhs, types[0])
+                    lhs_type_str = codegen_type(node.lhs, types[0], cx)
                     # if isinstance(node.rhs, ListLiteral):
                     #     lhs_type_str = f"std::vector::<{lhs_str}>"
                     lhs_str = lhs_type_str + " " + lhs_str

@@ -1,6 +1,48 @@
 from compiler import compile
 
 
+def test_generic_refs_etc():
+    c = compile(r"""
+    
+# def (foo, x: auto: ref:  #  error: 'auto' not allowed in function prototype
+# def (foo, x: ref:  # should work (stay in template generation mode)
+def (foo, x:
+    return x
+)
+    
+def (main:
+    x = 1
+    xref = x : auto : ref  # actually works. could just auto inject auto in the local var case?
+    y = 2 : const : auto
+    z = 3 : const : auto : ref
+    # w = 4 : const : ref : auto   #   const & auto w = 4;   # not valid c++ syntax
+    
+    r = xref : const : int : ref
+    r2 = xref : int : const : ref
+    # r = xref : ref
+    
+    # p = 0 : ptr  # generating "*p = 0;" is bad
+    p = &x : const : auto : ptr
+    p2 = &p : const : auto : ptr : ptr
+    p3 = &x : int:const:ptr
+    # p4 = &x : const:ptr:int   #  const * int p4 = (&x);  error expected unqualifief id
+    
+    
+    # want to support
+    # w1 = x : ref   # really auto:ref
+    # w2 = x : const:ref # really  const:auto:ref
+    # w3 = &x : ptr # really  auto:ptr
+    # w4 = &x : const:ptr # really const:auto:ptr
+    
+    # rules:  # have to look at outer expression node...
+    # see ptr - output auto*
+    # see const:ptr - output const auto* 
+    
+    foo(1)
+)
+    """)
+
+
 def test_py14_map_example():
     c = compile(r"""
 def (map, values, fun:
@@ -16,17 +58,28 @@ def (foo, x:int:
     return x
 )
 
+def (foo_generic, x:
+    std.cout << x
+    return x
+)
+
 def (main:
     l = [1, 2, 3, 4]
-    map(l, lambda (x:int:
+    map(map(l, lambda (x: #int:
         std.cout << x
-        return x
+        x*2
+    )), lambda (x:
+        std.cout << x
+        x
     ))
     map(l, foo)
+    # map(l, foo_generic)  # error
+    map(l, lambda (x:int, foo_generic(x)))  # need type printing for lambda args (when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
+    map(l, lambda (x, foo_generic(x)))  # why does this even work? note: clang 14 -O3 produces at least an extra allocation vs passing foo_generic<int>. 
 )
 	""")
 
-    assert c == "12341234"
+    assert c == "12342468123412341234"
 
 
 # let's fix the existing vector/decltype bugs before this madness:
@@ -1225,6 +1278,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()
     # test_complex_arguments()
