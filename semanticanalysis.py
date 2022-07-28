@@ -205,7 +205,8 @@ def one_liner_expander(parsed):
                             op = new
                         else:
                             break
-                if op.func.name in ["def", "lambda"]:
+                # if op.func.name in ["def", "lambda"]:  # no def one liners
+                if op.func.name == "lambda":
                     if not isinstance(op.args[-1], Block):
                         # last arg becomes one-element block
                         op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])

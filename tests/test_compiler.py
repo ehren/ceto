@@ -1,6 +1,218 @@
 from compiler import compile
 
 
+
+
+
+def test_class_attributes():
+    eedtodisablepycharmjunk = r"""
+
+class (A:
+    a
+    b
+    c
+    d  # autosyntehsized constructor A(a,b,c,d) and (template because untyped) data members
+init: a, b:  # delegating constructor
+    self.init(a,b,0,0)
+)  
+
+# problems with typical derived class where we don't want autosynthesized data members
+
+# autosynthesized data members also requires rule that 0 auto synthesized attributes requires an explicit no-arg constructor (don't want =delete littered everywhere)
+
+class (A:
+    a  # autosynthesized public "T1 a";  
+    b  # "T2 b"
+    c
+    d  # autosynthsized constructor A(a,b,c,d) : a(a), b(b),c(c),d(d) {}
+    def (init: a, b:   # delegating constructor
+        self.init(a,b,0,0)
+    )
+)  
+
+class (B:
+    def (init:  # needs explicit no arg constructor because no autosynthesized data members
+        pass
+    )
+public:
+    x      # public data  T1 x;
+    y
+    z
+)
+
+class (A:
+    a
+)
+
+class (ADerived(A):   # need to track the generic params of A to autogenerate : A<T1, T2, T3, T4> or not? determine based on super.init call
+    def (init, a, b, c, d:    # must be explicit
+        super.init(a,b,c,d)   # same
+    ) # results in:
+    # ADerived(T1 a, T2 b, T3 c, T4 d) : A<decltype(a), decltype(b), decltype(c), decltype(d)> (a,b,c,d) {}
+    
+)
+
+class (ADerived2(A):
+    def (init, a:int, b, c:float, d:
+        super.init(a, b, c, d)    # ensures we inherit from A<int, T1, float, T2>  etc
+    )
+)
+
+
+
+    
+    """
+
+
+
+    """
+class (A:
+    a
+    b
+    c
+    d
+    def (foo: x
+
+    )
+private:
+    b
+    c
+
+others:
+    c
+    d
+)
+
+# or!
+
+class (A:
+    a    # default 'init' block
+    b
+    c
+    d
+    def (foo:
+        pass
+    )
+init:   # another constructor
+    a
+    b
+
+public:  # attributes not part of constructor
+    e
+    f
+private:
+    g
+    h
+)
+
+
+class (A:
+    # autocreates constructor:
+    x
+    y
+
+    # so this would be an error:
+    # def (init, x, y:
+    #     #self.init(...)
+    #     self._x = x
+    #     self._y = y
+    # )
+
+    # this instead? don't think so
+    # def (init, x, y)
+
+    def (init, x:
+        self.init(x, 0)
+    )
+
+public:
+    a  # these don't autogenerate a constructor
+    b
+protected:
+    c
+    d
+private:
+    e
+    f
+)
+
+
+class (AA:
+    a
+    b
+)
+
+# class (BB:(AA,CC):
+# class (BB(AA,CC):
+# class (BB(AA):
+#     a
+#     b
+#     super.init(a,b)
+# )
+
+class (BB(AA):
+    c
+    d
+    def (init, a, b:
+        super.init(a, b)
+        self.c = a
+        self.d = b
+    )
+)
+
+
+"""
+
+    # c = compile(r"""
+    r"""
+class (Foo:
+    _a
+    _b
+    c = 0
+    # def (init, a(_a), b(_b):
+    # def (init, a, b:
+    #     pass
+    # ) : (_a(a), _b(b))
+    def (init, a, b:
+        self._a = a
+        self._b = b
+    done:
+        printf("i'm constructed")
+    )
+    
+    def (init, int:y:
+        # self.init(0, y)
+        self = init(0, y)
+    body:
+        printf("done (delegated)")
+    )
+    
+    def (init, a, b:
+        self.a = a  # takes place in initializer list
+        # or with a delegating constructor:
+        # self = Foo(a)
+        # self.Foo(a)  # better?
+        # self.init(a) # best?
+        bb = b    # expression isn't self.something = whatever (or a single call to a delegating constructor), everything that follows takes place in constructor body 
+        self.b = bb # member initializition in constructor body not initializer list
+    )
+)
+
+def (main:
+    pass
+)    
+    """
+
+
+def test_one_liners():
+    c = compile(r"""
+def (main:
+    if ((1:int): printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )
+    if (1:int: printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )   # warning: declaration does not declare anything:  int;
+)
+    """)
+
+
 def test_generic_refs_etc():
     c = compile(r"""
     
