@@ -25,7 +25,7 @@ class (A:
     b  # "T2 b"
     c
     d  # autosynthsized constructor A(a,b,c,d) : a(a), b(b),c(c),d(d) {}
-    def (init: a, b:   # delegating constructor
+    def (init, a, b:   # delegating constructor
         self.init(a,b,0,0)
     )
 )  
@@ -379,9 +379,19 @@ def main(argc: int, argv: char:ptr:ptr:
 )
     """)
 
+# use x: int(int)  # std.Function
+# x: int(int):ptr   # special case this one? require int(int):std.Function:ptr  for a raw pointer to std::Function
+# hmm func returning pointer to int
+# (int:ptr)(int,float)
+# func ptr version
+# (int:ptr)(int,float) : ptr
+#need better function ptr syntax:
+# ptr : int(int,float)  # fine. pointer to std.Function is still int(int,float):ptr. and having a function
+# hmm maybe allow template parameters if they're named T, T1, T2, ... ?
+# T1(T2, T3)   <- std.function bu
 
 def test_complex_arguments():
-    c = compile("""
+    c = compile(r"""
     
 # User Naumann: https://stackoverflow.com/a/54911828/1391250
 
@@ -392,7 +402,27 @@ def test_complex_arguments():
 # def (test, fp: ptr(int,float:ptr):char:ptr
 #     pass
 # )
+def (moretest2, p:
+    std.cout << p << "\n"
+    
+    l = [1, 2, 3]
+    a = l : std.vector<int>
+    # a = l : std.vector<int> > 1
+    # std.vector<int> a  # happily printed # i suppose that's ok
+    std.vector<int> a = 1  # happily printed # i suppose that's ok
+    b = [1,2,3,4]
+    # (a : std.vector<int>) = b
+    
+    
+    # (a:1) + b   # something needs fixing with untyped_infix_expr vs typed_infix_expr (or whatever they're called) in the parser (probably need more recursivity). time to go back to simpler grammar with preparse
+    
+    # a > b
+    # a < b < c > d
+)
 
+def (moretest, p: int: const : ptr: const : ptr: const : ptr:
+    std.cout << p << "\n"
+)
 
     
 # int const *    // pointer to const int
@@ -1489,11 +1519,11 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
     # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()
-    # test_complex_arguments()
+    test_complex_arguments()
     # test_for_scope()
     # test_correct_shared_ptr()
     # test_bad_indent()

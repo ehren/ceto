@@ -86,8 +86,7 @@ class _LeftAssociativeBinOp(BinOp):
         rest = tokens[0][2:]
 
         if len(rest) > 1:
-            others = [rest[0], self.func] + rest[2:]
-            self.args = [first_arg, _LeftAssociativeBinOp(pp.ParseResults([others]))]
+            self.args = [first_arg, _LeftAssociativeBinOp(pp.ParseResults([rest]))]
         else:
             self.args = [first_arg, rest[0]]
 
@@ -208,6 +207,15 @@ class Call(Node):
 class ArrayAccess(Node):
     def __repr__(self):
         return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
+
+    def __init__(self, tokens):
+        self.func = tokens[0]
+        self.args = tokens.as_list()[1:]
+
+
+class TemplateSpecialization(Node):
+    def __repr__(self):
+        return "template specialization: {}[{}]".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
         self.func = tokens[0]
@@ -338,6 +346,7 @@ def _create():
     dict_literal = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
+    template_specialization = pp.Forward()
     infix_expr = pp.Forward()
     untyped_infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
@@ -349,6 +358,7 @@ def _create():
     expr = (
         function_call
         | array_access
+        | template_specialization
         | real
         | integer
         | cdblquoted_str
@@ -439,6 +449,9 @@ def _create():
     dict_literal <<= (
         lbrace + pp.Optional(pp.delimitedList(dict_entry) + pp.Optional(comma)) + pp.ZeroOrMore(newline) + rbrace
     )#.set_parse_action(DictLiteral)
+
+    # template_specialization <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + pp.Ignore("<") + pp.delimitedList(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)) + pp.Ignore(">")).set_parse_action(TemplateSpecialization)
+    template_specialization <<= (ident + pp.Suppress("<") + pp.delimitedList(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
 
     array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + safe_expr_for_dict + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + rbrack).set_parse_action(ArrayAccess)
 

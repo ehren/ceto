@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization
 
 
 import io
@@ -1345,6 +1345,8 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
+    elif isinstance(node, TemplateSpecialization):
+        return codegen_node(node.func, cx) + "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
 
     return cpp.getvalue()
 
