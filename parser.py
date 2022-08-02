@@ -78,50 +78,23 @@ class RebuiltBinOp(BinOp):
 
 
 class _LeftAssociativeBinOp(BinOp):
+    pass
 
+
+def _make_left_associative_init_method(astclass = _LeftAssociativeBinOp):
     def __init__(self, tokens):
-        self.func = tokens[0][1]
-
         first_arg = tokens[0][0]
+        self.func = tokens[0][1]
         rest = tokens[0][2:]
 
         if len(rest) > 1:
-            self.args = [first_arg, _LeftAssociativeBinOp(pp.ParseResults([rest]))]
+            self.args = [first_arg, astclass(pp.ParseResults([rest]))]
         else:
             self.args = [first_arg, rest[0]]
-
-        # self.args = tokens[0][::2]
-        # self.args = [tokens[0][0], tokens[0][1:]]
-        # print("binop args", self.args)
+    return __init__
 
 
-# https://stackoverflow.com/questions/4571441/recursive-expressions-with-pyparsing/4589920#4589920
-# parse action -maker
-def make_LR_like(numterms, AstClass):
-    if numterms is None:
-        # None operator can only by binary op
-        initlen = 2
-        incr = 1
-    else:
-        initlen = {0:1,1:2,2:3,3:5}[numterms]
-        incr = {0:1,1:1,2:2,3:4}[numterms]
-
-    # define parse action for this number of terms,
-    # to convert flat list of tokens into nested list
-    def pa(s,l,t):
-        t = t[0]
-        if len(t) > initlen:
-            # ret = pp.ParseResults(t[:initlen])
-            ret = AstClass(t[:initlen])
-            i = initlen
-            while i < len(t):
-                # ret = pp.ParseResults([ret] + t[i:i+incr])
-                ret = AstClass([ret] + t[i:i+incr])
-                i += incr
-            # return pp.ParseResults([ret])
-            return AstClass([ret])
-    return pa
-
+_LeftAssociativeBinOp.__init__ = _make_left_associative_init_method()
 
 
 class ColonBinOp(BinOp):
@@ -145,13 +118,15 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
-# class AttributeAccess(_LeftAssociativeBinOp):
 class AttributeAccess(BinOp):
+    def __init__(self, tokens):
+        super().__init__(tokens)
+
     def __repr__(self):
         return "{}.{}".format(self.lhs, self.rhs)
 
-    def __init__(self, tokens):
-        super().__init__(tokens)
+
+# AttributeAccess.__init__ = _make_left_associative_init_method(AttributeAccess)
 
 
 # not created by parser

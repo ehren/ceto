@@ -1,7 +1,6 @@
 from parser import parse, TupleLiteral, Module
 
 
-
 def test_call_arrayaccess_newline():
     parse(r"""
 foo(x,
