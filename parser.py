@@ -342,6 +342,7 @@ def _create():
     dictStr = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
+    template_specialization = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
@@ -352,6 +353,7 @@ def _create():
     expr = (
         function_call
         | array_access
+        | template_specialization
         | real
         | integer
         | cdblquoted_str
@@ -428,6 +430,8 @@ def _create():
     block_line_end = pp.Suppress(";")
     # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
     block = bel + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
+
+    template_specialization <<= (ident + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
 
     array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
