@@ -60,8 +60,9 @@ def (bar, x:
 def test_semicolon():
     m = parse(r"""
 def (bar, x:
-    # printf("hi"); printf("bye\n")
-    pass
+    printf("hi"); printf("bye\n")
+    printf("hi"); printf("bye\n");
+    pass;
 )
     
     """)

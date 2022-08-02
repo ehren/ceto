@@ -403,8 +403,7 @@ def _create():
     )
 
     block_line_end = pp.Suppress(";")
-    # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
-    block = bel + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
+    block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
     template_specialization <<= (ident + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
 
