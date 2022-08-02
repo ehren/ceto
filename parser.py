@@ -309,24 +309,20 @@ class TupleLiteral(_ListLike):
 class Block(_ListLike):
 
     def __init__(self, tokens):
-        # super().__init__(tokens)
-        # super().__init__(tokens)
-        self.args = tokens.as_list()[0]
+        super().__init__(tokens)
         self.func = "Block"
 
 
 class Module(Block):
     def __init__(self, tokens):
-        # super().__init__(tokens)
+        super().__init__(tokens)
         self.func = "Module"
-        self.args = tokens.as_list()
 
 
 import sys
 sys.setrecursionlimit(20000)
 
 pp.ParserElement.enable_left_recursion()
-pp.ParserElement.set_default_whitespace_chars(" \t")
 
 
 def _create():
@@ -343,12 +339,10 @@ def _create():
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
-    dict_literal = pp.Forward()
+    dictStr = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
-    template_specialization = pp.Forward()
     infix_expr = pp.Forward()
-    untyped_infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
     quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(StringLiteral)
@@ -358,7 +352,6 @@ def _create():
     expr = (
         function_call
         | array_access
-        | template_specialization
         | real
         | integer
         | cdblquoted_str
@@ -366,7 +359,7 @@ def _create():
         | dblquoted_str
         | list_literal
         | tuple_literal
-        | dict_literal
+        | dictStr
         | ident
     )
 
@@ -383,7 +376,7 @@ def _create():
     for c in _compar_atoms:
         comparisons |= c
 
-    untyped_infix_expr <<= pp.infix_notation(
+    infix_expr <<= pp.infix_notation(
         expr,
         [
             (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
@@ -402,24 +395,14 @@ def _create():
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
-            #(colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
-            #((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
+            (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
+            ((colon | pp.Keyword("as")), 2, pp.opAssoc.RIGHT, ColonBinOp),
             # (pp.Keyword("as"), 2, pp.opAssoc.LEFT, ColonBinOp),
             # (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
         ],
         # pp.Literal("("),
         # pp.Literal(")")
     ).set_parse_action(_InfixExpr)
-
-    infix_expr <<= pp.infix_notation(
-        untyped_infix_expr,
-        [
-            (colon, 1, pp.opAssoc.RIGHT, UnOp),  # unary : shold bind less tight than binary
-            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
-        ],
-        # pp.Literal("("),
-        # pp.Literal(")")
-    )#.set_parse_action(_InfixExpr)
 
     # plusop.add_parse_action(BinOp)
 
@@ -435,29 +418,22 @@ def _create():
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
     ).set_parse_action(ListLiteral)
 
-    newline = pp.Suppress("\n")
+    bel = pp.Suppress('\x07')
 
-    block_statement = infix_expr|(lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)
+    dictEntry = pp.Group(infix_expr + bel + infix_expr)
+    dictStr <<= (
+        lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
+    )
 
-    # not quite strict enough without specifying the rest of the indentation logic in the grammar (which would require set_default_whitespace_chars("") everywhere).
-    # however, this allows us to parse valid code as valid, and reject seemingly valid code with invalid indentation later (which we'll do when waiting on c++ compilation)
-    # though maybe could reuse old pp.indentedBlock (deprecated) implementation (not successful with one attempt though)
-    block = pp.Suppress(":") + pp.OneOrMore(newline) + pp.IndentedBlock(block_statement + pp.OneOrMore(newline), recursive=False).set_parse_action(Block)
+    block_line_end = pp.Suppress(";")
+    # block_line_end could be OneOrMore but let's only allow semicolon separators not terminators:
+    block = bel + pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Block)
 
-    safe_expr_for_dict = pp.ZeroOrMore(newline) + (untyped_infix_expr | (lparen + pp.ZeroOrMore(newline) + infix_expr + pp.ZeroOrMore(newline) + rparen)) + pp.ZeroOrMore(newline)
-    dict_entry = pp.Group(safe_expr_for_dict + pp.Suppress(":") + safe_expr_for_dict)
-    dict_literal <<= (
-        lbrace + pp.Optional(pp.delimitedList(dict_entry) + pp.Optional(comma)) + pp.ZeroOrMore(newline) + rbrace
-    )#.set_parse_action(DictLiteral)
+    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
-    # template_specialization <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + pp.Ignore("<") + pp.delimitedList(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)) + pp.Ignore(">")).set_parse_action(TemplateSpecialization)
-    template_specialization <<= (ident + pp.Suppress("<") + pp.delimitedList(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))) + rparen).set_parse_action(Call)
 
-    array_access <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lbrack + safe_expr_for_dict + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + pp.Optional(pp.Suppress(":") + safe_expr_for_dict) + rbrack).set_parse_action(ArrayAccess)
-
-    function_call <<= ((expr | (lparen + pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline) + rparen)) + lparen  + pp.Optional(pp.delimitedList(pp.ZeroOrMore(newline) + pp.Optional(block_statement))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(block_statement)))) + rparen).set_parse_action(Call)
-
-    module = pp.OneOrMore(pp.ZeroOrMore(newline) + block_statement + pp.ZeroOrMore(newline)).set_parse_action(Module)
+    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
     return module
 
 grammar = _create()
@@ -466,36 +442,18 @@ grammar = _create()
 def parse(s):
     print(s)
     # transformed = io.StringIO(s)
-    # pp.ParserElement.set_default_whitespace_chars(" \t\n")
+    pp.ParserElement.set_default_whitespace_chars(" \t\n")
 
-    filter_comments = pp.Regex(r"\#.*")
+    filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()
     qs = pp.QuotedString('"') | pp.QuotedString("'")
-
-    def replace_colon(t):
-        return "!!!"
-
-    # replace_dict = pp.Regex(r".*\n*") + pp.Optional(pp.Literal("{") + pp.OneOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(pp.replace_with("!!!")) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.Regex(r".*\n*")
-    # replace_dict = pp.Regex(r".*\n*") + pp.Optional(pp.Literal("{") + pp.OneOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.Regex(r".*\n*")
-    # filter_comments = filter_comments|replace_dict
     filter_comments = filter_comments.ignore(qs)
 
     transformed = s
 
     transformed = filter_comments.transform_string(transformed)
 
-    # print(transformed)
-
-    # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
-    # replace_dict = pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*")) + pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}")) + pp.ZeroOrMore(pp.Regex(r"\n*[^\{\}].*"))
-    # replace_dict = pp.Optional(pp.Literal("{") + pp.ZeroOrMore(pp.ZeroOrMore(pp.Literal("\n")) + pp.Literal(":").set_parse_action(replace_colon) + pp.ZeroOrMore(pp.Literal("\n"))) + pp.Literal("}"))
-
-    # print("huh:", replace_dict.parseString(transformed, parse_all=True))
-    # transformed = replace_dict.transform_string(transformed)
-
-    #print("no comments:", transformed)
-
-    # pp.ParserElement.set_default_whitespace_chars(" \t")
+    pp.ParserElement.set_default_whitespace_chars(" \t")
 
     # patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "except"]]
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
@@ -532,25 +490,13 @@ def parse(s):
     # transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
 
 
+    # print("after 'reader macros'", transformed)
+    # sio = io.StringIO(s)
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
-
-    # transformed = filter_comments.transform_string(transformed)
     # print("preprocessed", transformed.replace("\x07", "!!!"))
 
-    from time import perf_counter
-
-    t = perf_counter()
     res = grammar.parseString(transformed, parseAll=True)
-    print("pyparsing parse time", perf_counter() - t)
-    # preprocess(sio).getvalue() # still have to run the preprocessor (
-
-    # try:
-    #     res = grammar.parseString(transformed, parseAll=True)
-    # except pp.ParseException:
-    #     sio = io.StringIO(transformed)
-    #     pre = preprocess(sio).getvalue()  # run better indent checking only if there's a parse error
-    #     raise
 
     # print("parser:", res)
 
@@ -588,6 +534,33 @@ def parse(s):
     return res
 
 if __name__ == "__main__":
+    parse("""
+if((x=5): print(5) elif x = 4: ohyeah else: "hmm")
+""")
+    parse("""
+# ((((xyz = 12345678))))
+# abc = 5
+(x = ((5+6)*7))     # Parens(=(x,*(Parens(+(5,6)),7)))
+x = ((5+6))*7    # Parens(=(x,Parens(*(Parens(+(5,6)),7))))
+
+foo(x=5, 
+
+(y=5))
+
+if ((x=5):
+    print(5)
+elif x = 4:
+    ohyeah
+elif x = 5:
+    10
+    10
+else:
+    10
+    10
+)
+
+
+""")
 
 
     0 and parse("""

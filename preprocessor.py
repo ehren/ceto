@@ -71,7 +71,7 @@ def preprocess(file_object):
                 if indent < curr:
                     # dedent
                     if began_indent:
-                        raise IndentError("Error in what should be the first indented expression. Expected indent_str: {}. Got: {}".format(curr, indent), line_number)
+                        raise IndentError("Error in what should be the first indented expression. Expected indent: {}. Got: {}".format(curr, indent), line_number)
                     diff = curr - indent
                     if diff % TAB_WIDTH != 0:
                         raise IndentError("Indentation not a multible of {}".format(TAB_WIDTH), line_number)
@@ -157,8 +157,7 @@ def preprocess(file_object):
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
                 # block_start
-                # rewritten.write(BEL)
-                rewritten.write(":")
+                rewritten.write(BEL)
                 colon_to_write = False
                 began_indent = True
             else:
@@ -166,8 +165,7 @@ def preprocess(file_object):
 
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
-                    # rewritten.write(";")
-                    pass
+                    rewritten.write(";")
 
             if colon_to_write:
                 rewritten.write(colon_replacement_char(parsing_stack[-1]))
