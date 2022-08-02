@@ -288,10 +288,11 @@ def (main:
     # map(l, foo_generic)  # error
     map(l, lambda (x:int, foo_generic(x)))  # need type printing for lambda args (when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
     map(l, lambda (x, foo_generic(x)))  # why does this even work? note: clang 14 -O3 produces at least an extra allocation vs passing foo_generic<int>. 
+    map(l, foo_generic<int>)  # new template specialization syntax...
 )
 	""")
 
-    assert c == "12342468123412341234"
+    assert c == "123424681234123412341234"
 
 
 # let's fix the existing vector/decltype bugs before this madness:
@@ -409,7 +410,7 @@ def (moretest2, p:
     a = l : std.vector<int>
     # a = l : std.vector<int> > 1
     # std.vector<int> a  # happily printed # i suppose that's ok
-    std.vector<int> a = 1  # happily printed # i suppose that's ok
+    # std.vector<int> a = 1  # happily printed # i suppose that's ok
     b = [1,2,3,4]
     # (a : std.vector<int>) = b
     
@@ -1519,11 +1520,11 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
+    _some_magic(sys.modules[__name__])
     # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()
-    test_complex_arguments()
+    # test_complex_arguments()
     # test_for_scope()
     # test_correct_shared_ptr()
     # test_bad_indent()
