@@ -430,17 +430,17 @@ class Context:
 
     def __init__(self):
         self.interfaces = defaultdict(list)
-        self._indent = 0
+        self.indent = 0
         self.parent = None
 
     def indent_str(self):
-        return "    " * self._indent
+        return "    " * self.indent
 
     def new_scope_context(self):
         c = Context()
         c.interfaces = self.interfaces  # shallow copy
         c.parent = self
-        c._indent = self._indent + 1
+        c.indent = self.indent + 1
         return c
 
 
@@ -587,6 +587,7 @@ def codegen_class(node : Call, cx):
 
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
+    typenames = []
 
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
@@ -599,6 +600,13 @@ def codegen_class(node : Call, cx):
                 cx.interfaces[interface_type.name].append(b)
                 local_interfaces.add(interface_type.name)
             cpp += codegen_def(b, cx.new_scope_context())
+        elif isinstance(b, Identifier):
+            if b.declared_type is not None:
+                cpp += codegen_type(b, b.declared_type, cx) + " " + b.name + ";\n\n"
+            else:
+                t = "C" + str(len(typenames) + 1)
+                typenames.append(t)
+                cpp += (cx.indent + 1)*"    " + t + " " + b.name + ";\n\n"
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
@@ -653,7 +661,12 @@ def codegen_class(node : Call, cx):
         class_header = "struct " + str(name) + " : public object"
     class_header += " {\n\n"
 
-    return interface_def_str + class_header + cpp
+    if typenames:
+        template_header = "template <" + ",".join(["typename " + t for t in typenames]) + ">"
+    else:
+        template_header = ""
+
+    return interface_def_str + template_header + class_header + cpp
 
 
 def codegen_block(block: Block, cx):

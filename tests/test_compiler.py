@@ -5,7 +5,26 @@ from compiler import compile
 
 
 def test_class_attributes():
-    eedtodisablepycharmjunk = r"""
+    c = compile("""
+class (Foo:
+    a
+    b
+    c
+    def (bar, x:
+        pass
+    )
+) 
+
+def (main:
+    # f = Foo<int,int,int,int>()
+    # cout << f.a
+    pass
+)
+
+    """)
+
+
+    needtodisablepycharmjunk = r"""
 
 class (A:
     a
@@ -581,6 +600,7 @@ def (main:
             pass
 
     # we've got the same rules now
+    # (not any longer, see parser.py history, back to 4 spaces == 1 indent
 
 
 def test_deref_address_of():
@@ -949,14 +969,21 @@ def (main:
 def test_interfaces():
     c = compile(r"""
 class (Blah1:
+    # ugly
     # (def:A) (foo, x:A:
     #     printf("Blah1 foo\n")
+    # ):int
+    
+    # too busy
+    # def (foo:A, x:A:
+    #     printf("Blah1 foo\n")
+    #     x.huh()
     # ):int
     
     def (foo, x:A:
         printf("Blah1 foo\n")
         x.huh()
-    ):int:A
+    ):int:A  # TODO requires checking that A not in [const, ref, ptr]
     
     def (huh:
         printf("huh 1\n")
@@ -1521,6 +1548,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_class_attributes()
     # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()
