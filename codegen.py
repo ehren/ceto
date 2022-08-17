@@ -614,6 +614,10 @@ def codegen_class(node : Call, cx):
         for method in defined_interfaces[interface_type]:
             print("method",method)
             interface_def_str += indt + interface_method_declaration_str(method, cx)
+        # TODO ensure destructors aren't marked as interface methods etc
+        # related TODO: ordinary classes (shared_ptr managed) shouldn't receive a virtual destructor unless inherited from.
+        # related TODO 2: no more special treatment of 'object' in user code (not needed for get_ptr magic - TODO rename its 'object' (TODO utility code in c++ namespace))
+        interface_def_str += indt + "virtual ~" + str(interface_type) + "() {}"
         interface_def_str +=  "};\n\n"
 
         # interface_cpp = "class "
