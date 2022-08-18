@@ -292,12 +292,12 @@ def _find_def(parent, child, node_to_find):
                 class_name = r.args[0]
                 if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
                     return class_name, r
-            elif call_func_name == "for":
-                instmt = r.args[0]
-                if isinstance(instmt, BinOp) and instmt.func == "in":
-                    itervar = instmt.args[0]
-                    if isinstance(itervar, Identifier) and itervar == node_to_find.name:
-                        return itervar, r
+            # elif call_func_name == "for":
+            #     instmt = r.args[0]
+            #     if isinstance(instmt, BinOp) and instmt.func == "in":
+            #         itervar = instmt.args[0]
+            #         if isinstance(itervar, Identifier) and itervar.name == node_to_find.name:
+            #             return itervar, r
         for a in r.args:
             if f := _find_assign(a, node_to_find):
                 return f
