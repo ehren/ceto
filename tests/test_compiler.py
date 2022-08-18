@@ -892,15 +892,32 @@ def (main:
     f = Foo()
     f.foo()
     f2 = f
-    printf("second alive\n")
     f2.foo()
+    std.cout << (&f)->use_count() << std.endl
+    std.cout << (&f2)->use_count() << std.endl
     f2 = nullptr
     f = None
-    f = nullptr
-    f.foo()  # i guess this makes sense (overloaded assignment op ftw)
+    printf("f %d\n", not f)
+    printf("f2 %d\n", not f2)
+    std.cout << (&f)->use_count() << std.endl
+    std.cout << (&f2)->use_count() << std.endl
+    f.foo()  # not sure if actually UB (not technically derefing NULL)
     f2.foo()
 )
     """)
+
+    assert c.strip() == r"""
+foo
+foo
+2
+2
+f 1
+f2 1
+0
+0
+foo
+foo
+    """.strip()
 
 
 def test_stress_parser():
