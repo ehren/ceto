@@ -16,13 +16,14 @@ class (Foo:
 ) 
 
 def (main:
-    # f = Foo(1,2,3)
-    # std.cout << f.a
-    pass
+    f = Foo(1,2,3)
+    f2 = Foo("a", 2, nullptr)
+    std.cout << f.a << f2.a
 )
 
     """)
 
+    assert c == "1a"
 
     needtodisablepycharmjunk = r"""
 

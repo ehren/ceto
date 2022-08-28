@@ -425,6 +425,13 @@ constexpr bool is_signed(const T& t)
 # https://brevzin.github.io/c++/2019/12/02/named-arguments/
 
 
+class ClassDefinition:
+
+    def __init__(self, name_node : Identifier, class_def_node: Call, num_generic_params = 0):
+        self.name_node = name_node
+        self.class_def_node = class_def_node
+        self.num_generic_params = num_generic_params
+
 
 class Context:
 
@@ -432,15 +439,26 @@ class Context:
         self.interfaces = defaultdict(list)
         self.indent = 0
         self.parent = None
+        self.class_definitions = []
 
     def indent_str(self):
         return "    " * self.indent
 
+    def lookup_class(self, class_node : Identifier) -> typing.Optional[ClassDefinition]:
+        for c in self.class_definitions:
+            if c.name_node.name == class_node.name:
+                return c
+        if self.parent:
+            return self.parent.lookup_class(class_node)
+        return None
+
     def new_scope_context(self):
         c = Context()
-        c.interfaces = self.interfaces  # shallow copy
+        c.interfaces = self.interfaces.copy()
+        self.class_definitions = list(self.class_definitions)
         c.parent = self
         c.indent = self.indent + 1
+
         return c
 
 
@@ -683,6 +701,8 @@ def codegen_class(node : Call, cx):
         template_header = "template <" + ",".join(["typename " + t for t in typenames]) + ">"
     else:
         template_header = ""
+
+    cx.class_definitions.append(ClassDefinition(name, node, len(uninitialized_attributes)))
 
     return interface_def_str + template_header + class_header + cpp
 
@@ -1068,7 +1088,7 @@ def _decltype_str(node, cx):
     else:
         print("hmm?2")
         # assert 0
-        return codegen_node(last_ident)
+        return codegen_node(last_ident, cx)
 
 
 def vector_decltype_str(node, cx):
@@ -1160,7 +1180,7 @@ def codegen_type(expr_node, type_node, cx):
 
 
 
-def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
+def codegen_node(node: Union[Node, Any], cx: Context):
     cpp = io.StringIO()
 
     if isinstance(node, Module):
@@ -1193,11 +1213,21 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
             else:
                 # if isinstance(node.func, Identifier):
 
-                if class_node := find_defining_class(node.func):
+                # if class_node := find_defining_class(node.func):
+                #     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                #         func_str = f"std::make_unique<{node.func.name}>"
+                #     else:
+                #         func_str = "std::make_shared<" + node.func.name + ">"
+                if class_def := cx.lookup_class(node.func):
+                    class_name = node.func.name
+                    class_node = class_def.class_def_node
+                    if class_def.num_generic_params > 0:
+                        class_name += "<" + ", ".join([decltype_str(a, cx) for a in node.args]) + ">"
+
                     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                        func_str = f"std::make_unique<{node.func.name}>"
+                        func_str = "std::make_unique<" + class_name + ">"
                     else:
-                        func_str = "std::make_shared<" + node.func.name + ">"
+                        func_str = "std::make_shared<" + class_name + ">"
                 else:
                     # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
                     # # this is not longer the case ^
@@ -1228,7 +1258,7 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
             else:
                 func_str = codegen_node(node.func, cx)
 
-            cpp.write(func_str + "(" + ", ".join( map(codegen_node, node.args)) + ")")
+            cpp.write(func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")")
 
     elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
@@ -1257,7 +1287,7 @@ def codegen_node(node: Union[Node, Any], cx: typing.Optional[Context] = None):
         elif isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
-                cpp.write("return " + codegen_node(node.args[1]))
+                cpp.write("return " + codegen_node(node.args[1], cx))
             else:
                 assert False
 
