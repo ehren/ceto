@@ -16,8 +16,8 @@ class (Foo:
 ) 
 
 def (main:
-    # f = Foo<int,int,int,int>()
-    # cout << f.a
+    # f = Foo(1,2,3)
+    # std.cout << f.a
     pass
 )
 

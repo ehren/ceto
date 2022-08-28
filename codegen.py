@@ -579,15 +579,16 @@ def codegen_class(node : Call, cx):
     block = node.args[-1]
     assert isinstance(block, Block)
 
-    indt = cx.indent_str()
-
-    cpp = indt
-
-    cpp += "int x;\n\n"
-
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
     typenames = []
+
+    indt = cx.indent_str()
+    cpp = indt
+    cpp += "int x;\n\n"
+    inner_indt = (cx.indent + 1) * "    "
+    uninitialized_attributes = []
+    uninitialized_attribute_declarations : typing.List[str] = []
 
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
@@ -602,22 +603,35 @@ def codegen_class(node : Call, cx):
             cpp += codegen_def(b, cx.new_scope_context())
         elif isinstance(b, Identifier):
             if b.declared_type is not None:
-                cpp += codegen_type(b, b.declared_type, cx) + " " + b.name + ";\n\n"
+                decl = codegen_type(b, b.declared_type, cx) + " " + b.name
+                cpp += inner_indt + decl + ";\n\n"
             else:
+                # should use gensym for these
                 t = "C" + str(len(typenames) + 1)
                 typenames.append(t)
-                cpp += (cx.indent + 1)*"    " + t + " " + b.name + ";\n\n"
+                decl = t + " " + b.name
+                cpp += inner_indt + decl + ";\n\n"
+            uninitialized_attributes.append(b)
+            uninitialized_attribute_declarations.append(decl)
+        elif isinstance(b, Assign):
+            # see how far this gets us
+            cpp += inner_indt + codegen_node(b, cx) + ";\n\n"
+
+    if uninitialized_attributes:
+        # autosynthesize constructor
+        cpp += inner_indt + "explicit " + str(name) + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
+        cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
         interface_def_str += "struct " + str(interface_type) + " : public object {"
         for method in defined_interfaces[interface_type]:
             print("method",method)
-            interface_def_str += indt + interface_method_declaration_str(method, cx)
+            interface_def_str += inner_indt + interface_method_declaration_str(method, cx)
         # TODO ensure destructors aren't marked as interface methods etc
         # related TODO: ordinary classes (shared_ptr managed) shouldn't receive a virtual destructor unless inherited from.
         # related TODO 2: no more special treatment of 'object' in user code (not needed for get_ptr magic - TODO rename its 'object' (TODO utility code in c++ namespace))
-        interface_def_str += indt + "virtual ~" + str(interface_type) + "() {}"
+        interface_def_str += inner_indt + "virtual ~" + str(interface_type) + "() {}"
         interface_def_str +=  "};\n\n"
 
         # interface_cpp = "class "
