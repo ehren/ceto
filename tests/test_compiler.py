@@ -17,7 +17,8 @@ class (Bar:
 )
 
 def (main:
-    pass
+    f = Foo(1,2,3)
+    # b = Bar(1,2,f)
 )
         """)
 
@@ -805,7 +806,12 @@ class (Foo:
         printf("bar %d\n", this.x)
     )
     
-    def (handleComp, other: Foo:
+    def (destruct:
+        printf("dead\n")
+    )
+    
+    # def (handleComp, other: Foo:
+    def (operator("=="), other: Foo:
         printf("in handleComp - both foo\n")
         return this.x == other.x
     )
@@ -814,19 +820,20 @@ class (Foo:
         # return false
     #    return other == 5
     #)
-    def (handleComp, other:
+    # def (handleComp, other:
+    def (operator("=="), other:
         printf("in handleComp - other not foo\n")
         # return false
         return other == 5
     )
     
-    def (operator("=="), other:
-        printf("in oper ==\n")
-        # return true
-        # return handleComp(other)
-        # return other.handleComp(this)
-        return this.handleComp(other)
-    )
+    # def (operator("=="), other:
+    #     printf("in oper ==\n")
+    #     # return true
+    #     # return handleComp(other)
+    #     # return other.handleComp(this)
+    #     return this.handleComp(other)
+    # )
 )
 
 def (operator("=="), f: Foo, other:
@@ -868,6 +875,20 @@ def (main:
     )
 )
     """)
+
+
+    assert c.strip() == r"""
+bar 0
+in handleComp - other not foo
+overload == works
+in handleComp - both foo
+same
+dead
+dead
+testing for null...
+we're dead
+we're dead    
+    """.strip()
 
 #
 #     """bar 0
@@ -1133,6 +1154,10 @@ def test_add_stuff():
     output = compile(r"""
 
 class (Foo:
+    def (operator("+"), foo:Foo:
+        printf("adding foo and foo (in the member function)\n")
+        return this
+    )
     def (operator("+"), other:
         printf("adding foo and other (in the member function)\n")
         return this
@@ -1208,7 +1233,7 @@ adding foo and other (in the member function)
 adding other and foo
 adding foo and other (in the member function)
 adding foo and foo
-adding foo and other (in the member function)"""
+adding foo and foo (in the member function)"""
 
 
 def test_add_stuff_old():
@@ -1590,6 +1615,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_add_stuff()
     # test_class_attributes()
     # test_class_with_attributes_of_generic_class_type()
     # test_generic_refs_etc()
