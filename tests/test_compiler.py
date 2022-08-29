@@ -2,6 +2,25 @@ from compiler import compile
 
 
 
+def test_class_with_attributes_of_generic_class_type():
+    c = compile("""
+class (Foo:
+    a
+    b
+    c
+) 
+
+class (Bar:
+    a
+    b
+    f : Foo
+)
+
+def (main:
+    pass
+)
+        """)
+
 
 
 def test_class_attributes():
@@ -11,14 +30,19 @@ class (Foo:
     b
     c
     def (bar, x:
-        pass
+        std.cout << "bar: " << x << std.endl 
     )
 ) 
+
+# def (foo_func, f: Foo:
+#     f.bar()
+# )
 
 def (main:
     f = Foo(1,2,3)
     f2 = Foo("a", 2, nullptr)
     std.cout << f.a << f2.a
+    # foo_func(f)
 )
 
     """)
@@ -1567,6 +1591,7 @@ if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
     # test_class_attributes()
+    # test_class_with_attributes_of_generic_class_type()
     # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()

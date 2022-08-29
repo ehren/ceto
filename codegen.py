@@ -444,9 +444,11 @@ class Context:
     def indent_str(self):
         return "    " * self.indent
 
-    def lookup_class(self, class_node : Identifier) -> typing.Optional[ClassDefinition]:
+    def lookup_class(self, class_node) -> typing.Optional[ClassDefinition]:
+        if not isinstance(class_node, Identifier):
+            return None
         for c in self.class_definitions:
-            if c.name_node.name == class_node.name:
+            if isinstance(c.name_node, Identifier) and c.name_node.name == class_node.name:
                 return c
         if self.parent:
             return self.parent.lookup_class(class_node)
@@ -466,10 +468,13 @@ class Context:
 cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
 counter = 0
 
-def gensym():
+def gensym(prefix=None):
     global counter
     counter += 1
-    return "_langsym" + str(counter)
+    pre = "_langsym_"
+    if prefix is not None:
+        pre += prefix
+    return pre + str(counter)
 
 
 def codegen_if(ifcall : Call, cx):
@@ -607,6 +612,7 @@ def codegen_class(node : Call, cx):
     inner_indt = (cx.indent + 1) * "    "
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
+    num_generic_params = 0
 
     for b in block.args:
         if isinstance(b, Call) and b.func.name == "def":
@@ -621,14 +627,21 @@ def codegen_class(node : Call, cx):
             cpp += codegen_def(b, cx.new_scope_context())
         elif isinstance(b, Identifier):
             if b.declared_type is not None:
-                decl = codegen_type(b, b.declared_type, cx) + " " + b.name
+                dependent_class = cx.lookup_class(b.declared_type)
+                if dependent_class is not None and dependent_class.num_generic_params > 0:
+                    # TODO fix unique here
+                    deps = [gensym("C") for _ in range(dependent_class.num_generic_params)]
+                    typenames.extend(deps)
+                    decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
+                else:
+                    decl = codegen_type(b, b.declared_type, cx) + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
             else:
-                # should use gensym for these
-                t = "C" + str(len(typenames) + 1)
+                t = gensym("C")
                 typenames.append(t)
                 decl = t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
+                num_generic_params += 1
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
@@ -702,7 +715,7 @@ def codegen_class(node : Call, cx):
     else:
         template_header = ""
 
-    cx.class_definitions.append(ClassDefinition(name, node, len(uninitialized_attributes)))
+    cx.class_definitions.append(ClassDefinition(name, node, num_generic_params))
 
     return interface_def_str + template_header + class_header + cpp
 
@@ -790,7 +803,6 @@ def codegen_def(defnode: Call, cx):
         if args:
             raise CodeGenError("destructors can't take arguments")
         is_destructor = True
-
 
     is_interface_method = isinstance(defnode.declared_type, ColonBinOp)
     if is_interface_method:
