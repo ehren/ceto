@@ -18,8 +18,22 @@ class (Bar:
 
 def (main:
     f = Foo(1,2,3)
+    f2 = Foo(1,2,[3])
+    # f3 = Foo(1,2,[])
+    # f3.c.append(1)
     # b = Bar(1,2,f)
 )
+
+class (HasGenericList:
+    # a : [] #?
+    # needed if want
+    # h = HasGenericList()
+    # h.a.append(1)
+    # is it really useful? (when the `append` must occur in same scope as construction)
+    
+    pass # FIXME: shouldn't create attribute named pass.
+)
+
         """)
 
 
