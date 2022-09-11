@@ -13,15 +13,46 @@ class (Foo:
 class (Bar:
     a
     b
-    f : Foo
+    f : Foo  # probably need to forget about this
 )
+
+class (Bar2:
+    a
+    b
+    c
+    f : decltype(Foo(a,b,c))  # almost as good ;)
+)
+
+class (MixedGenericConcrete:
+    a
+    b : int
+)
+
+# class (GenericList:
+#     lst : [decltype(x)]   # this kind of thing won't work without a forward declaration somewhere
+
+#     def (init, x...:  # need syntax for template varargs
+#         self.lst = *x # need different syntax than python !! or do we
+#         self.lst = x... # maybe
+#     )
+#     
+# )
+# or instead
+# class (GenericList:
+#     lst : []   # implicit typename T1, std::vector<T1>() 
+#     dct : {}   # implicit typename T2, typename T3, std::unordered_map<T2, T3> {}
+# )
+# but then need explicit template instantiation to invoke...
 
 def (main:
     f = Foo(1,2,3)
     f2 = Foo(1,2,[3])
     # f3 = Foo(1,2,[])
     # f3.c.append(1)
-    # b = Bar(1,2,f)
+    f4 = Foo(1, 2, Foo(1, 2, 3))
+    # b = Bar(1, 2, f)
+    # b2 = Bar2(1, 2, 3, Foo(2,3,4))  # should work
+    # m = MixedGenericConcrete("e", 2)
 )
 
 class (HasGenericList:

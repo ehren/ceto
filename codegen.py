@@ -460,7 +460,6 @@ class Context:
         self.class_definitions = list(self.class_definitions)
         c.parent = self
         c.indent = self.indent + 1
-
         return c
 
 
@@ -1033,14 +1032,33 @@ def _decltype_str(node, cx):
         #     return codegen_node(call)
         #return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
 
-        if class_node := find_defining_class(node.func):
-            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                result = f"std::unique_ptr<{node.func.name}>"
-            else:
-                result = f"std::shared_ptr<{node.func.name}>"
-            raise _NoDeclTypeNeeded(result)
+        # if class_node := find_defining_class(node.func):
+        #     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+        #         result = f"std::unique_ptr<{node.func.name}>"
+        #     else:
+        #         result = f"std::shared_ptr<{node.func.name}>"
+        #     # this is wrong
+        #     raise _NoDeclTypeNeeded(result)
 
-        return call.func.name + "(" + ", ".join([_decltype_str(a, cx) for a in call.args]) + ")"
+        if class_def := cx.lookup_class(node.func):
+            class_name = node.func.name
+            class_node = class_def.class_def_node
+            if class_def.num_generic_params > 0:
+                class_name += "<" + ", ".join(
+                    [decltype_str(a, cx) for a in node.args]) + ">"
+
+            if isinstance(class_node.declared_type,
+                          Identifier) and class_node.declared_type.name == "unique":
+                func_str = "std::unique_ptr<" + class_name + ">"
+            else:
+                func_str = "std::shared_ptr<" + class_name + ">"
+
+            # return func_str # + "(" + ", ".join([decltype_str(a, cx) for a in call.args]) + ")"
+            # non-local goto is still wrong here (source of future bugs but not immediately apparent in test suite)
+            raise _NoDeclTypeNeeded(func_str)
+
+        else:
+            return codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx) for a in call.args]) + ")"
     # elif isinstance(node, ArrayAccess):
     #     return "decltype({})::value_type".format(codegen_node(node.func))
         # return "[&](){{ return {}; }}".format(codegen_node(node))
