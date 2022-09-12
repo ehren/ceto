@@ -81,20 +81,21 @@ class _LeftAssociativeBinOp(BinOp):
     pass
 
 
-def _make_left_associative_init_method(astclass = _LeftAssociativeBinOp):
+def _make_left_associative_bin_op_init_method(astclass = _LeftAssociativeBinOp):
     def __init__(self, tokens):
-        first_arg = tokens[0][0]
-        self.func = tokens[0][1]
-        rest = tokens[0][2:]
-
-        if len(rest) > 1:
-            self.args = [first_arg, astclass(pp.ParseResults([rest]))]
+        t = tokens[0]
+        last_arg = t[-1]
+        last_op = t[-2]
+        self.func = last_op
+        if len(t) > 3:
+            beg = t[0:-2]
+            self.args = [astclass(pp.ParseResults([beg])), last_arg]
         else:
-            self.args = [first_arg, rest[0]]
+            self.args = [t[0], last_arg]
     return __init__
 
 
-_LeftAssociativeBinOp.__init__ = _make_left_associative_init_method()
+_LeftAssociativeBinOp.__init__ = _make_left_associative_bin_op_init_method()
 
 
 class ColonBinOp(BinOp):
@@ -118,15 +119,13 @@ class SyntaxColonBinOp(ColonBinOp):
         self.args = args
 
 
-class AttributeAccess(BinOp):
-    def __init__(self, tokens):
-        super().__init__(tokens)
+class AttributeAccess(_LeftAssociativeBinOp):
 
     def __repr__(self):
         return "{}.{}".format(self.lhs, self.rhs)
 
 
-# AttributeAccess.__init__ = _make_left_associative_init_method(AttributeAccess)
+AttributeAccess.__init__ = _make_left_associative_bin_op_init_method(AttributeAccess)
 
 
 # not created by parser

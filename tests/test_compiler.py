@@ -1,9 +1,26 @@
 from compiler import compile
 
 
+def test_left_assoc_attrib_access():
+    c = compile(r"""
+    
+class (Foo:
+    a
+    b
+    c
+) 
+    
+def (main:
+    f = Foo(1, 2, Foo(1, Foo(1, 2, Foo(1,2,3001)), Foo(1,2,3)))
+    std.cout << f.c.b.c.c
+)
+    """)
+
+    assert c == "3001"
+
 
 def test_class_with_attributes_of_generic_class_type():
-    c = compile("""
+    c = compile(r"""
 class (Foo:
     a
     b
@@ -50,6 +67,8 @@ def (main:
     # f3 = Foo(1,2,[])
     # f3.c.append(1)
     f4 = Foo(1, 2, Foo(1, 2, 3))
+    f5 = Foo(1, 2, Foo(1, Foo(1, 2, Foo(1,2,3001)), Foo(1,2,3)))
+    std.cout << f5.c.b.c.c << "\n"
     # b = Bar(1, 2, f)
     # b2 = Bar2(1, 2, 3, Foo(2,3,4))  # should work
     # m = MixedGenericConcrete("e", 2)
@@ -1401,7 +1420,7 @@ def (main:
     assert len(deadlines) == 2
 
     attrib_accesses = list(re.findall("bar attribute access.*", output))
-    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*6
+    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*8
 
 
 def test_lottastuff_lambdas_lists():
@@ -1659,7 +1678,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_left_assoc_attrib_access()
     # test_add_stuff()
     # test_class_attributes()
     # test_class_with_attributes_of_generic_class_type()

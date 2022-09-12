@@ -1393,6 +1393,7 @@ def codegen_node(node: Union[Node, Any], cx: Context):
                             # so detect attribute access of constructor call to class marked unique and print '->' instead
                             if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
                                 return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
+
                     cpp.write("get_ptr(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
                 else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
                     # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
