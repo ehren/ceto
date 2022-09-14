@@ -15,292 +15,6 @@ from collections import defaultdict
 class CodeGenError(Exception):
     pass
 
-unused_cpp = """
-// https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
-/*
-template<typename T>
-T* get_ptr(T & obj) { return &obj; } // turn reference into pointer!
-
-template<typename T>
-std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; } // obj is already pointer, return it!
-
-*/
-
-//template<typename T>
-//T* get_ptr(T* obj) { return obj; } // obj is already pointer, return it!
-
-
-template <typename Fun>
-struct is_fun_ptr
-    : std::integral_constant<bool, std::is_pointer<Fun>::value
-                            && std::is_function<
-                                   typename std::remove_pointer<Fun>::type
-                               >::value>
-{
-};
-
-// https://stackoverflow.com/questions/18666218/stdenable-if-is-function-pointer-how
-// https://stackoverflow.com/questions/41853159/how-to-detect-if-a-type-is-shared-ptr-at-compile-time
-// https://stackoverflow.com/questions/20709896/how-do-i-use-stdenable-if-with-a-self-deducing-return-type
-enum class enabler_t {};
-
-template<typename T>
-using EnableIf = typename std::enable_if<T::value, enabler_t>::type;
-
-
-
-template<class T>
-struct is_shared_ptr : std::false_type {};
-
-template<class T>
-struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
-
-
-/*
-//template <class Fun&, typename = typename std::enable_if<!is_fun_ptr<std::remove_reference<Fun>>::value && !is_shared_ptr<std::remove_reference<Fun>>::value, void>::type>
-template <class Fun, typename = typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type>
-//typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value>::type
-auto get_ptr(Fun& f, typename std::enable_if<!is_fun_ptr<Fun>::value && !is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
-//Fun* get_ptr(Fun f) {
-    return &f;
-}
-
-template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
-auto get_ptr(Fun f, typename std::enable_if<is_fun_ptr<Fun>::value, void>::type * dummy = nullptr) {
-    return f;
-}
-
-template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
-auto get_ptr(Fun f, typename std::enable_if<is_shared_ptr<Fun>::value, void>::type * dummy = nullptr) {
-    return f;
-}*/
-
-/*
-template<typename Obj>
-Obj* get_ptr(Obj& o)
-{
-    if constexpr (is_fun_ptr<std::remove_reference<Obj>>::value) {
-        return o;
-    } else {
-        return &o;
-    }
-
-    if constexpr (std::is_function_v<std::remove_pointer_t<Obj>>)
-    #     o();
-    # else
-    #     o.print();
-}
-*/
-/*
-template <class Fun, typename = typename std::enable_if<is_fun_ptr<Fun>::value, void>::type>
-auto get_ptr(Fun f) -> Fun {
-//Fun* get_ptr(Fun f) {
-    return f;
-}
-
-template <class Fun, typename = typename std::enable_if<is_shared_ptr<Fun>::value, void>::type>
-auto get_ptr(Fun f) -> Fun{
-//Fun* get_ptr(Fun f) {
-    return f;
-}*/
-
-/*
-template <typename Fun>
-typename std::enable_if<is_fun_ptr<Fun>::value>::type
-//auto get_ptr(Fun f)  -> Fun {
-Fun get_ptr(Fun f) {
-    return f;
-}
-
- template <typename Fun>
- typename std::enable_if<is_shared_ptr<Fun>::value>::type
-//auto get_ptr(Fun f) -> Fun {
-Fun get_ptr(Fun f) {
-     return f;
-}
-*/
-
-/*
-struct object : std::enable_shared_from_this<object> {
-    virtual std::shared_ptr<object> foo() {
-        return shared_from_this();
-    }
-    virtual ~object() {
-    };
-};*/
-
-/*
-// https://stackoverflow.com/questions/657155/how-to-enable-shared-from-this-of-both-parent-and-derived/32172486#32172486
-template <class Base>
-class enable_shared_from_base
-  : public std::enable_shared_from_this<Base>
-{
-protected:
-    template <class Derived>
-    std::shared_ptr<Derived> shared_from_base()
-    {
-        return std::static_pointer_cast<Derived>(shared_from_this());
-    }
-};
-
-struct object : public enable_shared_from_base<object> {
-    virtual ~object() {
-    };
-};
-*/
-
-
-
-
-
-/*
-template <typename T, typename Y>
-auto add(std::shared_ptr<T> t, std::shared_ptr<Y> y)
-{
-    if constexpr (std::is_base_of_v<object, T>) {
-        return  (*t) + y;
-    } else {
-        return t + y;
-    }
-}
-*/
-
-
-
-template<typename T, typename ...TAIL>
-void print(const T &t, TAIL... tail) {
-    std::cout << t << ' ';
-    print(tail...);
-}
-
-
-
-
-class Integer : public object {
-private:
-    long long integer;
-public:
-    Integer() : integer(0) {}
-    
-    Integer(long long i) : integer(i) {}
-    
-    std::shared_ptr<Integer> operator+(const Integer & other) const {
-        return std::make_shared<Integer>(this->integer + other.integer);
-    }    
-
-};
-
-
-/*
-//template<typename T>
-template<typename T, typename Y>
-//std::shared_ptr<T> add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
-//auto add(std::shared_ptr<T> a, std::shared_ptr<T> b) {
-auto add(std::shared_ptr<T> a, Y b) {
-//std::shared_ptr<object> add(std::shared_ptr<object> a, std::shared_ptr<object> b) {
-    //return *a + *b;  // works with traditional c++ double dispatch implementation (other arg taken by const reference)
-    
-    // but if we allow java style implementation in our language:
-    // oh also see changes to second arg above
-    return *a + b;
-    
-    
-    
-    // just no:
-    // return std::static_pointer_cast<*a + *b;
-    //return (*a).T::operator+(*b);
-}*/
-
-/*
-template<typename T>
-std::enable_if_t<!std::is_base_of_v<object, T>, std::shared_ptr<T>>
-T add(T a, T b) {
-    return a + b;
-}*/
-
-
-template<typename T> struct is_shared_ptr : std::false_type {};
-template<typename T> struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
-
-/*
-template <class T> 
-typename std::enable_if<is_shared_ptr<decltype(std::declval<T>().value)>::value, void>::type
-func( T t )
-{
-    std::cout << "shared ptr" << std::endl;
-}
-
-template <class T> 
-typename std::enable_if<!is_shared_ptr<decltype(std::declval<T>().value)>::value, void>::type
-func( T t )
-{
-    std::cout << "non shared" << std::endl;
-}
-*/
-
-/*
-template<typename T>
-std::enable_if<!is_shared_ptr<decltype(std::declval<T>().value)>::value, T>::type
-add(T a, T b) {
-    return a + b;
-}
-
-
-template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-get_ptr(std::shared_ptr<T> obj) { return obj; }
-
-
-template<typename T, typename Y>
-auto add(std::shared_ptr<T> a, Y b) {
-    return *a + b;
-}*/
-
-// kinda works (but no return type deduction):
-/*
-template<typename T, typename Y>
-std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<object, Y>, std::shared_ptr<object>>
-add(std::shared_ptr<T> a, Y b) {
-    return *a + b;
-}*/
-
-/*
-template<class T, typename = typename std::enable_if<std::is_base_of_v<object, T>, void>::type>, class Y, typename = typename std::enable_if<!std::is_base_of_v<object, Y>, void>::type>
-auto add(T t, typename std::enable_if<std::is_base_of_v<object, T>::value, void>::type* dummy1 = nullptr, Y y, typename std::enable_if<!std::is_base_of_v<object, Y>::value, void>::type* dummy2 = nullptr) {
-    return *t + y;
-}*/
-
-
-/*
-template<class T, typename = typename std::enable_if<std::is_integral<T>::value, void>::type>
-auto function(T t, typename std::enable_if<std::is_integral<T>::value, void>::type* dummy = nullptr) {
-    std::cout << "integral" << std::endl;
-    return 0;
-}*/
-
-
-
-/*template<typename T>
-auto add(T a, T b) {
-    static_assert
-    return a + b;
-}*/
-
-
-
-/*template<typename T  >
-auto add(T a, T b) {
-    static_assert
-    return a + b;
-}*/
-
-/*
-template<typename T>
-std::shared_ptr<T> get_ptr(std::shared_ptr<T> obj) { return obj; }
-*/
-
-"""
-
 
 cpp_preamble = """
 #include <memory>
@@ -329,20 +43,12 @@ struct shared_object : public std::enable_shared_from_this<shared_object>, objec
     std::shared_ptr<Derived> shared_from_base() {
         return std::static_pointer_cast<Derived>(shared_from_this());
     }
-    
-    /*
-    virtual std::shared_ptr<object> operator+(const object& other) const {
-        printf("not implemented\\n");
-        return {};
-    }*/    
-    
-    ___PLACE_TO_PUT_JUNK
 };
 
 template<typename T>
 T* get_ptr(T & obj) { return &obj; }  // should be compiled away when immediately derefed
 
-// dunno about this one, needed for calling methods on string temporaries...
+// seemingly needed for calling methods on string temporaries...
 template<typename T>
 T* get_ptr(T && obj) { return &obj; }
 
@@ -363,60 +69,10 @@ std::enable_if_t<!std::is_base_of_v<object, T>, T**>
 get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
 
 
-
-/*
-template <typename T, typename Y>
-auto add(std::shared_ptr<T> t, Y y)
-{
-    if constexpr (std::is_base_of_v<object, T>) {
-        return  *t + y;
-    } else {
-        return t + y;
-    }
-}
-
-template <typename Y, typename T>
-auto add(Y y, std::shared_ptr<T> t)
-{
-    if constexpr (std::is_base_of_v<object, T>) {
-        return y + *t;
-    } else {
-        return y + t;
-    }
-}
-
-template <typename T>
-auto add(std::shared_ptr<T> t, std::shared_ptr<T> y)
-{
-    if constexpr (std::is_base_of_v<object, T>) {
-        return *t + y;
-    } else {
-        return t + y;
-    }
-}
-
-template <typename T>
-std::enable_if_t<!std::is_convertible_v<T, std::shared_ptr<object>>, T>
-add(T a, T b)
-{
-    return a + b;
-}*/
-
-
-template <typename T>
-constexpr bool is_signed(const T& t)
-{
-  return std::numeric_limits<T>::is_signed;
-}
-
-
-
 """
 
 
 # Uses code and ideas from https://github.com/lukasmartinelli/py14
-
-# https://brevzin.github.io/c++/2019/12/02/named-arguments/
 
 
 class ClassDefinition:
@@ -916,10 +572,8 @@ def codegen(expr: Node):
     assert isinstance(expr, Module)
     cx = Context()
     s = codegen_node(expr, cx)
-    # s = s.replace("___PLACE_TO_PUT_JUNK", "\n".join(method_declarations))
     print(s)
     s = cpp_preamble + s
-    s = s.replace("___PLACE_TO_PUT_JUNK", "")
     return s
 
 
