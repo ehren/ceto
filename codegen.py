@@ -324,33 +324,6 @@ def codegen_class(node : Call, cx):
             # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
             # method_declarations.append(codegen_def(new, indent_str))
 
-    def good_but_disable():
-        cpp += indt + f"virtual std::shared_ptr<object> operator+(const object & other) const override {{\n"
-        # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-        cpp += indt + f'    printf("adding {name} and object");\n'
-        # cpp += indt + "    return *this + other;\n"
-        cpp += indt + f"    auto o = dynamic_cast<{name} const*>(&other);"
-        cpp += indt + f'    if (!o) {{ printf("damn"); return {{}}; }}'
-        cpp += indt + f'    return *this + *o;\n';
-
-        # cpp += indt + "    return other.operator+(*this);\n"
-        cpp += indt + "    \n"
-
-        # cpp += indt + "return {};\n"
-        cpp += indt + "}\n\n"
-
-        cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
-        # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-        # cpp += indt + "    other + *this;\n"
-        cpp += indt + f'    printf("adding {name} and {name}");\n'
-        cpp += indt + "return {};\n"
-        cpp += indt + "}\n\n"
-        #
-        # cpp += indt + f"virtual std::shared_ptr<object> operator+(const {name} & other) const {{\n"
-        # # cpp += "    return std::make_shared<Integer>(this->integer + other.integer);\n"
-        # cpp += indt + f'    printf("adding two {name}");\n'
-        # cpp += indt + "}"
-
     cpp += indt + "};\n\n"
 
     if local_interfaces:
