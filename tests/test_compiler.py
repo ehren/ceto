@@ -505,6 +505,15 @@ def test_complex_arguments():
     
 # User Naumann: https://stackoverflow.com/a/54911828/1391250
 
+# also re namespaces and unary : op:
+
+# A : :T.func()
+# A of type :T.func()
+# (A::T).func() # (A of Type :T).func()
+# (A::T).(func:int)()
+# namespace(A, T).template_instantiate(int, func())
+
+
 
 # char *(*fp)( int, float *)
 # def (test, fp: fp(int,float:ptr):char:ptr:
@@ -1678,8 +1687,8 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
-    # _some_magic(sys.modules[__name__])
-    test_left_assoc_attrib_access()
+    _some_magic(sys.modules[__name__])
+    # test_left_assoc_attrib_access()
     # test_add_stuff()
     # test_class_attributes()
     # test_class_with_attributes_of_generic_class_type()
@@ -1704,3 +1713,4 @@ if __name__ == '__main__':
     # test_class_def_in_func()
     # test_class_def_escapes()
     #test_vector_explicit_type_plus_mixing_char_star_and_string()
+    # test_one_liners()

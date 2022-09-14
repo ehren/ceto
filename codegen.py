@@ -15,12 +15,6 @@ from collections import defaultdict
 class CodeGenError(Exception):
     pass
 
-# A : :T.func()
-# A of type :T.func()
-# (A::T).func() # (A of Type :T).func()
-# (A::T).(func:int)()
-# namespace(A, T).template_instantiate(int, func())
-
 unused_cpp = """
 // https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705
 /*
