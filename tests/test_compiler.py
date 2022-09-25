@@ -38,14 +38,13 @@ class (Bar:
     a
     b
     # f : Foo  # probably need to forget about this # indeed we have
-    # f : Foo<decltype(a), decltype(b), decltype(b)>  # this currently compiles but is wrong (need to auto inject shared_ptr in template specialization cases at least)
+    f : Foo<decltype(a), decltype(b), decltype(b)>
 )
 
 class (Bar2:
     a
     b
-    c
-    f : decltype(Foo(a,b,c))  # almost as good ;)
+    f : decltype(Foo(b,b,b))  # this is probably more intuitive than explicit template syntax although produces wackier looking but equivalent c++ code (either way both cases work)
 )
 
 class (MixedGenericConcrete:
@@ -77,8 +76,10 @@ def (main:
     f4 = Foo(1, 2, Foo(1, 2, 3))
     f5 = Foo(1, 2, Foo(1, Foo(1, 2, Foo(1,2,3001)), Foo(1,2,3)))
     std.cout << f5.c.b.c.c << "\n"
-    # b = Bar(1, 2, f)
-    # b2 = Bar2(1, 2, 3, Foo(2,3,4))  # should work
+    b = Bar(1, 2, f)
+    std.cout << b.a << b.b << b.f.a << b.f.b << b.f.c << "\n"
+    b2 = Bar2("hi", 2, Foo(2,3,4))  # should work
+    std.cout << b2.a << b2.b << b2.f.a << b2.f.b << b2.f.c << "\n"
     m = MixedGenericConcrete("e", 2)
     std.cout << m.a << m.b << "\n"
 )
@@ -95,7 +96,7 @@ class (HasGenericList:
 
         """)
 
-    assert c.strip() == "3001\ne2"
+    assert c.strip() == "3001\n12123\nhi2234\ne2"
 
 
 

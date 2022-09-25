@@ -781,6 +781,24 @@ def vector_decltype_str(node, cx):
     return rhs_str
 
 
+def _shared_ptr_str_for_type(type_node, expr_node, cx):
+    if not isinstance(type_node, Identifier):
+        return None
+
+    name = type_node.name
+    ptr = None
+
+    if name in cx.interfaces:
+        ptr = "std::shared_ptr"
+    elif class_node := find_defining_class_of_type(type_node, expr_node):
+        if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+            ptr = "std::unique_ptr"
+        else:
+            ptr = "std::shared_ptr"
+
+    return ptr
+
+
 def codegen_type(expr_node, type_node, cx):
     if isinstance(type_node, Identifier):
         name = type_node.name
@@ -802,24 +820,10 @@ def codegen_type(expr_node, type_node, cx):
         #     s = name
         # else:
 
-        if name in cx.interfaces:
-            name = f"std::shared_ptr<{name}>"
-        elif class_node := find_defining_class_of_type(type_node, expr_node):
-            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                name = f"std::unique_ptr<{name}>"
-            else:
-                name = f"std::shared_ptr<{name}>"
+        if ptr_name := _shared_ptr_str_for_type(type_node, expr_node, cx):
+            name = ptr_name + "<" + name + ">"
 
-        if 0 and is_defined_by_class(expr_node):
-            assert 0 # are we using this?
-            name = f"std::shared_ptr<{name}>"
-        else:
-            return name
-
-        # return s
-
-        # if is_list:
-        #     s = f"std::vector<{s}>"
+        return name
 
     elif isinstance(type_node, ColonBinOp):
         lhs = type_node.lhs
@@ -831,6 +835,11 @@ def codegen_type(expr_node, type_node, cx):
         if len(type_node.args) != 1:
             raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
         return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
+    elif isinstance(type_node, TemplateSpecialization):
+
+        if ptr_name := _shared_ptr_str_for_type(type_node.func, expr_node, cx):
+            assert isinstance(type_node.func, Identifier)
+            return ptr_name + "<" + type_node.func.name + "<" + ", ".join([codegen_type(expr_node, a, cx) for a in type_node.args]) + ">>"
 
     return codegen_node(type_node, cx)
 
