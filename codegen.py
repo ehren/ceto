@@ -77,10 +77,13 @@ get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
 
 class ClassDefinition:
 
-    def __init__(self, name_node : Identifier, class_def_node: Call, num_generic_params = 0):
+    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index):
         self.name_node = name_node
         self.class_def_node = class_def_node
-        self.num_generic_params = num_generic_params
+        self.is_generic_param_index = is_generic_param_index
+
+    def has_generic_params(self):
+        return True in self.is_generic_param_index.values()
 
 
 class Context:
@@ -261,9 +264,9 @@ def codegen_class(node : Call, cx):
     inner_indt = (cx.indent + 1) * "    "
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
-    num_generic_params = 0
+    is_generic_param_index = {}
 
-    for b in block.args:
+    for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
             if isinstance(b.declared_type, ColonBinOp):
                 return_type, interface_type = b.declared_type.args
@@ -276,21 +279,23 @@ def codegen_class(node : Call, cx):
             cpp += codegen_def(b, cx.new_scope_context())
         elif isinstance(b, Identifier):
             if b.declared_type is not None:
-                dependent_class = cx.lookup_class(b.declared_type)
-                if dependent_class is not None and dependent_class.num_generic_params > 0:
-                    # TODO fix unique here
-                    deps = [gensym("C") for _ in range(dependent_class.num_generic_params)]
-                    typenames.extend(deps)
-                    decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
-                else:
-                    decl = codegen_type(b, b.declared_type, cx) + " " + b.name
+                # idea to "flatten out" the generic params is too crazy (and supporting the same behaviour in function defs means losing auto function arg deduction (more spamming decltype would maybe fix)
+                # dependent_class = cx.lookup_class(b.declared_type)
+                # if dependent_class is not None and dependent_class.num_generic_params > 0:
+                #     # TODO fix unique here
+                #     deps = [gensym("C") for _ in range(dependent_class.num_generic_params)]
+                #     typenames.extend(deps)
+                #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
+                # else:
+                decl = codegen_type(b, b.declared_type, cx) + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
+                is_generic_param_index[block_index] = False
             else:
                 t = gensym("C")
                 typenames.append(t)
                 decl = t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
-                num_generic_params += 1
+                is_generic_param_index[block_index] = True
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
@@ -337,7 +342,7 @@ def codegen_class(node : Call, cx):
     else:
         template_header = ""
 
-    cx.class_definitions.append(ClassDefinition(name, node, num_generic_params))
+    cx.class_definitions.append(ClassDefinition(name, node, is_generic_param_index))
 
     return interface_def_str + template_header + class_header + cpp
 
@@ -664,9 +669,9 @@ def _decltype_str(node, cx):
         if class_def := cx.lookup_class(node.func):
             class_name = node.func.name
             class_node = class_def.class_def_node
-            if class_def.num_generic_params > 0:
+            if class_def.has_generic_params():
                 class_name += "<" + ", ".join(
-                    [decltype_str(a, cx) for a in node.args]) + ">"
+                    [decltype_str(a, cx) for i, a in enumerate(node.args) if class_def.is_generic_param_index[i]]) + ">"
 
             if isinstance(class_node.declared_type,
                           Identifier) and class_node.declared_type.name == "unique":
@@ -872,8 +877,11 @@ def codegen_node(node: Union[Node, Any], cx: Context):
                 if class_def := cx.lookup_class(node.func):
                     class_name = node.func.name
                     class_node = class_def.class_def_node
-                    if class_def.num_generic_params > 0:
-                        class_name += "<" + ", ".join([decltype_str(a, cx) for a in node.args]) + ">"
+
+                    if class_def.has_generic_params():
+                        class_name += "<" + ", ".join(
+                            [decltype_str(a, cx) for i, a in enumerate(node.args) if
+                             class_def.is_generic_param_index[i]]) + ">"
 
                     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
                         func_str = "std::make_unique<" + class_name + ">"
