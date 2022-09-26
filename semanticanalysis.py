@@ -40,8 +40,7 @@ class NamedParameter(Assign):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-# should be renamed "IfWrapper"
-class IfNode:#(Call):  # just a helper class for now (avoid adding to ast)
+class IfWrapper:
 
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
@@ -66,9 +65,13 @@ class IfNode:#(Call):  # just a helper class for now (avoid adding to ast)
         assert isinstance(self.thenblock, Block)
         self.eliftuples = []
         if args:
-            self.elseblock = args.pop()
-            elseidentifier = args.pop()
-            assert isinstance(elseidentifier, Identifier) and elseidentifier.name == "else"
+            assert len(args) >= 2
+            if isinstance(args[-2], Identifier) and args[-2].name == "else":
+                self.elseblock = args.pop()
+                elseidentifier = args.pop()
+                assert isinstance(self.elseblock, Block)
+            else:
+                self.elseblock = None
             while args:
                 elifcond = args.pop(0)
                 elifblock = args.pop(0)

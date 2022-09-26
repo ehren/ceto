@@ -1,11 +1,51 @@
 from compiler import compile
 
 
-# if ((x = 2): (y = 1) else: (y = 2))  # if ':' had higher precedence
-# if (x == 2: (y = 1) else: (y = 2))   # if ':' has lower precedence than '==' but not '='  (then it's a bug to change a comparison to assign by simply deleting one '=')
 
-# if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
-# if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
+def test_lower_precedence_colon():
+    # prev notes on considering a colon op with lower precedence than = to allow
+    # for more common x:int = 0 notation:
+
+        # if ((x = 2): (y = 1) else: (y = 2))  # if ':' had higher precedence
+        # if (x == 2: (y = 1) else: (y = 2))   # if ':' has lower precedence than '==' but not '='  (then it's a bug to change a comparison to assign by simply deleting one '=')
+        # later note: not a bug, this gives us the "must overparenthesize assignment as if cond" logic for free
+
+        # if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
+        # if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
+
+    # change has been made. only undesirable change noted is parsing "yield: x = 5" as "(yield: x)=5" etc (behaviour with 'return' noted below - okish behaviour with current code printing)
+
+    c = compile(r"""
+
+    
+def (foo:
+    x = 2
+    if (x==1:
+        pass
+    elif (x = 3):
+        std.cout << "ok"
+    )
+    if (x == 2: pass elif x == 3: std.cout << "ok2")
+    if (x == 2: pass elif x == 3: (return 5))
+    if (x == 2: pass elif x == 3: 
+        return: 1
+    )
+    return: x = 2
+    
+    z = x = 10
+    
+    return z
+)
+
+def (main:
+    std.cout << foo()
+    x : int = 5
+    y : const:int:ref = x
+    std.cout << x << y
+)
+    """)
+
+    assert c == "okok2555"
 
 
 def test_left_assoc_attrib_access():
@@ -16,6 +56,11 @@ class (Foo:
     b
     c
 ) 
+
+# TODO: should just use auto parameters template syntax always (c++20)
+# def (foo, x: auto:
+#     pass
+# )
     
 def (main:
     f = Foo(1, 2, Foo(1, Foo(1, 2, Foo(1,2,3001)), Foo(1,2,3)))
@@ -1700,6 +1745,7 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
     _some_magic(sys.modules[__name__])
+    # test_lower_precedence_colon()
     # test_left_assoc_attrib_access()
     # test_add_stuff()
     # test_class_attributes()

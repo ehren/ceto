@@ -2,7 +2,7 @@ import typing
 from typing import Union, Any
 
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
-    ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfNode, \
+    ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
 from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization
@@ -133,11 +133,13 @@ def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
 
-    ifnode = IfNode(ifcall.func, ifcall.args)
+    ifnode = IfWrapper(ifcall.func, ifcall.args)
 
     indt = cx.indent_str()
 
-    scopes = [ifnode.cond, ifnode.thenblock, ifnode.elseblock]
+    scopes = [ifnode.cond, ifnode.thenblock]
+    if ifnode.elseblock is not None:
+        scopes.append(ifnode.elseblock)
     for elifcond, elifblock in ifnode.eliftuples:
         scopes.append(elifcond)
         scopes.append(elifblock)
