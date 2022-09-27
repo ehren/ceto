@@ -1,8 +1,10 @@
 from compiler import compile
 
+def _test_lower_precedence_colon():
+    return  # Nope keeping colon at lowest precedence. Down with x: int = 0. up with x = 0 : int
 
+    # when precedence change is made, undesirable change noted is parsing "yield: x = 5" as "(yield: x)=5" etc (behaviour with 'return' noted below - current code printing happens to produce the correct code but forces operation on nonsensical AST (hence abandoning)
 
-def test_lower_precedence_colon():
     # prev notes on considering a colon op with lower precedence than = to allow
     # for more common x:int = 0 notation:
 
@@ -13,7 +15,29 @@ def test_lower_precedence_colon():
         # if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
         # if (x == 2: y = 1, elif: x == 3: y = 2, else: y = 3)
 
-    # change has been made. only undesirable change noted is parsing "yield: x = 5" as "(yield: x)=5" etc (behaviour with 'return' noted below - okish behaviour with current code printing)
+    # bad idea for rewrite rules (if not equiv to precedence change requires maintaining a list of return like operators (on which to avoid rewrite))
+
+    # x : int : const = 5
+    # parsed with low precedence ':' is
+    # x: (int:(const = 5))
+    # algo
+    # find x : (int = 0)
+    # rewrite as
+    # x = 0 : int
+    # or as
+    # (x:int) = 0
+    # find "int: (const = x)"
+    # rewrite as ...
+    # (int:const) = x
+    # so if find
+    # x: (int : (const = 5))
+    # rewrite to
+    # x: ((int:const) = 5)
+    # rewrite to
+    # (x: (int:const)) = 5
+
+    # should work? but same as simply changing the precedence...
+    # same issue with return: x = 5 becomes (return:x)=5
 
     c = compile(r"""
 
@@ -34,18 +58,25 @@ def (foo:
     
     z = x = 10
     
-    return z
+    return: z = 10
 )
 
 def (main:
     std.cout << foo()
     x : int = 5
     y : const:int:ref = x
+    y2 = x : const:int:ref 
+    
+    y3 : ((const:int:ref) = x)
+    return : (x = 0)
+    (return : x) = 0
+    
     std.cout << x << y
+    # return: z:int = 0
 )
     """)
 
-    assert c == "okok2555"
+    # assert c == "okok2555"
 
 
 def test_left_assoc_attrib_access():

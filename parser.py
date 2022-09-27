@@ -369,11 +369,11 @@ def _create():
             # this is where python puts 'not' ??
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
-            # TODO remove all references to buggy/silly "as" (as backwards) operator (an attempt to allow more python like "Exception as e" syntax)
-            # (colon, 1, pp.opAssoc.RIGHT, UnOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
+            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
+            # TODO remove all references to buggy/silly "as" (as backwards) operator (an attempt to allow more python like "Exception as e" syntax)
+            # (colon, 1, pp.opAssoc.RIGHT, UnOp), # not implemented for now but maybe for symbolic variables and keyword only call args
         ],
         # pp.Literal("("),
         # pp.Literal(")")
