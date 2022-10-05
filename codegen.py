@@ -475,6 +475,7 @@ def codegen_def(defnode: Call, cx):
                 # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
                 # params.append((declpart, valuepart))
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
+                # not going to work, needs conversion to std::Function
                 params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
             else:
                 if isinstance(arg.lhs, Identifier):
@@ -510,11 +511,14 @@ def codegen_def(defnode: Call, cx):
                 found_return = True
                 if is_void_return(ret):
                     # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
-                    return_type = 'std::shared_ptr<object>'
+                    #return_type = 'std::shared_ptr<object>'
+                    # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
+                    return_type = "void"
                     break
 
         if not found_return:
-            return_type = 'std::shared_ptr<object>'
+            # return_type = 'std::shared_ptr<object>'
+            return_type = "void"
 
 
     if is_destructor:
@@ -528,8 +532,9 @@ def codegen_def(defnode: Call, cx):
     indt = cx.indent_str()
     block_cx = cx.new_scope_context()
     block_str = codegen_block(block, block_cx)
-    if not is_destructor and not is_return(block.args[-1]):  # should just not do this or at least only if explicit type given?
-        block_str += block_cx.indent_str() + "return {};\n"
+    # if not is_destructor and not is_return(block.args[-1]):
+    #     block_str += block_cx.indent_str() + "return {};\n"
+    # we're just not doing it!
 
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 

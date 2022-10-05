@@ -1168,23 +1168,14 @@ def (main:
     fprintf(fp, "hello %s", "world\n")
     fclose(fp)
     fp = fopen("file.txt", "r")
+    fclose(fp)
     
-    class (Blah:
-        def (huh:
-            printf("huh")
-        )
-    )
-    
-    b = Blah().huh()
-    # printf("Blah addr %p", b.get()) # not going to happen
-    
-    cs = "file.txt".c_str()
+    # cs = "file.txt".c_str()
     t = std.ifstream(c"file.txt")
     buffer = std.stringstream()
     buffer << t.rdbuf()
     s = buffer.str()
     std.cout << s << "\n"
-    
 )
     """)
     assert "hello world\n" in c
@@ -1791,7 +1782,7 @@ if __name__ == '__main__':
     # test_for()
     # three_way_compare()
     # test_deref_address_of()
-    #test_uniq_ptr()
+    # test_uniq_ptr()
     # test_reset_ptr()
     # test_add_stuff()
     # test_stress_parser()
