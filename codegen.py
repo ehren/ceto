@@ -334,9 +334,10 @@ def codegen_class(node : Call, cx):
     cpp += indt + "};\n\n"
 
     if local_interfaces:
-        class_header = "struct " + str(name) + " : " + ", ".join([str(i) for i in local_interfaces])
+        # TODO add public
+        class_header = "struct " + str(name) + " : " + ", ".join([str(i) for i in local_interfaces] + ["shared_object"])
     else:
-        class_header = "struct " + str(name) + " : public object"
+        class_header = "struct " + str(name) + " : public shared_object"
     class_header += " {\n\n"
 
     if typenames:
@@ -511,7 +512,7 @@ def codegen_def(defnode: Call, cx):
                 found_return = True
                 if is_void_return(ret):
                     # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
-                    #return_type = 'std::shared_ptr<object>'
+                    # return_type = 'std::shared_ptr<object>'
                     # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
                     return_type = "void"
                     break
@@ -534,7 +535,7 @@ def codegen_def(defnode: Call, cx):
     block_str = codegen_block(block, block_cx)
     # if not is_destructor and not is_return(block.args[-1]):
     #     block_str += block_cx.indent_str() + "return {};\n"
-    # we're just not doing it!
+    # no longer doing this^
 
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 
