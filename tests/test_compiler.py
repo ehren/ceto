@@ -1,5 +1,61 @@
 from compiler import compile
 
+def test_return_this():
+    c = compile(r"""
+    
+    
+class (A:
+    a
+)
+
+class (S:
+    def (foo:
+        # return shared_from_base<S>()   # parsed as compound comparison between idents and empty tuple.
+        return (shared_from_base<S>)()  # we'll just accept this for now
+        # another TODO: ^^ S in it's own method's scope should be shared_ptr<S>
+        # when that's fixed can workaround with
+        # return (shared_from_base<std.remove_reference<decltype(*this)>::type>)()    # need scope_resolve
+        # or (better) with 'classof':
+        # return shared_from_base<classof(S)>()
+        # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
+        # 
+        # another parse issue:
+        # buffer << (1,2) >> kk
+    ) #: S
+)
+
+# TODO rules:
+# 'this' as an identifier  = error (except maybe inside an explicit lambda capture list)
+# 'self' as an identifier outside of method scope = error
+# 'self' as an identifier but not as an attribute access target e.g. self, return self, foo(self): print as std::static_pointer_cast<ClassName> (shared_from_this()) or initialize 'self' with that expression 
+# 'self.foo' in a method (self is the target of an attribute access) = print as simply this.foo (or rather get_ptr(this)->foo to avoid unnecessary refcount bump
+# 'self' in a lambda body results in c++ lambda capture list of [=, self = std::static_pointer_cast<ClassName> (shared_from_this())],  self printed normally in body
+# -- actually just initializing const auto self = static_pointer_cast<Blah>(shared_from_this()) in method is sufficient (then '=' lambda capture works as is)
+    
+def (main:
+    s = S()
+    std.cout << (&s)->use_count() << std.endl
+    s2 = s.foo()
+    std.cout << (&s2)->use_count() << std.endl
+    a = A(s)
+    # a->(shared_from_base<S>)()
+    # s->(shared_from_base<S>)()
+    # a->(shared_from_base<A>)()
+    
+    # (1,2) + (1,2)*2 parses
+    # (1,2) < (2,4)
+    
+    std.cout << (&s2)->use_count() << std.endl
+    
+    # dyncast(B, a)
+    # staticcast(B, a)  # not a good idea to make static_pointer_cast convenient
+    # isinstance(a, B)
+    # asinstance(a, B)   # std::dynamic_pointer_cast<B>(a)  # maybe this is better than 'dyncast'
+)
+    
+    """)
+
+
 def _test_lower_precedence_colon():
     return  # Nope keeping colon at lowest precedence. Down with x: int = 0. up with x = 0 : int
 
@@ -1766,7 +1822,9 @@ def _some_magic(mod):
 
 if __name__ == '__main__':
     import sys
+
     _some_magic(sys.modules[__name__])
+    # test_return_this()
     # test_lower_precedence_colon()
     # test_left_assoc_attrib_access()
     # test_add_stuff()
