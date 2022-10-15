@@ -4,12 +4,21 @@ from compiler import compile
 def test_typed_identifiers_as_cpp_variable_declarations():
     c = compile(r"""
 def (main:
-    x : int
+    x:int
     x = 0
     (static_cast<void>)(x)  # silence unused variable warning
+    
+    f = lambda (y:const:char:ptr, z:int:
+        std.cout << y << z << "\n"
+        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'
+        std.cout << z << std.endl
+        void()
+    )
+    
+    f("hi".c_str(), 5)
 )
     """)
-    assert c == ""
+    assert c.strip() == "hi5\n2"
 
 
 def test_return_this():
@@ -587,9 +596,9 @@ def (main:
     ))
     map(l, foo)
     # map(l, foo_generic)  # error
-    map(l, lambda (x:int, foo_generic(x)))  # need type printing for lambda args (when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
+    map(l, lambda (x:int, foo_generic(x)))  # when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
     map(l, lambda (x, foo_generic(x)))  # why does this even work? note: clang 14 -O3 produces at least an extra allocation vs passing foo_generic<int>. 
-    map(l, foo_generic<int>)  # new template specialization syntax...
+    map(l, foo_generic<int>)  # new template specialization syntax (one of the few places where parentheses not needed to distinguish template from compound comparison)
 )
 	""")
 
@@ -1874,8 +1883,8 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
 
-    # _some_magic(sys.modules[__name__])
-    test_typed_identifiers_as_cpp_variable_declarations()
+    _some_magic(sys.modules[__name__])
+    # test_typed_identifiers_as_cpp_variable_declarations()
     # test_return_this()
     # test_higher_precedence_colon()
     # test_left_assoc_attrib_access()

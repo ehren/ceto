@@ -338,9 +338,7 @@ def _find_def(parent, child, node_to_find):
 
         return _find_def(parent.parent, parent, node_to_find)
     elif isinstance(parent, Call):
-        if parent.func.name == "def":
-            # should handle the def of the function name.... (or not?)
-
+        if parent.func.name in ["def", "lambda"]:
             for callarg in parent.args:
                 if callarg.name == node_to_find.name and callarg is not node_to_find:
                     return callarg, parent

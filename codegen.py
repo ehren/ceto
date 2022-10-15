@@ -550,10 +550,18 @@ def codegen_lambda(node, cx):
     # params = ["auto " + codegen_node(a) for a in args]
     params = []
     for a in args:
-        assert isinstance(a, Identifier)
-        params.append("auto " + str(a))
+        if not isinstance(a, Identifier):
+            if isinstance(a, Assign):
+                raise CodeGenError("lambda arg's may not have default values (not supported in C++)", a)
+            raise CodeGenError("Unexpected lambda argument", a)
+        param = codegen_node(a, cx)
+        if a.declared_type is None:
+            param = "auto " + param
+        params.append(param)
     newcx = cx.new_scope_context()
-    return ("[](" + ", ".join(params) + ") {\n" +
+    # '=' is a fine default (requiring use of shared_ptr for reference semantics w/ capture vars)
+    # But this assumes the new "implicit 'this'" warning is treated as an error (configured with -WError= etc). Otherwise '=' capture is dangerous.
+    return ("[=](" + ", ".join(params) + ") {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}")
 
 
@@ -867,6 +875,7 @@ def codegen_node(node: Node, cx: Context):
         node.declared_type = None  # not too nice current design forces AST mutation...
         var_str = codegen_node(node, cx)
         node.declared_type = declared_type  # ...even if mutation is temporary
+        # node.already_declared = True  # not necessary because 'find_defs' (of dubious design for other reasons) does most heavy lifting
         # Note that if this works many calls to codegen_type can be simplified/refactored
         return type_str + " " + var_str
 
