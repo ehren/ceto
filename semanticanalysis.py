@@ -303,9 +303,6 @@ def _find_def(parent, child, node_to_find):
             #         itervar = instmt.args[0]
             #         if isinstance(itervar, Identifier) and itervar.name == node_to_find.name:
             #             return itervar, r
-        if isinstance(r, Identifier) and r.declared_type is not None and r.name == node_to_find.name:
-            # treat declarations (which require a type!) like defs. TODO: There are likely places in codegen that improperly ignore such a def (expecting an assignment) e.g. typed list declarations
-            return r, r
         for a in r.args:
             if f := _find_assign(a, node_to_find):
                 return f
@@ -331,6 +328,9 @@ def _find_def(parent, child, node_to_find):
             f = _find_assign(r, node_to_find)
             if f is not None:
                 return f
+            if isinstance(r, Identifier) and r.declared_type is not None and r.name == node_to_find.name:
+                # treat declarations of block-level locals (which require a type!) like defs. TODO: There may be places in codegen that improperly ignore such a def (expecting an assignment) e.g. typed list declarations
+                return r, r
 
         # call = parent.parent
         # assert isinstance(call, Call)
