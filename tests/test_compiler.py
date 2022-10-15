@@ -1301,16 +1301,23 @@ class (Blah1:
     #     printf("Blah1 foo\n")
     # ):int
     
-    # too busy
+    # TODO: maybe a bit busy but this one should have been chosen
     # def (foo:A, x:A:
+    #     printf("Blah1 foo\n")
+    #     x.huh()
+    # ):int  # or ':A' if it returns an 'A'!
+    
+    # or perhaps even explicit interface(A) although meaning of 'A' is clear from scope if already defined (not so much for auto-definition; could also add 'concept' although not sure worth it just to improve C++ compiler error messages)
+    # def (foo:interface(A), x:A:
     #     printf("Blah1 foo\n")
     #     x.huh()
     # ):int
     
+    # this is the current implementation. Totally inconcistent - how to return a shared_ptr<A> ? (that is an A in whatever-lang-called code). You can't! (or rather must hope auto return type deduction suffices!)
     def (foo, x:A:
         printf("Blah1 foo\n")
         x.huh()
-    ):int:A  # TODO requires checking that A not in [const, ref, ptr]
+    ):int:A  # requires checking that A not in [const, ref, ptr] - not the only problem with this approach ^^ !
     
     def (huh:
         printf("huh 1\n")
