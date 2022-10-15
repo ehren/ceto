@@ -1,5 +1,6 @@
 from compiler import compile
 
+
 def test_return_this():
     c = compile(r"""
     
@@ -56,10 +57,44 @@ def (main:
     """)
 
 
-def _test_lower_precedence_colon():
+def _test_higher_precedence_colon():
     return  # Nope keeping colon at lowest precedence. Down with x: int = 0. up with x = 0 : int
 
     # when precedence change is made, undesirable change noted is parsing "yield: x = 5" as "(yield: x)=5" etc (behaviour with 'return' noted below - current code printing happens to produce the correct code but forces operation on nonsensical AST (hence abandoning)
+
+
+    # another point in favor of the existing lower precedence ':' is the complication in python's parse rules for typed assigmnemts due to the conflicting lambda syntax:
+    # >>> lambda: x = 1
+    #   File "<stdin>", line 1
+    # SyntaxError: cannot assign to lambda
+    # >>> if x = 1:
+    #   File "<stdin>", line 1
+    #     if x = 1:
+    #          ^
+    # SyntaxError: invalid syntax
+    # >>> lambda: (x = 0)
+    #   File "<stdin>", line 1
+    #     lambda: (x = 0)
+    #                ^
+    # SyntaxError: invalid syntax
+
+    # ^^ means my mental parsing rule for python "everything (ignoring a few precedence issues) that follows 'lambda:' is the lambda body" is even more wrong in the prescence of type annotatios
+
+    # if sticking with lower prec:
+    # x : int = 0  # codegen: x int = 0   # any easy to make gotchas that generate compilable c++?
+
+    # "typed identifier means declaration" would allow explicit
+    # {} : x : int
+    # int x {}
+    # above would be silly because
+    # x = {} : int
+    # would (when implemented) be valid syntax
+
+    # but for (unfortunate) cases where direct-list-initialization differs from copy-list-initialization
+    # could write {1, 2} : x: my_bad_vector<int>
+    # https://stackoverflow.com/questions/50422129/differences-between-direct-list-initialization-and-copy-list-initialization
+
+
 
     # prev notes on considering a colon op with lower precedence than = to allow
     # for more common x:int = 0 notation:
@@ -94,6 +129,7 @@ def _test_lower_precedence_colon():
 
     # should work? but same as simply changing the precedence...
     # same issue with return: x = 5 becomes (return:x)=5
+
 
     c = compile(r"""
 
@@ -1825,7 +1861,7 @@ if __name__ == '__main__':
 
     _some_magic(sys.modules[__name__])
     # test_return_this()
-    # test_lower_precedence_colon()
+    # test_higher_precedence_colon()
     # test_left_assoc_attrib_access()
     # test_add_stuff()
     # test_class_attributes()
