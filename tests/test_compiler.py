@@ -1,6 +1,17 @@
 from compiler import compile
 
 
+def test_typed_identifiers_as_cpp_variable_declarations():
+    c = compile(r"""
+def (main:
+    x : int
+    x = 0
+    (static_cast<void>)(x)  # silence unused variable warning
+)
+    """)
+    assert c == ""
+
+
 def test_return_this():
     c = compile(r"""
     
@@ -496,8 +507,9 @@ def (main:
 def test_one_liners():
     c = compile(r"""
 def (main:
-    if ((1:int): printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )
-    if (1:int: printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )   # warning: declaration does not declare anything:  int;
+    # if ((1:int): printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )
+    # if (1:int: printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )   # warning: declaration does not declare anything:  int;
+    pass  # lang behavior change
 )
     """)
 
@@ -1661,9 +1673,12 @@ def (main:
     # else:
     #     x.append(foo(w-1))
     # )
-    if ((1:int): x.append(zz[1]) : some_type_lol elif z == 4: x.append(105) else: x.append(foo(w-1)) )
+    
+    # this is a good parsing test but only works with the original implementation where type 'declarations' are simply ignored outside of special contexts (like python). now using the ':' bin op outside of special forms like 'if' and assignments, etc, generates a C++ declaration
+    # if ((1:int): x.append(zz[1]) : some_type_lol elif z == 4: x.append(105) else: x.append(foo(w-1)) )
 
-    if (1: x.append(zz[1]) elif z == 4: if (q == 6: 1 else: 10) else: x.append(foo(w-1)))
+    # static_cast<void> to silence unused var warning (note: no syntax to codegen a C style cast - unless bugs).
+    if (1: x.append(zz[1]) elif z == 4: if (q == 6: (static_cast<void>)(1) else: (static_cast<void>)(10)) else: x.append(foo(w-1)))
 
     printf("ohsnap 
 %d", x[0])
@@ -1859,7 +1874,8 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
 
-    _some_magic(sys.modules[__name__])
+    # _some_magic(sys.modules[__name__])
+    test_typed_identifiers_as_cpp_variable_declarations()
     # test_return_this()
     # test_higher_precedence_colon()
     # test_left_assoc_attrib_access()

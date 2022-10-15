@@ -855,10 +855,20 @@ def codegen_type(expr_node, type_node, cx):
     return codegen_node(type_node, cx)
 
 
-
-def codegen_node(node: Union[Node, Any], cx: Context):
+def codegen_node(node: Node, cx: Context):
+    assert isinstance(node, Node)
     cpp = io.StringIO()
 
+    if node.declared_type and not isinstance(node, (BinOp, UnOp, Call, ListLiteral)):
+        # new behavior (except in places that already handle type printing some of which can be simplified):
+        # If it's got a type it's a "variable declaration" ie [type] [value] (whatever C++ code this may generate)
+        declared_type = node.declared_type
+        type_str = codegen_type(node, declared_type, cx)
+        node.declared_type = None  # not too nice current design forces AST mutation...
+        var_str = codegen_node(node, cx)
+        node.declared_type = declared_type  # ...even if mutation is temporary
+        # Note that if this works many calls to codegen_type can be simplified/refactored
+        return type_str + " " + var_str
 
     if isinstance(node, Module):
         for modarg in node.args:
