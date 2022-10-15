@@ -217,7 +217,9 @@ def one_liner_expander(parsed):
                         block = op.args[-1]
                         last_statement = block.args[-1]
                         if not is_return(last_statement):
-                            block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
+                            synthetic_return = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                            synthetic_return.is_synthetic_lambda_return = True # bit of a hack so that codegen can print implicit return as "return x, void()  // C++ comma operator to autodeduce 'void' return type if x is void"
+                            block.args = block.args[0:-1] + [synthetic_return]
                     # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
                         # if op.func.name == "lambda":
                             # last 'statement' becomes return

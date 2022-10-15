@@ -12,7 +12,6 @@ def (main:
         std.cout << y << z << "\n"
         z = 2  # unrelated test that lambda params treated as defs in 'find_defs'
         std.cout << z << std.endl
-        void()
     )
     
     f("hi".c_str(), 5)

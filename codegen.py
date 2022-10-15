@@ -552,7 +552,7 @@ def codegen_lambda(node, cx):
     for a in args:
         if not isinstance(a, Identifier):
             if isinstance(a, Assign):
-                raise CodeGenError("lambda arg's may not have default values (not supported in C++)", a)
+                raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
             raise CodeGenError("Unexpected lambda argument", a)
         param = codegen_node(a, cx)
         if a.declared_type is None:
@@ -986,7 +986,11 @@ def codegen_node(node: Node, cx: Context):
         elif isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
-                cpp.write("return " + codegen_node(node.args[1], cx))
+                ret = "return " + codegen_node(node.args[1], cx)
+                if hasattr(node, "is_synthetic_lambda_return"):
+                    assert node.is_synthetic_lambda_return
+                    ret += ", void()"  # C++ comma operator to allow deduction of 'void' return type for lambdas (without an explicit return statement) whose last statement/expression is of type 'void'
+                return ret
             else:
                 assert False
 
