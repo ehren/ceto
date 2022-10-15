@@ -261,12 +261,16 @@ def codegen_class(node : Call, cx):
     typenames = []
 
     indt = cx.indent_str()
+    inner_cx = cx.new_scope_context()
+
+    classdef = ClassDefinition(name, node, is_generic_param_index={})
+    cx.class_definitions.append(classdef)
+
     cpp = indt
     cpp += "int x;\n\n"
-    inner_indt = (cx.indent + 1) * "    "
+    inner_indt = inner_cx.indent_str()
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
-    is_generic_param_index = {}
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
@@ -291,13 +295,13 @@ def codegen_class(node : Call, cx):
                 # else:
                 decl = codegen_type(b, b.declared_type, cx) + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
-                is_generic_param_index[block_index] = False
+                classdef.is_generic_param_index[block_index] = False
             else:
                 t = gensym("C")
                 typenames.append(t)
                 decl = t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
-                is_generic_param_index[block_index] = True
+                classdef.is_generic_param_index[block_index] = True
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
@@ -345,7 +349,6 @@ def codegen_class(node : Call, cx):
     else:
         template_header = ""
 
-    cx.class_definitions.append(ClassDefinition(name, node, is_generic_param_index))
 
     return interface_def_str + template_header + class_header + cpp
 
@@ -855,6 +858,7 @@ def codegen_type(expr_node, type_node, cx):
 
 def codegen_node(node: Union[Node, Any], cx: Context):
     cpp = io.StringIO()
+
 
     if isinstance(node, Module):
         for modarg in node.args:
