@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp
 
 
 import io
@@ -558,7 +558,19 @@ def codegen_lambda(node, cx):
     newcx = cx.new_scope_context()
     # '=' is a fine default (requiring use of shared_ptr for reference semantics w/ capture vars)
     # But this assumes the new "implicit 'this'" warning is treated as an error (configured with -WError= etc). Otherwise '=' capture is dangerous.
-    return ("[=](" + ", ".join(params) + ") {\n" +
+    declared_type = None
+    type_str = ""
+    if node.declared_type:
+        declared_type = node.declared_type
+    if isinstance(node.func, ArrowOp):
+        # alternate type syntax (only necessary to avoid parentheses when specifying the return type of an immediatelly executed lambda defined func)
+        # this might complicate checking 'is this type the root type of a type declaration? (needed for inserting 'auto' into a 'const' declaration etc)
+        if declared_type is not None:
+            raise CodeGenError("Multiple return types specified for lambda?", node)
+        declared_type = node.func.rhs
+    if declared_type is not None:
+        type_str = " -> " + codegen_type(node, declared_type, cx)
+    return ("[=](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}")
 
 
@@ -892,7 +904,7 @@ def codegen_node(node: Node, cx: Context):
                 cpp.write(codegen_if(node, cx))
             elif node.func.name == "def":
                 print("need to handle nested def")
-            elif node.func.name == "lambda":
+            elif node.func.name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
                 cpp.write(codegen_lambda(node, cx))
             elif node.func.name == "range":
                 if len(node.args) == 1:
@@ -993,21 +1005,28 @@ def codegen_node(node: Node, cx: Context):
                 assert False
 
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
-            rhs_str = None
+            is_lambda_rhs_with_return_type = False
 
             # Handle template declaration for an empty list by searching for uses
             if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
                 rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
-
+            elif node.declared_type is not None and isinstance(node.lhs, Identifier) and isinstance(node.rhs, Call) and node.rhs.func.name == "lambda":
+                lambdaliteral = node.rhs
+                is_lambda_rhs_with_return_type = True
+                # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
+                if lambdaliteral.declared_type is not None:
+                    raise CodeGenError("why are there two return types defined for this lambda:", node.rhs)
+                lambdaliteral.declared_type = node.declared_type
+                rhs_str = codegen_lambda(lambdaliteral, cx)  # codegen_node would suffice here but we'll be direct
             else:
                 rhs_str = codegen_node(node.rhs, cx)
 
             declared_type = False
 
-            if isinstance(node.lhs, Identifier) and not isinstance(node.rhs, ListLiteral):
+            if isinstance(node.lhs, Identifier) and not isinstance(node.rhs, ListLiteral) and not is_lambda_rhs_with_return_type:
                 lhs_str = node.lhs.name
                 types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
-                if any(types):
+                if types:
                     assert len(set(types)) == 1
                     lhs_type_str = codegen_type(node.lhs, types[0], cx)
                     # if isinstance(node.rhs, ListLiteral):
@@ -1015,6 +1034,7 @@ def codegen_node(node: Node, cx: Context):
                     lhs_str = lhs_type_str + " " + lhs_str
                     declared_type = True
             else:
+                # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 lhs_str = codegen_node(node.lhs, cx)
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
@@ -1027,7 +1047,9 @@ def codegen_node(node: Node, cx: Context):
             binop_str = None
 
             separator = " "
+
             if isinstance(node, AttributeAccess):
+
                 if isinstance(node.lhs, Identifier) and node.lhs.name == "std":
                     return "std::" + codegen_node(node.rhs, cx)
 
