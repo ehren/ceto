@@ -560,7 +560,7 @@ def codegen_lambda(node, cx):
     # But this assumes the new "implicit 'this'" warning is treated as an error (configured with -WError= etc). Otherwise '=' capture is dangerous.
     declared_type = None
     type_str = ""
-    if node.declared_type:
+    if node.declared_type is not None:
         declared_type = node.declared_type
     if isinstance(node.func, ArrowOp):
         # alternate type syntax (only necessary to avoid parentheses when specifying the return type of an immediatelly executed lambda defined func)
@@ -568,6 +568,9 @@ def codegen_lambda(node, cx):
         if declared_type is not None:
             raise CodeGenError("Multiple return types specified for lambda?", node)
         declared_type = node.func.rhs
+        # simplify AST (still messed with for 'is return type void?' stuff)
+        node.declared_type = declared_type  # put type in normal position
+        node.func = node.func.lhs  # func is now 'lambda' keyword
     if declared_type is not None:
         type_str = " -> " + codegen_type(node, declared_type, cx)
     return ("[=](" + ", ".join(params) + ")" + type_str + " {\n" +
@@ -996,9 +999,14 @@ def codegen_node(node: Node, cx: Context):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
                 ret_body = codegen_node(node.rhs, cx)
-                if hasattr(node, "is_synthetic_lambda_return"):
-                    assert node.is_synthetic_lambda_return
-                    return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>) { return " + ret_body + "; } else { " + ret_body + "; }"
+                if hasattr(node, "synthetic_lambda_return_lambda"):
+                    lambdanode = node.synthetic_lambda_return_lambda
+                    assert lambdanode
+                    if lambdanode.declared_type is not None:
+                        declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
+                    else:
+                        declared_type_constexpr = ""
+                    return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { " + ret_body + "; }"
                 else:
                     return "return " + ret_body
             else:
@@ -1015,7 +1023,7 @@ def codegen_node(node: Node, cx: Context):
                 is_lambda_rhs_with_return_type = True
                 # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
                 if lambdaliteral.declared_type is not None:
-                    raise CodeGenError("why are there two return types defined for this lambda:", node.rhs)
+                    raise CodeGenError("Two return types defined for lambda:", node.rhs)
                 lambdaliteral.declared_type = node.declared_type
                 rhs_str = codegen_lambda(lambdaliteral, cx)  # codegen_node would suffice here but we'll be direct
             else:

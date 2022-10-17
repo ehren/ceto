@@ -51,6 +51,8 @@ def (main:
 )
     """)
 
+    assert c == "123"
+
 
 def test_typed_identifiers_as_cpp_variable_declarations():
     c = compile(r"""
