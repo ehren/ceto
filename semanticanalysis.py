@@ -122,6 +122,7 @@ def build_types(node: Node):
             node.declared_type = rhs  # leaving open possibility this is still a ColonBinOp
 
         node.args = [visitor(arg) for arg in node.args]
+        node.func = visitor(node.func)
         return node
 
     return visitor(node)

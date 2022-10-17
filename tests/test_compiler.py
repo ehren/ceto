@@ -10,35 +10,52 @@ def (is_void:
     
 def (main:
     f = lambda(x:
-        std.cout << x
+        std.cout << x << std.endl
         void()  # still need this (cout not void but can't return it)
     )
     f(1)
     static_assert(std.is_same_v<decltype(f(1)), void>)
     static_assert(std.is_same_v<decltype(is_void()), void>)
-    
+
     f2 = lambda(x:
         x
     )
-    std.cout << f2(2)
-    # static_assert(std.is_same_v<decltype(f2(2)), int>)
+    std.cout << f2(2) << std.endl
+    static_assert(std.is_same_v<decltype(f2(2)), int>)
     
     f3 = lambda (x:
         std.cout << x << std.endl
     ) : void
     f3(3)
-    # static_assert(std.is_same_v(decltype(f3(3), void)))
+    static_assert(std.is_same_v<decltype(f3(3)), void>)
     
-    fv = lambda -> void (x:
-        x  # don't wan't to silence this unused expr warning (to avoid influencing return type)
-    )
-    # static_assert(std.is_same_v(decltype(fv(5), void)))
+    f4 = lambda (x:
+        std.cout << x << std.endl
+        x
+    ) : int
+    std.cout << f4(4) << std.endl
+    static_assert(std.is_same_v<decltype(f4(4)), int>)
+    
+    val = (lambda(x:
+        x
+    ) : int) (5)
+    std.cout << val << std.endl
+    
+    constval = (lambda(x:
+        x
+    ) : int) (6) : auto : const
+    
+    std.cout << constval << std.endl
+    static_assert(std.is_same_v<decltype(constval), int:const>)
     
     # val = (lambda (x:
     #     x
     # ) : void)(4)  thankfully the need to specify 'void' in more cases than other types with lambda doesn't mean that extra parenthese are ever necessary (can't assign void to var)
     
     # Not doing these
+    # fv = lambda -> void (x:
+    #     x
+    # )
     # ff = lambda.int (x:
     #     x
     # )
@@ -51,7 +68,15 @@ def (main:
 )
     """)
 
-    assert c == "123"
+    assert c.strip() == r"""
+1
+2
+3
+4
+4
+5
+6
+    """.strip()
 
 
 def test_typed_identifiers_as_cpp_variable_declarations():
@@ -1943,8 +1968,8 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
 
-    # _some_magic(sys.modules[__name__])
-    test_lambda_void_deduction_and_return_types()
+    _some_magic(sys.modules[__name__])
+    # test_lambda_void_deduction_and_return_types()
     # test_typed_identifiers_as_cpp_variable_declarations()
     # test_return_this()
     # test_higher_precedence_colon()

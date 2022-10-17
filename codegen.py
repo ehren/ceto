@@ -561,18 +561,15 @@ def codegen_lambda(node, cx):
     declared_type = None
     type_str = ""
     if node.declared_type is not None:
-        declared_type = node.declared_type
-    if isinstance(node.func, ArrowOp):
-        # alternate type syntax (only necessary to avoid parentheses when specifying the return type of an immediatelly executed lambda defined func)
-        # this might complicate checking 'is this type the root type of a type declaration? (needed for inserting 'auto' into a 'const' declaration etc)
-        if declared_type is not None:
-            raise CodeGenError("Multiple return types specified for lambda?", node)
-        declared_type = node.func.rhs
-        # simplify AST (still messed with for 'is return type void?' stuff)
-        node.declared_type = declared_type  # put type in normal position
-        node.func = node.func.lhs  # func is now 'lambda' keyword
-    if declared_type is not None:
-        type_str = " -> " + codegen_type(node, declared_type, cx)
+        type_str = " -> " + codegen_type(node, node.declared_type, cx)
+    # if isinstance(node.func, ArrowOp):
+    #     # not workable for precedence reasons
+    #     if declared_type is not None:
+    #         raise CodeGenError("Multiple return types specified for lambda?", node)
+    #     declared_type = node.func.rhs
+    #     # simplify AST (still messed with for 'is return type void?' stuff)
+    #     node.declared_type = declared_type  # put type in normal position
+    #     node.func = node.func.lhs  # func is now 'lambda' keyword
     return ("[=](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}")
 
