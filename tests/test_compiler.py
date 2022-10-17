@@ -1,6 +1,48 @@
 from compiler import compile
 
 
+def test_lambda_void_deduction():
+    c = compile(r"""
+def (main:
+    f = lambda(x:
+        std.cout << x
+        void()  # still need this (cout not void but can't return it)
+    )
+    f("hi")
+    # f2 = lambda(x:
+    #     x
+    # )
+    # std.cout << f2(1)
+    # f2(1)
+    # ff = lambda -> void (x:
+    #     x
+    # )
+    # ff = lambda.void (x:
+    #     x
+    # )
+    # ff = (lambda:void) (x:
+    #     x
+    # )
+    # 
+    # val = (lambda (x:
+    #     x
+    # ) : void)(1)
+    # 
+    # val = (lambda:void) (x:
+    #     x
+    # )(1)
+    
+    # f = lambda (x:
+    #     x
+    # ) : void
+    
+    pass
+    
+    
+)
+    """)
+
+
 def test_typed_identifiers_as_cpp_variable_declarations():
     c = compile(r"""
 def (main:
@@ -12,6 +54,7 @@ def (main:
         std.cout << y << z << "\n"
         z = 2  # unrelated test that lambda params treated as defs in 'find_defs'
         std.cout << z << std.endl
+        void()
     )
     
     f("hi".c_str(), 5)

@@ -349,7 +349,6 @@ def codegen_class(node : Call, cx):
     else:
         template_header = ""
 
-
     return interface_def_str + template_header + class_header + cpp
 
 
@@ -359,7 +358,6 @@ def codegen_block(block: Block, cx):
     assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
     indent_str = cx.indent_str()
-
 
     for b in block.args:
         if isinstance(b, Identifier) and b.name == "pass":
@@ -408,7 +406,6 @@ def interface_method_declaration_str(defnode: Call, cx):
         params.append(codegen_type(arg, arg.declared_type, cx) + " " + str(arg))
 
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
-
 
 
 def codegen_def(defnode: Call, cx):
@@ -986,11 +983,12 @@ def codegen_node(node: Node, cx: Context):
         elif isinstance(node, ColonBinOp):
             assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
             if node.lhs.name == "return":
-                ret = "return " + codegen_node(node.args[1], cx)
+                ret_body = codegen_node(node.rhs, cx)
                 if hasattr(node, "is_synthetic_lambda_return"):
                     assert node.is_synthetic_lambda_return
-                    ret += ", void()"  # C++ comma operator to allow deduction of 'void' return type for lambdas (without an explicit return statement) whose last statement/expression is of type 'void'
-                return ret
+                    return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>) { return " + ret_body + "; } else { " + ret_body + "; }"
+                else:
+                    return "return " + ret_body
             else:
                 assert False
 
