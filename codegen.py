@@ -274,8 +274,12 @@ def codegen_class(node : Call, cx):
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
-            if isinstance(b.declared_type, ColonBinOp):
-                return_type, interface_type = b.declared_type.args
+            if (interface_call := b.args[0].declared_type) is not None:
+                if isinstance(interface_call, Call) and interface_call.func.name == "interface" and len(interface_call.args) == 1:
+                    interface_type = interface_call.args[0]
+                else:
+                    # TODO const method signatures
+                    raise CodeGenError("unexpected type", interface_call)
 
                 if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
                     defined_interfaces[interface_type.name].append(b)
@@ -389,10 +393,7 @@ def interface_method_declaration_str(defnode: Call, cx):
     assert isinstance(block, Block)
 
     params = []
-
-    assert isinstance(defnode.declared_type, ColonBinOp)
-    return_type_node = defnode.declared_type.lhs
-    # interface_type_node = defnode.declared_type.rhs
+    return_type_node = defnode.declared_type
 
     if return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
