@@ -1,5 +1,16 @@
 from compiler import compile
 
+def test_scope_resolution():
+    c = compile(r"""
+
+def (main:
+    std.cout  : using  # this should be the encouraged syntax
+    std::endl : using  # but for additional C++ compat
+    cout << "hi" << endl
+)
+    """)
+
+    assert c == "hi\n"
 
 def test_lambda_void_deduction_and_return_types():
     c = compile(r"""
@@ -1965,8 +1976,8 @@ def (map, values, fun:
 
 
 # https://stackoverflow.com/questions/28643534/is-there-a-way-in-python-to-execute-all-functions-in-a-file-without-explicitly-c/28644772#28644772
-# (sometimes want to bypass pytest on slow computer)
-def _some_magic(mod):
+# (sometimes want to bypass pytest for various reasons)
+def _run_all_tests(mod):
     import inspect
     all_functions = inspect.getmembers(mod, inspect.isfunction)
     for key, value in all_functions:
@@ -1976,7 +1987,8 @@ def _some_magic(mod):
 if __name__ == '__main__':
     import sys
 
-    _some_magic(sys.modules[__name__])
+    _run_all_tests(sys.modules[__name__])
+    # test_scope_resolution()
     # test_lambda_void_deduction_and_return_types()
     # test_typed_identifiers_as_cpp_variable_declarations()
     # test_return_this()

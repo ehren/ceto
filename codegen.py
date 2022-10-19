@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp
+from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
 
 
 import io
@@ -274,9 +274,13 @@ def codegen_class(node : Call, cx):
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
+            methodname = b.args[0]
+
             if (interface_call := b.args[0].declared_type) is not None:
                 if isinstance(interface_call, Call) and interface_call.func.name == "interface" and len(interface_call.args) == 1:
                     interface_type = interface_call.args[0]
+                    if methodname.name in ["init", "destruct"]:
+                        raise CodeGenError("init or destruct cannot be defined as interface methods", b)
                 else:
                     # TODO const method signatures
                     raise CodeGenError("unexpected type", interface_call)
@@ -286,7 +290,11 @@ def codegen_class(node : Call, cx):
 
                 cx.interfaces[interface_type.name].append(b)
                 local_interfaces.add(interface_type.name)
-            cpp += codegen_def(b, cx.new_scope_context())
+
+            if methodname.name == "init":
+                assert 0
+            else:
+                cpp += codegen_def(b, cx.new_scope_context())
         elif isinstance(b, Identifier):
             if b.declared_type is not None:
                 # idea to "flatten out" the generic params is too crazy (and supporting the same behaviour in function defs means losing auto function arg deduction (more spamming decltype would maybe fix)
@@ -877,7 +885,7 @@ def codegen_node(node: Node, cx: Context):
     assert isinstance(node, Node)
     cpp = io.StringIO()
 
-    if node.declared_type and not isinstance(node, (BinOp, UnOp, Call, ListLiteral)):
+    if node.declared_type and not isinstance(node, (Call, ListLiteral)):
         # new behavior (except in places that already handle type printing some of which can be simplified):
         # If it's got a type it's a "variable declaration" ie [type] [value] (whatever C++ code this may generate)
         declared_type = node.declared_type

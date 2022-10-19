@@ -128,18 +128,20 @@ class AttributeAccess(_LeftAssociativeBinOp):
 AttributeAccess.__init__ = _make_left_associative_bin_op_init_method(AttributeAccess)
 
 
+class ScopeResolution(_LeftAssociativeBinOp):
+
+    def __repr__(self):
+        return "{}::{}".format(self.lhs, self.rhs)
+
+
+AttributeAccess.__init__ = _make_left_associative_bin_op_init_method(AttributeAccess)
+
+
 # not created by parser
 class ArrowOp(BinOp):  # doesn't get special auto deref logic of '.' (use at own risk)
     def __init__(self, args):
         self.func = "->"
         self.args = args
-
-
-class AsOp(BinOp):
-    pass
-    # def __init__(self, func, args):
-    #     self.func = func
-    #     self.args = args
 
 
 class Assign(BinOp):
@@ -355,8 +357,9 @@ def _create():
     infix_expr <<= pp.infix_notation(
         expr,
         [
-            (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
+            (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (dot|pp.Literal("->"), 2, pp.opAssoc.LEFT, AttributeAccess),
+            (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
             (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
@@ -372,8 +375,7 @@ def _create():
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
-            # TODO remove all references to buggy/silly "as" (as backwards) operator (an attempt to allow more python like "Exception as e" syntax)
-            # (colon, 1, pp.opAssoc.RIGHT, UnOp), # not implemented for now but maybe for symbolic variables and keyword only call args
+            # (colon, 1, pp.opAssoc.RIGHT, UnOp), # Could have been used for symbolic variables and keyword only call args but might conflict with the scope resolution operator
         ],
         # pp.Literal("("),
         # pp.Literal(")")
