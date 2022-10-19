@@ -134,7 +134,7 @@ class ScopeResolution(_LeftAssociativeBinOp):
         return "{}::{}".format(self.lhs, self.rhs)
 
 
-AttributeAccess.__init__ = _make_left_associative_bin_op_init_method(AttributeAccess)
+ScopeResolution.__init__ = _make_left_associative_bin_op_init_method(ScopeResolution)
 
 
 # not created by parser

@@ -885,7 +885,7 @@ def codegen_node(node: Node, cx: Context):
     assert isinstance(node, Node)
     cpp = io.StringIO()
 
-    if node.declared_type and not isinstance(node, (Call, ListLiteral)):
+    if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
         # new behavior (except in places that already handle type printing some of which can be simplified):
         # If it's got a type it's a "variable declaration" ie [type] [value] (whatever C++ code this may generate)
         declared_type = node.declared_type
@@ -1147,5 +1147,9 @@ def codegen_node(node: Node, cx: Context):
     elif isinstance(node, TemplateSpecialization):
         return codegen_node(node.func, cx) + "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
 
-    return cpp.getvalue()
+    # TODO we should probably just remove all unnecessary StringIO use
+    # plus refactoring
+    s = cpp.getvalue()
+    assert len(s)
+    return s
 

@@ -6,11 +6,15 @@ def test_scope_resolution():
 def (main:
     std.cout  : using  # this should be the encouraged syntax
     std::endl : using  # but for additional C++ compat
-    cout << "hi" << endl
+    
+    # However, regarding implicit namespaces e.g. std.cout vs std::endl
+    # is there a precedence mismatch problem with the tighter binding scope resolution operator in C++? (when our parse tree is built using '.'). Can't think of problematic example 
+    
+    cout << "hi" << endl << std::endl << std.endl
 )
     """)
 
-    assert c == "hi\n"
+    assert c == "hi\n\n\n"
 
 def test_lambda_void_deduction_and_return_types():
     c = compile(r"""
@@ -1988,6 +1992,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_complex_arguments()
     # test_scope_resolution()
     # test_lambda_void_deduction_and_return_types()
     # test_typed_identifiers_as_cpp_variable_declarations()
