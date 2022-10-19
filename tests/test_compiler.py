@@ -4,10 +4,11 @@ from compiler import compile
 def test_lambda_void_deduction_and_return_types():
     c = compile(r"""
 
+
 def (is_void:
     pass
 )
-    
+
 def (main:
     f = lambda(x:
         std.cout << x << std.endl
@@ -53,12 +54,13 @@ def (main:
     # ) : void)(4)  thankfully the need to specify 'void' in more cases than other types with lambda doesn't mean that extra parenthese are ever necessary (can't assign void to var)
     
     # Not doing these
-    # fv = lambda -> void (x:
+    # fv = lambda -> void (x:  # 'precedence' of function call too low for this to work w/ grammar as is
     #     x
     # )
-    # ff = lambda.int (x:
+    # ff = lambda.int (x:      # same
     #     x
     # )
+    # these aren't worth it because parentheses still necessary
     # ff = (lambda:int) (x:
     #     x
     # )
@@ -87,16 +89,19 @@ def (main:
     (static_cast<void>)(x)  # silence unused variable warning
     
     f = lambda (y:const:char:ptr, z:int:
-        std.cout << y << z << "\n"
+        std: using: namespace  # variable declaration 'like'
+        t : typedef : int
+        w = 3 : t
+        cout << y << z << w << endl
         z = 2  # unrelated test that lambda params treated as defs in 'find_defs'
-        std.cout << z << std.endl
+        cout << z << endl
         void()
     )
     
     f("hi".c_str(), 5)
 )
     """)
-    assert c.strip() == "hi5\n2"
+    assert c.strip() == "hi53\n2"
 
 
 def test_return_this():
@@ -118,7 +123,8 @@ class (S:
         # return shared_from_base<classof(S)>()
         # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
         # 
-        # another parse issue:
+        # another parse issue (for very simple / improper implementations of "no compound comparisons mixed with template-ids"):
+        # parses ok with current rules
         # buffer << (1,2) >> kk
     ) #: S
 )
