@@ -424,6 +424,7 @@ def codegen_def(defnode: Call, cx):
     args = defnode.args[1:]
     block = args.pop()
     assert isinstance(block, Block)
+    return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
         name = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
@@ -435,6 +436,7 @@ def codegen_def(defnode: Call, cx):
     typenames = []
 
     is_destructor = False
+    is_constructor = False
     if name == "destruct" and isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class":
         class_identifier = defnode.parent.parent.args[0]
         assert isinstance(class_identifier, Identifier)
@@ -443,14 +445,7 @@ def codegen_def(defnode: Call, cx):
             raise CodeGenError("destructors can't take arguments")
         is_destructor = True
 
-    is_interface_method = isinstance(defnode.declared_type, ColonBinOp)
-    if is_interface_method:
-        return_type_node = defnode.declared_type.lhs
-        interface_type_node = defnode.declared_type.rhs
-        assert isinstance(return_type_node, Identifier)
-        assert isinstance(interface_type_node, Identifier)
-    else:
-        return_type_node = defnode.declared_type
+    is_interface_method = name_node.declared_type is not None
 
     if is_interface_method and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
