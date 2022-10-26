@@ -42,6 +42,14 @@ class (Bad1:
     # to
     # make_shared<decltype(Blah(x, y, z))>(x,y,z);
     # which should leave the matter up to C++. all dubious generic params tracking removable?
+    
+    # also TODO
+    # new in c++20
+    # auto constructor generation for structs allowing Blah(x, y, z) syntax (more strict than current examples would allow). does it add 'explicit' in the one-arg case?
+    # https://stackoverflow.com/questions/69331785/new-type-of-auto-generated-constructor-in-c20
+    # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0960r3.html
+    # seems to suggest yes
+    # otoh what about preferring brace initialization (in codegen) to disallow narrowing conversions?
 )
 
 class (Bad2:
