@@ -1,5 +1,67 @@
 from compiler import compile
 
+
+def test_constructors():
+    0 and compile(r"""
+    
+class (GenericParamInConstructorOnly:
+    # b   # error: not all generic params initialized in constructor?
+    def (init, a:  # needs to count as generic param
+        pass
+    )
+)
+
+
+class (ConstructorInitializesDataMember:
+    a               # needs to be regarded as same generic param as
+    def (init, a:   # the constructor param e.g. make_shared<Blah<decltype(a_arg)>>(a_arg)
+        self.a = a  # only regard as same if assign to data member
+    )
+)
+
+class (Bad1:
+    a
+    b
+    c
+    def (init, a: # make_shared<Blah<decltype(a), int, int>>(a)
+        self.a = a
+        self.b = 0
+        self.c = 0  
+    )
+    
+    def (init, b:
+        self.b = b
+        self.a = 0
+        self.c = 0
+    )
+    
+    # Delegating(5) ?
+    # C++ will error on ambiguous call but
+    # TODO: codegen should be changed from:
+    # make_shared<Blah<decltype(x), decltype(y), decltype(z)>>(x,y,z);  // necessary to track which params are generic (need to appear as decltypes in the template-id)
+    # to
+    # make_shared<decltype(Blah(x, y, z))>(x,y,z);
+    # which should leave the matter up to C++. all dubious generic params tracking removable?
+)
+
+class (Bad2:
+    a
+    b
+    def (init, a:
+        self.a = a
+        slf.b = 0
+    )
+
+    def (init:
+        self.a = 0
+        # self.b = 0
+        self.b = 0.5
+    )
+)
+
+    """)
+
+
 def test_scope_resolution():
     c = compile(r"""
 
