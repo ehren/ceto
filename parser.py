@@ -128,19 +128,16 @@ class AttributeAccess(_LeftAssociativeBinOp):
 AttributeAccess.__init__ = _make_left_associative_bin_op_init_method(AttributeAccess)
 
 
-class ScopeResolution(_LeftAssociativeBinOp):
-
-    def __repr__(self):
-        return "{}::{}".format(self.lhs, self.rhs)
-
-
-ScopeResolution.__init__ = _make_left_associative_bin_op_init_method(ScopeResolution)
-
-
 # not created by parser
 class ArrowOp(BinOp):  # doesn't get special auto deref logic of '.' (use at own risk)
     def __init__(self, args):
         self.func = "->"
+        self.args = args
+
+
+class ScopeResolution(BinOp):
+    def __init__(self, args):
+        self.func = "::"
         self.args = args
 
 
@@ -178,6 +175,8 @@ class Call(Node):
     def __init__(self, tokens):
         self.func = tokens[0]
         self.args = tokens.as_list()[1:]
+        # print("callargs", self.args)
+        # print("done")
 
 
 class ArrayAccess(Node):
@@ -405,13 +404,16 @@ def _create():
     block_line_end = pp.Suppress(";")
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
-    template_specialization <<= (ident + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
+    template_specialization <<= ((expr | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
 
     array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + pp.Optional(pp.delimitedList(pp.Optional(infix_expr))) + pp.ZeroOrMore(block + pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))) + rparen).set_parse_action(Call)
+    non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
+
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen).set_parse_action(Call)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
+
     return module
 
 grammar = _create()
@@ -490,8 +492,11 @@ def parse(s):
             else:
                 op = op.args[0]
 
-        if isinstance(op, AttributeAccess) and op.func == "->":
-            op = ArrowOp(op.args)
+        if isinstance(op, AttributeAccess):
+            if op.func == "->":
+                op = ArrowOp(op.args)
+            elif op.func == "::":
+                op = ScopeResolution(op.args)
         # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
         #     print("huh")
         #     op = op.args[0]

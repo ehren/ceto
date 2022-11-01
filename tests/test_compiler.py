@@ -189,9 +189,10 @@ def (main:
     assert c.strip() == "hi53\n2"
 
 
-def test_return_this():
+def test_manual_implementation_of_proper_refcounted_return_self():
+    # Note: this is more of a template + scope resolution syntax test
+
     c = compile(r"""
-    
     
 class (A:
     a
@@ -199,12 +200,23 @@ class (A:
 
 class (S:
     def (foo:
+        
+        # TODO: this is how "return self" should behave
+        return (std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>)(shared_from_this())
+        
+        # this works (leave as unreachable code) but there's no need for a manual/header defined 'shared_from_base'
+        return (shared_from_base<std.remove_reference<decltype(*this)>::type>)()
+        return (shared_from_base<(std.remove_reference)<decltype(*this)>::type>)()  # also, overparenthesization here is not necessary
+        
         # return shared_from_base<S>()   # parsed as compound comparison between idents and empty tuple.
-        return (shared_from_base<S>)()  # we'll just accept this for now
-        # another TODO: ^^ S in it's own method's scope should be shared_ptr<S>
-        # when that's fixed can workaround with
-        # return (shared_from_base<std.remove_reference<decltype(*this)>::type>)()    # need scope_resolve
-        # or (better) with 'classof':
+        # return (shared_from_base<S>)()
+        # ^^ S in its own method's scope now parsed as shared_ptr<S>
+        # this works now (but leave as unreachable)
+        return (shared_from_base<S::element_type>)()
+        
+        # ignore
+        # old ideal with 'classof' (::element_type is fine although maybe classof still useful in other contexts):
+        # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
         # return shared_from_base<classof(S)>()
         # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
         # 
@@ -2066,7 +2078,7 @@ if __name__ == '__main__':
     # test_scope_resolution()
     # test_lambda_void_deduction_and_return_types()
     # test_typed_identifiers_as_cpp_variable_declarations()
-    # test_return_this()
+    # test_manual_implementation_of_proper_refcounted_return_self()
     # test_higher_precedence_colon()
     # test_left_assoc_attrib_access()
     # test_add_stuff()

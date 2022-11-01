@@ -822,7 +822,10 @@ def _shared_ptr_str_for_type(type_node, expr_node, cx):
 
     if name in cx.interfaces:
         ptr = "std::shared_ptr"
-    elif class_node := find_defining_class_of_type(type_node, expr_node):
+    elif classdef := cx.lookup_class(type_node):
+        class_name = classdef.name_node.name
+        class_node = classdef.class_def_node
+
         if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
             ptr = "std::unique_ptr"
         else:
@@ -832,7 +835,7 @@ def _shared_ptr_str_for_type(type_node, expr_node, cx):
 
 
 def codegen_type(expr_node, type_node, cx):
-    if isinstance(type_node, Identifier):
+    if 0 and isinstance(type_node, Identifier):
         name = type_node.name
 
         # assert isinstance(type_node.parent, ColonBinOp)
@@ -846,8 +849,8 @@ def codegen_type(expr_node, type_node, cx):
             return "&"
         elif name == "string":
             return "std::string"
-        elif name == "object":
-            return "std::shared_ptr<object>"
+        # elif name == "object":
+        #     return "std::shared_ptr<object>"
         # if name in ["int", "float", "double", "char", "bool"]:
         #     s = name
         # else:
@@ -867,11 +870,12 @@ def codegen_type(expr_node, type_node, cx):
         if len(type_node.args) != 1:
             raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
         return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
-    elif isinstance(type_node, TemplateSpecialization):
+    # elif isinstance(type_node, TemplateSpecialization):
+    #     return codegen_type(expr_node, type_node.func, cx) + "<" +
 
-        if ptr_name := _shared_ptr_str_for_type(type_node.func, expr_node, cx):
-            assert isinstance(type_node.func, Identifier)
-            return ptr_name + "<" + type_node.func.name + "<" + ", ".join([codegen_type(expr_node, a, cx) for a in type_node.args]) + ">>"
+        # if ptr_name := _shared_ptr_str_for_type(type_node.func, expr_node, cx):
+        #     assert isinstance(type_node.func, Identifier)
+        #     return ptr_name + "<" + type_node.func.name + "<" + ", ".join([codegen_type(expr_node, a, cx) for a in type_node.args]) + ">>"
 
     return codegen_node(type_node, cx)
 
@@ -975,21 +979,36 @@ def codegen_node(node: Node, cx: Context):
     elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
     elif isinstance(node, Identifier):
-        if node.name == "None":
-            # cpp.write("(std::shared_ptr<object> ())")
-            cpp.write("nullptr")
-        elif node.name == "this":
-            cpp.write("this")
+        name = node.name
+
+        if name == "ptr":
+            return "*"
+        elif name == "const":
+            return "const"
+        elif name == "ref":
+            return "&"
+        elif name == "string":
+            return "std::string"
+        elif name == "None":
+            return "nullptr"
+        # elif name == "object":
+        #     return "std::shared_ptr<object>"
+
+        if ptr_name := _shared_ptr_str_for_type(node, node, cx):
+            return ptr_name + "<" + name + ">"
+
+        return name
+
+
         #elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, (AttributeAccess) and node.parent.rhs is node):
         # elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess)) and node.parent.rhs is node):
 
         # this stuff doesn't work with temporaries of various sorts (requires too many checks e.g. am i not a list element etc.
         #elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess))) and not (isinstance(node.parent, Call) and node.parent.func is node):
 
-
         #     cpp.write("(*get_ptr(" + node.name + "))")
-        else:
-            cpp.write(str(node))
+        # else:
+        #     cpp.write(str(node))
 
     elif isinstance(node, BinOp):
 
@@ -1057,7 +1076,7 @@ def codegen_node(node: Node, cx: Context):
 
             separator = " "
 
-            if isinstance(node, AttributeAccess):
+            if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
 
                 if isinstance(node.lhs, Identifier) and node.lhs.name == "std":
                     return "std::" + codegen_node(node.rhs, cx)
@@ -1086,8 +1105,7 @@ def codegen_node(node: Node, cx: Context):
 
             if binop_str is None:
 
-                if isinstance(node, AttributeAccess) :#and node.lhs.name == "this":
-                    # don't wrap just 'this' but 'this.foo' gets wrapped
+                if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
 
                     if isinstance(node.lhs, Call):
                         if class_node := find_defining_class(node.lhs.func):
@@ -1140,7 +1158,13 @@ def codegen_node(node: Node, cx: Context):
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
     elif isinstance(node, TemplateSpecialization):
-        return codegen_node(node.func, cx) + "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
+        # allow auto shared_ptr etc with parameterized classes e.g. f : Foo<int> results in shared_ptr<Foo<int>> f not shared_ptr<Foo><int>(f)
+        # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
+        template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
+        if ptr_name := _shared_ptr_str_for_type(node.func, node.func, cx):
+            return ptr_name + "<" + node.func.name + template_args + ">"
+        else:
+            return codegen_node(node.func, cx) + template_args
 
     # TODO we should probably just remove all unnecessary StringIO use
     # plus refactoring
