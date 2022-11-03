@@ -69,6 +69,37 @@ std::enable_if_t<!std::is_base_of_v<object, T>, T**>
 get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
 
 
+// unused but seemingly workable C++ auto construction logic
+
+// auto make_shared insertion. TODO: unique_ptr
+template<typename T, typename... Args>
+std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
+call_or_construct(Args&&... args) {
+    return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
+// non-object concrete classes/structs (in C++ sense)
+template <typename T, typename... Args>
+std::enable_if_t<!std::is_base_of_v<object, T>, T>
+call_or_construct(Args&&... args) {
+    return T(std::forward<Args>(args)...);
+}
+
+// non-type template param version needed for e.g. construct_or_call<printf>("hi")
+template<auto T, typename... Args>
+auto
+call_or_construct(Args&&... args) {
+    return T(std::forward<Args>(args)...);
+}
+
+// template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
+template<template<class ...> class T, class... TArgs>
+auto
+call_or_construct(TArgs&&... args) {
+    using TT = decltype(T(std::forward<TArgs>(args)...));
+    return call_or_construct<TT>(T(std::forward<TArgs>(args)...));
+}
+
 """
 
 
@@ -582,8 +613,8 @@ def codegen(expr: Node):
     assert isinstance(expr, Module)
     cx = Context()
     s = codegen_node(expr, cx)
-    print(s)
     s = cpp_preamble + s
+    print(s)
     return s
 
 
