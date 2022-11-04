@@ -844,69 +844,36 @@ def vector_decltype_str(node, cx):
     return rhs_str
 
 
-def _shared_ptr_str_for_type(type_node, expr_node, cx):
+def _shared_ptr_str_for_type(type_node, cx):
     if not isinstance(type_node, Identifier):
         return None
 
     name = type_node.name
-    ptr = None
 
     if name in cx.interfaces:
-        ptr = "std::shared_ptr"
+         return "std::shared_ptr"
     elif classdef := cx.lookup_class(type_node):
-        class_name = classdef.name_node.name
         class_node = classdef.class_def_node
 
         if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-            ptr = "std::unique_ptr"
+            return "std::unique_ptr"
         else:
-            ptr = "std::shared_ptr"
+            return "std::shared_ptr"
 
-    return ptr
+    return None
 
 
 def codegen_type(expr_node, type_node, cx):
-    if 0 and isinstance(type_node, Identifier):
-        name = type_node.name
+    # TODO just move this into codegen_node:
 
-        # assert isinstance(type_node.parent, ColonBinOp)
-        # is_list = isinstance(assign := type_node.parent.parent, Assign) and isinstance(assign.rhs, ListLiteral) or isinstance(assign, ListLiteral)
-
-        if name == "ptr":
-            return "*"
-        elif name == "const":
-            return "const"
-        elif name == "ref":
-            return "&"
-        elif name == "string":
-            return "std::string"
-        # elif name == "object":
-        #     return "std::shared_ptr<object>"
-        # if name in ["int", "float", "double", "char", "bool"]:
-        #     s = name
-        # else:
-
-        if ptr_name := _shared_ptr_str_for_type(type_node, expr_node, cx):
-            name = ptr_name + "<" + name + ">"
-
-        return name
-
-    elif isinstance(type_node, ColonBinOp):
+    if isinstance(type_node, ColonBinOp):
         lhs = type_node.lhs
         rhs = type_node.rhs
-        # if isinstance(lhs, ListLiteral) and lhs.name == "list":  # not like 'vector' is any more accurate
-        #     return "std::vector<" + codegen_type(expr_node, rhs, cx) + ">"
         return codegen_type(expr_node, lhs, cx) + " " + codegen_type(expr_node, rhs, cx)
     elif isinstance(type_node, ListLiteral):
         if len(type_node.args) != 1:
             raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
         return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
-    # elif isinstance(type_node, TemplateSpecialization):
-    #     return codegen_type(expr_node, type_node.func, cx) + "<" +
-
-        # if ptr_name := _shared_ptr_str_for_type(type_node.func, expr_node, cx):
-        #     assert isinstance(type_node.func, Identifier)
-        #     return ptr_name + "<" + type_node.func.name + "<" + ", ".join([codegen_type(expr_node, a, cx) for a in type_node.args]) + ">>"
 
     return codegen_node(type_node, cx)
 
@@ -916,15 +883,12 @@ def codegen_node(node: Node, cx: Context):
     cpp = io.StringIO()
 
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
-        # new behavior (except in places that already handle type printing some of which can be simplified):
-        # If it's got a type it's a "variable declaration" ie [type] [value] (whatever C++ code this may generate)
+        # variable declaration like things
         declared_type = node.declared_type
         type_str = codegen_type(node, declared_type, cx)
         node.declared_type = None  # not too nice current design forces AST mutation...
         var_str = codegen_node(node, cx)
         node.declared_type = declared_type  # ...even if mutation is temporary
-        # node.already_declared = True  # not necessary because 'find_defs' (of dubious design for other reasons) does most heavy lifting
-        # Note that if this works many calls to codegen_type can be simplified/refactored
         return type_str + " " + var_str
 
     if isinstance(node, Module):
@@ -955,13 +919,6 @@ def codegen_node(node: Node, cx: Context):
                 else:
                     raise CodeGenError("range args not supported:", node)
             else:
-                # if isinstance(node.func, Identifier):
-
-                # if class_node := find_defining_class(node.func):
-                #     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                #         func_str = f"std::make_unique<{node.func.name}>"
-                #     else:
-                #         func_str = "std::make_shared<" + node.func.name + ">"
                 if class_def := cx.lookup_class(node.func):
                     class_name = node.func.name
                     class_node = class_def.class_def_node
@@ -976,32 +933,14 @@ def codegen_node(node: Node, cx: Context):
                     else:
                         func_str = "std::make_shared<" + class_name + ">"
                 else:
-                    # we have to avoid codegen_node(node.func) here to avoid wrapping func in a *(get_ptr)  (causes wacky template specialization problems)
-                    # # this is not longer the case ^
-                    # func_str = node.func.name
                     func_str = codegen_node(node.func, cx)
-                # else:
-                    # unreachable...
-                    # pass
-
-                    # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.func.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                    #     assert 0
-                    #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-                    # else:
-                    #     func_str = codegen_node(node.func)
 
                 func_str += "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
-                # if is_class:
-                #     func_str = "(*get_ptr(" + func_str + "))"
 
                 cpp.write(func_str)
         else:
-            # print("need to handle indirect call")
-
             if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                # assert 0
                 func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-                # cpp.write(func_str)
             else:
                 func_str = codegen_node(node.func, cx)
 
@@ -1025,21 +964,11 @@ def codegen_node(node: Node, cx: Context):
         # elif name == "object":
         #     return "std::shared_ptr<object>"
 
-        if ptr_name := _shared_ptr_str_for_type(node, node, cx):
+        if ptr_name := _shared_ptr_str_for_type(node, cx):
             return ptr_name + "<" + name + ">"
 
         return name
 
-
-        #elif not isinstance(node.parent, NamedParameter) and not (isinstance(node.parent, (AttributeAccess) and node.parent.rhs is node):
-        # elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess)) and node.parent.rhs is node):
-
-        # this stuff doesn't work with temporaries of various sorts (requires too many checks e.g. am i not a list element etc.
-        #elif not (isinstance(node.parent, (Assign, NamedParameter, AttributeAccess))) and not (isinstance(node.parent, Call) and node.parent.func is node):
-
-        #     cpp.write("(*get_ptr(" + node.name + "))")
-        # else:
-        #     cpp.write(str(node))
 
     elif isinstance(node, BinOp):
 
@@ -1192,7 +1121,7 @@ def codegen_node(node: Node, cx: Context):
         # allow auto shared_ptr etc with parameterized classes e.g. f : Foo<int> results in shared_ptr<Foo<int>> f not shared_ptr<Foo><int>(f)
         # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
-        if ptr_name := _shared_ptr_str_for_type(node.func, node.func, cx):
+        if ptr_name := _shared_ptr_str_for_type(node.func, cx):
             return ptr_name + "<" + node.func.name + template_args + ">"
         else:
             return codegen_node(node.func, cx) + template_args
