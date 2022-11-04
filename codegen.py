@@ -733,8 +733,12 @@ def _decltype_str(node, cx):
             class_name = node.func.name
             class_node = class_def.class_def_node
             if class_def.has_generic_params():
-                class_name += "<" + ", ".join(
-                    [decltype_str(a, cx) for i, a in enumerate(node.args) if class_def.is_generic_param_index[i]]) + ">"
+                # class_name += "<" + ", ".join(
+                #     [decltype_str(a, cx) for i, a in enumerate(node.args) if class_def.is_generic_param_index[i]]) + ">"
+                # instead of manual tracking like the above,
+                # leave the matter of the desired class type up to C++ CTAD:
+                args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"
+                class_name = "decltype(" + class_name + args_str + ")"
 
             if isinstance(class_node.declared_type,
                           Identifier) and class_node.declared_type.name == "unique":
@@ -919,14 +923,17 @@ def codegen_node(node: Node, cx: Context):
                 else:
                     raise CodeGenError("range args not supported:", node)
             else:
+                args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"
+
                 if class_def := cx.lookup_class(node.func):
                     class_name = node.func.name
                     class_node = class_def.class_def_node
 
                     if class_def.has_generic_params():
-                        class_name += "<" + ", ".join(
-                            [decltype_str(a, cx) for i, a in enumerate(node.args) if
-                             class_def.is_generic_param_index[i]]) + ">"
+                        # class_name += "<" + ", ".join(
+                        #     [decltype_str(a, cx) for i, a in enumerate(node.args) if
+                        #      class_def.is_generic_param_index[i]]) + ">"
+                        class_name = "decltype(" + class_name + args_str + ")"
 
                     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
                         func_str = "std::make_unique<" + class_name + ">"
@@ -935,7 +942,7 @@ def codegen_node(node: Node, cx: Context):
                 else:
                     func_str = codegen_node(node.func, cx)
 
-                func_str += "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
+                func_str += args_str
 
                 cpp.write(func_str)
         else:
