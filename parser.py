@@ -362,25 +362,18 @@ def _create():
             (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            # (plusop, 2, pp.opAssoc.LEFT, make_LR_like(2, BinOp)),
             (plusop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            # ((pp.Keyword("left_shift")|pp.Keyword("right_shift")), 2, pp.opAssoc.LEFT, BinOp),
             (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            # this is where python puts 'not' ??
+            # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
-            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
-            # (colon, 1, pp.opAssoc.RIGHT, UnOp), # Could have been used for symbolic variables and keyword only call args but might conflict with the scope resolution operator
         ],
-        # pp.Literal("("),
-        # pp.Literal(")")
     ).set_parse_action(_InfixExpr)
-
-    # plusop.add_parse_action(BinOp)
 
     tuple_literal <<= (
         # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
