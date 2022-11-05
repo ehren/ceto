@@ -2100,7 +2100,7 @@ if __name__ == '__main__':
     # test_correct_shared_ptr()
     # test_bad_indent()
     # test_for()
-    # three_way_compare()
+    # test_three_way_compare()
     # test_deref_address_of()
     # test_uniq_ptr()
     # test_reset_ptr()

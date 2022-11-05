@@ -371,7 +371,7 @@ def _create():
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
-            (pp.Keyword("return")|pp.Keyword("yield")|pp.Keyword("elif")|pp.Keyword("else")|pp.Keyword("except"), 1, pp.opAssoc.RIGHT, UnOp),
+            (pp.Keyword("return")|pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, UnOp),
         ],
     ).set_parse_action(_InfixExpr)
 
