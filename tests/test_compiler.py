@@ -698,12 +698,17 @@ def (main:
 
 def test_one_liners():
     c = compile(r"""
-def (main:
+def (main, argc:int, argv:char:ptr:ptr:
     # if ((1:int): printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )
     # if (1:int: printf("1") : some_type_lol elif 2 == 4: printf("2") else: printf("3") )   # warning: declaration does not declare anything:  int;
-    pass  # lang behavior change
+    # ^ we no longer discard types on non-assignment expressions (now printed as var declarations)
+    
+    # with '=' lower precedence than ':'
+    if ((x = 5): printf("%d", x), elif: argc == 1: printf("1"), elif: (y = 5): printf("unreachable %d", y), else: (z = 10))
 )
     """)
+
+    assert c == "5"
 
 
 def test_generic_refs_etc():
@@ -1853,7 +1858,7 @@ def (main:
     printf("xxanother2 %d\n", xxanother2[0][0])
     printf("xxanother %d\n", xxanother[0][0])
 
-    lfunc = lambda (x, y, return: x + y )
+    lfunc = lambda (x, y, return x + y )
     lfunc2 = lambda (x, y: 
         printf("x %d y %d\n", x, y)
         return x + y 
@@ -1879,7 +1884,8 @@ def (main:
     # if ((1:int): x.append(zz[1]) : some_type_lol elif z == 4: x.append(105) else: x.append(foo(w-1)) )
 
     # static_cast<void> to silence unused var warning (note: no syntax to codegen a C style cast - unless bugs).
-    if (1: x.append(zz[1]) elif z == 4: if (q == 6: (static_cast<void>)(1) else: (static_cast<void>)(10)) else: x.append(foo(w-1)))
+    #if (1: x.append(zz[1]) elif z == 4: if (q == 6: (static_cast<void>)(1) else: (static_cast<void>)(10)) else: x.append(foo(w-1)))
+    if (1: x.append(zz[1]), elif: z == 4: if (q == 6: (static_cast<void>)(1), else: (static_cast<void>)(10)), else: x.append(foo(w-1)))
 
     printf("ohsnap 
 %d", x[0])

@@ -981,7 +981,7 @@ def codegen_node(node: Node, cx: Context):
 
     elif isinstance(node, BinOp):
 
-        if isinstance(node, NamedParameter):
+        if 0 and isinstance(node, NamedParameter):
             raise SemanticAnalysisError("Unparenthesized assignment treated like named parameter in this context (you need '(' and ')'):", node)
 
         elif isinstance(node, ColonBinOp):

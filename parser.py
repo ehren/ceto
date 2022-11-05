@@ -371,7 +371,7 @@ def _create():
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
-            (pp.Keyword("return"), 1, pp.opAssoc.RIGHT, UnOp),
+            (pp.Keyword("return")|pp.Keyword("yield")|pp.Keyword("elif")|pp.Keyword("else")|pp.Keyword("except"), 1, pp.opAssoc.RIGHT, UnOp),
         ],
     ).set_parse_action(_InfixExpr)
 
@@ -414,8 +414,7 @@ grammar = _create()
 
 def parse(s):
     print(s)
-    # transformed = io.StringIO(s)
-    pp.ParserElement.set_default_whitespace_chars(" \t\n")
+    # pp.ParserElement.set_default_whitespace_chars(" \t\n")
 
     filter_comments = pp.Regex(r"#.*")
     filter_comments = filter_comments.suppress()
@@ -426,22 +425,16 @@ def parse(s):
 
     transformed = filter_comments.transform_string(transformed)
 
-    pp.ParserElement.set_default_whitespace_chars(" \t")
+    # pp.ParserElement.set_default_whitespace_chars(" \t")
 
-    # patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "else", "except"]]
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
-    # patterns += [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n") | pp.Literal(")"))) for k in ["return"]]
-    # patterns += [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal("\n"))) for k in ["except"]]
     pattern = None
     for p in patterns:
         p = p.set_parse_action(lambda t: t[0] + ":")
         if pattern is None:
             pattern = p
         pattern |= p
-    # transformed = pattern.set_parse_action(lambda t: t[0] + ":")# .ignore(qs).transform_string(transformed)
 
-
-    # transformed = pattern pattern.set_parse_action(lambda t: t[0] + ":")# .ignore(qs).transform_string(transformed)
     transformed = pattern.transform_string(transformed)
 
     patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
@@ -455,23 +448,10 @@ def parse(s):
     pattern = pattern.ignore(qs)
     transformed = pattern.transform_string(transformed)
 
-    # transformed = (pp.Keyword("except") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "except:").ignore(qs).transform_string(transformed)
-    # transformed = (pp.Keyword("else") + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))).set_parse_action(lambda t: "else:").ignore(qs).transform_string(transformed)
-    #
-    # transformed = pp.Keyword("elif").set_parse_action(lambda t: ", " + "elif").ignore(qs).transform_string(transformed)
-    # transformed = pp.Keyword("else").set_parse_action(lambda t: ", " + "else").ignore(qs).transform_string(transformed)
-    # transformed = pp.Keyword("except").set_parse_action(lambda t: ", " + "except").ignore(qs).transform_string(transformed)
-
-
-    # print("after 'reader macros'", transformed)
-    # sio = io.StringIO(s)
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
-    # print("preprocessed", transformed.replace("\x07", "!!!"))
 
     res = grammar.parseString(transformed, parseAll=True)
-
-    # print("parser:", res)
 
     res = res[0]
 
@@ -490,11 +470,6 @@ def parse(s):
                 op = ArrowOp(op.args)
             elif op.func == "::":
                 op = ScopeResolution(op.args)
-        # if isinstance(op, UnOp) and op.func == ":" and isinstance(elifliteral := op.args[0], Identifier) and elifliteral.name == "elif":
-        #     print("huh")
-        #     op = op.args[0]
-        # if isinstance(op, ColonBinOp) and op.func == "as":
-            # op = RebuiltColon(":", list(reversed(op.args)), _is_as_hack=True)
 
         if not isinstance(op, Node):
             return op

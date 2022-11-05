@@ -33,8 +33,9 @@ class RebuiltAssign(Assign):
 
 class NamedParameter(Assign):
     def __init__(self, args):
-        self.func = "NamedParameter"
-        self.args = args  # [lhs, rhs]
+        # self.func = "NamedParameter"
+        self.func = "="  # paper over that we've further loosened named parameter vs assignment distinction in codegen
+        self.args = args
 
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
