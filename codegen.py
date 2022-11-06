@@ -323,7 +323,32 @@ def codegen_class(node : Call, cx):
                 local_interfaces.add(interface_type.name)
 
             if methodname.name == "init":
-                assert 0
+                constructor_args = b.args[1:-1]
+                constructor_block = b.args[-1]
+                assert isinstance(constructor_block, Block)
+                initializerlist_assignments = []
+                for stmt in constructor_block.args:
+
+                    # handle self.whatever = something
+                    if isinstance(stmt, Assign) and isinstance(stmt.lhs, AttributeAccess) and stmt.lhs.lhs.name == "self":
+                        initializerlist_assignments.append(stmt)
+                    else:
+                        # anything that follows won't be printed as an initializer-list assignment
+                        break
+                constructor_block.args = constructor_block.args[len(initializerlist_assignments):]
+
+                # for assign in initializerlist_assignments:
+
+                # cpp += inner_indt + "explicit " + name.name + "("
+
+                for arg in constructor_args:
+                    if isinstance(arg, Identifier):
+                        pass
+                    elif isinstance(arg, NamedParameter):
+                        pass
+                    else:
+                        raise CodeGenError("unexpected constructor arg", b)
+
             else:
                 cpp += codegen_def(b, cx.new_scope_context())
         elif isinstance(b, Identifier):
@@ -467,7 +492,6 @@ def codegen_def(defnode: Call, cx):
     typenames = []
 
     is_destructor = False
-    is_constructor = False
     if name == "destruct" and isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class":
         class_identifier = defnode.parent.parent.args[0]
         assert isinstance(class_identifier, Identifier)
@@ -511,7 +535,7 @@ def codegen_def(defnode: Call, cx):
                 # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
                 # params.append((declpart, valuepart))
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
-                # not going to work, needs conversion to std::Function
+                # not going to work, needs conversion to std::function
                 params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
             else:
                 if isinstance(arg.lhs, Identifier):
@@ -534,6 +558,8 @@ def codegen_def(defnode: Call, cx):
     if return_type_node is not None:
         # return_type = codegen_type(name_node, name_node.declared_type)
         return_type = codegen_type(defnode, return_type_node, cx)
+        if is_destructor:
+            raise CodeGenError("destruct methods can't specifiy a return type")
     elif name == "main":
         return_type = "int"
     else:
@@ -559,7 +585,7 @@ def codegen_def(defnode: Call, cx):
 
     if is_destructor:
         # revisit non-virtual for unique_ptr and value structs
-        funcdef = "virtual ~" + str(class_name) + "()"
+        funcdef = "virtual ~" + class_name + "()"
     else:
         funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
         if is_interface_method:
