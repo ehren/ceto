@@ -1222,15 +1222,21 @@ def (main:
 def test_uniq_ptr():
     c = compile(r"""
 class (Foo:
+    a:int = 5
+    
     def (bar:
-        printf("bar %d\n", this.x)
-        return 5
+        printf("bar %d\n", this.a)
+        return this.a
     )
 ): unique
 
+def (bam, f: Foo:
+    f.bar()
+)
 
 def (baz, f: Foo:
     f.bar()
+    bam(std.move(f))
 )
 
 def (main:
@@ -1980,10 +1986,10 @@ def (bar, x:
     # if ((x = 1):
     if ((y = 1):
         # printf("hi"); printf("bye\n")  # 'need' to add ; as first class operator
-        x=x+1
+        z = x + 1   
         # y=2
-        x=(x+1)
-        (x=x+1)
+        z = (x + 1)
+        (z = x+1)
         z = 1
         y = x + 1
         foo()
@@ -1994,6 +2000,8 @@ def (bar, x:
 
     if (0:
         un = 5
+        # un:int = 5   # handling of this is very bad (still get the auto inserted unititialized declaration but with a new shadowed decl too)!
+        # TODO just remove python like decltype hoisting (although current implementation should not just discard lhs type when hoisting!)
     )
     printf("uninit %d", un)
 

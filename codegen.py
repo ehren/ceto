@@ -546,7 +546,8 @@ def codegen_def(defnode: Call, cx):
         else:
             t = "T" + str(i + 1)
             # params.append(t + "&& " + arg.name)
-            params.append(t + " " + arg.name)
+            # params.append(t + " " + arg.name)
+            params.append("const " + t + "& " + arg.name)
             typenames.append("typename " + t)
 
     template = "inline "
@@ -834,7 +835,7 @@ def _decltype_str(node, cx):
         if not isinstance(instmt, BinOp) and instmt.func == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
-            return "std::declval<typename " + decltype_str(instmt.rhs, cx) + "::value_type>()"
+            return "std::declval<typename std::remove_reference_t<std::remove_const_t<" + decltype_str(instmt.rhs, cx) + ">>::value_type>()"
 
     else:
         print("hmm?2")
