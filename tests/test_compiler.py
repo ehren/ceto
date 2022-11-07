@@ -1,6 +1,9 @@
 from compiler import compile
 
 
+# l = [1,2,3] : int : const
+
+
 def test_constructors():
     0 and compile(r"""
     
@@ -111,9 +114,9 @@ def (main:
     std.cout << f2(2) << std.endl
     static_assert(std.is_same_v<decltype(f2(2)), int>)
     
-    f3 = lambda (x:
+    f3 = (lambda (x:
         std.cout << x << std.endl
-    ) : void
+    ) : void)
     f3(3)
     static_assert(std.is_same_v<decltype(f3(3)), void>)
     
@@ -1650,10 +1653,10 @@ def (operator("+"), x:Foo, f:Foo:
     return f.operator("+")(x)
     # return 10
 )
-def (operator("+"), x, y:
-    printf("adding any and any\n")
-    return std.operator("+")(x, y)
-)
+# def (operator("+"), x, y:
+#     printf("adding any and any\n")
+#     return std.operator("+")(x, y)
+# )
 
 # def (operator("+"), x, f:Foo:
 #     printf("adding other and foo\n")
@@ -2010,13 +2013,19 @@ def (bar, x:
 
 # https://stackoverflow.com/questions/30240131/lambda-as-default-argument-fails
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
-def (default_args, x=[], y=2:
-    # x.append(2)
-    x.append(2)
+# def (default_args, x=[], y=2:  # broken by appending to copy instead of directly (now that func params const ref by default)
+def (default_args, x=[1], y=2:
     # x.push_back(2)
-    # x.push_back(2)
+    # x.append(2)  # error x is now const & by default
+    # copy = x
+    # copy.append(2)
+    # copy.push_back(2)
+    # printf("%d %d\n", x[0], x[1])
     printf("%d %d\n", x[0], x[1])
-    return x
+    copy = x
+    copy.push_back(2)  # TODO append deduction / "infer type of empty list" doesn't really work. fix or remove.
+    # return x
+    return copy
 )
 
 class (Foo:

@@ -53,8 +53,20 @@ template<typename T>
 T* get_ptr(T && obj) { return &obj; }
 
 template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
+get_ptr(std::shared_ptr<T>& obj) { return obj; }
+
+//template<typename T>
+//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+//get_ptr(std::shared_ptr<T> obj) { return obj; }
+
+template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-get_ptr(std::shared_ptr<T> obj) { return obj; }
+get_ptr(std::shared_ptr<T>&& obj) { return obj; }
+
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
+get_ptr(const std::shared_ptr<T>& obj) { return obj; }
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
@@ -74,6 +86,9 @@ get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
 
 
 // unused but seemingly workable C++ auto construction logic
+// doesn't work for variadic template functions (should be fixable?). 
+// C style macros could be handleable with #ifdef Foo Foo()#else call_or_construct<...(with ugliness for maybe-constructor calls in subexpressions)
+// OTOH we might want to auto add :const:ref only to function params that are generic/typeless or of type our-language class or struct (so keeping track of class definitions is still required by the transpiler = module dependencies)
 
 // auto make_shared insertion. TODO: unique_ptr
 template<typename T, typename... Args>
@@ -86,7 +101,7 @@ call_or_construct(Args&&... args) {
 template <typename T, typename... Args>
 std::enable_if_t<!std::is_base_of_v<object, T>, T>
 call_or_construct(Args&&... args) {
-    return T(std::forward<Args>(args)...);
+    return T(std::forward<Args>(args) ...);
 }
 
 // non-type template param version needed for e.g. construct_or_call<printf>("hi")
@@ -103,6 +118,32 @@ call_or_construct(TArgs&&... args) {
     using TT = decltype(T(std::forward<TArgs>(args)...));
     return call_or_construct<TT>(T(std::forward<TArgs>(args)...));
 }
+
+// https://stackoverflow.com/a/56225903/1391250
+//template<typename T, typename Enable = void>
+//struct is_smart_pointer
+//{
+//    enum { value = false };
+//};
+//
+//template<typename T>
+//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::shared_ptr<typename T::element_type>>::value>::type>
+//{
+//    enum { value = true };
+//};
+//
+//template<typename T>
+//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value>::type>
+//{
+//    enum { value = true };
+//};
+//
+//template<typename T>
+//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::weak_ptr<typename T::element_type>>::value>::type>
+//{
+//    enum { value = true };
+//};
+
 
 """
 
@@ -477,6 +518,21 @@ def interface_method_declaration_str(defnode: Call, cx):
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
 
 
+def autoconst(type_str: str):
+    # return f"std::conditional_t<std::is_const_v<{type_str}>, {type_str}, const {type_str}>"
+    return "std::add_const_t<" + type_str + ">"
+
+
+def autoref(type_str: str):
+    # suprisingly compiles with a few examples (note that type_str would also be a conditional_t)but ends up warning about "const qualifier on reference type has no effect"
+    # return f"std::conditional_t<std::is_reference_v<{type_str}>, {type_str}, {type_str}&>"
+    # seem promising but not going to work
+    # return "std::add_lvalue_reference_t<" + type_str + ">"
+    # return f"std::conditional_t<is_smart_pointer<{type_str}>::value && std::is_base_of_v<{type_str}::element_type, object>, {type_str}&, {type_str}>"
+    return type_str  # can't do this for arbitrary types (even if something like the above works, going to make error messages sooo much worse.
+    # TODO if transpiler detects a class type e.g. Foo, add ref, otherwise not
+
+
 def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -518,17 +574,27 @@ def codegen_def(defnode: Call, cx):
 
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
-                params.append(codegen_type(arg, arg.declared_type, cx) + " " + str(arg))
+                params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + str(arg))
             else:
-                params.append(codegen_type(arg, arg.declared_type, cx) + " " + codegen_node(arg, cx))
+                params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
+                # note precedence change making
+                raise SemanticAnalysisError("unexpected typed expr in defs parameter list", arg)
+                # TODO: list typing needs fix after : precedence change
         elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
             raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
         elif isinstance(arg, NamedParameter):
-            if isinstance(arg.rhs, ListLiteral):
+            if not isinstance(arg.lhs, Identifier):
+                raise SemanticAnalysisError(
+                    "Non identifier left hand side in def arg", arg)
+
+            if arg.lhs.declared_type is not None:
+                params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
+
+            elif isinstance(arg.rhs, ListLiteral):
                 if isinstance(arg.lhs, Identifier):
-                    params.append("std::vector<" + vector_decltype_str(arg, cx) + ">" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
                 else:
-                    params.append("std::vector<" + vector_decltype_str(arg, cx) + ">" + codegen_node(arg.lhs, cx) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + codegen_node(arg.lhs, cx) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
                 # if arg.rhs.args:
                 #     valuepart = "= " + codegen_node(arg.rhs)
                 #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
@@ -539,13 +605,17 @@ def codegen_def(defnode: Call, cx):
                 # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
                 # params.append((declpart, valuepart))
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
-                # not going to work, needs conversion to std::function
-                params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
+                # params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
+                assert 0  # need to autoconvert to std::function
             else:
-                if isinstance(arg.lhs, Identifier):
-                    params.append(decltype_str(arg.rhs, cx) + " " + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
-                else:
-                    params.append(decltype_str(arg.rhs, cx) + " " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
+                # if isinstance(arg.lhs, Identifier):
+                # auto insertion of const & here might be problematic
+                # params.append("const " + decltype_str(arg.rhs, cx) + "& " + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
+                params.append(autoconst(autoref(decltype_str(arg.rhs, cx))) + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
+                # else:
+                #     raise SemanticAnalysisError(
+                #         "Non identifier left hand side in def arg", arg)
+                #     # params.append("const " + decltype_str(arg.rhs, cx) + "& " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
 
         else:
             t = "T" + str(i + 1)
