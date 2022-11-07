@@ -61,6 +61,10 @@ std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
 get_ptr(std::unique_ptr<T>& obj) { return obj; }
 
 template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
+get_ptr(const std::unique_ptr<T>& obj) { return obj; }
+
+template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, T*>
 get_ptr(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
 

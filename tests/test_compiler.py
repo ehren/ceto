@@ -1230,11 +1230,11 @@ class (Foo:
     )
 ): unique
 
-def (bam, f: Foo:
+def (bam, f: const: Foo: ref:
     f.bar()
 )
 
-def (baz, f: Foo:
+def (baz, f: const: Foo: ref:
     f.bar()
     bam(std.move(f))
 )
