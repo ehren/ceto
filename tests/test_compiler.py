@@ -4,6 +4,61 @@ from compiler import compile
 # l = [1,2,3] : int : const
 
 
+def test_ensure_func_params_const_ref():
+    c = compile(r"""
+class (FooGeneric:
+    a
+)
+    
+class (FooConcrete:
+    a : string
+)
+
+class (FooGenericUnique:
+    a
+) : unique
+
+class (FooConcreteUnique:
+    a : string
+) : unique
+
+def (func, f:
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    std.cout << "generic " << f.a << std.endl
+)
+    
+def (func, f : FooConcrete:
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    std.cout << "FooConcrete " << f.a << std.endl
+)
+
+def (func, f : FooConcreteUnique:
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    std.cout << "FooConcreteUnique " << f.a << std.endl
+)
+
+def (main:
+    f = FooGeneric("yo")
+    f2 = FooConcrete("hi")
+    func(f)
+    func(f2)
+    func(FooGenericUnique("hi"))
+    f3 = FooConcreteUnique("hey")
+    func(std.move(f3))
+    func(FooConcreteUnique("yo"))
+)
+    """)
+
+    assert c == r"""generic yo
+FooConcrete hi
+generic hi
+FooConcreteUnique hey
+FooConcreteUnique yo
+"""
+
 def test_constructors():
     0 and compile(r"""
     
