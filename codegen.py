@@ -60,8 +60,13 @@ get_ptr(std::shared_ptr<T>& obj) { return obj; }
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //get_ptr(std::shared_ptr<T> obj) { return obj; }
 
+// this one?
+//template<typename T>
+//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+//get_ptr(std::shared_ptr<T>&& obj) { return std::move(obj); }
+// or this one?
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
 get_ptr(std::shared_ptr<T>&& obj) { return obj; }
 
 template<typename T>
@@ -523,14 +528,14 @@ def autoconst(type_str: str):
     return "std::add_const_t<" + type_str + ">"
 
 
-def autoref(type_str: str):
-    # suprisingly compiles with a few examples (note that type_str would also be a conditional_t)but ends up warning about "const qualifier on reference type has no effect"
-    # return f"std::conditional_t<std::is_reference_v<{type_str}>, {type_str}, {type_str}&>"
-    # seem promising but not going to work
-    # return "std::add_lvalue_reference_t<" + type_str + ">"
-    # return f"std::conditional_t<is_smart_pointer<{type_str}>::value && std::is_base_of_v<{type_str}::element_type, object>, {type_str}&, {type_str}>"
-    return type_str  # can't do this for arbitrary types (even if something like the above works, going to make error messages sooo much worse.
-    # TODO if transpiler detects a class type e.g. Foo, add ref, otherwise not
+# def autoref(type_str: str):
+#     # suprisingly compiles with a few examples (note that type_str would also be a conditional_t)but ends up warning about "const qualifier on reference type has no effect"
+#     # return f"std::conditional_t<std::is_reference_v<{type_str}>, {type_str}, {type_str}&>"
+#     # seem promising but not going to work
+#     # return "std::add_lvalue_reference_t<" + type_str + ">"
+#     # return f"std::conditional_t<is_smart_pointer<{type_str}>::value && std::is_base_of_v<{type_str}::element_type, object>, {type_str}&, {type_str}>"
+#     return type_str  # can't do this for arbitrary types (even if something like the above works, going to make error messages sooo much worse.
+#     # TODO if transpiler detects a class type e.g. Foo, add ref, otherwise not
 
 
 def codegen_def(defnode: Call, cx):
@@ -574,9 +579,12 @@ def codegen_def(defnode: Call, cx):
 
         if arg.declared_type is not None:
             if isinstance(arg, Identifier):
-                params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + str(arg))
+                if cx.lookup_class(arg.declared_type) is not None:
+                    params.append("const " + codegen_type(arg, arg.declared_type, cx) + "& " + str(arg))
+                else:
+                    params.append(autoconst(codegen_type(arg, arg.declared_type, cx)) + " " + str(arg))
             else:
-                params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
+                # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
                 # note precedence change making
                 raise SemanticAnalysisError("unexpected typed expr in defs parameter list", arg)
                 # TODO: list typing needs fix after : precedence change
@@ -588,7 +596,13 @@ def codegen_def(defnode: Call, cx):
                     "Non identifier left hand side in def arg", arg)
 
             if arg.lhs.declared_type is not None:
-                params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
+                # params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
+                if cx.lookup_class(arg.lhs.declared_type) is not None:
+                    # this only succeeds for literal Foo (not const: Foo: ref)
+                    # (so no possibility of double adding 'const' - plus can already create a by-value param of class type using std::remove_const)
+                    params.append("const " + codegen_node(arg.lhs.declared_type) + arg.lhs.name + "& = " + codegen_node(arg.rhs, cx))
+                else:
+                    params.append(autoconst(codegen_node(arg.lhs.declared_type)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
 
             elif isinstance(arg.rhs, ListLiteral):
                 if isinstance(arg.lhs, Identifier):
@@ -611,7 +625,16 @@ def codegen_def(defnode: Call, cx):
                 # if isinstance(arg.lhs, Identifier):
                 # auto insertion of const & here might be problematic
                 # params.append("const " + decltype_str(arg.rhs, cx) + "& " + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
-                params.append(autoconst(autoref(decltype_str(arg.rhs, cx))) + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
+
+                # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added
+                if isinstance(arg.rhs, Call) and cx.lookup_class(arg.rhs.func) is not None:
+                    # it's a known class (object derived). auto add const&
+                    # (though std::add_const_t works here, we can be direct)
+                    make_shared = codegen_node(arg.rhs, cx)
+                    # (we can also be direct with the decltype addition as well though decltype_str works now)
+                    params.append("const decltype(" + make_shared + ") " + arg.lhs.name + "& = " + make_shared)
+                else:
+                    params.append(autoconst(decltype_str(arg.rhs, cx)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
                 # else:
                 #     raise SemanticAnalysisError(
                 #         "Non identifier left hand side in def arg", arg)
