@@ -55,7 +55,8 @@ def compile(s, compile_cpp=True, run=True):
         import platform
         if "Darwin" in platform.system():
             # need to upgrade
-            command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
+            # command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
+            command = "clang++ " + filename + " -std=c++17 -Wall -Wno-parentheses && echo 'done compile'"
         else:
             # command = "clang++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
             command = "g++ " + filename + " -std=c++20 && -Wall -Wno-parentheses echo 'done compile'"
