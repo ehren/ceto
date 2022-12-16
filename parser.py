@@ -190,7 +190,7 @@ class ArrayAccess(Node):
 
 class TemplateSpecialization(Node):
     def __repr__(self):
-        return "template specialization: {}[{}]".format(self.func, ",".join(map(str, self.args)))
+        return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
         self.func = tokens[0]

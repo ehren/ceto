@@ -4,6 +4,41 @@ from compiler import compile
 # l = [1,2,3] : int : const
 
 
+def test_contains_helper():
+    c = compile(r"""
+# // https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
+def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
+    return std.find(container.begin(), container.end(), element) != container.end()
+)
+
+# https://stackoverflow.com/a/58593692/1391250
+# template <typename Container, typename T = typename std::decay<decltype(*std::begin(std::declval<Container>()))>::type>
+# bool contains2(Container && c, T v)
+# {
+#     return std::find(std::begin(c), std::end(c), v) != std::end(c);
+# }
+
+# def (contains2, c : Container:ref:ref, v:
+#     pass
+# ) : template<Container:typename, T:typename = std.decay<blah>:typename>
+# TODO: type-of op on rhs printed more or less same as lhs declaration e.g. x:y = z:w results in c++ codegen y x = w z;
+# to allow T:typename = blah:typename
+# keep special case handling of l = [1,2,3,4] : int as shorthand for l : [int] = [1,2,3,4]  ? # 
+
+def (main:
+    l = [0, 1, 2, 10, 19, 20]
+    for (i in range(20):
+        if (contains(l, i):
+            std.cout << i
+        )
+    )
+)
+    
+""")
+
+    assert c == "0121019"
+
+
 def test_ensure_func_params_const_ref():
     c = compile(r"""
 class (FooGeneric:
@@ -40,6 +75,12 @@ def (func, f : FooConcreteUnique:
     std.cout << "FooConcreteUnique " << f.a << std.endl
 )
 
+def (func2, f : const: FooConcreteUnique: ref:
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    std.cout << "FooConcreteUnique " << f.a << std.endl
+)
+
 def (main:
     f = FooGeneric("yo")
     f2 = FooConcrete("hi")
@@ -47,8 +88,11 @@ def (main:
     func(f2)
     func(FooGenericUnique("hi"))
     f3 = FooConcreteUnique("hey")
+    f4 = FooConcreteUnique("hello")
     func(std.move(f3))
     func(FooConcreteUnique("yo"))
+    func2(std.move(f4))
+    func2(FooConcreteUnique("hello"))
 )
     """)
 
@@ -57,6 +101,8 @@ FooConcrete hi
 generic hi
 FooConcreteUnique hey
 FooConcreteUnique yo
+FooConcreteUnique hello
+FooConcreteUnique hello
 """
 
 def test_constructors():
@@ -1565,7 +1611,7 @@ class (Blah1:
     # We've switched to this which makes "which code uses the interfaces feature" possible via text search
     def (foo:interface(A), x:A:
         printf("Blah1 foo\n")
-        x.huh()
+        return x.huh()
     ):int
     
     # Previous implementation. Totally inconcistent - how to return a shared_ptr<A> ? (that is an A in whatever-lang-called code). You can't! (or rather must hope auto return type deduction suffices!)
@@ -1576,6 +1622,7 @@ class (Blah1:
     
     def (huh:interface(A):
         printf("huh 1\n")
+        return 76
     ):int
     
     # def (huh:A:
@@ -1585,11 +1632,12 @@ class (Blah1:
 class (Blah2:
     def (foo:interface(A), x:A:
         printf("Blah2 foo\n")
-        x.huh()
+        return x.huh()
     ):int
     
     def (huh:interface(A):
         printf("huh 2\n")
+        return 89
     ):int
 )
 
@@ -2154,6 +2202,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_contains_helper()
     # test_complex_arguments()
     # test_scope_resolution()
     # test_lambda_void_deduction_and_return_types()

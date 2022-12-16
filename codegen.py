@@ -60,11 +60,11 @@ get_ptr(std::shared_ptr<T>& obj) { return obj; }
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //get_ptr(std::shared_ptr<T> obj) { return obj; }
 
-// this one?
+// odd alternative (at least no warnings):
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //get_ptr(std::shared_ptr<T>&& obj) { return std::move(obj); }
-// or this one?
+// this is surely better:
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
 get_ptr(std::shared_ptr<T>&& obj) { return obj; }
@@ -87,7 +87,10 @@ get_ptr(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), ret
 
 template<typename T>
 std::enable_if_t<!std::is_base_of_v<object, T>, T**>
-get_ptr(T* obj) { return &obj; } // regular pointer - no autoderef!
+get_ptr(T*&& obj) { return &obj; } // regular pointer - no autoderef!
+// ^ the forwarding reference to pointer would allow us to wrap arbitrary identifiers
+// and not just attribute access targets e.g. get_ptr(printf)("hi %d", get_ptr(x));
+// (though this seems no longer needed with the current autoderef semantics)
 
 
 // unused but seemingly workable C++ auto construction logic
@@ -525,7 +528,11 @@ def interface_method_declaration_str(defnode: Call, cx):
 
 def autoconst(type_str: str):
     # return f"std::conditional_t<std::is_const_v<{type_str}>, {type_str}, const {type_str}>"
-    return "std::add_const_t<" + type_str + ">"
+    # return "std::add_const_t<" + type_str + ">"
+    # this is a nice idea that works with the testsuite right now but requires
+    # a new keyword for e.g. taking a param by value or non-const reference
+    # (disabling to lower mental overhead of 'unsafe' c++ integration code - 'safe' code should be fully generic or use the ourlang class/struct system anyway)
+    return type_str
 
 
 # def autoref(type_str: str):

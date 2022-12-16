@@ -45,7 +45,10 @@ def compile(s, compile_cpp=True, run=True):
         compile_cpp = True
 
     if compile_cpp:
-        filename = safe_unique_filename("generatedcode", ".cpp", basepath=os.path.join(os.path.abspath(os.path.dirname(__file__)), "build"))
+        build_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "build")
+        if not os.path.exists(build_dir):
+            os.makedirs(build_dir)
+        filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
 
         with open(filename, "w") as file:
             file.write(code)
@@ -73,7 +76,7 @@ def compile(s, compile_cpp=True, run=True):
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
         print(output)
 
-        # os.remove(filename)
+        os.remove(filename)
         os.remove('./a.out')
 
     return output
