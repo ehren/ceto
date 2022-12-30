@@ -10,6 +10,10 @@ import io
 from preprocessor import preprocess
 
 
+class ParserError(Exception):
+    pass
+
+
 class Node:
 
     @property
@@ -353,10 +357,14 @@ def _create():
     for c in _compar_atoms:
         comparisons |= c
 
+    def andanderror(*t):
+        raise ParserError("don't use '&&'. use 'and' instead.", *t)
+
     infix_expr <<= pp.infix_notation(
         expr,
         [
             (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
+            (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (dot|pp.Literal("->"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
             (expop, 2, pp.opAssoc.RIGHT, BinOp),
@@ -367,6 +375,9 @@ def _create():
             (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
+            (pp.Literal("&"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            (pp.Literal("^"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            (pp.Literal("|"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),

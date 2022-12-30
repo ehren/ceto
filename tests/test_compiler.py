@@ -4,6 +4,24 @@ from compiler import compile
 # l = [1,2,3] : int : const
 
 
+def test_a_andand_b_wrong():
+    try:
+        compile(r"""
+def (main:
+    if (1 & (&2):  # this would be rejected by the c++ compiler
+        pass  
+    )
+    if (1 && 2:    # but this raises a syntax error in the transpiler
+        pass
+    )
+)
+    """)
+    except Exception as e:
+        assert "don't use '&&'. use 'and' instead." in str(e)
+    else:
+        assert 0
+
+
 def test_contains_helper():
     c = compile(r"""
 # // https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
@@ -2203,6 +2221,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_a_andand_b_wrong()
     # test_contains_helper()
     # test_complex_arguments()
     # test_scope_resolution()
