@@ -481,9 +481,21 @@ def codegen_block(block: Block, cx):
     indent_str = cx.indent_str()
 
     for b in block.args:
-        if isinstance(b, Identifier) and b.name == "pass":
-            cpp += indent_str + "; // pass\n"
+        if isinstance(b, Identifier):
+            if b.name == "pass":
+                cpp += indent_str + "; // pass\n"
+                continue
+
+        if b.declared_type is not None:
+            # typed declaration
+            # TODO be more strict here (but allowing non-identifier declarations allows e.g. "std.cout : using" and "boost::somesuch : using")
+            declared_type = b.declared_type
+            cpp += codegen_type(b, b.declared_type, cx)
+            b.declared_type = None
+            cpp += " " + codegen_node(b, cx) + ";\n"
+            b.declared_type = declared_type
             continue
+
         elif isinstance(b, Call):
             # should still do this (handle non-expr if _statements_ separately)
             # if b.func.name == "if":
@@ -717,9 +729,11 @@ def codegen_lambda(node, cx):
             if isinstance(a, Assign):
                 raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
             raise CodeGenError("Unexpected lambda argument", a)
-        param = codegen_node(a, cx)
-        if a.declared_type is None:
-            param = "auto " + param
+        if a.declared_type is not None:
+            param = codegen_type(a, a.declared_type, cx) + " " + a.name
+        else:
+            # TODO same const ref by default etc behaviour as "def"
+            param = "auto " + a.name
         params.append(param)
     newcx = cx.new_scope_context()
     # '=' is a fine default (requiring use of shared_ptr for reference semantics w/ capture vars)
@@ -1001,7 +1015,6 @@ def _shared_ptr_str_for_type(type_node, cx):
 
 
 def codegen_type(expr_node, type_node, cx):
-    # TODO just move this into codegen_node:
 
     if isinstance(type_node, ColonBinOp):
         lhs = type_node.lhs
@@ -1011,6 +1024,19 @@ def codegen_type(expr_node, type_node, cx):
         if len(type_node.args) != 1:
             raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
         return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
+    elif isinstance(type_node, Identifier):
+        if type_node.declared_type is not None:
+            # TODO removing the 'declared_type' property entirely in favour of unflattened ColonBinOp would solve various probs
+            declared_type = type_node.declared_type
+            type_node.declared_type = None
+            output = codegen_type(expr_node, type_node, cx) + " " + codegen_type(expr_node, declared_type, cx)
+            type_node.declared_type = declared_type
+            return output
+
+        if type_node.name == "ptr":
+            return "*"
+        elif type_node.name == "ref":
+            return "&"
 
     return codegen_node(type_node, cx)
 
@@ -1020,22 +1046,10 @@ def codegen_node(node: Node, cx: Context):
     cpp = io.StringIO()
 
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
-        # variable declaration like things
-        declared_type = node.declared_type
+        if not isinstance(node, Identifier):
+            raise CodeGenError("unexpected typed construct", node)
 
-        node.declared_type = None  # not too nice current design forces AST mutation...
-        var_str = codegen_node(node, cx)
-
-        if isinstance(declared_type, Identifier):
-            if declared_type.name == "ptr":
-                return var_str + "*"
-            elif declared_type.name == "ref":
-                return var_str + "&"
-        type_str = codegen_type(node, declared_type, cx)
-        # type_str = codegen_node(declared_type, cx)
-
-        node.declared_type = declared_type  # ...even if mutation is temporary
-        return type_str + " " + var_str
+        return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
 
     if isinstance(node, Module):
         for modarg in node.args:
@@ -1101,17 +1115,9 @@ def codegen_node(node: Node, cx: Context):
         name = node.name
 
         if name == "ptr":
-            if node.parent is not None:
-                # this is not a type (this is janky TODO: no more declared_type, use a dedicated unflattened TypeOfBinOp node)
-                raise CodeGenError("Use of 'ptr' outside type context is an error", node)
-            return "*"
-        elif name == "const":
-            return "const"
+            raise CodeGenError("Use of 'ptr' outside type context is an error", node)
         elif name == "ref":
-            if node.parent is not None:
-                # this is not a type (see above TODO)
-                raise CodeGenError("Use of 'ptr' outside type context is an error", node)
-            return "&"
+            raise CodeGenError("Use of 'ref' outside type context is an error", node)
         elif name == "string":
             return "std::string"
         elif name == "None":
