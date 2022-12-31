@@ -119,8 +119,10 @@ def build_types(node: Node):
 
         if isinstance(node, ColonBinOp) and not isinstance(node, SyntaxColonBinOp):
             lhs, rhs = node.args
+            # node = visitor(lhs)
             node = lhs
             node.declared_type = rhs  # leaving open possibility this is still a ColonBinOp
+            # node.declared_type = visitor(rhs)
 
         node.args = [visitor(arg) for arg in node.args]
         node.func = visitor(node.func)

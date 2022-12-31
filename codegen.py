@@ -1022,9 +1022,18 @@ def codegen_node(node: Node, cx: Context):
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
         # variable declaration like things
         declared_type = node.declared_type
-        type_str = codegen_type(node, declared_type, cx)
+
         node.declared_type = None  # not too nice current design forces AST mutation...
         var_str = codegen_node(node, cx)
+
+        if isinstance(declared_type, Identifier):
+            if declared_type.name == "ptr":
+                return var_str + "*"
+            elif declared_type.name == "ref":
+                return var_str + "&"
+        type_str = codegen_type(node, declared_type, cx)
+        # type_str = codegen_node(declared_type, cx)
+
         node.declared_type = declared_type  # ...even if mutation is temporary
         return type_str + " " + var_str
 
@@ -1092,10 +1101,16 @@ def codegen_node(node: Node, cx: Context):
         name = node.name
 
         if name == "ptr":
+            if node.parent is not None:
+                # this is not a type (this is janky TODO: no more declared_type, use a dedicated unflattened TypeOfBinOp node)
+                raise CodeGenError("Use of 'ptr' outside type context is an error", node)
             return "*"
         elif name == "const":
             return "const"
         elif name == "ref":
+            if node.parent is not None:
+                # this is not a type (see above TODO)
+                raise CodeGenError("Use of 'ptr' outside type context is an error", node)
             return "&"
         elif name == "string":
             return "std::string"

@@ -4,12 +4,66 @@ from compiler import compile
 # l = [1,2,3] : int : const
 
 
+def test_range_signedness():
+    # TODO this needs work also more type problems int:unsigned vs unsigned:int
+    c = compile(r"""
+    
+def (main:
+    for (i in range(10):
+        static_assert(std.is_same_v<decltype(i), int:signed>)
+        std.cout << i
+    )
+    u : unsigned:int = 10
+    for (i in range(u):
+        static_assert(std.is_same_v<decltype(i), int:unsigned>)
+        std.cout << i
+    )
+    for (i in range(u, 10):
+        static_assert(std.is_same_v<decltype(i), int:unsigned>)
+        std.cout << i
+    )
+)
+
+    """)
+
+
+def test_ptr():
+    c = compile(r"""
+def (main:
+    x = 0
+    y : int : ptr = &x
+    y2 : int: ptr
+    y2 = &x
+    hmm = (reinterpret_cast<int:ptr>)(1)
+    (static_cast<void>)(x)
+    (static_cast<void>)(y)
+    (static_cast<void>)(y2)
+    printf("%p", hmm)
+)
+    """)
+
+    assert c == "0x1"
+
+    try:
+        compile(r"""
+def (main:
+    hmm = (reinterpret_cast<ptr:int>)(1)   # should be int:ptr
+)
+        """)
+    except Exception as e:
+        assert "Use of 'ptr' outside type context is an error" in str(e)
+    else:
+        assert 0
+
+
+
 def test_a_andand_b_wrong():
+
     try:
         compile(r"""
 def (main:
     if (1 & (&2):  # this would be rejected by the c++ compiler
-        pass  
+        pass
     )
     if (1 && 2:    # but this raises a syntax error in the transpiler
         pass
