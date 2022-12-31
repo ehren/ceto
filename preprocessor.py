@@ -15,6 +15,7 @@ SquareOpen = 2
 CurlyOpen = 3
 SingleQuote = 4
 DoubleQuote = 5
+OpenAngle = 6
 
 expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}"}
 
@@ -40,6 +41,7 @@ class IndentError(PreprocessorError):
 
 def preprocess(file_object):
     parsing_stack = [Indent]
+    is_it_a_template_stack = []
 
     rewritten = StringIO()
     began_indent = False
@@ -137,6 +139,20 @@ def preprocess(file_object):
                         parsing_stack.pop()
                     else:
                         parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
+                elif char == "<":
+                    if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        is_it_a_template_stack.append(OpenAngle)
+                elif char == ">":
+                    if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        if len(is_it_a_template_stack) > 0:
+                            assert is_it_a_template_stack[-1] == OpenAngle
+                            is_it_a_template_stack.pop()
+                            for c in line[n + 1:]:
+                                if c.isspace():
+                                    continue
+                                if c in ["(", "["]:  # what about "{" ?
+                                    rewritten.write("\x06")
+                                break
 
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
@@ -150,6 +166,9 @@ def preprocess(file_object):
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
                     rewritten.write(";")
+                    while len(is_it_a_template_stack) > 0:
+                        assert is_it_a_template_stack[-1] == OpenAngle
+                        is_it_a_template_stack.pop()
 
             if colon_to_write:
                 rewritten.write(colon_replacement_char(parsing_stack[-1]))

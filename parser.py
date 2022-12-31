@@ -408,7 +408,8 @@ def _create():
     block_line_end = pp.Suppress(";")
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
-    template_specialization <<= ((expr | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">")).set_parse_action(TemplateSpecialization)
+    ack = pp.Suppress("\x06")
+    template_specialization <<= ((expr | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
 
     array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
@@ -461,6 +462,7 @@ def parse(s):
 
     sio = io.StringIO(transformed)
     transformed = preprocess(sio).getvalue()
+    print(transformed.replace("\x07", "!!!").replace("\x06", "&&&"))
 
     res = grammar.parseString(transformed, parseAll=True)
 

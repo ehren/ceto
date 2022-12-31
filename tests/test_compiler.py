@@ -3,6 +3,36 @@ from compiler import compile
 
 # l = [1,2,3] : int : const
 
+def test_compound_comparison():
+    c = compile(r"""
+
+def (main:
+    if (1 < 2 > (0):  # this is parsed as a template (codegen output just happens to be treated as a comparison by c++)
+        std.cout << "yes" 
+    )
+    
+    if (1 < 2 > 0:  # parsed as a comparison 
+        std.cout << "yes" 
+    )
+    
+    a : std.array<int, 3>
+    static_cast<void>(a)
+    
+    if (((std.array)<int, 30>())[5]:
+        pass 
+    )
+    if ((std.array<int, 30>())[5]:
+        pass 
+    )
+    # if (std.array<int, 30>()[5]:  # TODO needs fix
+    #     pass 
+    # )
+)
+
+    """)
+
+    assert c == "yesyes"
+
 
 def test_range_signedness():
     # TODO this needs work also more type problems int:unsigned vs unsigned:int
@@ -34,10 +64,11 @@ def (main:
     y : int : ptr = &x
     y2 : int: ptr
     y2 = &x
-    hmm = (reinterpret_cast<int:ptr>)(1)
-    (static_cast<void>)(x)
-    (static_cast<void>)(y)
-    (static_cast<void>)(y2)
+    hmm = reinterpret_cast<int:ptr>(1)
+    static_cast<void>(x)
+    static_cast<void>(y)
+    static_cast<void>(y2)
+    static_assert(not std.is_same_v<decltype(nullptr), int:ptr>)
     printf("%p", hmm)
 )
     """)
@@ -47,7 +78,7 @@ def (main:
     try:
         compile(r"""
 def (main:
-    hmm = (reinterpret_cast<ptr:int>)(1)   # should be int:ptr
+    hmm = reinterpret_cast<ptr:int>(1)   # should be int:ptr
 )
         """)
     except Exception as e:
@@ -2275,6 +2306,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_ptr()
     # test_a_andand_b_wrong()
     # test_contains_helper()
     # test_complex_arguments()
