@@ -3,6 +3,74 @@ from compiler import compile
 
 # l = [1,2,3] : int : const
 
+
+def test_contains_helper2():
+    return
+    c = compile(r"""
+# //https://stackoverflow.com/a/58593692/1391250
+# template <typename Container, typename T = typename std::decay<decltype(*std::begin(std::declval<Container>()))>::type>
+# bool contains(Container && c, T v)
+# {
+#     return std::find(std::begin(c), std::end(c), v) != std::end(c);
+# }
+
+#def (contains, c : Container:ref:ref, v:
+#    pass
+#) : template<Container:typename, T:typename = typename:std.decay<blah>>
+# the template is now printed correctly, but the above won't work with -> return type printing (probably a good thing)
+
+# one idea to allow but no good because what about std::enable_if_t etc:
+# def (template<Container:typename, T:typename = typename:std.decay<blah>>:contains, Container && c, T v:
+#     return std.find(std.begin(c), std.end(c), v) != std.end(c);
+# )
+
+# allow tuple as function name (way too confusing):
+# def ((template<Container:typename, T:typename = typename:std.decay<blah>>, contains), c:Container:ref:ref, v:T:
+#     pass
+# )
+
+# (note that out-of-line method defs should be discouraged anyway)
+# def (Foo::foo:const, x, y:
+#     pass
+# ):int
+# vs
+# def (Foo::foo:const:int, x, y:
+#     pass
+# ):nodiscard:const
+# still not sure where/how to mark const methods (what about const block (like public) in class)
+
+# possible optional non-trailing return type syntax (allowing explicit template definition)
+
+def:static:int (foo, 
+     x, y:
+    pass
+)
+
+def:int (main:
+    pass
+)
+
+def: template<Container:typename, T:typename = typename:std.decay<blah>>:bool (
+     contains, container:Container:ref:ref, element: T:
+    pass
+)
+    """)
+
+
+def test_double_angle_close():
+    c = compile(r"""
+    
+    
+def (main:
+    l = [[0],[1],[2]]
+    l2 : [[int]] = l  # fine
+    # l3 : std.vector<std.vector<int>> = [[0],[1],[2]]  # TODO typed list assignments with list literal rhs need fix (also seems like spacing here won't be a prob when ">>=" operator is added)
+    # l4 : [[int]] = [[0], [1]]  # also fails
+)
+    
+    """)
+
+
 def test_compound_comparison():
     c = compile(r"""
 
@@ -15,6 +83,13 @@ def (main:
         std.cout << "yes" 
     )
     
+    l = [1, 2, 3]
+    lp = &l
+    if (0 < lp->size():    # parsed correctly as a comparison
+        std.cout << "ok"
+    )
+    
+    # c++20 clang doesn't like 
     a : std.array<int, 3>
     static_cast<void>(a)
     
@@ -24,14 +99,28 @@ def (main:
     if ((std.array<int, 30>())[5]:
         pass 
     )
-    # if (std.array<int, 30>()[5]:  # TODO needs fix
-    #     pass 
+    # if (std.array<int, 30>()[5]:   # Either this or lf[0]() below won't parse when only change made is ordering of function_call vs array_access in expr. TODO: fix this issue along with removal of indirect left recursion in expr and function_call/array_access/template 
     # )
+    
+    # TODO: "is void?" detection also needs work (should never apply to lambda literal - disabled here via explicit return in outer lambda)
+    # also maybe should support semicolons for multiple statements in one liner lambda (either needs grammar change or stop to using ';' as block separator char - with ';' as a first class operator added)
+    f = lambda (return lambda (:
+        std.cout << "hi"
+        return
+    ))
+    
+    # make sure array fix doesn't break function call
+    f()()
+    
+    # fn = std.function(lambda("yo"))  # CTAD here needs working c++20:
+    # lf = [fn]  # needs _decltype_str fixes
+    # std.cout << lf[0]()
+    # lf[0]()  # parses ok now but not when array_access precedes function_call in expr definition (see note above)
 )
 
     """)
 
-    assert c == "yesyes"
+    assert c == "yesyesokhi"
 
 
 def test_range_signedness():
@@ -68,9 +157,7 @@ def (main:
     y2 : int: ptr
     y2 = &x
     hmm = reinterpret_cast<int:ptr>(1)
-    static_cast<void>(x)
     static_cast<void>(y)
-    static_cast<void>(y2)
     static_assert(not std.is_same_v<decltype(nullptr), int:ptr>)
     printf("%p", hmm)
 )
@@ -118,20 +205,6 @@ def (contains, container, element: const:typename:std.remove_reference_t<decltyp
     return std.find(container.begin(), container.end(), element) != container.end()
 )
 
-# https://stackoverflow.com/a/58593692/1391250
-# template <typename Container, typename T = typename std::decay<decltype(*std::begin(std::declval<Container>()))>::type>
-# bool contains2(Container && c, T v)
-# {
-#     return std::find(std::begin(c), std::end(c), v) != std::end(c);
-# }
-
-# def (contains2, c : Container:ref:ref, v:
-#     pass
-# ) : template<Container:typename, T:typename = std.decay<blah>:typename>
-# TODO: type-of op on rhs printed more or less same as lhs declaration e.g. x:y = z:w results in c++ codegen y x = w z;
-# to allow T:typename = blah:typename
-# keep special case handling of l = [1,2,3,4] : int as shorthand for l : [int] = [1,2,3,4]  ? # 
-
 def (main:
     l = [0, 1, 2, 10, 19, 20]
     for (i in range(20):
@@ -177,6 +250,7 @@ def (func, f : FooConcrete:
 )
 
 def (func, f : FooConcreteUnique:
+    # TODO this "works" but unique managed objects should always be pass by value (also last use automoved)
     static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
     static_assert(std.is_reference_v<decltype(f)>)
     std.cout << "FooConcreteUnique " << f.a << std.endl
@@ -2310,6 +2384,8 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_contains_helper2()
+    # test_double_angle_close()
     # test_ptr_not_simple_type_context()
     # test_a_andand_b_wrong()
     # test_contains_helper()

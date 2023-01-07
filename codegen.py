@@ -27,6 +27,7 @@ cpp_preamble = """
 #include <sstream>
 #include <type_traits>
 #include <utility>
+#include <functional>
 #include <compare> // for <=>
 //#include <ranges>
 //#include <numeric>
@@ -699,7 +700,6 @@ def codegen_def(defnode: Call, cx):
             # return_type = 'std::shared_ptr<object>'
             return_type = "void"
 
-
     if is_destructor:
         # revisit non-virtual for unique_ptr and value structs
         funcdef = "virtual ~" + class_name + "()"
@@ -1053,15 +1053,17 @@ def codegen_node(node: Node, cx: Context):
 
     if isinstance(node, Module):
         for modarg in node.args:
-            if modarg.func.name == "def":
-                defcode = codegen_def(modarg, cx)
-                cpp.write(defcode)
-            elif modarg.func.name == "class":
-                classcode = codegen_class(modarg, cx)
-                cpp.write(classcode)
-            else:
-                print("probably should handle", modarg)
-    elif isinstance(node, Call): # not at module level
+            if isinstance(modarg, Call):
+                if modarg.func.name == "def":
+                    defcode = codegen_def(modarg, cx)
+                    cpp.write(defcode)
+                    continue
+                elif modarg.func.name == "class":
+                    classcode = codegen_class(modarg, cx)
+                    cpp.write(classcode)
+                    continue
+            cpp.write(codegen_node(modarg, cx) + ";\n")  # untested # TODO: pass at global scope
+    elif isinstance(node, Call):
         if isinstance(node.func, Identifier):
             if node.func.name == "if":
                 cpp.write(codegen_if(node, cx))
@@ -1137,21 +1139,30 @@ def codegen_node(node: Node, cx: Context):
             raise SemanticAnalysisError("Unparenthesized assignment treated like named parameter in this context (you need '(' and ')'):", node)
 
         elif isinstance(node, ColonBinOp):
-            assert isinstance(node, SyntaxColonBinOp)  # sanity check type system isn't leaking
-            if node.lhs.name == "return":
-                ret_body = codegen_node(node.rhs, cx)
-                if hasattr(node, "synthetic_lambda_return_lambda"):
-                    lambdanode = node.synthetic_lambda_return_lambda
-                    assert lambdanode
-                    if lambdanode.declared_type is not None:
-                        declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
+            if isinstance(node, SyntaxColonBinOp):
+                if node.lhs.name == "return":
+                    ret_body = codegen_node(node.rhs, cx)
+                    if hasattr(node, "synthetic_lambda_return_lambda"):
+                        lambdanode = node.synthetic_lambda_return_lambda
+                        assert lambdanode
+                        if lambdanode.declared_type is not None:
+                            declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
+                        else:
+                            declared_type_constexpr = ""
+                        return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { " + ret_body + "; }"
                     else:
-                        declared_type_constexpr = ""
-                    return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { " + ret_body + "; }"
+                        return "return " + ret_body
                 else:
-                    return "return " + ret_body
+                    assert False
             else:
-                assert False
+                # dealing with subtype in a compound "type" (we're considering e.g. explict function template params as just complicated "return" types)
+                # (consequence of not creating a .declared_type property for nested subtypes)
+
+                # same handling as above case for nested expression with .declared_type
+
+                # codegen_type should be handling compound types safely (any error checking for ColonBinOp lhs rhs should go there)
+                return codegen_type(node, node, cx)
+
 
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             is_lambda_rhs_with_return_type = False

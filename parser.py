@@ -285,6 +285,13 @@ class TupleLiteral(_ListLike):
         self.func = "Tuple"
 
 
+class BracedLiteral(_ListLike):
+
+    def __init__(self, tokens):
+        super().__init__(tokens)
+        self.func = None  #
+
+
 class Block(_ListLike):
 
     def __init__(self, tokens):
@@ -318,7 +325,8 @@ def _create():
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
-    dictStr = pp.Forward()
+    dict_literal = pp.Forward()
+    braced_literal = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
     template_specialization = pp.Forward()
@@ -340,7 +348,8 @@ def _create():
         | dblquoted_str
         | list_literal
         | tuple_literal
-        | dictStr
+        | dict_literal
+        | braced_literal
         | ident
     )
 
@@ -400,10 +409,10 @@ def _create():
 
     bel = pp.Suppress('\x07')
 
-    dictEntry = pp.Group(infix_expr + bel + infix_expr)
-    dictStr <<= (
-        lbrace + pp.Optional(pp.delimitedList(dictEntry) + pp.Optional(comma)) + rbrace
-    )
+    dict_entry = pp.Group(infix_expr + bel + infix_expr)
+    dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
+
+    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(dict_entry)) + rbrace).set_parse_action(BracedLiteral)
 
     block_line_end = pp.Suppress(";")
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
