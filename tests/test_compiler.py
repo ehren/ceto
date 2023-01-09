@@ -2,9 +2,33 @@ from compiler import compile
 
 
 
-def test_contains_helper2():
-    return
+def test_complicated_function_directives():
+    # non trailing "return" etc
+
     c = compile(r"""
+    
+def (foo: static, 
+     x, y:
+    return x + y
+) : int
+    
+def (main:
+    std.cout << foo(1, 2)
+)
+    
+    """)
+
+    assert c == "3"
+
+    # TODO T:typename = typename:blah needs work
+    0 and compile(r"""
+def (contains: template<typename:Container, T:typename = typename:std.decay<blah>>, c : Container:ref:ref, v: T:
+    return std.find(std.begin(c), std.end(c), v) != std.end(c)
+) : bool
+    
+    """)
+
+    0 and compile(r"""
 # //https://stackoverflow.com/a/58593692/1391250
 # template <typename Container, typename T = typename std::decay<decltype(*std::begin(std::declval<Container>()))>::type>
 # bool contains(Container && c, T v)
@@ -17,7 +41,7 @@ def test_contains_helper2():
 #) : template<Container:typename, T:typename = typename:std.decay<blah>>
 # the template is now printed correctly, but the above won't work with -> return type printing (probably a good thing)
 
-# one idea to allow but no good because what about std::enable_if_t etc:
+# one idea to allow but no good because what about std::enable_if_t etc: (see above for better approach with type order same as var defn)
 # def (template<Container:typename, T:typename = typename:std.decay<blah>>:contains, Container && c, T v:
 #     return std.find(std.begin(c), std.end(c), v) != std.end(c);
 # )
@@ -39,25 +63,45 @@ def test_contains_helper2():
 
 # possible optional non-trailing return type syntax (allowing explicit template definition)
 
-def:static:int (foo, 
-     x, y:
+# these won't allow tightening grammar to e.g. disallow "def" as an identifier (source of poor error messages with pyparsing out of the box):
+
+# def:static:int (foo, 
+#      x, y:
+#     pass
+# )
+# 
+# def:int (main:
+#     pass
+# )
+# 
+# def: template<typename:Container, T:typename = typename:std.decay<blah>>:bool (
+#      contains, container:Container:ref:ref, element: T:
+#     pass
+# )
+
+# this might work:
+def (contains: template<typename:Container, T:typename = typename:std.decay<blah>>:std.enable_if<bleh>, 
+            c: Container:ref:ref, 
+            v: const:T:ref:
+    return std.find(std.begin(c), std.end(c), v) != std.end(c)
+) : bool
+
+# keep in mind limited usefulness when "inline" automatically added (investigate implementation file generation)
+def (foo:static, x, y:
     pass
 )
 
-def:int (main:
-    pass
-)
+(we're also locked into trailing return type always - might work but no explicit decltype(auto))
 
-def: template<Container:typename, T:typename = typename:std.decay<blah>>:bool (
-     contains, container:Container:ref:ref, element: T:
-    pass
-)
+
+# def (Foo::foo:export:interface(A):const, x, y:  # const out of line method with other non-return type stuff (const must be last non-trailing "return type"?)
+#     return x + y
+# ):const:string:ref  # const return type
     """)
 
 
 def test_double_angle_close():
     c = compile(r"""
-    
     
 def (main:
     l = [[0],[1],[2]]
@@ -2388,6 +2432,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_complicated_function_directives()
     # test_range_signedness()
     # test_compound_comparison()
     # test_recur()

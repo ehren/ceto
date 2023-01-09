@@ -585,7 +585,8 @@ def codegen_def(defnode: Call, cx):
             raise CodeGenError("destructors can't take arguments")
         is_destructor = True
 
-    is_interface_method = name_node.declared_type is not None
+    is_interface_method = isinstance(name_node.declared_type, Call) and name_node.declared_type.func.name == "interface"
+    has_non_trailing_return = name_node.declared_type is not None and not is_interface_method
 
     if is_interface_method and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
@@ -668,7 +669,19 @@ def codegen_def(defnode: Call, cx):
             typenames.append("typename " + t)
 
     template = "inline "
-    if is_interface_method or name == "main":
+    non_trailing_return = ""
+    if has_non_trailing_return:
+        non_trailing_return_node = name_node.declared_type
+        non_trailing_return = " " + codegen_type(name_node, non_trailing_return_node, cx) + " "
+        def is_template_test(expr):
+            return isinstance(expr, TemplateSpecialization) and expr.func.name == "template"
+        if list(find_all(non_trailing_return_node, test=is_template_test)):
+            if len(typenames) > 0:
+                raise CodeGenError("Explicit template function with generic params", defnode)
+            template = ""
+
+    elif is_interface_method or name == "main":
+        assert len(typenames) == 0
         template = ""
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
@@ -704,7 +717,7 @@ def codegen_def(defnode: Call, cx):
         # revisit non-virtual for unique_ptr and value structs
         funcdef = "virtual ~" + class_name + "()"
     else:
-        funcdef = "{}auto {}({}) -> {}".format(template, name, ", ".join(params), return_type)
+        funcdef = "{}{}auto {}({}) -> {}".format(template, non_trailing_return, name, ", ".join(params), return_type)
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
