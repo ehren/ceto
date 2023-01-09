@@ -329,6 +329,7 @@ def _create():
     braced_literal = pp.Forward()
     function_call = pp.Forward()
     array_access = pp.Forward()
+    call_array_access = pp.Forward()
     template_specialization = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
@@ -350,7 +351,9 @@ def _create():
         | ident
     )
 
-    expr = (function_call
+    expr = (
+        call_array_access
+        | function_call
         | array_access
         | template_specialization
         | atom
@@ -421,10 +424,10 @@ def _create():
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
     ack = pp.Suppress("\x06")
-    # template_specialization <<= ((template_specialization | function_call | array_access | atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
     template_specialization <<= ((atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
 
-    array_access <<= ((expr | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
+    array_access <<= ((array_access | atom | template_specialization | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
+    call_array_access <<= (function_call + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 

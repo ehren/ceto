@@ -1,6 +1,22 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_call_array_access():
+    parse(r"""
+
+# needs "call_array_access" separate definition
+foo()[5]  
+foo(1,2)[5]  # same
+
+# these worked before
+foo[5][5]
+(foo())[5]
+foo[5]()
+foo(1,2,3)
+
+    """)
+
+
 def test_call_arrayaccess_newline():
     parse(r"""
 foo(x,

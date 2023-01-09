@@ -1,8 +1,6 @@
 from compiler import compile
 
 
-# l = [1,2,3] : int : const
-
 
 def test_contains_helper2():
     return
@@ -92,15 +90,22 @@ def (main:
     # c++20 clang doesn't like 
     a : std.array<int, 3>
     static_cast<void>(a)
-    
+    # 
     if (((std.array)<int, 30>())[5]:
         pass 
     )
     if ((std.array<int, 30>())[5]:
         pass 
     )
-    # if (std.array<int, 30>()[5]:   # Either this or lf[0]() below won't parse when only change made is ordering of function_call vs array_access in expr. TODO: fix this issue along with removal of indirect left recursion in expr and function_call/array_access/template 
-    # )
+    if ((1+std.array<int, 30>())[5]:
+        pass 
+    )
+    if (std.array<int, 30>()[5]:  # this works after "call_array_access" separate grammar rule
+        pass
+    )
+    if (1+std.array<int, 30>()[5]:
+        pass 
+    )
     
     # TODO: "is void?" detection also needs work (should never apply to lambda literal - disabled here via explicit return in outer lambda)
     # also maybe should support semicolons for multiple statements in one liner lambda (either needs grammar change or stop to using ';' as block separator char - with ';' as a first class operator added)
@@ -115,7 +120,6 @@ def (main:
     # fn = std.function(lambda("yo"))  # CTAD here needs working c++20:
     # lf = [fn]  # needs _decltype_str fixes
     # std.cout << lf[0]()
-    # lf[0]()  # parses ok now but not when array_access precedes function_call in expr definition (see note above)
 )
 
     """)
@@ -2384,6 +2388,9 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_range_signedness()
+    # test_compound_comparison()
+    # test_recur()
     # test_contains_helper2()
     # test_double_angle_close()
     # test_ptr_not_simple_type_context()
