@@ -154,6 +154,22 @@ call_or_construct(TArgs&&... args) {
 //};
 
 
+// preparation for auto-move last use of unique object
+
+template<typename T, typename Enable = void>
+struct is_object_unique_ptr {
+    enum { value = false };
+};
+
+template<typename T>
+struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value 
+                                                       && std::is_base_of_v<object, T>>::type> 
+{
+   enum { value = true };
+};
+
+
+
 """
 
 
