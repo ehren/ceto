@@ -176,15 +176,21 @@ class Call(Node):
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
-    def __init__(self, tokens):
-        tokens = tokens.as_list()
+    def __init__(self, t):
+        tokens = t.as_list()
         if len(tokens) == 2:
             self.func = tokens[0]
-            self.args = tokens[1]
+            args = tokens[1]
         else:
             assert len(tokens) > 2
             self.func = Call(pp.ParseResults(tokens[:-1]))
-            self.args = tokens[-1]
+            args = tokens[-1]
+
+        lpar = args.pop(0)
+        _ = args.pop() # rpar
+        self._is_array = lpar == "["
+        self.args = args
+
         # print("callargs", self.args)
         # print("done")
 
@@ -193,9 +199,25 @@ class ArrayAccess(Node):
     def __repr__(self):
         return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
 
-    def __init__(self, tokens):
-        self.func = tokens[0]
-        self.args = tokens.as_list()[1:]
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+# class ArrayAccess(Node):
+#     def __repr__(self):
+#         return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
+#
+#     def __init__(self, tokens):
+#         # self.func = tokens[0]
+#         # self.args = tokens.as_list()[1:]
+#         tokens = tokens.as_list()
+#         if len(tokens) == 2:
+#             self.func = tokens[0]
+#             self.args = tokens[1]
+#         else:
+#             assert len(tokens) > 2
+#             self.func = ArrayAccess(pp.ParseResults(tokens[:-1]))
+#             self.args = tokens[-1]
 
 
 class TemplateSpecialization(Node):
@@ -357,14 +379,6 @@ def _create():
         | ident
     )
 
-    expr = (
-        call_array_access
-        | function_call
-        | array_access
-        | template_specialization
-        | atom
-    )
-
     expop = pp.Literal("^")
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -380,6 +394,57 @@ def _create():
 
     def andanderror(*t):
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
+
+    tuple_literal <<= (
+        # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
+        # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
+        (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
+        (lparen + pp.Optional(infix_expr) + comma + rparen) |
+        (lparen + rparen)
+    ).set_parse_action(TupleLiteral)
+
+    list_literal <<= (
+        lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
+    ).set_parse_action(ListLiteral)
+
+    bel = pp.Suppress('\x07')
+
+    dict_entry = pp.Group(infix_expr + bel + infix_expr)
+    dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
+
+    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(dict_entry)) + rbrace).set_parse_action(BracedLiteral)
+
+    block_line_end = pp.Suppress(";")
+    block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
+
+    ack = pp.Suppress("\x06")
+    template_specialization <<= ((atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
+
+    expr = (
+        # call_array_access
+
+        function_call
+            # |array_access
+            | template_specialization
+            | atom
+    )
+
+
+    # call_array_access <<= (function_call + pp.OneOrMore(pp.Group(array_access_args))).set_parse_action(ArrayAccess)
+
+    non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
+
+    lparen = pp.Literal("(")  # don't pp.Suppress
+    rparen = pp.Literal(")")
+    lbrack = pp.Literal("[")
+    rbrack = pp.Literal("]")
+
+    array_access_args = lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack
+    # array_access <<= ((atom | template_specialization | function_call | call_array_access | (lparen + infix_expr + rparen)) + pp.OneOrMore(pp.Group(array_access_args))).set_parse_action(ArrayAccess)
+
+    call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
+
+    function_call <<= ((atom | template_specialization | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
 
     infix_expr <<= pp.infix_notation(
         expr,
@@ -407,39 +472,6 @@ def _create():
         ],
     ).set_parse_action(_InfixExpr)
 
-    tuple_literal <<= (
-        # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
-        # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
-        (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
-        (lparen + pp.Optional(infix_expr) + comma + rparen) |
-        (lparen + rparen)
-    ).set_parse_action(TupleLiteral)
-
-    list_literal <<= (
-        lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-    ).set_parse_action(ListLiteral)
-
-    bel = pp.Suppress('\x07')
-
-    dict_entry = pp.Group(infix_expr + bel + infix_expr)
-    dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
-
-    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(dict_entry)) + rbrace).set_parse_action(BracedLiteral)
-
-    block_line_end = pp.Suppress(";")
-    block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
-
-    ack = pp.Suppress("\x06")
-    template_specialization <<= ((atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
-
-    array_access <<= ((array_access | atom | template_specialization | (lparen + infix_expr + rparen)) + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
-    call_array_access <<= (function_call + lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack).set_parse_action(ArrayAccess)
-
-    non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
-
-    call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
-
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + pp.OneOrMore(pp.Group(call_args))).set_parse_action(Call)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
 
@@ -507,6 +539,9 @@ def parse(s):
                 op = ArrowOp(op.args)
             elif op.func == "::":
                 op = ScopeResolution(op.args)
+        elif isinstance(op, Call):
+            if op._is_array:
+                op = ArrayAccess(op.func, op.args)
 
         if not isinstance(op, Node):
             return op

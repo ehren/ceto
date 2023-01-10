@@ -1,6 +1,21 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_another_prob():
+    parse(r"""
+    
+# if (1+std.array<int, 30>()[5]:
+#     pass
+# )
+    
+# std.array<int, 30>()
+# std.array<int>
+array<int>
+pass
+    
+    """)
+
+
 def test_non_left_recursive_impl():
     parse(r"""
     
@@ -9,7 +24,13 @@ def test_non_left_recursive_impl():
 # foo(1,2)()
 # foo(1,2)(1,2)
 # x.operator("+")(y)
-x.foo(a, b)(y)
+# x.foo(a, b)(y)
+# foo[a][a]
+# foo[a]()
+# foo()[0]
+foo()[5]  
+foo(1,2)[5]
+foo[5][5][5][5][5][5]()()()[5][5] # no 
     
     """)
 
@@ -19,23 +40,23 @@ def test_call_array_access():
 
 # needs "call_array_access" separate definition
 foo()[5]  
-# foo(1,2)[5]
-# foo[5][5][5][5][5][5]
-# foo[5][5][5][5][5][5]()
-# foo[5][5][5][5][5][5]()()
-# foo[5][5][5][5][5][5]()()()
+foo(1,2)[5]
+foo[5][5][5][5][5][5]
+foo[5][5][5][5][5][5]()
+foo[5][5][5][5][5][5]()()
+foo[5][5][5][5][5][5]()()()
 foo[5][5][5][5][5][5]()()()[5] # yes^
-# foo[5][5][5][5][5][5]()()()[5][5] # no 
-# foo()[5][5]  # no
-# foo()[5][5][5]  # no
-# foo()()[5][5][5]
-# foo()()()[5][5][5]
-# 1+foo()()()[5][5][5]
-# 1+foo()()[5]
+foo[5][5][5][5][5][5]()()()[5][5] # no 
+foo()[5][5]  # no
+foo()[5][5][5]  # no
+foo()()[5][5][5]
+foo()()()[5][5][5]
+1+foo()()()[5][5][5]
+1+foo()()[5]
 
 # TODO: doesn't parse:
-# foo()[5][5]()
-# foo()[5]()
+foo()[5][5]()
+foo()[5]()
 
 # these worked before
 foo[5][5]
@@ -253,3 +274,5 @@ else:
 """)
 
 # test_array_dict()
+# test_call_array_access()
+# test_non_left_recursive_impl()

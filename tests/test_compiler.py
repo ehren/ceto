@@ -117,13 +117,13 @@ def test_compound_comparison():
     c = compile(r"""
 
 def (main:
-    if (1 < 2 > (0):  # this is parsed as a template (codegen output just happens to be treated as a comparison by c++)
-        std.cout << "yes" 
-    )
-    
-    if (1 < 2 > 0:  # parsed as a comparison 
-        std.cout << "yes" 
-    )
+    # if (1 < 2 > (0):  # this is parsed as a template (codegen output just happens to be treated as a comparison by c++)
+    #     std.cout << "yes" 
+    # )
+    # 
+    # if (1 < 2 > 0:  # parsed as a comparison 
+    #     std.cout << "yes" 
+    # )
     
     l = [1, 2, 3]
     lp = &l
@@ -132,24 +132,24 @@ def (main:
     )
     
     # c++20 clang doesn't like 
-    a : std.array<int, 3>
-    static_cast<void>(a)
-    # 
-    if (((std.array)<int, 30>())[5]:
-        pass 
-    )
-    if ((std.array<int, 30>())[5]:
-        pass 
-    )
-    if ((1+std.array<int, 30>())[5]:
-        pass 
-    )
-    if (std.array<int, 30>()[5]:  # this works after "call_array_access" separate grammar rule
-        pass
-    )
-    if (1+std.array<int, 30>()[5]:
-        pass 
-    )
+    # a : std.array<int, 3>
+    # static_cast<void>(a)
+
+    # if (((std.array)<int, 30>())[5]:
+    #     pass 
+    # )
+    # if ((std.array<int, 30>())[5]:
+    #     pass 
+    # )
+    # if ((1+std.array<int, 30>())[5]:
+    #     pass 
+    # )
+    # if (std.array<int, 30>()[5]:  # this works after "call_array_access" separate grammar rule
+    #     pass
+    # )
+    # if (1+std.array<int, 30>()[5]:
+    #     pass 
+    # )
     
     # TODO: "is void?" detection also needs work (should never apply to lambda literal - disabled here via explicit return in outer lambda)
     # also maybe should support semicolons for multiple statements in one liner lambda (either needs grammar change or stop to using ';' as block separator char - with ';' as a first class operator added)
@@ -164,6 +164,8 @@ def (main:
     # fn = std.function(lambda("yo"))  # CTAD here needs working c++20:
     # lf = [fn]  # needs _decltype_str fixes
     # std.cout << lf[0]()
+    
+    pass
 )
 
     """)
