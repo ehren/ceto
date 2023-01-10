@@ -444,7 +444,7 @@ def _create():
 
     call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
 
-    function_call <<= ((atom | template_specialization | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
+    function_call <<= ((template_specialization | atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
 
     infix_expr <<= pp.infix_notation(
         expr,
