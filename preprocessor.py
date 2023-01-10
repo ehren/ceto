@@ -141,6 +141,16 @@ def preprocess(file_object):
                         parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
                 elif char == "<":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        # doesn't take parenthesized identifiers into account:
+                        # ident = ""
+                        # for c in reversed(line[:n - 1]):
+                        #     if c.isspace():
+                        #         if ident:
+                        #             break
+                        #     else:
+                        #         ident += c
+                        # if ident.isidentifier():
+                        #    # it's definitely a template
                         is_it_a_template_stack.append(OpenAngle)
                 elif char == ">":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:

@@ -364,7 +364,8 @@ def _create():
     cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     atom = (
-        real
+        template_specialization
+        | real
         | integer
         | cdblquoted_str
         | quoted_str
@@ -415,7 +416,7 @@ def _create():
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
     ack = pp.Suppress("\x06")
-    template_specialization <<= ((atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
+    template_specialization <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
@@ -429,10 +430,10 @@ def _create():
 
     call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
 
-    function_call <<= ((template_specialization | atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
+    function_call <<= ((atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
 
     infix_expr <<= pp.infix_notation(
-        function_call | template_specialization | atom,
+        function_call | atom,
         [
             (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)

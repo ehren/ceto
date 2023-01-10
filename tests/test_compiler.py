@@ -117,9 +117,12 @@ def test_compound_comparison():
     c = compile(r"""
 
 def (main:
-    if (1 < 2 > (0):  # this is parsed as a template (codegen output just happens to be treated as a comparison by c++)
-        std.cout << "yes" 
-    )
+    # this is now regarded as a template by the preprocessor but not the parser
+    # (resulting in a parse error). This seems acceptable (rather than allowing dubious template like things that aren't templates)
+    # TODO better error message upon encountering a parse error due to presence of template disambiguation char
+    # if (1 < 2 > (0):
+    #     std.cout << "yes" 
+    # )
 
     if (1 < 2 > 0:  # parsed as a comparison 
         std.cout << "yes" 
@@ -169,7 +172,7 @@ def (main:
 
     """)
 
-    assert c == "yesyesokhi"
+    assert c == "yesokhi"
 
 
 def test_range_signedness():
