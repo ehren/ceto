@@ -214,6 +214,10 @@ def gensym(prefix=None):
     return pre + str(counter)
 
 
+def creates_new_variable_scope(e: Node) -> bool:
+    return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
+
+
 def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
@@ -231,12 +235,9 @@ def codegen_if(ifcall : Call, cx):
 
     assigns = []
 
-    def stop(n):
-        return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
-
     for scope in scopes:
         # assigns.extend(find_all(scope, test=lambda n: (isinstance(n, Assign) and not (isinstance(n.parent, Call) and n.parent.func.name == 'if')), stop=stop))
-        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=stop))
+        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
 
     print("all if assigns", list(assigns))
 
@@ -694,13 +695,10 @@ def codegen_def(defnode: Call, cx):
     elif name == "main":
         return_type = "int"
     else:
-        def stop(n):
-            return isinstance(n, Block) and n.parent.func.name not in ["if", "while"]
-
         return_type = "auto"
         found_return = False
         for b in block.args:
-            for ret in find_all(b, test=is_return, stop=stop):
+            for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
                 found_return = True
                 if is_void_return(ret):
                     # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)

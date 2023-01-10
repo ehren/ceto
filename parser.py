@@ -177,8 +177,14 @@ class Call(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
     def __init__(self, tokens):
-        self.func = tokens[0]
-        self.args = tokens.as_list()[1:]
+        tokens = tokens.as_list()
+        if len(tokens) == 2:
+            self.func = tokens[0]
+            self.args = tokens[1]
+        else:
+            assert len(tokens) > 2
+            self.func = Call(pp.ParseResults(tokens[:-1]))
+            self.args = tokens[-1]
         # print("callargs", self.args)
         # print("done")
 
@@ -431,7 +437,9 @@ def _create():
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
-    function_call <<= ((expr | (lparen + infix_expr + rparen)) + lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen).set_parse_action(Call)
+    call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
+
+    function_call <<= ((expr | (lparen + infix_expr + rparen)) + pp.OneOrMore(pp.Group(call_args))).set_parse_action(Call)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
 
