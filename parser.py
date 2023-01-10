@@ -5,6 +5,11 @@
 #
 import pyparsing as pp
 
+import sys
+sys.setrecursionlimit(2**13)
+# pp.ParserElement.enable_left_recursion()
+pp.ParserElement.enable_packrat(2**20)
+
 import io
 
 from preprocessor import preprocess
@@ -333,12 +338,6 @@ class Module(Block):
         self.func = "Module"
 
 
-import sys
-sys.setrecursionlimit(20000)
-
-pp.ParserElement.enable_left_recursion()
-
-
 def _create():
 
 
@@ -356,8 +355,6 @@ def _create():
     dict_literal = pp.Forward()
     braced_literal = pp.Forward()
     function_call = pp.Forward()
-    array_access = pp.Forward()
-    call_array_access = pp.Forward()
     template_specialization = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
@@ -420,34 +417,22 @@ def _create():
     ack = pp.Suppress("\x06")
     template_specialization <<= ((atom | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
 
-    expr = (
-        # call_array_access
-
-        function_call
-            # |array_access
-            | template_specialization
-            | atom
-    )
-
-
-    # call_array_access <<= (function_call + pp.OneOrMore(pp.Group(array_access_args))).set_parse_action(ArrayAccess)
-
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
-    lparen = pp.Literal("(")  # don't pp.Suppress
+    # don't pp.Suppress these to allow post-parse array vs call detection
+    lparen = pp.Literal("(")
     rparen = pp.Literal(")")
     lbrack = pp.Literal("[")
     rbrack = pp.Literal("]")
 
     array_access_args = lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack
-    # array_access <<= ((atom | template_specialization | function_call | call_array_access | (lparen + infix_expr + rparen)) + pp.OneOrMore(pp.Group(array_access_args))).set_parse_action(ArrayAccess)
 
     call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
 
     function_call <<= ((template_specialization | atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
 
     infix_expr <<= pp.infix_notation(
-        expr,
+        function_call | template_specialization | atom,
         [
             (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
@@ -471,7 +456,6 @@ def _create():
             (pp.Keyword("return")|pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, UnOp),
         ],
     ).set_parse_action(_InfixExpr)
-
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(Module)
 
