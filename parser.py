@@ -377,22 +377,6 @@ def _create():
         | ident
     )
 
-    expop = pp.Literal("^")
-    signop = pp.oneOf("+ -")
-    multop = pp.oneOf("* / %")
-    plusop = pp.oneOf("+ -")
-    colon = pp.Literal(":")
-    dot = pp.Literal(".")
-
-    _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
-    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
-    comparisons = _compar_atoms.pop()
-    for c in _compar_atoms:
-        comparisons |= c
-
-    def andanderror(*t):
-        raise ParserError("don't use '&&'. use 'and' instead.", *t)
-
     tuple_literal <<= (
         # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
         # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
@@ -421,25 +405,45 @@ def _create():
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
     # don't pp.Suppress these to allow post-parse array vs call detection
-    lparen = pp.Literal("(")
-    rparen = pp.Literal(")")
-    lbrack = pp.Literal("[")
-    rbrack = pp.Literal("]")
+    unsupressed_lparen = pp.Literal("(")
+    unsupressed_rparen = pp.Literal(")")
+    unsupressed_lbrack = pp.Literal("[")
+    unsupressed_rbrack = pp.Literal("]")
 
-    array_access_args = lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + rbrack
+    array_access_args = unsupressed_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + unsupressed_rbrack
 
-    call_args = lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + rparen
+    call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
 
     function_call <<= ((atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
+
+    signop = pp.oneOf("+ -")
+    multop = pp.oneOf("* / %")
+    plusop = pp.oneOf("+ -")
+    colon = pp.Literal(":")
+    dot = pp.Literal(".")
+    scope_resolution_op = pp.Literal("::")
+    arrow_op = pp.Literal("->")
+    not_op = pp.Keyword("not")
+    star_op = pp.Literal("*")
+    amp_op = pp.Literal("&")
+
+    _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
+    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
+    comparisons = _compar_atoms.pop()
+    for c in _compar_atoms:
+        comparisons |= c
+
+    def andanderror(*t):
+        raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
         function_call | atom,
         [
-            (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
-            (dot|pp.Literal("->"), 2, pp.opAssoc.LEFT, AttributeAccess),
-            (pp.Keyword("not") | pp.Literal("*") | pp.Literal("&"), 1, pp.opAssoc.RIGHT, UnOp),
-            (expop, 2, pp.opAssoc.RIGHT, BinOp),
+            (scope_resolution_op, 2, pp.opAssoc.LEFT, AttributeAccess),
+            (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
+            (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, UnOp),
+            # (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
             (multop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (plusop, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
@@ -447,7 +451,7 @@ def _create():
             (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (comparisons, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
-            (pp.Literal("&"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
+            (amp_op, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Literal("^"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Literal("|"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
