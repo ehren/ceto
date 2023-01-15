@@ -1210,18 +1210,21 @@ def codegen_node(node: Node, cx: Context):
 
             declared_type = False
 
-            if isinstance(node.lhs, Identifier) and not isinstance(node.rhs, ListLiteral) and not is_lambda_rhs_with_return_type:
+            if isinstance(node.lhs, Identifier):  # lang design change: types must be on lhs always:  # and not isinstance(node.rhs, ListLiteral) and not is_lambda_rhs_with_return_type:
                 lhs_str = node.lhs.name
-                types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
-                if types:
-                    assert len(set(types)) == 1
-                    lhs_type_str = codegen_type(node.lhs, types[0], cx)
+                # types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
+                # if types:
+                if node.lhs.declared_type:
+                    # assert len(set(types)) == 1
+                    # lhs_type_str = codegen_type(node.lhs, types[0], cx)
+                    lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     # if isinstance(node.rhs, ListLiteral):
                     #     lhs_type_str = f"std::vector::<{lhs_str}>"
                     lhs_str = lhs_type_str + " " + lhs_str
                     declared_type = True
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
+                # ^^ TODO delete or revise this comment (lambda return types need work anyway)
                 lhs_str = codegen_node(node.lhs, cx)
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
@@ -1284,8 +1287,9 @@ def codegen_node(node: Node, cx: Context):
     elif isinstance(node, ListLiteral):
 
         list_type = node.declared_type
-        if list_type is None and isinstance(node.parent, Assign):
-            list_type = node.parent.declared_type or node.parent.rhs.declared_type or node.parent.lhs.declared_type
+        # if list_type is None and isinstance(node.parent, Assign):
+        #     list_type = node.parent.declared_type or node.parent.rhs.declared_type or node.parent.lhs.declared_type
+        # lang design change: element type must be on rhs always
         elements = [codegen_node(e, cx) for e in node.args]
 
         if list_type is not None:
