@@ -685,7 +685,8 @@ def codegen_def(defnode: Call, cx):
             params.append("const " + t + "& " + arg.name)
             typenames.append("typename " + t)
 
-    template = "inline "
+    template = ""
+    inline = "inline "
     non_trailing_return = ""
     if has_non_trailing_return:
         non_trailing_return_node = name_node.declared_type
@@ -696,12 +697,16 @@ def codegen_def(defnode: Call, cx):
             if len(typenames) > 0:
                 raise CodeGenError("Explicit template function with generic params", defnode)
             template = ""
+        # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
+        # TODO?: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
     elif is_interface_method or name == "main":
         assert len(typenames) == 0
         template = ""
+        inline = ""
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
+        inline = ""
 
     if return_type_node is not None:
         # return_type = codegen_type(name_node, name_node.declared_type)
@@ -731,7 +736,7 @@ def codegen_def(defnode: Call, cx):
         # revisit non-virtual for unique_ptr and value structs
         funcdef = "virtual ~" + class_name + "()"
     else:
-        funcdef = "{}{}auto {}({}) -> {}".format(template, non_trailing_return, name, ", ".join(params), return_type)
+        funcdef = "{}{}{}auto {}({}) -> {}".format(template, non_trailing_return, inline, name, ", ".join(params), return_type)
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 

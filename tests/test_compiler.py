@@ -7,18 +7,23 @@ def test_complicated_function_directives():
 
     c = compile(r"""
     
-def (foo: static, 
-     x, y:
+def (foo:static, x, y:
+    return x + y
+) : int
+
+def (foo2: extern:c"C",  # TODO special case extern:"C" as non std::string literal
+        x: int,
+        y: int:
     return x + y
 ) : int
     
 def (main:
-    std.cout << foo(1, 2)
+    std.cout << foo(1, 2) << foo2(3, 4)
 )
     
     """)
 
-    assert c == "3"
+    assert c == "37"
 
     # TODO T:typename = typename:blah needs work
     0 and compile(r"""
