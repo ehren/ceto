@@ -1199,10 +1199,8 @@ def codegen_node(node: Node, cx: Context):
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             is_lambda_rhs_with_return_type = False
 
-            # Handle template declaration for an empty list by searching for uses
-            if isinstance(node.rhs, ListLiteral) and not node.rhs.args:
-                rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
-            elif node.declared_type is not None and isinstance(node.lhs, Identifier) and isinstance(node.rhs, Call) and node.rhs.func.name == "lambda":
+            if node.declared_type is not None and isinstance(node.rhs, Call) and node.rhs.func.name == "lambda":
+                # TODO lambda return types need fixes
                 lambdaliteral = node.rhs
                 is_lambda_rhs_with_return_type = True
                 # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
@@ -1210,10 +1208,11 @@ def codegen_node(node: Node, cx: Context):
                     raise CodeGenError("Two return types defined for lambda:", node.rhs)
                 lambdaliteral.declared_type = node.declared_type
                 rhs_str = codegen_lambda(lambdaliteral, cx)  # codegen_node would suffice here but we'll be direct
+            elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None:
+                # handle untyped empty list literal by searching for uses
+                rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
             else:
                 rhs_str = codegen_node(node.rhs, cx)
-
-            declared_type = False
 
             if isinstance(node.lhs, Identifier):  # lang design change: types must be on lhs always:  # and not isinstance(node.rhs, ListLiteral) and not is_lambda_rhs_with_return_type:
                 lhs_str = node.lhs.name
@@ -1225,8 +1224,8 @@ def codegen_node(node: Node, cx: Context):
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     # if isinstance(node.rhs, ListLiteral):
                     #     lhs_type_str = f"std::vector::<{lhs_str}>"
-                    lhs_str = lhs_type_str + " " + lhs_str
-                    declared_type = True
+                    # lhs_str = lhs_type_str + " " + lhs_str  # this would allow implicit conversion
+                    return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "  # use brace style to disallow implicit conversion
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 # ^^ TODO delete or revise this comment (lambda return types need work anyway)
@@ -1234,7 +1233,7 @@ def codegen_node(node: Node, cx: Context):
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
 
-            if not declared_type and not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+            if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
                 assign_str = "auto " + assign_str
 
             cpp.write(assign_str)

@@ -1,6 +1,22 @@
 from compiler import compile
 
 
+def test_non_narrowing_typed_assignment():
+    try:
+        c = compile(r"""
+    
+def (main:
+    f: float = 0
+    x: int = f
+)
+        """)
+    except Exception as e:
+        # type 'float' cannot be narrowed to 'int' in initializer list
+        # assert 'float' in cpp_errors
+        pass
+    else:
+        assert 0
+
 
 def test_complicated_function_directives():
     # non trailing "return" etc
