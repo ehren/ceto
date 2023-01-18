@@ -1670,40 +1670,27 @@ def (main:
 
 
 def test_reset_ptr():
+
+    # of course overriding == for the shared_ptr type (taking dubious care not to step on nullptr-checks)
+    # should be avoided in the normal course of things
     c = compile(r"""
 class (Foo:
     def (bar:
-        printf("bar %d\n", this.x)
+        printf("bar %d\n", self.x)
     )
     
     def (destruct:
         printf("dead\n")
     )
     
-    # def (handleComp, other: Foo:
     def (operator("=="), other: Foo:
-        printf("in handleComp - both foo\n")
-        return this.x == other.x
+        printf("in == method - both foo\n")
+        return self.x == other.x
     )
-    #def (handleComp, other: nullptr_t:
-    #    printf("in handleComp - other nullptr\n")
-        # return false
-    #    return other == 5
-    #)
-    # def (handleComp, other:
     def (operator("=="), other:
-        printf("in handleComp - other not foo\n")
-        # return false
+        printf("in == method - other not foo\n")
         return other == 5
     )
-    
-    # def (operator("=="), other:
-    #     printf("in oper ==\n")
-    #     # return true
-    #     # return handleComp(other)
-    #     # return other.handleComp(this)
-    #     return this.handleComp(other)
-    # )
 )
 
 def (operator("=="), f: Foo, other:
@@ -1749,9 +1736,9 @@ def (main:
 
     assert c.strip() == r"""
 bar 0
-in handleComp - other not foo
+in == method - other not foo
 overload == works
-in handleComp - both foo
+in == method - both foo
 same
 dead
 dead
