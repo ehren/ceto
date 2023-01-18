@@ -33,64 +33,62 @@ cpp_preamble = """
 //#include <numeric>
 
 
+namespace ceto {
+
 struct object {
 };
 
 struct shared_object : public std::enable_shared_from_this<shared_object>, object {
-    virtual ~shared_object() {
-    };
-    
-    template <typename Derived>
-    std::shared_ptr<Derived> shared_from_base() {
-        return std::static_pointer_cast<Derived>(shared_from_this());
-    }
 };
 
-template<typename T>
-T* get_ptr(T & obj) { return &obj; }  // should be compiled away when immediately derefed
+// mad = maybe allow deref
 
-// seemingly needed for calling methods on string temporaries...
 template<typename T>
-T* get_ptr(T && obj) { return &obj; }
+T* mad(T & obj) { return &obj; }   // no autoderef
+
+// e.g. string temporaries
+template<typename T>
+T* mad(T && obj) { return &obj; }  // no autoderef
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-get_ptr(std::shared_ptr<T>& obj) { return obj; }
+mad(std::shared_ptr<T>& obj) { return obj; }  // autoderef
 
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-//get_ptr(std::shared_ptr<T> obj) { return obj; }
+//mad(std::shared_ptr<T> obj) { return obj; }
 
 // odd alternative (at least no warnings):
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-//get_ptr(std::shared_ptr<T>&& obj) { return std::move(obj); }
+//mad(std::shared_ptr<T>&& obj) { return std::move(obj); }
 // this is surely better:
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-get_ptr(std::shared_ptr<T>&& obj) { return obj; }
+mad(std::shared_ptr<T>&& obj) { return obj; }
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
-get_ptr(const std::shared_ptr<T>& obj) { return obj; }
+mad(const std::shared_ptr<T>& obj) { return obj; }
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
-get_ptr(std::unique_ptr<T>& obj) { return obj; }
+mad(std::unique_ptr<T>& obj) { return obj; }
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
-get_ptr(const std::unique_ptr<T>& obj) { return obj; }
+mad(const std::unique_ptr<T>& obj) { return obj; }
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, T*>
-get_ptr(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
+mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
+                                 // TODO implement 'self' and remove the raw autoderef (unsafe)
 
 template<typename T>
 std::enable_if_t<!std::is_base_of_v<object, T>, T**>
-get_ptr(T*&& obj) { return &obj; } // regular pointer - no autoderef!
+mad(T*&& obj) { return &obj; } // regular pointer - no autoderef!
 // ^ the forwarding reference to pointer would allow us to wrap arbitrary identifiers
-// and not just attribute access targets e.g. get_ptr(printf)("hi %d", get_ptr(x));
+// and not just attribute access targets e.g. *mad(printf)("hi %d", *mad(x));
 // (though this seems no longer needed with the current autoderef semantics)
 
 
@@ -168,8 +166,7 @@ struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std
    enum { value = true };
 };
 
-
-
+} // namespace
 """
 
 
@@ -454,33 +451,17 @@ def codegen_class(node : Call, cx):
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
-        interface_def_str += "struct " + str(interface_type) + " : public object {"
+        interface_def_str += "struct " + str(interface_type) + " : ceto::object {"  # this shouldn't be necessary TODO: remove bad unsafe autoderef of raw this pointer
         for method in defined_interfaces[interface_type]:
             print("method",method)
             interface_def_str += inner_indt + interface_method_declaration_str(method, cx)
-        # TODO ensure destructors aren't marked as interface methods etc
-        # related TODO: ordinary classes (shared_ptr managed) shouldn't receive a virtual destructor unless inherited from.
-        # related TODO 2: no more special treatment of 'object' in user code (not needed for get_ptr magic - TODO rename its 'object' (TODO utility code in c++ namespace))
-        interface_def_str += inner_indt + "virtual ~" + str(interface_type) + "() {}"
+        interface_def_str += inner_indt + "virtual ~" + str(interface_type) + "() = default;"
         interface_def_str +=  "};\n\n"
-
-        # interface_cpp = "class "
-        #
-        # new = RebuiltCall(b.func, b.args)
-            # new.parent = b.parent
-            # new = build_parents(new)
-            # assert isinstance(new.args[-1], Block)
-            # needs to build parents: (anyway forget this)
-            # new.args[-1].args = [RebuiltCall(func=RebuiltIdentifer("printf"), args=[RebuiltStringLiteral("oh no unimplemented!\n")])]
-            # method_declarations.append(codegen_def(new, indent_str))
 
     cpp += indt + "};\n\n"
 
-    if local_interfaces:
-        # TODO add public
-        class_header = "struct " + str(name) + " : " + ", ".join([str(i) for i in local_interfaces] + ["shared_object"])
-    else:
-        class_header = "struct " + str(name) + " : public shared_object"
+    default_inherits = [str(i) for i in local_interfaces] + ["ceto::shared_object"]
+    class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
     if typenames:
@@ -1265,25 +1246,11 @@ def codegen_node(node: Node, cx: Context):
                     if is_list:
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs, cx), codegen_node(apnd.args[0], cx))
 
-                # elif isinstance(node.rhs, Call) and isinstance(operator_node := node.rhs.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                #     binop_str = "(*get_ptr(" + codegen_node(node.lhs) + ")).operator" + operator_name_node.func + "(" + ",".join(codegen_node(a) for a in node.rhs.args) + ")"
-
-
             if binop_str is None:
 
                 if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
-
-                    if isinstance(node.lhs, Call):
-                        if class_node := find_defining_class(node.lhs.func):
-                            # template get_ptr stuff (which is a bit dubious taking unique_ptr by reference then taking address...) won't work with a temporary
-                            # so detect attribute access of constructor call to class marked unique and print '->' instead
-                            if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                                return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
-
-                    cpp.write("get_ptr(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
-                else: # (need to wrap indirect attribute accesses): # No need for ^ any more (all identifiers are now wrapped in get_ptr (except non 'class' defined Call funcs)
-                    # cpp.write(separator.join([codegen_node(node.lhs), node.func, codegen_node(node.rhs)]))
-                    # cpp.write("(*get_ptr(" + codegen_node(node.lhs) + "))" + node.func + "(*get_ptr(" + codegen_node(node.rhs) + "))")  # no matching call to get_ptr for std::endl etc
+                    cpp.write("ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
+                else:
                     cpp.write(separator.join([codegen_node(node.lhs, cx), node.func, codegen_node(node.rhs, cx)]))
             else:
                 cpp.write(binop_str)

@@ -617,30 +617,17 @@ class (A:
 
 class (S:
     def (foo:
-        
         # TODO: this is how "return self" should behave
+        return std.static_pointer_cast<S::element_type>(shared_from_this())
+    )
+    
+    def (foo2:
+        # alternately
+        return std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>(shared_from_this())
+        
+        # no need for overparenthization any more (debatable if we need to parse this now that other template parse improvements have been made)
         return (std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>)(shared_from_this())
-        
-        # this works (leave as unreachable code) but there's no need for a manual/header defined 'shared_from_base'
-        return (shared_from_base<std.remove_reference<decltype(*this)>::type>)()
-        return (shared_from_base<(std.remove_reference)<decltype(*this)>::type>)()  # also, overparenthesization here is not necessary
-        
-        # return shared_from_base<S>()   # parsed as compound comparison between idents and empty tuple.
-        # return (shared_from_base<S>)()
-        # ^^ S in its own method's scope now parsed as shared_ptr<S>
-        # this works now (but leave as unreachable)
-        return (shared_from_base<S::element_type>)()
-        
-        # ignore
-        # old ideal with 'classof' (::element_type is fine although maybe classof still useful in other contexts):
-        # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
-        # return shared_from_base<classof(S)>()
-        # return (std.static_pointer_cast<classof(S)>)(shared_from_this());
-        # 
-        # another parse issue (for very simple / improper implementations of "no compound comparisons mixed with template-ids"):
-        # parses ok with current rules
-        # buffer << (1,2) >> kk
-    ) #: S
+    ) : S  # no need for return type (but S correctly handles as shared_ptr<S> here)
 )
 
 # TODO rules:
@@ -657,14 +644,10 @@ def (main:
     s2 = s.foo()
     std.cout << (&s2)->use_count() << std.endl
     a = A(s)
-    # a->(shared_from_base<S>)()
-    # s->(shared_from_base<S>)()
-    # a->(shared_from_base<A>)()
-    
-    # (1,2) + (1,2)*2 parses
-    # (1,2) < (2,4)
-    
     std.cout << (&s2)->use_count() << std.endl
+    s3 = a.a.foo2()
+    std.cout << (&s)->use_count() << std.endl
+    std.cout << (&s3)->use_count() << std.endl
     
     # dyncast(B, a)
     # staticcast(B, a)  # not a good idea to make static_pointer_cast convenient
@@ -674,6 +657,7 @@ def (main:
     
     """)
 
+    assert c == "1\n2\n3\n4\n4\n"
 
 def _test_higher_precedence_colon():
     return  # Nope keeping colon at lowest precedence. Down with x: int = 0. up with x = 0 : int
