@@ -29,7 +29,7 @@ class Visitor(ast.NodeVisitor):
         return s
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        s = self.cx.indent*"    " + "def (" + node.name
+        s = "def (" + node.name
 
         # this is fine for now (relies on default visit_arguments/generic_visit)
         # but may need adjusting for keyword only args etc etc
