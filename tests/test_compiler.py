@@ -1,4 +1,9 @@
-from compiler import compile
+from compiler import compile as _compile
+
+
+def compile(s):
+    # return _compile(s, compile_cpp=False)
+    return _compile(s, compile_cpp=True)
 
 
 def test_non_narrowing_typed_assignment():

@@ -26,7 +26,7 @@ def safe_unique_filename(name, extension, basepath=""):
     return unique + extension
 
 
-def compile(s, compile_cpp=True, run=True):
+def compile(s, compile_cpp=True):
     perf_messages = []
     t = perf_counter()
     expr = parse(s)
@@ -41,8 +41,6 @@ def compile(s, compile_cpp=True, run=True):
 
     # print("code:\n", code)
     output = None
-    if run:
-        compile_cpp = True
 
     if compile_cpp:
         build_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "build")

@@ -1,6 +1,27 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_stress_parser():
+    import sys
+    old = sys.getrecursionlimit()
+    sys.setrecursionlimit(10**6)  # risks overflowing cpython stack
+
+    limit = 60
+
+    parse(r"""
+
+def (list_size, lst:
+    std.cout << "list size: " << lst.size() << std.endl
+)
+
+def (main:
+    list_size(""" + "["*limit + "1,2,3,4" + "]"*limit + """)
+)
+    """)
+
+    sys.setrecursionlimit(old)
+
+
 def test_template_call():
     parse(r"""
     
