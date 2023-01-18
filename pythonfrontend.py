@@ -31,15 +31,20 @@ class Visitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef):
         s = self.cx.indent*"    " + "def (" + node.name
 
-        if node.args.args:
-            # TODO default arguments etc
-            s += ", " + ", ".join(self.visit(node.args.args))
+        # this is fine for now (relies on default visit_arguments/generic_visit)
+        # but may need adjusting for keyword only args etc etc
+        args_str = self.visit(node.args)
+        if args_str.strip():
+            s += ", " + args_str
 
         s += ":\n"
 
         s += self.handle_visit_block(node.body)
 
         s += self.cx.indent*"    " + ")"
+
+        if node.returns:
+            s += " : " + self.visit(node.returns)
 
         return s
 
@@ -75,7 +80,9 @@ class Visitor(ast.NodeVisitor):
 
 if __name__ == "__main__":
     expr = r"""
-def main():
+# def main(argc: int, argv: ptr(ptr(char))) -> int:      # this interferes with planned function ptr syntax
+# def main(argc: const.int, argv: char.ptr.ptr) -> int:  # too confusing? also clashes with attribute access scope resolution e.g. std.vector)
+def main(argc: int, argv: char+ptr+ptr) -> int:          # maybe
     x:int = 5
 
     if x == 0:
