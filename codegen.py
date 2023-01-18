@@ -79,10 +79,11 @@ template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
 mad(const std::unique_ptr<T>& obj) { return obj; }
 
-template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, T*>
-mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
-                                 // TODO implement 'self' and remove the raw autoderef (unsafe)
+// no more raw autoderef
+//template<typename T>
+//std::enable_if_t<std::is_base_of_v<object, T>, T*>
+//mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
+//                                 // TODO implement 'self' and remove the raw autoderef (unsafe)
 
 template<typename T>
 std::enable_if_t<!std::is_base_of_v<object, T>, T**>
@@ -442,6 +443,7 @@ def codegen_class(node : Call, cx):
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
             # see how far this gets us
+            # TODO fix simple assignments
             cpp += inner_indt + codegen_node(b, cx) + ";\n\n"
 
     if uninitialized_attributes:
@@ -451,16 +453,23 @@ def codegen_class(node : Call, cx):
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
-        interface_def_str += "struct " + str(interface_type) + " : ceto::object {"  # this shouldn't be necessary TODO: remove bad unsafe autoderef of raw this pointer
+        # note that shared_ptr<interface_type> is auto derefed
+        interface_def_str += "struct " + interface_type + " : ceto::object {\n"
         for method in defined_interfaces[interface_type]:
             print("method",method)
             interface_def_str += inner_indt + interface_method_declaration_str(method, cx)
-        interface_def_str += inner_indt + "virtual ~" + str(interface_type) + "() = default;"
+        interface_def_str += inner_indt + "virtual ~" + interface_type + "() = default;\n\n"
         interface_def_str +=  "};\n\n"
 
     cpp += indt + "};\n\n"
 
-    default_inherits = [str(i) for i in local_interfaces] + ["ceto::shared_object"]
+    default_inherits = ["public " + i for i in local_interfaces]
+
+    if isinstance(node.declared_type, Identifier) and node.declared_type.name == "unique":
+        default_inherits += ["ceto::object"]
+    else:
+        default_inherits += ["ceto::shared_object"]
+
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
@@ -724,6 +733,12 @@ def codegen_def(defnode: Call, cx):
     indt = cx.indent_str()
     block_cx = cx.new_scope_context()
     block_str = codegen_block(block, block_cx)
+
+    if any(find_all(defnode, test=lambda s: isinstance(s, Identifier) and s.name == "self")):
+        # this will be a compile error in a non-member function (or a mfun of c++ class not inheriting from enable_shared_from_this)
+        # TODO still allow self.x to work in member function of unique class (but not return self etc)
+        block_str = block_cx.indent_str() + "const auto self = std::static_pointer_cast<std::remove_reference<decltype(*this)>::type>(shared_from_this());\n" + block_str
+
     # if not is_destructor and not is_return(block.args[-1]):
     #     block_str += block_cx.indent_str() + "return {};\n"
     # no longer doing this^

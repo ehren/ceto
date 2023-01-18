@@ -1533,9 +1533,11 @@ def test_for():
 
 class (Uniq:
     def (bar:
-        this.x = this.x + 1
-        printf("in bar %d %p\n", this.x, this)
-        return this.x
+        this->x = this->x + 1
+        printf("in bar %d %p\n", this->x, this)
+        return this->x
+        
+        # TODO maybe we want to allow self.a here but not return self / lambda capture of self etc etc
     )
 ): unique
 
@@ -2190,14 +2192,12 @@ class (Foo: #Bar :
         printf("in foo method %p\n", this)
 
         bar()
-        this.bar()
-        printf("bar attribute access %d\n", this.x)
+        self.bar()
+        printf("bar attribute access %d\n", self.x)
         printf("bar attribute access %d\n", x)
         # shared_from_base()
-        return this
+        return self
     )
-
-
 )
 
 
