@@ -1627,8 +1627,8 @@ class (Foo:
     a:int = 5
     
     def (bar:
-        printf("bar %d\n", this.a)
-        return this.a
+        printf("bar %d\n", this->a)
+        return this->a
     )
 ): unique
 

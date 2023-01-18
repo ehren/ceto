@@ -1263,6 +1263,16 @@ def codegen_node(node: Node, cx: Context):
 
             if binop_str is None:
 
+                if isinstance(node.lhs, Call):
+                    if class_node := find_defining_class(node.lhs.func):
+                        # mad stuff won't currently work with a temporary here:
+                        # detect attribute access of constructor call to class marked unique and print '->' instead
+                        if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+                            # without (test_unique_ptr):
+                            # error: no member named 'bar' in 'std::__1::unique_ptr<Foo, std::__1::default_delete<Foo> >'
+                            #     ceto::mad(std::make_unique<decltype(Foo())>())->bar();
+                            return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
+
                 if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
                     cpp.write("ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
                 else:
