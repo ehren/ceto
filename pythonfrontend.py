@@ -82,7 +82,9 @@ if __name__ == "__main__":
     expr = r"""
 # def main(argc: int, argv: ptr(ptr(char))) -> int:      # this interferes with planned function ptr syntax
 # def main(argc: const.int, argv: char.ptr.ptr) -> int:  # too confusing? also clashes with attribute access scope resolution e.g. std.vector)
-def main(argc: int, argv: char+ptr+ptr) -> int:          # maybe
+# def main(argc: int, argv: char+ptr+ptr) -> int:        # this is also problematic e.g. explicit non-type template parameters (although no template syntax in python anyway)
+# def main(argc: int, argv: "char**") -> int:         # problematic for same reasons
+def main(argc: types("const int"), argv: types(char,ptr,ptr)) -> int:  # allow string or list. would also allow: template(std.vector, types(int,ptr))
     x:int = 5
 
     if x == 0:
