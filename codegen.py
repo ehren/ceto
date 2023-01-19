@@ -748,28 +748,32 @@ def codegen_def(defnode: Call, cx):
             return_type = "void"
 
     if is_destructor:
-        # revisit non-virtual for unique_ptr and value structs
-        funcdef = "virtual ~" + class_name + "()"
+        # TODO allow def (destruct:virtual:
+        #                pass
+        #            )
+        # TODO: 'virtual' if class is 'inheritable' ('overridable'? 'nonfinal'?) (c++ class marked 'final' otherwise)
+        # not marked virtual because inheritance not implimented yet (note that interface abcs have a virtual destructor)
+        funcdef = "~" + class_name + "()"
     else:
         funcdef = "{}{}{}auto {}({}) -> {}".format(template, non_trailing_return, inline, name, ", ".join(params), return_type)
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
-    is_self = lambda a: isinstance(a, Identifier) and a.name == "self"
-
+    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
     need_self = False
+    for s in find_all(defnode, test=lambda a: a.name == "self"):
 
-    for s in find_all(defnode, test=is_self):
+        replace_self = True
         p = s
-        can_replace = True
         while p is not defnode:
-            if isinstance(p, Call) and p.func.name == "lambda":
-                can_replace = False
+            if creates_new_variable_scope(p):
+                # 'self.foo' inside e.g. a lambda body
+                replace_self = False
                 break
             p = p.parent
 
-        if can_replace and isinstance(s.parent, AttributeAccess) and s.parent.lhs is s:
-            # replace self.x = y in a method (but not an inner lambda!) with this->x = y
+        if replace_self and isinstance(s.parent, AttributeAccess) and s.parent.lhs is s:
+            # rewrite as this->foo:
             this = RebuiltIdentifer("this")
             arrow = ArrowOp(args=[this, s.parent.rhs])
             arrow.parent = s.parent.parent
@@ -787,7 +791,7 @@ def codegen_def(defnode: Call, cx):
     block_str = codegen_block(block, block_cx)
 
     if need_self:
-        # (note: this will be a compile error in a non-member function)
+        # (note: this will be a compile error in a non-member function / non-shared_from_this deriving class)
         block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
 
     # if not is_destructor and not is_return(block.args[-1]):

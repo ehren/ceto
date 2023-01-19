@@ -29,7 +29,7 @@ class (Foo:
         
         # more non-trivial use of self
         
-        outer = lambda(:
+        outer = lambda (:
             std.cout << "in lambda1:" << (&self)->use_count() << "\n"
             l = lambda (:
                 std.cout << self.a << "\n"
@@ -2107,6 +2107,11 @@ def test_add_stuff():
     output = compile(r"""
 
 class (Foo:
+    # probably want to disable implicit default constructor
+    # def (init:
+    #     pass
+    # )
+
     def (operator("+"), foo:Foo:
         printf("adding foo and foo (in the member function)\n")
         return this
