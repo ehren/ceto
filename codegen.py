@@ -730,14 +730,44 @@ def codegen_def(defnode: Call, cx):
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
+    is_self = lambda a: isinstance(a, Identifier) and a.name == "self"
+
+    need_self = False
+
+    # for s in find_all(defnode, test=is_self, stop=lambda a: a is not defnode and creates_new_variable_scope(a)):
+    for s in find_all(defnode, test=is_self):
+        p = s
+        can_replace = True
+        while p is not defnode:
+            if isinstance(p, Call) and p.func.name == "lambda":
+                can_replace = False
+                break
+            p = p.parent
+
+        if can_replace and isinstance(s.parent, AttributeAccess) and s.parent.lhs is s:
+            # replace self.x = y in a method (but not an inner lambda!) with this->x = y
+            this = RebuiltIdentifer("this")
+            arrow = ArrowOp(args=[this, s.parent.rhs])
+            arrow.parent = s.parent.parent
+
+            index = s.parent.parent.args.index(s.parent)
+            s.parent.parent.args[index] = arrow
+
+            arrow.rhs.parent = arrow
+            this.parent = arrow
+        else:
+            need_self = True
+
+
     indt = cx.indent_str()
     block_cx = cx.new_scope_context()
     block_str = codegen_block(block, block_cx)
 
-    if any(find_all(defnode, test=lambda s: isinstance(s, Identifier) and s.name == "self")):
+    # if any(find_all(defnode, test=is_self)):
+    if need_self:
         # this will be a compile error in a non-member function (or a mfun of c++ class not inheriting from enable_shared_from_this)
         # TODO still allow self.x to work in member function of unique class (but not return self etc)
-        block_str = block_cx.indent_str() + "const auto self = std::static_pointer_cast<std::remove_reference<decltype(*this)>::type>(shared_from_this());\n" + block_str
+        block_str = block_cx.indent_str() + "const auto& self = std::static_pointer_cast<std::remove_reference<decltype((*this))>::type>(shared_from_this());\n" + block_str
 
     # if not is_destructor and not is_return(block.args[-1]):
     #     block_str += block_cx.indent_str() + "return {};\n"

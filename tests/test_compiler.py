@@ -6,6 +6,77 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
+
+def test_self_lambda_safe():
+    compile(r"""
+
+class (Foo:
+    a
+    def (f:
+        std.cout << self.a
+
+        
+        # DOH - 'self' implementation doesn't work when Foo is a template
+        # return std.static_pointer_cast<decltype(Foo("str"))::element_type>(shared_from_this())
+        f2 = Foo("s")
+        # return std.static_pointer_cast<decltype(*(Foo("str")))>(shared_from_this())
+        # return std.static_pointer_cast<std::remove_reference<decltype(f2)>>(shared_from_this())
+
+        # std.cout << (&self)->use_count()
+        # 
+        # lambda (:
+        #     std.cout << self.a  
+        #     return
+        # )
+    )
+)
+
+def (main:
+    Foo("yo").f()
+)
+        """)
+
+    c = compile(r"""
+class (Foo:
+    a
+    def (method:
+        std.cout << self.a
+    )
+) : unique
+
+def (main:
+    Foo(1).method()
+)
+    """)
+
+    assert c == "1"
+
+    try:
+        c = compile(r"""
+        
+class (Foo:
+    a
+    def (method:
+        std.cout << self.a  # this is fine
+        
+        lambda (:
+            std.cout << self.a   # BAD! (results in the expected error)
+            return
+        )()
+    )
+) : unique
+
+def (main:
+    Foo(1).method()
+)
+            """)
+    except Exception as e:
+        print(e)
+        # assert "error: use of undeclared identifier 'shared_from_this'" in cpp_errors
+    else:
+        assert 0
+
+
 def test_non_narrowing_typed_assignment():
     try:
         c = compile(r"""
@@ -1627,8 +1698,8 @@ class (Foo:
     a:int = 5
     
     def (bar:
-        printf("bar %d\n", this->a)
-        return this->a
+        printf("bar %d\n", self.a)
+        return self.a
     )
 ): unique
 
@@ -2485,6 +2556,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_self_lambda_safe()
     # test_complicated_function_directives()
     # test_range_signedness()
     # test_compound_comparison()
