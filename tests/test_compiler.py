@@ -8,33 +8,65 @@ def compile(s):
 
 
 def test_self_lambda_safe():
-    compile(r"""
+    c = compile(r"""
 
 class (Foo:
-    a
+    a  # template class
+    
     def (f:
-        std.cout << self.a
-
+        # rewritten as this->a:
+        std.cout << self.a << "\n"
         
-        # DOH - 'self' implementation doesn't work when Foo is a template
-        # return std.static_pointer_cast<decltype(Foo("str"))::element_type>(shared_from_this())
-        f2 = Foo("s")
-        # return std.static_pointer_cast<decltype(*(Foo("str")))>(shared_from_this())
-        # return std.static_pointer_cast<std::remove_reference<decltype(f2)>>(shared_from_this())
-
-        # std.cout << (&self)->use_count()
-        # 
-        # lambda (:
-        #     std.cout << self.a  
-        #     return
-        # )
+        # non-trivial use of 'self': (shared_from_this())
+        std.cout << "in f:" << (&self)->use_count() << "\n"
+    )
+    
+    def (f2:
+        # rewritten as this->a:
+        std.cout << self.a << "\n"
+        
+        # non-trivial use of self
+        std.cout << "in f2:" << (&self)->use_count() << "\n"
+        
+        # more non-trivial use of self
+        
+        outer = lambda(:
+            std.cout << "in lambda1:" << (&self)->use_count() << "\n"
+            l = lambda (:
+                std.cout << self.a << "\n"
+                return
+            )
+            l()
+            std.cout << "in lambda2:" << (&self)->use_count() << "\n"
+            return
+        )
+        outer()
+        
+        std.cout << "in f2:" << (&self)->use_count() << "\n"
+    )
+    
+    def (destruct:
+        std.cout << "dead\n"
     )
 )
 
 def (main:
     Foo("yo").f()
+    Foo("yo").f2()
 )
-        """)
+    """)
+
+    assert c == r"""yo
+in f:2
+dead
+yo
+in f2:2
+in lambda1:3
+yo
+in lambda2:4
+in f2:3
+dead
+"""
 
     c = compile(r"""
 class (Foo:
@@ -72,7 +104,7 @@ def (main:
             """)
     except Exception as e:
         print(e)
-        # assert "error: use of undeclared identifier 'shared_from_this'" in cpp_errors
+        # assert "candidate template ignored: could not match 'enable_shared_from_this' against 'Foo'" in cpp_errors
     else:
         assert 0
 

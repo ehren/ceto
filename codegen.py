@@ -41,6 +41,31 @@ struct object {
 struct shared_object : public std::enable_shared_from_this<shared_object>, object {
 };
 
+// answer from https://stackoverflow.com/questions/657155/how-to-enable-shared-from-this-of-both-parent-and-derived/47789633#47789633
+// (perhaps it's possible to use the accepted answer without freestanding funcs
+//  however this solution works with template classes (naive insertion of:
+//      const auto& self = std::static_pointer_cast<std::remove_reference<decltype((*this))>::type>(shared_from_this())
+//  does not!)
+    
+template <typename Base>
+inline std::shared_ptr<Base>
+shared_from_base(std::enable_shared_from_this<Base>* base) {
+    return base->shared_from_this();
+}
+
+template <typename Base>
+inline std::shared_ptr<const Base>
+shared_from_base(std::enable_shared_from_this<Base> const* base) {
+    return base->shared_from_this();
+}
+
+template <typename That>
+inline std::shared_ptr<That>
+shared_from(That* that) {
+    return std::static_pointer_cast<That>(shared_from_base(that));
+}
+
+
 // mad = maybe allow deref
 
 template<typename T>
@@ -765,9 +790,12 @@ def codegen_def(defnode: Call, cx):
 
     # if any(find_all(defnode, test=is_self)):
     if need_self:
-        # this will be a compile error in a non-member function (or a mfun of c++ class not inheriting from enable_shared_from_this)
-        # TODO still allow self.x to work in member function of unique class (but not return self etc)
-        block_str = block_cx.indent_str() + "const auto& self = std::static_pointer_cast<std::remove_reference<decltype((*this))>::type>(shared_from_this());\n" + block_str
+        # this doesn't work with a temblated class:
+        # block_str = block_cx.indent_str() + "const auto& self = std::static_pointer_cast<std::remove_reference<decltype((*this))>::type>(shared_from_this());\n" + block_str
+
+        # use newly added freestanding helper:
+        # (note: this will be a compile error in a non-member function)
+        block_str = block_cx.indent_str() + "const auto& self = ceto::shared_from(this);\n" + block_str
 
     # if not is_destructor and not is_return(block.args[-1]):
     #     block_str += block_cx.indent_str() + "return {};\n"
