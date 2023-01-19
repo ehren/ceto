@@ -759,7 +759,6 @@ def codegen_def(defnode: Call, cx):
 
     need_self = False
 
-    # for s in find_all(defnode, test=is_self, stop=lambda a: a is not defnode and creates_new_variable_scope(a)):
     for s in find_all(defnode, test=is_self):
         p = s
         can_replace = True
@@ -783,19 +782,13 @@ def codegen_def(defnode: Call, cx):
         else:
             need_self = True
 
-
     indt = cx.indent_str()
     block_cx = cx.new_scope_context()
     block_str = codegen_block(block, block_cx)
 
-    # if any(find_all(defnode, test=is_self)):
     if need_self:
-        # this doesn't work with a temblated class:
-        # block_str = block_cx.indent_str() + "const auto& self = std::static_pointer_cast<std::remove_reference<decltype((*this))>::type>(shared_from_this());\n" + block_str
-
-        # use newly added freestanding helper:
         # (note: this will be a compile error in a non-member function)
-        block_str = block_cx.indent_str() + "const auto& self = ceto::shared_from(this);\n" + block_str
+        block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
 
     # if not is_destructor and not is_return(block.args[-1]):
     #     block_str += block_cx.indent_str() + "return {};\n"

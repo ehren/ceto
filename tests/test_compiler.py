@@ -6,7 +6,6 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
-
 def test_self_lambda_safe():
     c = compile(r"""
 
@@ -718,9 +717,9 @@ class (A:
     a
 )
 
+# note that this approach needs adjustments for template classes (codegen now correctly handles 'self' even in template case via ceto::shared_from)
 class (S:
     def (foo:
-        # TODO: this is how "return self" should behave
         return std.static_pointer_cast<S::element_type>(shared_from_this())
     )
     
@@ -733,14 +732,6 @@ class (S:
     ) : S  # no need for return type (but S correctly handles as shared_ptr<S> here)
 )
 
-# TODO rules:
-# 'this' as an identifier  = error (except maybe inside an explicit lambda capture list)
-# 'self' as an identifier outside of method scope = error
-# 'self' as an identifier but not as an attribute access target e.g. self, return self, foo(self): print as std::static_pointer_cast<ClassName> (shared_from_this()) or initialize 'self' with that expression 
-# 'self.foo' in a method (self is the target of an attribute access) = print as simply this.foo (or rather get_ptr(this)->foo to avoid unnecessary refcount bump
-# 'self' in a lambda body results in c++ lambda capture list of [=, self = std::static_pointer_cast<ClassName> (shared_from_this())],  self printed normally in body
-# -- actually just initializing const auto self = static_pointer_cast<Blah>(shared_from_this()) in method is sufficient (then '=' lambda capture works as is)
-    
 def (main:
     s = S()
     std.cout << (&s)->use_count() << std.endl
