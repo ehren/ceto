@@ -394,7 +394,7 @@ def _create():
     dict_entry = pp.Group(infix_expr + bel + infix_expr)
     dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
-    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(dict_entry)) + rbrace).set_parse_action(BracedLiteral)
+    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(BracedLiteral)
 
     block_line_end = pp.Suppress(";")
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)

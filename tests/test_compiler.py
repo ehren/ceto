@@ -6,6 +6,71 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
+def test_curly_brace():
+    c = compile(r"""
+    
+def (main:
+    l : std.vector<std.vector<int>> = {{1}, {1,2,3}}
+    l2 : std.vector<std.vector<int>> = {{1,2}}
+    l3 : std.vector<std.vector<int>> = {{1}}
+    
+    # TODO:
+    # for (l in [l, l2, l3]:  # hang: "are we handling this correctly (def args)" (see self assign hang fix)
+    #     for (k in l:
+    #         std.cout << k
+    #     ) 
+    # )
+    
+    # TODO decltype_str needs more work:
+    # for(auto && ll : std::vector<decltype(std::declval<std::vector<std::vector<int>>>())>{l, l2, l3}) {
+    
+    for (ll in [l, l2, l3]:
+        for (li in ll:
+            for (lk in li:
+                std.cout << lk
+            )
+        ) 
+    )
+    
+    std.cout << l3[0][0]
+)
+
+    """)
+
+    try:
+        c = compile(r"""
+def (main:
+    l : std.vector<std.vector<int>> = {1}
+)
+        """)
+    except Exception as e:
+        pass
+    else:
+        assert 0
+
+    try:
+        c = compile(r"""
+def (main:
+    l3 : std.vector<std.vector<int>> = {1,2}
+)
+    """)
+    except Exception as e:
+        pass
+    else:
+        assert 0
+
+    try:
+        c = compile(r"""
+def (main:
+    l2 : std.vector<std.vector<int>> = 1
+)
+    """)
+    except Exception as e:
+        pass
+    else:
+        assert 0
+
+
 def test_self_lambda_safe():
     c = compile(r"""
 
@@ -2593,6 +2658,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_curly_brace()
     # test_self_lambda_safe()
     # test_complicated_function_directives()
     # test_range_signedness()

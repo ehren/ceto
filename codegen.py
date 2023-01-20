@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
+from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
 
 
 import io
@@ -1004,8 +1004,11 @@ def _decltype_str(node, cx):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type, cx))
+            # return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type, cx))
+            raise _NoDeclTypeNeeded(codegen_type(def_node, def_node.declared_type, cx))
+
         if isinstance(def_context, Assign) and def_context.declared_type:
+            assert 0
             # return str(def_context.declared_type)
             return "std::declval<{}>()".format(codegen_type(def_context, def_context.declared_type, cx))
 
@@ -1265,18 +1268,20 @@ def codegen_node(node: Node, cx: Context):
             else:
                 rhs_str = codegen_node(node.rhs, cx)
 
-            if isinstance(node.lhs, Identifier):  # lang design change: types must be on lhs always:  # and not isinstance(node.rhs, ListLiteral) and not is_lambda_rhs_with_return_type:
+            if isinstance(node.lhs, Identifier):
                 lhs_str = node.lhs.name
-                # types = [t for t in [node.lhs.declared_type, node.declared_type, node.rhs.declared_type] if t is not None]
-                # if types:
                 if node.lhs.declared_type:
-                    # assert len(set(types)) == 1
-                    # lhs_type_str = codegen_type(node.lhs, types[0], cx)
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                    # if isinstance(node.rhs, ListLiteral):
-                    #     lhs_type_str = f"std::vector::<{lhs_str}>"
-                    # lhs_str = lhs_type_str + " " + lhs_str  # this would allow implicit conversion
-                    return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "  # use brace style to disallow implicit conversion
+                    decl_str = lhs_type_str + " " + lhs_str
+                    # <strikethrough>use brace style to disallow implicit conversion</strikethrough>
+                    # if isinstance(node.rhs, BracedLiteral):
+                    #     return decl_str + rhs_str  # but don't double wrap
+                    # return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+                    # maybe we can bring this back by incorporating https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
+                    assign_str = decl_str + " = " + rhs_str + ";"
+                    if isinstance(node.rhs, Identifier):
+                        assign_str = f"static_assert(std::is_same_v<{lhs_type_str}, decltype({rhs_str})>); " + assign_str
+                    return assign_str
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 # ^^ TODO delete or revise this comment (lambda return types need work anyway)
@@ -1287,7 +1292,7 @@ def codegen_node(node: Node, cx: Context):
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
                 assign_str = "auto " + assign_str
 
-            cpp.write(assign_str)
+            return assign_str
         else:
             binop_str = None
 
@@ -1349,6 +1354,9 @@ def codegen_node(node: Node, cx: Context):
             return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
+    elif isinstance(node, BracedLiteral):
+        elements = [codegen_node(e, cx) for e in node.args]
+        return "{" + ", ".join(elements) + "}"
     elif isinstance(node, ArrayAccess):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
