@@ -13,6 +13,7 @@ def (main:
     l : std.vector<std.vector<int>> = {{1}, {1,2,3}}
     l2 : std.vector<std.vector<int>> = {{1,2}}
     l3 : std.vector<std.vector<int>> = {{1}}
+    l4 : std.vector<std.vector<int>> = {}
     
     # TODO:
     # for (l in [l, l2, l3]:  # hang: "are we handling this correctly (def args)" (see self assign hang fix)
@@ -21,10 +22,12 @@ def (main:
     #     ) 
     # )
     
-    # TODO decltype_str needs more work:
+    
+    # this broke with previous insertion of declval:
     # for(auto && ll : std::vector<decltype(std::declval<std::vector<std::vector<int>>>())>{l, l2, l3}) {
     
-    for (ll in [l, l2, l3]:
+    # now works:
+    for (ll in [l, l2, l3, l4]:
         for (li in ll:
             for (lk in li:
                 std.cout << lk
@@ -36,6 +39,8 @@ def (main:
 )
 
     """)
+
+    assert c == "11231211"
 
     try:
         c = compile(r"""
@@ -59,16 +64,21 @@ def (main:
     else:
         assert 0
 
-    try:
-        c = compile(r"""
+    c = compile(r"""
 def (main:
     l2 : std.vector<std.vector<int>> = 1
 )
     """)
-    except Exception as e:
-        pass
-    else:
-        assert 0
+    # ^ maybe we still want to disable the 'unexpected' aggregate initialization here
+    # we've reproduced the current cppfront behavior in this case
+
+    c = compile(r"""
+def (main:
+    l : std.vector<int> = {1,2}
+    l2 : std.vector<std.vector<int>> = l # this is arguably pretty weird too although some aggregative initialization cases are desirable
+    l3 : std.vector<std.vector<int>> = {l}
+)
+    """)
 
 
 def test_self_lambda_safe():
@@ -173,7 +183,7 @@ def (main:
         assert 0
 
 
-def test_non_narrowing_typed_assignment():
+def test_implicit_conversions():
     try:
         c = compile(r"""
     
@@ -185,6 +195,20 @@ def (main:
     except Exception as e:
         # type 'float' cannot be narrowed to 'int' in initializer list
         # assert 'float' in cpp_errors
+        pass
+    else:
+        assert 0
+
+    try:
+        c = compile(r"""
+
+def (main:
+    len = -1
+    x: unsigned:int = len
+)
+        """)
+    except Exception as e:
+        # assert 'explicit cast' in cpp_errors
         pass
     else:
         assert 0

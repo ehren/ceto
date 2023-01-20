@@ -1273,15 +1273,23 @@ def codegen_node(node: Node, cx: Context):
                 if node.lhs.declared_type:
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     decl_str = lhs_type_str + " " + lhs_str
-                    # <strikethrough>use brace style to disallow implicit conversion</strikethrough>
-                    # if isinstance(node.rhs, BracedLiteral):
-                    #     return decl_str + rhs_str  # but don't double wrap
-                    # return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
-                    # maybe we can bring this back by incorporating https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
-                    assign_str = decl_str + " = " + rhs_str + ";"
-                    if isinstance(node.rhs, Identifier):
-                        assign_str = f"static_assert(std::is_same_v<{lhs_type_str}, decltype({rhs_str})>); " + assign_str
-                    return assign_str
+                    if isinstance(node.rhs, BracedLiteral):
+                        # I think this is "copy-list-initialization?"
+                        return decl_str + " = " + rhs_str + ";"
+
+                        # return decl_str + rhs_str
+                        # ^ this would allow e.g.
+                        # l : std.vector<std.vector<int>> = {1}
+
+                    # prefer braces style to disable implicit conversions (in these assignments)
+                    return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+                    # ^ but there are still cases where this introduces unexpected aggregate initialization
+                    # e.g. l2 : std.vector<std.vector<int>> = 1
+                    # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
+                    # otoh cppfront prints
+                    #     v: std::vector<int> = 0;
+                    #     l2 : std::vector<std::vector<int>> = 1
+                    # just like we do currently
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 # ^^ TODO delete or revise this comment (lambda return types need work anyway)
