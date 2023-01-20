@@ -1627,11 +1627,13 @@ def test_for():
 
 class (Uniq:
     def (bar:
+        self.x = self.x + 1
+        printf("in bar %d %p\n", self.x, this)
+        return self.x
+        # just ensure the manual approach compiles too (unreachable):
         this->x = this->x + 1
         printf("in bar %d %p\n", this->x, this)
         return this->x
-        
-        # TODO maybe we want to allow self.a here but not return self / lambda capture of self etc etc
     )
 ): unique
 
