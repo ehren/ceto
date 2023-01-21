@@ -6,6 +6,34 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
+def raises(func):
+    try:
+        func()
+    except Exception as e:
+        print(e)
+    else:
+        assert 0
+
+
+def test_implicit_conversions2():
+    def f():
+        c = compile(r"""
+class (Point:
+    a: int  # TODO get rid of automatic 'int x;'
+    b: int
+)
+
+def (main:
+    Point(1,2)    
+    x:float = 0
+    y:float = 0
+    Point(x,y)    
+)
+    
+    """)
+    raises(f)
+
+
 def test_c_array():
     c = compile(r"""
 
