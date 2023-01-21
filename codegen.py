@@ -1295,16 +1295,31 @@ def codegen_node(node: Node, cx: Context):
                     #     l2 : std::vector<std::vector<int>> = 1
                     # just like we do currently
 
-                    return braces_style
+                    # return braces_style
                     # ^ see XFAIL comments in test_curly_brace. The below might still be desirable:
 
                     # alternative
                     # (if lhs_type has an 'auto' this will fail. also will fail in class/struct scope.)
                     # otoh works everywhere else! (and test_curly_brace works in most unsuprising way)
-                    initialize = "[&]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { " + copy_list_intl_str + "; return " + lhs_str + "; } else {" + braces_style + "; return " + lhs_str + "; }}()"
 
-                    assign_str = "auto && " + lhs_str + " = " + initialize
-                    # assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize  # error lambda expression in an unevaluated operand :(
+                    if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
+                        return braces_style
+
+                    capture = "&"
+                    p = node
+                    while True:
+                        if isinstance(p, Call):
+                            if creates_new_variable_scope(p):
+                                if p.func.name == "class":
+                                    capture = ""  # no capture lambdas in class scope
+                                break
+                        p = p.parent
+
+                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { " + copy_list_intl_str + "; return " + lhs_str + "; } else {" + braces_style + "; return " + lhs_str + "; }}()"
+
+                    # assign_str = "auto && " + lhs_str + " = " + initialize
+                    # requires working c++20 to allow lambda exression in decltype
+                    assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
 
                     return assign_str
             else:

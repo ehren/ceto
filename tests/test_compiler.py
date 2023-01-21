@@ -87,7 +87,7 @@ def (main:
     except Exception as e:
         pass
     else:
-        # assert 0
+        assert 0
         pass  # arguably XFAIL (see commented use of std::is_aggregate_v in codegen)
 
     try:
@@ -100,7 +100,7 @@ def (main:
     except Exception as e:
         pass
     else:
-        # assert 0
+        assert 0  # requires c++20
         pass  # arguably XFAIL (see commented use of std::is_aggregate_v in codegen)
 
 
@@ -1010,7 +1010,10 @@ def (main:
 
 
 def test_class_with_attributes_of_generic_class_type():
-    #return g++ on linux: missing deduction guide
+    import platform
+    if "Darwin" not in platform.system():
+        return
+    #return g++ 11.3 on linux: missing deduction guide. works in 12+
     c = compile(r"""
 class (Foo:
     a
@@ -2727,7 +2730,7 @@ if __name__ == '__main__':
     # test_left_assoc_attrib_access()
     # test_add_stuff()
     # test_class_attributes()
-    # test_class_with_attributes_of_generic_class_type()
+    #test_class_with_attributes_of_generic_class_type()
     # test_generic_refs_etc()
     # test_py14_map_example()
     # test_range_iota()
