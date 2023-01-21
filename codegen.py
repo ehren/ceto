@@ -1298,21 +1298,26 @@ def codegen_node(node: Node, cx: Context):
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
-                    capture = "&"
                     p = node
+                    is_local = True
+                    capture = "&"
                     while True:
                         if isinstance(p, Call):
                             if creates_new_variable_scope(p):
                                 if p.func.name == "class":
-                                    capture = ""  # no capture lambdas in class scope
+                                    is_local = False
+                                    capture = ""
                                 break
                         p = p.parent
 
                     initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
 
-                    # assign_str = "auto && " + lhs_str + " = " + initialize  # only ok for locals
-                    # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - may not suffer the issues for which 'auto' was never allowed for non-static members although maybe problematic if initializer is a function call (though we may want simple x=foo() too in class scope via decltype - ODR issues be damned)
-                    assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
+                    if is_local:
+                        # this also applies to function parameters... seems to work?
+                        assign_str = "auto && " + lhs_str + " = " + initialize
+                    else:
+                        # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - may not suffer the issues for which 'auto' was never allowed for non-static members although maybe problematic if initializer is a function call (though we may want simple x=foo() too in class scope via decltype - ODR issues be damned?):
+                        assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
 
                     return assign_str
             else:
