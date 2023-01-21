@@ -145,22 +145,12 @@ def (main:
 def (main:
     l2 : std.vector<std.vector<int>> = 1
 )
-
-    # <doublestrike>
-    
-    #<strike>^ maybe we still want to disable the 'unexpected' aggregate initialization here
-    # we've reproduced the current cppfront behavior in this case</strike>
-    
-    # we now output copy-initialization for this case making the above a compile error
-    
-    #</doublestrike>
     
     """)
     except Exception as e:
         pass
     else:
-        assert 0
-        pass  # arguably XFAIL (see commented use of std::is_aggregate_v in codegen)
+        assert 0 # requires c++20 (see use of std::is_aggregate_v in codegen)
 
     try:
         c = compile(r"""
@@ -172,8 +162,7 @@ def (main:
     except Exception as e:
         pass
     else:
-        assert 0  # requires c++20
-        pass  # arguably XFAIL (see commented use of std::is_aggregate_v in codegen)
+        assert 0  # requires c++20 (see use of std::is_aggregate_v in codegen)
 
 
 def test_self_lambda_safe():

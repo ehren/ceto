@@ -1275,7 +1275,7 @@ def codegen_node(node: Node, cx: Context):
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     decl_str = lhs_type_str + " " + lhs_str
 
-                    copy_list_intl_str = decl_str + " = " + rhs_str + ";"
+                    copy_list_intl_str = decl_str + " = " + rhs_str
 
                     if isinstance(node.rhs, BracedLiteral):
                         # I think this is "copy-list-initialization?"
@@ -1285,26 +1285,18 @@ def codegen_node(node: Node, cx: Context):
                         # ^ this would allow e.g.
                         # l : std.vector<std.vector<int>> = {1}
 
-                    # prefer braces style to disable implicit conversions (in these assignments)
+                    # prefer direct initialization to disable implicit conversions (in these assignments)
 
-                    braces_style = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
-                    # ^ but there are still cases where this introduces unexpected aggregate initialization
+                    direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+                    # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
                     # e.g. l2 : std.vector<std.vector<int>> = 1
                     # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
-                    # otoh cppfront prints
-                    #     v: std::vector<int> = 0;
-                    #     l2 : std::vector<std::vector<int>> = 1
-                    # just like we do currently
 
-                    # return braces_style
-                    # ^ see XFAIL comments in test_curly_brace. The below might still be desirable:
-
-                    # alternative
-                    # (if lhs_type has an 'auto' this will fail. also will fail in class/struct scope.)
-                    # otoh works everywhere else! (and test_curly_brace works in most unsuprising way)
+                    # return direct_initialization
+                    # ^ see 'requires c++20' comments in test_curly_brace. The below works with g++ 11.3 on linux
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
-                        return braces_style
+                        return direct_initialization
 
                     capture = "&"
                     p = node
@@ -1316,10 +1308,10 @@ def codegen_node(node: Node, cx: Context):
                                 break
                         p = p.parent
 
-                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + braces_style + "; return " + lhs_str + "; }}()"
+                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
 
-                    # assign_str = "auto && " + lhs_str + " = " + initialize
-                    # requires working c++20 to allow lambda exression in decltype
+                    # assign_str = "auto && " + lhs_str + " = " + initialize  # only ok for locals
+                    # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - may not suffer the issues for which 'auto' was never allowed for non-static members although maybe problematic if initializer is a function call (though we may want simple x=foo() too in class scope via decltype - ODR issues be damned)
                     assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
 
                     return assign_str
