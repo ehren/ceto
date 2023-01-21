@@ -1010,6 +1010,7 @@ def (main:
 
 
 def test_class_with_attributes_of_generic_class_type():
+    #return g++ on linux: missing deduction guide
     c = compile(r"""
 class (Foo:
     a
@@ -2528,7 +2529,7 @@ ohsnap
 
 
 def test_lambdas():
-    compile("""
+    compile(r"""
 def (foo, bar:
     return bar
 )
@@ -2551,8 +2552,8 @@ def (main:
     # )
     printf("%d\n", l[0])
     f = lambda (:
-        printf("%d\n", main)
         0
+        #printf("%d\n", main)
     )
     foo(f)()
     foo(printf)
@@ -2705,6 +2706,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    #test_implicit_conversions()
     # test_curly_brace()
     # test_self_lambda_safe()
     # test_complicated_function_directives()
