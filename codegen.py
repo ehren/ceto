@@ -1295,7 +1295,8 @@ def codegen_node(node: Node, cx: Context):
                     #     l2 : std::vector<std::vector<int>> = 1
                     # just like we do currently
 
-                    # return braces_style
+                    return braces_style
+                    # ^ see XFAIL comments in test_curly_brace. The below might still be desirable:
 
                     # alternative
                     # (if lhs_type has an 'auto' this will fail. also will fail in class/struct scope.)
