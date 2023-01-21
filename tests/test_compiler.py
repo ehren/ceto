@@ -15,6 +15,10 @@ def (main:
     l3 : std.vector<std.vector<int>> = {{1}}
     l4 : std.vector<std.vector<int>> = {}
     
+    
+    a : std.vector<int> = {1,2}
+    a2 : std.vector<std.vector<int>> = {l}
+    
     # TODO:
     # for (l in [l, l2, l3]:  # hang: "are we handling this correctly (def args)" (see self assign hang fix)
     #     for (k in l:
@@ -27,7 +31,7 @@ def (main:
     # for(auto && ll : std::vector<decltype(std::declval<std::vector<std::vector<int>>>())>{l, l2, l3}) {
     
     # now works:
-    for (ll in [l, l2, l3, l4]:
+    for (ll in [l, l2, l3, l4, a2]:
         for (li in ll:
             for (lk in li:
                 std.cout << lk
@@ -40,7 +44,7 @@ def (main:
 
     """)
 
-    assert c == "11231211"
+    assert c == "112312111231"
 
     try:
         c = compile(r"""
@@ -64,21 +68,34 @@ def (main:
     else:
         assert 0
 
-    c = compile(r"""
+    try:
+        c = compile(r"""
 def (main:
     l2 : std.vector<std.vector<int>> = 1
 )
-    """)
-    # ^ maybe we still want to disable the 'unexpected' aggregate initialization here
-    # we've reproduced the current cppfront behavior in this case
 
-    c = compile(r"""
+    # <strike>^ maybe we still want to disable the 'unexpected' aggregate initialization here
+    # we've reproduced the current cppfront behavior in this case</strike>
+    
+    # we now output copy-initialization for this case making the above a compile error
+    
+    """)
+    except Exception as e:
+        pass
+    else:
+        assert 0
+
+    try:
+        c = compile(r"""
 def (main:
     l : std.vector<int> = {1,2}
     l2 : std.vector<std.vector<int>> = l # this is arguably pretty weird too although some aggregative initialization cases are desirable
-    l3 : std.vector<std.vector<int>> = {l}
 )
-    """)
+        """)
+    except Exception as e:
+        pass
+    else:
+        assert 0
 
 
 def test_self_lambda_safe():

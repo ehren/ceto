@@ -1273,16 +1273,20 @@ def codegen_node(node: Node, cx: Context):
                 if node.lhs.declared_type:
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     decl_str = lhs_type_str + " " + lhs_str
+
+                    copy_list_intl_str = decl_str + " = " + rhs_str + ";"
+
                     if isinstance(node.rhs, BracedLiteral):
                         # I think this is "copy-list-initialization?"
-                        return decl_str + " = " + rhs_str + ";"
+                        return copy_list_intl_str
 
                         # return decl_str + rhs_str
                         # ^ this would allow e.g.
                         # l : std.vector<std.vector<int>> = {1}
 
                     # prefer braces style to disable implicit conversions (in these assignments)
-                    return lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+
+                    braces_style = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
                     # ^ but there are still cases where this introduces unexpected aggregate initialization
                     # e.g. l2 : std.vector<std.vector<int>> = 1
                     # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
@@ -1290,6 +1294,18 @@ def codegen_node(node: Node, cx: Context):
                     #     v: std::vector<int> = 0;
                     #     l2 : std::vector<std::vector<int>> = 1
                     # just like we do currently
+
+                    # return braces_style
+
+                    # alternative
+                    # (if lhs_type has an 'auto' this will fail. also will fail in class/struct scope.)
+                    # otoh works everywhere else! (and test_curly_brace works in most unsuprising way)
+                    initialize = "[&]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { " + copy_list_intl_str + "; return " + lhs_str + "; } else {" + braces_style + "; return " + lhs_str + "; }}()"
+
+                    assign_str = "auto && " + lhs_str + " = " + initialize
+                    # assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize  # error lambda expression in an unevaluated operand :(
+
+                    return assign_str
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 # ^^ TODO delete or revise this comment (lambda return types need work anyway)
