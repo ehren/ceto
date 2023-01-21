@@ -28,6 +28,7 @@ cpp_preamble = """
 #include <type_traits>
 #include <utility>
 #include <functional>
+#include <cassert>
 #include <compare> // for <=>
 //#include <ranges>
 //#include <numeric>
@@ -1315,7 +1316,7 @@ def codegen_node(node: Node, cx: Context):
                                 break
                         p = p.parent
 
-                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { " + copy_list_intl_str + "; return " + lhs_str + "; } else {" + braces_style + "; return " + lhs_str + "; }}()"
+                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + braces_style + "; return " + lhs_str + "; }}()"
 
                     # assign_str = "auto && " + lhs_str + " = " + initialize
                     # requires working c++20 to allow lambda exression in decltype

@@ -6,6 +6,44 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
+def test_c_array():
+    c = compile(r"""
+
+def (main:
+    l : int:ptr = {0}
+    static_cast<void>(l)  # unused
+    
+    {1,2,3}:int : a[3]  # pretty cursed - and not handled in 'find_defs': should disable 'declarations' of non identifiers/goto/new etc but special case 'using')
+    
+    for (i in a:
+        printf("%d", i) 
+    )
+    
+    # this should work
+    # a: int[3] = {1,2,3}
+    
+    # print as
+    # int a [3] = {1,2,3};
+    
+    # a: int[2][2] = {{1}, {1}}
+    # print as
+    # int a [2][2] = ...
+    
+    # a: const:int[2][2] = {{1}, {1}}
+    # print as
+    # const int a [2][2] = ...
+    
+    # note c++
+    # I dunno how we'd handle this: (maybe just require an indirect declaration via a separate typedef)
+    # const int (&a) [2][2] = {{}};  # (rather than supporting this) const ref of an array
+    # const int &a2 [2][2] = {{}};   # error: array of const references
+)
+    
+    """)
+
+    assert c == "123"
+
+
 def test_curly_brace():
     c = compile(r"""
     
@@ -16,8 +54,13 @@ def (main:
     l4 : std.vector<std.vector<int>> = {}
     
     
-    a : std.vector<int> = {1,2}
-    a2 : std.vector<std.vector<int>> = {l}
+    a : std.vector<int> = {5,2}
+    a2 : std.vector<std.vector<int>> = {l}  # confusing?
+    a3 : std.vector<std.vector<int>> = l
+    a4 : std.vector<std.vector<int>> = {{l}}
+    
+    # implement python style chained comparison?
+    assert(2 == a.size() and 2 == a2.size() and 2 == a3.size() and 2 == a4.size())
     
     # TODO:
     # for (l in [l, l2, l3]:  # hang: "are we handling this correctly (def args)" (see self assign hang fix)
@@ -25,7 +68,6 @@ def (main:
     #         std.cout << k
     #     ) 
     # )
-    
     
     # this broke with previous insertion of declval:
     # for(auto && ll : std::vector<decltype(std::declval<std::vector<std::vector<int>>>())>{l, l2, l3}) {
@@ -40,11 +82,41 @@ def (main:
     )
     
     std.cout << l3[0][0]
+    
+    arr: std.array<int, 4> = {{1, 2, 3, 4}}
+    arr2: std.array<int, 2> = {1, 2}
+    
+    arr3: std::array<std::array<int, 3>, 2> = { { { {1, 2, 3} }, { { 4, 5, 6} } } }
+    arr4: std::array<std::array<int, 3>, 2> = { { {1, 2, 3} } }
+    # arr5: std::array<std::array<int, 3>, 2> = { {1, 2, 3} } # warning: suggest braces around initialization of subobject
+    # arr6: std::array<std::array<int, 3>, 2> = {1, 2, 3}  # warning: suggest braces around initialization of subobject
+    # arr7: std::array<std::array<int, 3>, 2> = {1}        # warning: suggest braces around initialization of subobject
+    # arr8: std::array<std::array<int, 3>, 2> = 1        # error
+    
+    std.cout << arr[3]
+    std.cout << arr2[1]
+    
+    for (ll in [arr3, arr4]:
+        std.cout << ll[0][0]
+    )
+    
+    v = std.vector<int> (5, 42)
+    std.cout << v[4]
+    assert(v.size() == 5)
+    
+    v2 = std.vector<int> {5, 42}
+    assert(v2.size() == 2)
+    
+    vv:std.vector<int> = std.vector<int> (5, 42)
+    std.cout << v[4]
+    assert(v.size() == 5)
+    
+    vv2:std.vector<int> = std.vector<int> {5, 42}
+    assert(v2.size() == 2)
 )
-
     """)
 
-    assert c == "112312111231"
+    assert c == "11231211123142114242"
 
     try:
         c = compile(r"""
@@ -2709,7 +2781,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
-    #test_implicit_conversions()
+    # test_implicit_conversions()
     # test_curly_brace()
     # test_self_lambda_safe()
     # test_complicated_function_directives()
