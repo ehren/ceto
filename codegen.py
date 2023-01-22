@@ -474,9 +474,10 @@ def codegen_class(node : Call, cx):
 
     if uninitialized_attributes:
         # autosynthesize constructor
-        cpp += inner_indt + "explicit " + str(name) + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
+        cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
-
+    else:
+        cpp += inner_indt + "explicit " + name.name + "() = default;\n\n"
     interface_def_str = ""
     for interface_type in defined_interfaces:
         # note that shared_ptr<interface_type> is auto derefed

@@ -2321,11 +2321,6 @@ def test_add_stuff():
     output = compile(r"""
 
 class (Foo:
-    # probably want to disable implicit default constructor
-    # def (init:
-    #     pass
-    # )
-
     def (operator("+"), foo:Foo:
         printf("adding foo and foo (in the member function)\n")
         return this
@@ -2817,7 +2812,7 @@ if __name__ == '__main__':
     # test_manual_implementation_of_proper_refcounted_return_self()
     # test_higher_precedence_colon()
     # test_left_assoc_attrib_access()
-    # test_add_stuff()
+    #test_add_stuff()
     # test_class_attributes()
     #test_class_with_attributes_of_generic_class_type()
     # test_generic_refs_etc()
