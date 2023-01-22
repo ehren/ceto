@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
+from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
 
 
 import io
@@ -1402,6 +1402,8 @@ def codegen_node(node: Node, cx: Context):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
+    elif isinstance(node, BracedCall):
+        return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
     elif isinstance(node, CStringLiteral):
         return str(node)
     elif isinstance(node, UnOp):

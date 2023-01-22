@@ -160,7 +160,7 @@ def preprocess(file_object):
                             for c in line[n + 1:]:
                                 if c.isspace():
                                     continue
-                                if c in ["(", "["]:  # what about "{" ?
+                                if c in ["(", "[", "{"]:
                                     rewritten.write("\x06")
                                 break
 

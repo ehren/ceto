@@ -194,6 +194,7 @@ class Call(Node):
         lpar = args.pop(0)
         _ = args.pop() # rpar
         self._is_array = lpar == "["
+        self._is_braced_call = lpar == "{"
         self.args = args
 
         # print("callargs", self.args)
@@ -201,6 +202,15 @@ class Call(Node):
 
 
 class ArrayAccess(Node):
+    def __repr__(self):
+        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
+
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+
+class BracedCall(Node):
     def __repr__(self):
         return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
 
@@ -322,7 +332,7 @@ class BracedLiteral(_ListLike):
 
     def __init__(self, tokens):
         super().__init__(tokens)
-        self.func = None  #
+        self.func = "Braced"
 
 
 class Block(_ListLike):
@@ -409,12 +419,16 @@ def _create():
     unsupressed_rparen = pp.Literal(")")
     unsupressed_lbrack = pp.Literal("[")
     unsupressed_rbrack = pp.Literal("]")
+    unsupressed_lbrace = pp.Literal("{")
+    unsupressed_rbrace = pp.Literal("}")
 
     array_access_args = unsupressed_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + unsupressed_rbrack
 
+    braced_args = unsupressed_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + unsupressed_rbrace
+
     call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
 
-    function_call <<= ((atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args))).set_parse_action(Call)
+    function_call <<= ((atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -531,6 +545,8 @@ def parse(s):
         elif isinstance(op, Call):
             if op._is_array:
                 op = ArrayAccess(op.func, op.args)
+            elif op._is_braced_call:
+                op = BracedCall(op.func, op.args)
 
         if not isinstance(op, Node):
             return op

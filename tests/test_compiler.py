@@ -6,6 +6,7 @@ def compile(s):
     return _compile(s, compile_cpp=True)
 
 
+
 def raises(func):
     try:
         func()
@@ -13,6 +14,24 @@ def raises(func):
         print(e)
     else:
         assert 0
+
+
+def test_braced_call():
+    c = compile(r"""
+def (main:
+    a = std.array<int, 3> {1,2,3}
+    v = std.vector<int> {1,2}
+    # a2 = st.array<int, 3> (1,2,3)  # not supported in C++
+    
+    a3 : std.array<int, 3> = {1,2,3}
+    a4 : std.array<int, 3> = std.array<int, 3> {1,2,3}
+    
+    std.cout << a[2] << v[1] << a3[1] << a4[1]
+)
+    """)
+
+    assert c == "3222"
+
 
 
 def test_implicit_conversions2():
@@ -121,6 +140,8 @@ def (main:
     # arr7: std::array<std::array<int, 3>, 2> = {1}        # warning: suggest braces around initialization of subobject
     # arr8: std::array<std::array<int, 3>, 2> = 1        # error
     
+    arr8: std::array<std::array<int, 3>, 2> = { { { {1} } } }
+    
     std.cout << arr[3]
     std.cout << arr2[1]
     
@@ -132,6 +153,7 @@ def (main:
     std.cout << v[4]
     assert(v.size() == 5)
     
+    # note these are parsed as 'BracedCall' 
     v2 = std.vector<int> {5, 42}
     assert(v2.size() == 2)
     
@@ -139,8 +161,12 @@ def (main:
     std.cout << v[4]
     assert(v.size() == 5)
     
+    # 'BracedCall' 
     vv2:std.vector<int> = std.vector<int> {5, 42}
     assert(v2.size() == 2)
+    
+    v1 : std.vector<int> = {1,2}
+    vv1 : std.vector<std.vector<int>> = {v}
 )
     """)
 
