@@ -433,10 +433,10 @@ def find_use(assign: Assign):
 def find_all(node, test=lambda n: False, stop=lambda n: False):
     if not isinstance(node, Node):
         return
-    if test(node):
-        yield node
     if stop(node):
         return
+    if test(node):
+        yield node
 
     for arg in node.args:
         if stop(arg):

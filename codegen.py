@@ -854,16 +854,46 @@ def codegen_lambda(node, cx):
 
     is_local = True  # FIXME (add this properly to Context)
     if is_local:
+
+        def test(n):
+            if not isinstance(n, Identifier):
+                return False
+            elif n.name == "this":
+                return False
+            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, TemplateSpecialization)) and n is n.parent.func:
+                return False
+            elif isinstance(n.parent, AttributeAccess):
+                return False
+            return True
+
+        def stop(c):
+            if isinstance(c.func, Identifier) and c.func.name == "class":
+                    return True
+            if isinstance(c, AttributeAccess):
+                return True  # this needs work?
+            return False
+
         # find all identifiers but not call funcs or anything in a class
         # (keep 'this' out as a special case even though denied by ceto::default_capture)
-        idents = find_all(node, test=lambda n: isinstance(n, Identifier) and n.name != "this",
-                                stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")
+        idents = find_all(node, test=test, stop=stop)
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        # this should also use Context / symbol table:
-        possible_captures = [i.name for i in idents
-                             if i.name == "self" or find_def(i)]
+        # this should also use Context / symbol table!
+        possible_captures = []
+        for i in idents:
+            if i.name == "self":
+                possible_captures.append(i)
+            elif d := find_def(i):
+                defnode, defcontext = d
+                is_capture = True
+                while is_capture and defnode is not None:
+                    if defnode is node:
+                        # defined in lambda or by lambda params (not a capture)
+                        is_capture = False
+                    defnode = defnode.parent
+                if is_capture:
+                    possible_captures.append(i.name)
 
         capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
     # elif TODO is nonescaping or immediately invoked:
