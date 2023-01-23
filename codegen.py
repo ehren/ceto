@@ -193,6 +193,22 @@ struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std
    enum { value = true };
 };
 
+// this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
+template <class T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+constexpr default_capture(std::shared_ptr<T> t) noexcept
+{
+    return std::move(t);
+}
+
+template <class T>
+std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, T>
+constexpr default_capture(T t) noexcept
+{
+    return t;
+}
+
+
 } // namespace
 """
 
@@ -823,8 +839,6 @@ def codegen_lambda(node, cx):
             param = "auto " + a.name
         params.append(param)
     newcx = cx.new_scope_context()
-    # '=' is a fine default (requiring use of shared_ptr for reference semantics w/ capture vars)
-    # But this assumes the new "implicit 'this'" warning is treated as an error (configured with -WError= etc). Otherwise '=' capture is dangerous.
     declared_type = None
     type_str = ""
     if node.declared_type is not None:
@@ -837,7 +851,29 @@ def codegen_lambda(node, cx):
     #     # simplify AST (still messed with for 'is return type void?' stuff)
     #     node.declared_type = declared_type  # put type in normal position
     #     node.func = node.func.lhs  # func is now 'lambda' keyword
-    return ("[=](" + ", ".join(params) + ")" + type_str + " {\n" +
+
+    is_local = True  # FIXME (add this properly to Context)
+    if is_local:
+        # find all identifiers but not call funcs or anything in a class
+        # (keep 'this' out as a special case even though denied by ceto::default_capture)
+        idents = find_all(node, test=lambda n: isinstance(n, Identifier) and n.name != "this", stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")# or c.parent.func is c)
+        # ^ this should handle implicit nested capture (untested)
+        idents = {i.name: i for i in idents}.values()  # remove duplicates
+        # this should also use Context / symbol table:
+        # (this also rules out implicit global capture due to current 'find_def' impl - if 'global' keyword implemented in find_defs this will allow ceto::default_capture of globals declared 'global' in enclosing function scope)
+        possible_captures = [i.name for i in idents
+                             if i.name == "self" or (not find_def(i) # not defined in lambda body (special case 'self')
+                             and find_def_starting_from(node.parent, i))]  # but defined somewhere in the enclosing func
+        capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
+    # elif TODO is nonescaping or immediately invoked:
+    #    capture_list = "&"
+    else:
+        capture_list = ""
+    # TODO:
+    # lambda[ref](foo(x))
+    # lambda[&x=x, y=bar(y)](foo(x,y))  # need to loosen ArrayAccess
+
+    return ("[" + capture_list + "](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}")
 
 
