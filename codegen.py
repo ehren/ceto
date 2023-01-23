@@ -1236,6 +1236,10 @@ def codegen_node(node: Node, cx: Context):
                         lambdanode = node.synthetic_lambda_return_lambda
                         assert lambdanode
                         if lambdanode.declared_type is not None:
+                            if lambdanode.declared_type.name == "void":
+                                # the below code works but let's avoid needless "is_void_v<void>" checks
+                                return ret_body
+
                             declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
                         else:
                             declared_type_constexpr = ""
