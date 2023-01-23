@@ -471,6 +471,8 @@ def codegen_class(node : Call, cx):
             # see how far this gets us
             # TODO fix simple assignments
             cpp += inner_indt + codegen_node(b, cx) + ";\n\n"
+        else:
+            raise CodeGenError("Unexpected expression in class body", b)
 
     if uninitialized_attributes:
         # autosynthesize constructor
@@ -1400,6 +1402,8 @@ def codegen_node(node: Node, cx: Context):
         else:
             raise CodeGenError("Cannot create vector without elements (in template generation mode)")
     elif isinstance(node, BracedLiteral):
+        if isinstance(node.parent, Block):
+            raise CodeGenError("No curly braced anonymous scopes. Use 'scope' instead.")
         elements = [codegen_node(e, cx) for e in node.args]
         return "{" + ", ".join(elements) + "}"
     elif isinstance(node, ArrayAccess):
@@ -1407,6 +1411,9 @@ def codegen_node(node: Node, cx: Context):
             raise CodeGenError("advanced slicing not supported yet")
         return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
     elif isinstance(node, BracedCall):
+        if cx.lookup_class(node.func):
+            # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)
+            raise CodeGenError("Use round parentheses for class constructor call", node)
         return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
     elif isinstance(node, CStringLiteral):
         return str(node)

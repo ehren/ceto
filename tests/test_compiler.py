@@ -7,11 +7,14 @@ def compile(s):
 
 
 
-def raises(func):
+def raises(func, exc=None):
     try:
         func()
     except Exception as e:
-        print(e)
+        if isinstance(exc, str):
+            assert exc in str(e)
+        else:
+            print(e)
     else:
         assert 0
 
@@ -64,7 +67,43 @@ def (main:
 """)
     raises(f)
 
+    def f2():
+        compile(r"""
+class (Foo:
+    a
+)
 
+def (main:
+    f = Foo{1}
+)
+""")
+    raises(f2, "Use round parentheses for class constructor call")
+
+    def f3():
+        compile(r"""
+def (main:
+    {
+        x = 0
+    }
+)
+        """)
+    def f4():
+        compile(r"""
+{
+    x = 0
+}
+        """)
+
+    for ff in [f3, f4]:
+        raises(ff, "No curly braced anonymous scopes. Use 'scope' instead.")
+
+    def f5():
+        compile(r"""
+class (Foo:
+    { x = 0 }
+)
+        """)
+    raises(f5, "Unexpected expression in class body")
 
 
 def test_implicit_conversions2():
@@ -2852,6 +2891,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_braced_call()
     # test_implicit_conversions()
     # test_curly_brace()
     # test_self_lambda_safe()
