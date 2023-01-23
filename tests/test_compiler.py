@@ -19,6 +19,91 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_capture():
+    c = compile(r"""
+class (Foo:
+    def (foo, x:
+        std.cout << "hi" << x << (&self)->use_count()
+    )
+    def (destruct:
+        std.cout << "dead"
+    )
+)
+    
+def (main:
+    class (Inner:
+        f: Foo
+        def (foo, x:int:
+            std.cout << "hi"
+            f.foo(x)
+        )
+    )
+
+    x = 1
+    f = Foo()
+    lambda (f.foo(x)) ()
+    
+    i = Inner(f)
+    lambda (i.foo(x)) ()
+)
+    """)
+    assert c == "hi13hihi13dead"
+
+    c = compile(r"""
+def (main:
+    x = 1
+    y : const:int:ref = x  # fine to copy capture
+    c = c"A"[0]  # TODO maybe c'A' for a char literal
+    nullbyte:unsigned:char = 0
+
+    lambda (:
+        std.cout << x << c << y << nullbyte
+        return
+    ) ()
+)
+    """)
+    assert c == "1A1\x00"
+
+    def f2():
+        compile(r"""
+def (main:
+    y = 5
+    x : int:ptr = &y
+
+    lambda (:
+        std.cout << x
+        return
+    ) ()
+)
+        """)
+    raises(f2)
+    def f3():
+        compile(r"""
+def (main:
+    s = "nope"
+
+    lambda (:
+        std.cout << s
+        return
+    ) ()
+)
+        """)
+    raises(f3)
+    0 and compile(r"""
+def (main:
+    x = 1
+    class (Foo:
+        a:int
+        def (foo, x:int:
+            std.cout << "hi" << x << (&self)->use_count()  # error: ceto::shared_from(this): invalid use of 'this' outside of a non-static member function
+        )
+    )
+    f = Foo(1)
+    lambda (f.foo(x)) ()
+)
+    """)
+
+
 def test_braced_call():
     c = compile(r"""
 def (main:

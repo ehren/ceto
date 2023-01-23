@@ -856,14 +856,15 @@ def codegen_lambda(node, cx):
     if is_local:
         # find all identifiers but not call funcs or anything in a class
         # (keep 'this' out as a special case even though denied by ceto::default_capture)
-        idents = find_all(node, test=lambda n: isinstance(n, Identifier) and n.name != "this", stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")# or c.parent.func is c)
-        # ^ this should handle implicit nested capture (untested)
+        idents = find_all(node, test=lambda n: isinstance(n, Identifier) and n.name != "this",
+                                stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")
+
         idents = {i.name: i for i in idents}.values()  # remove duplicates
+
         # this should also use Context / symbol table:
-        # (this also rules out implicit global capture due to current 'find_def' impl - if 'global' keyword implemented in find_defs this will allow ceto::default_capture of globals declared 'global' in enclosing function scope)
         possible_captures = [i.name for i in idents
-                             if i.name == "self" or (not find_def(i) # not defined in lambda body (special case 'self')
-                             and find_def_starting_from(node.parent, i))]  # but defined somewhere in the enclosing func
+                             if i.name == "self" or find_def(i)]
+
         capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
     # elif TODO is nonescaping or immediately invoked:
     #    capture_list = "&"
