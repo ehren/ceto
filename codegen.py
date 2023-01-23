@@ -1400,10 +1400,10 @@ def codegen_node(node: Node, cx: Context):
         elif elements:
             return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
-            raise CodeGenError("Cannot create vector without elements (in template generation mode)")
+            raise CodeGenError("Cannot create vector without elements")
     elif isinstance(node, BracedLiteral):
         if isinstance(node.parent, Block):
-            raise CodeGenError("No curly braced anonymous scopes. Use 'scope' instead.")
+            raise CodeGenError("Curly brace expression is invalid here. Use 'scope' for an anonymous scope.", node)
         elements = [codegen_node(e, cx) for e in node.args]
         return "{" + ", ".join(elements) + "}"
     elif isinstance(node, ArrayAccess):

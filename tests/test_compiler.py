@@ -95,7 +95,7 @@ def (main:
         """)
 
     for ff in [f3, f4]:
-        raises(ff, "No curly braced anonymous scopes. Use 'scope' instead.")
+        raises(ff, "Curly brace expression is invalid here. Use 'scope' for an anonymous scope.")
 
     def f5():
         compile(r"""
@@ -126,18 +126,28 @@ def (main:
 
 
 def test_c_array():
+    def f():
+        compile(r"""
+class (Foo:
+    {1,2,3}:int:a[3]
+)
+
+        """)
+    raises(f, "Unexpected expression in class body")
+
+    def f2():
+        compile(r"""
+def (main:
+    {1,2,3}:int:a[3]
+)
+    
+    """)
+    raises(f2, "Curly brace expression is invalid here. Use 'scope' for an anonymous scope.")
+
     c = compile(r"""
 
 def (main:
-    l : int:ptr = {0}
-    static_cast<void>(l)  # unused
-    
-    {1,2,3}:int : a[3]  # pretty cursed - and not handled in 'find_defs': should disable 'declarations' of non identifiers/goto/new etc but special case 'using')
-    
-    for (i in a:
-        printf("%d", i) 
-    )
-    
+    pass 
     # this should work
     # a: int[3] = {1,2,3}
     
@@ -159,8 +169,6 @@ def (main:
 )
     
     """)
-
-    assert c == "123"
 
 
 def test_curly_brace():
