@@ -5,7 +5,7 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, TemplateSpecialization, ArrowOp, ScopeResolution
+from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, ScopeResolution
 
 
 import io
@@ -733,7 +733,7 @@ def codegen_def(defnode: Call, cx):
         non_trailing_return_node = name_node.declared_type
         non_trailing_return = " " + codegen_type(name_node, non_trailing_return_node, cx) + " "
         def is_template_test(expr):
-            return isinstance(expr, TemplateSpecialization) and expr.func.name == "template"
+            return isinstance(expr, Template) and expr.func.name == "template"
         if list(find_all(non_trailing_return_node, test=is_template_test)):
             if len(typenames) > 0:
                 raise CodeGenError("Explicit template function with generic params", defnode)
@@ -864,7 +864,7 @@ def codegen_lambda(node, cx):
         def is_capture(n):
             if not isinstance(n, Identifier):
                 return False
-            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, TemplateSpecialization)) and n is n.parent.func:
+            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, Template)) and n is n.parent.func:
                 return False
             elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
                 return False
@@ -1500,7 +1500,7 @@ def codegen_node(node: Node, cx: Context):
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
-    elif isinstance(node, TemplateSpecialization):
+    elif isinstance(node, Template):
         # allow auto shared_ptr etc with parameterized classes e.g. f : Foo<int> results in shared_ptr<Foo<int>> f not shared_ptr<Foo><int>(f)
         # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"

@@ -235,7 +235,8 @@ class BracedCall(Node):
 #             self.args = tokens[-1]
 
 
-class TemplateSpecialization(Node):
+class Template(Node):
+    # template-id in proper standardese
     def __repr__(self):
         return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
 
@@ -365,7 +366,7 @@ def _create():
     dict_literal = pp.Forward()
     braced_literal = pp.Forward()
     function_call = pp.Forward()
-    template_specialization = pp.Forward()
+    template = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
@@ -374,7 +375,7 @@ def _create():
     cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     atom = (
-        template_specialization
+        template
         | real
         | integer
         | cdblquoted_str
@@ -410,7 +411,7 @@ def _create():
     block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
     ack = pp.Suppress("\x06")
-    template_specialization <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(TemplateSpecialization)
+    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(Template)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 

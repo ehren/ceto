@@ -1671,7 +1671,7 @@ def (foo_generic, x:
 
 def (main:
     l = [1, 2, 3, 4]
-    map(map(l, lambda (x: #int:
+    map(map(l, lambda (x:
         std.cout << x
         x*2
     )), lambda (x:
@@ -1681,25 +1681,12 @@ def (main:
     map(l, foo)
     # map(l, foo_generic)  # error
     map(l, lambda (x:int, foo_generic(x)))  # when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
-    map(l, lambda (x, foo_generic(x)))  # why does this even work? note: clang 14 -O3 produces at least an extra allocation vs passing foo_generic<int>. 
-    map(l, foo_generic<int>)  # new template specialization syntax (one of the few places where parentheses not needed to distinguish template from compound comparison)
+    map(l, lambda (x, foo_generic(x)))  # Although we can trick c++ into deducing the correct type for x here clang 14 -O3 produces seemingly worse code than passing foo_generic<int> directly. 
+    map(l, foo_generic<int>)  # explicit template syntax
 )
 	""")
 
     assert c == "123424681234123412341234"
-
-
-# let's fix the existing vector/decltype bugs before this madness:
-# def test_c_array_types():
-#     c = compile("""
-#
-# def (main:
-#     ar = [[1,2,3,4], [2,3,4,5]] : int[2][4]
-#     for (i in ar:
-#         std.cout << i
-#     )
-# )
-#     """)
 
 
 def test_range_iota():
