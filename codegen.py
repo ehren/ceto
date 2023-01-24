@@ -390,6 +390,11 @@ def codegen_for(node, cx):
     return forstr
 
 
+def is_comment(node):
+    return isinstance(node, ScopeResolution) and node.lhs.name == "ceto" and (
+            isinstance(node.rhs, Call) and node.rhs.func.name == "comment")
+
+
 def codegen_class(node : Call, cx):
     assert isinstance(node, Call)
     name = node.args[0]
@@ -486,6 +491,8 @@ def codegen_class(node : Call, cx):
             # see how far this gets us
             # TODO fix simple assignments
             cpp += inner_indt + codegen_node(b, cx) + ";\n\n"
+        elif is_comment(b):
+            cpp += codegen_node(b, cx)
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
@@ -1423,6 +1430,10 @@ def codegen_node(node: Node, cx: Context):
                                 break
                     if is_list:
                         binop_str = "{}.push_back({})".format(codegen_node(node.lhs, cx), codegen_node(apnd.args[0], cx))
+            elif is_comment(node):
+                if not (len(node.rhs.args) == 1 or isinstance(node.rhs.args[0], StringLiteral)):
+                    raise CodeGenError("unexpected ceto::comment ", node)
+                cpp.write(r"// " + str(node.args[0]))
 
             if binop_str is None:
 
