@@ -109,7 +109,6 @@ mad(const std::unique_ptr<T>& obj) { return obj; }
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, T*>
 //mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
-//                                 // TODO implement 'self' and remove the raw autoderef (unsafe)
 
 template<typename T>
 std::enable_if_t<!std::is_base_of_v<object, T>, T**>
@@ -855,27 +854,17 @@ def codegen_lambda(node, cx):
     is_local = True  # FIXME (add this properly to Context)
     if is_local:
 
-        def test(n):
+        def is_capture(n):
             if not isinstance(n, Identifier):
-                return False
-            elif n.name == "this":
                 return False
             elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, TemplateSpecialization)) and n is n.parent.func:
                 return False
-            elif isinstance(n.parent, AttributeAccess):
+            elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
                 return False
             return True
 
-        def stop(c):
-            if isinstance(c.func, Identifier) and c.func.name == "class":
-                    return True
-            if isinstance(c, AttributeAccess):
-                return True  # this needs work?
-            return False
-
-        # find all identifiers but not call funcs or anything in a class
-        # (keep 'this' out as a special case even though denied by ceto::default_capture)
-        idents = find_all(node, test=test, stop=stop)
+        # find all identifiers but not call funcs etc or anything in a nested class
+        idents = find_all(node, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
@@ -883,7 +872,7 @@ def codegen_lambda(node, cx):
         possible_captures = []
         for i in idents:
             if i.name == "self":
-                possible_captures.append(i)
+                possible_captures.append(i.name)
             elif d := find_def(i):
                 defnode, defcontext = d
                 is_capture = True

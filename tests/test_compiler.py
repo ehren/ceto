@@ -54,7 +54,7 @@ def (main:
     x = 1
     y : const:int:ref = x  # fine to copy capture
     c = c"A"[0]  # TODO maybe c'A' for a char literal
-    nullbyte:unsigned:char = 0
+    nullbyte: unsigned:char = 0
 
     lambda (:
         std.cout << x << c << y << nullbyte
