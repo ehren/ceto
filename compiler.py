@@ -53,11 +53,14 @@ def compile(s, compile_cpp=True):
         import platform
         if "Darwin" in platform.system():
             # need to upgrade
-            command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
-            # command = "clang++ " + filename + " -std=c++17 -Wall -Wno-parentheses && echo 'done compile'"
+            import pwd
+            if pwd.getpwuid(os.getuid())[0] == "ehren":
+                command = "clang++ " + filename + " -std=c++2a -Wall -Wno-parentheses && echo 'done compile'"
+            else:
+                command = "clang++ " + filename + " -std=c++20 -Wall -Wno-parentheses && echo 'done compile'"
         else:
-            # command = "clang++ " + filename + " -std=c++20 -Wall -Wno-parentheses && echo 'done compile'"
-            command = "g++ " + filename + " -std=c++20 -Wall -pedantic-errors -Wno-parentheses && echo 'done compile'"
+            command = "clang++ " + filename + " -std=c++20 -Wall -Wno-parentheses && echo 'done compile'"
+            # command = "g++ " + filename + " -std=c++20 -Wall -pedantic-errors -Wno-parentheses && echo 'done compile'"
 
         print("\n".join(perf_messages))
 

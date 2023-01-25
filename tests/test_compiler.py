@@ -1,4 +1,5 @@
 from compiler import compile as _compile
+from parser import parse
 
 
 def compile(s):
@@ -17,6 +18,70 @@ def raises(func, exc=None):
             print(e)
     else:
         assert 0
+
+
+def test_requires():
+    parse(r"""
+    
+# parses but should fail codegen (no reason to allow braced literals in type declarations - also no ':' in simple calls unless we switch to that syntax for named parameters)
+# (fails c++ compilation currently because no way to print "x + x;" ending with a semicolon)
+def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
+    return x + y
+) : T
+
+: this would work
+requires(x:T, x + y)
+
+requires(x:T, y:T:
+    x + y
+    x * y
+)
+
+# TODO codegen for:
+
+# single statement
+def (foo: template<typename:T>:requires:requires(x : T, x + y), 
+       x: T, 
+       y: T:
+    return x + y
+) : T
+    
+# multistatement
+def (foo: template<typename:T>:requires:requires(x : T:
+    x + x
+    x * x
+), x: T, y: T:
+    return x + y
+) : T
+    """)
+
+
+def test_simple_explicit_template():
+    c = compile(r"""
+
+def (foo: template<typename:T, typename:Y>, 
+       x: const:T:ref,
+       y: const:Y:ref:
+    return x + y
+) : decltype(x*y)
+
+def (foo: template<typename:T, typename:Y>, 
+       x: T,
+       y: const:Y:ref:
+    return x + y
+) : std.enable_if_t<std.is_pointer_v<T>, decltype(x)>
+# ^ enable_if_t required here due to codegen trailing return type always style
+
+def (main:
+    std.cout << foo(1, 2)
+    
+    x = 5
+    p = &x
+    std.cout << *foo(p, 0)
+)
+    """)
+
+    assert c == "35"
 
 
 def test_capture():
