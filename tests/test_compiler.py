@@ -3063,6 +3063,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_complex_list_typing()
     # test_lambda_unevaluated_context()
     # test_braced_call()
     # test_implicit_conversions()

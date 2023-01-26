@@ -256,8 +256,6 @@ class Context:
         self.class_definitions = list(self.class_definitions)
         c.parent = self
         c.indent = self.indent + 1
-        c.in_function_body = self.in_function_body
-        c.in_class_body = self.in_class_body
         return c
 
 
@@ -472,7 +470,7 @@ def codegen_class(node : Call, cx):
                         raise CodeGenError("unexpected constructor arg", b)
 
             else:
-                funcx = cx.enter_scope()
+                funcx = inner_cx.enter_scope()
                 funcx.in_function_param_list = True
                 cpp += codegen_def(b, funcx)
         elif isinstance(b, Identifier):
@@ -485,7 +483,7 @@ def codegen_class(node : Call, cx):
                 #     typenames.extend(deps)
                 #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
                 # else:
-                decl = codegen_type(b, b.declared_type, cx) + " " + b.name
+                decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
             else:
@@ -499,9 +497,9 @@ def codegen_class(node : Call, cx):
         elif isinstance(b, Assign):
             # see how far this gets us
             # TODO fix simple assignments
-            cpp += inner_indt + codegen_node(b, cx) + ";\n\n"
+            cpp += inner_indt + codegen_node(b, inner_cx) + ";\n\n"
         elif is_comment(b):
-            cpp += codegen_node(b, cx)
+            cpp += codegen_node(b, inner_cx)
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
@@ -869,7 +867,7 @@ def codegen_lambda(node, cx):
     #     node.declared_type = declared_type  # put type in normal position
     #     node.func = node.func.lhs  # func is now 'lambda' keyword
 
-    if cx.in_function_body:
+    if cx.parent.in_function_body:
 
         def is_capture(n):
             if not isinstance(n, Identifier):
@@ -1235,7 +1233,9 @@ def codegen_node(node: Node, cx: Context):
             elif node.func.name == "def":
                 print("need to handle nested def")
             elif node.func.name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
-                cpp.write(codegen_lambda(node, cx))
+                newcx = cx.enter_scope()
+                newcx.in_function_param_list = True
+                cpp.write(codegen_lambda(node, newcx))
             elif node.func.name == "range":
                 if len(node.args) == 1:
                     return "std::views::iota(0, " + codegen_node(node.args[0], cx) + ")"
@@ -1346,7 +1346,9 @@ def codegen_node(node: Node, cx: Context):
                 if lambdaliteral.declared_type is not None:
                     raise CodeGenError("Two return types defined for lambda:", node.rhs)
                 lambdaliteral.declared_type = node.declared_type
-                rhs_str = codegen_lambda(lambdaliteral, cx)  # codegen_node would suffice here but we'll be direct
+                newcx = cx.enter_scope()
+                newcx.in_function_param_list = True
+                rhs_str = codegen_lambda(lambdaliteral, newcx)
             elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None:
                 # handle untyped empty list literal by searching for uses
                 rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
@@ -1382,7 +1384,7 @@ def codegen_node(node: Node, cx: Context):
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
-                    capture = "&" if cx.in_function_body else ""
+                    capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
 
                     initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
 
