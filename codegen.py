@@ -686,9 +686,12 @@ def codegen_def(defnode: Call, cx):
                 if cx.lookup_class(arg.lhs.declared_type) is not None:
                     # this only succeeds for literal Foo (not const: Foo: ref)
                     # (so no possibility of double adding 'const' - plus can already create a by-value param of class type using std::remove_const)
-                    params.append("const " + codegen_node(arg.lhs.declared_type) + arg.lhs.name + "& = " + codegen_node(arg.rhs, cx))
+                    params.append("const " + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + "& = " + codegen_node(arg.rhs, cx))
                 else:
-                    params.append(autoconst(codegen_node(arg.lhs.declared_type)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
+                    params.append(
+                        # autoconst(
+                        codegen_type(arg.lhs, arg.lhs.declared_type, cx)#)
+                    + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
 
             elif isinstance(arg.rhs, ListLiteral):
                 if isinstance(arg.lhs, Identifier):
