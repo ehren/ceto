@@ -226,6 +226,10 @@ class ClassDefinition:
         return True in self.is_generic_param_index.values()
 
 
+class InterfaceDefinition(ClassDefinition):
+    def __init__(self):
+        pass
+
 class Context:
 
     def __init__(self):
@@ -246,6 +250,8 @@ class Context:
         for c in self.class_definitions:
             if isinstance(c.name_node, Identifier) and c.name_node.name == class_node.name:
                 return c
+        if class_node.name in self.interfaces:
+            return InterfaceDefinition()
         if self.parent:
             return self.parent.lookup_class(class_node)
         return None
@@ -599,7 +605,16 @@ def interface_method_declaration_str(defnode: Call, cx):
             raise CodeGenError("parameter types must be specified for interface methods")
         if not isinstance(arg, Identifier):
             raise CodeGenError("Only simple args allowed for interface method (you don't want c++ virtual functions with default arguments)")
-        params.append(codegen_type(arg, arg.declared_type, cx) + " " + str(arg))
+
+        # TODO unify with codegen_def
+        if cx.lookup_class(arg.declared_type) is not None:
+            autoconst = "const "
+            autoref = "&"
+        else:
+            autoconst = ""
+            autoref = ""
+
+        params.append(autoconst + codegen_type(arg, arg.declared_type, cx) + autoref + " " + str(arg))
 
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
 
@@ -1165,9 +1180,10 @@ def _shared_ptr_str_for_type(type_node, cx):
 
     name = type_node.name
 
-    if name in cx.interfaces:
-         return "std::shared_ptr"
-    elif classdef := cx.lookup_class(type_node):
+    if classdef := cx.lookup_class(type_node):
+        if isinstance(classdef, InterfaceDefinition):
+            return "std::shared_ptr"
+
         class_node = classdef.class_def_node
 
         if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":

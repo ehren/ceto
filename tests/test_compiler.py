@@ -53,11 +53,11 @@ def test_requires():
     
 # parses but should fail codegen (no reason to allow braced literals in type declarations - also no ':' in simple calls unless we switch to that syntax for named parameters)
 # (fails c++ compilation currently because no way to print "x + x;" ending with a semicolon)
-def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
-    return x + y
-) : T
+# def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
+#     return x + y
+# ) : T
 
-: this would work
+# this would work
 requires(x:T, x + y)
 
 # multi statement
@@ -68,7 +68,7 @@ requires(x:T, y:T:
 
 # TODO codegen for:
 
-def (foo: template<typename:T>:requires:requires(x : T, x + y), 
+def (foo: template<typename:T>:requires:requires(x : T, x + x), 
        x: T, 
        y: T:
     return x + y
