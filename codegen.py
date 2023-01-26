@@ -230,9 +230,12 @@ class Context:
 
     def __init__(self):
         self.interfaces = defaultdict(list)
-        self.indent = 0
-        self.parent = None
         self.class_definitions = []
+        self.indent = 0
+        self.parent : Context = None
+        self.in_function_body = False
+        self.in_function_param_list = False
+        self.in_class_body = False
 
     def indent_str(self):
         return "    " * self.indent
@@ -247,12 +250,14 @@ class Context:
             return self.parent.lookup_class(class_node)
         return None
 
-    def new_scope_context(self):
+    def enter_scope(self):
         c = Context()
         c.interfaces = self.interfaces.copy()
         self.class_definitions = list(self.class_definitions)
         c.parent = self
         c.indent = self.indent + 1
+        c.in_function_body = self.in_function_body
+        c.in_class_body = self.in_class_body
         return c
 
 
@@ -316,15 +321,15 @@ def codegen_if(ifcall : Call, cx):
         cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
 
     cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
-    cpp += codegen_block(ifnode.thenblock, cx.new_scope_context())
+    cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
 
     for elifcond, elifblock in ifnode.eliftuples:
-        cpp += indt + "} else if (" + codegen_node(elifcond, cx.new_scope_context()) + ") {\n"
-        cpp += codegen_block(elifblock, cx.new_scope_context())
+        cpp += indt + "} else if (" + codegen_node(elifcond, cx.enter_scope()) + ") {\n"
+        cpp += codegen_block(elifblock, cx.enter_scope())
 
     if ifnode.elseblock:
         cpp += indt + "} else {\n"
-        cpp += codegen_block(ifnode.elseblock, cx.new_scope_context())
+        cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
 
     cpp += indt + "}"
 
@@ -385,7 +390,7 @@ def codegen_for(node, cx):
     else:
         forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
 
-    forstr += codegen_block(block, cx.new_scope_context())
+    forstr += codegen_block(block, cx.enter_scope())
     forstr += indt + "}\n"
     return forstr
 
@@ -407,7 +412,9 @@ def codegen_class(node : Call, cx):
     typenames = []
 
     indt = cx.indent_str()
-    inner_cx = cx.new_scope_context()
+    inner_cx = cx.enter_scope()
+    inner_cx.in_class_body = True
+    inner_cx.in_function_body = False
 
     classdef = ClassDefinition(name, node, is_generic_param_index={})
     cx.class_definitions.append(classdef)
@@ -465,7 +472,9 @@ def codegen_class(node : Call, cx):
                         raise CodeGenError("unexpected constructor arg", b)
 
             else:
-                cpp += codegen_def(b, cx.new_scope_context())
+                funcx = cx.enter_scope()
+                funcx.in_function_param_list = True
+                cpp += codegen_def(b, funcx)
         elif isinstance(b, Identifier):
             if b.declared_type is not None:
                 # idea to "flatten out" the generic params is too crazy (and supporting the same behaviour in function defs means losing auto function arg deduction (more spamming decltype would maybe fix)
@@ -813,7 +822,8 @@ def codegen_def(defnode: Call, cx):
             need_self = True
 
     indt = cx.indent_str()
-    block_cx = cx.new_scope_context()
+    block_cx = cx.enter_scope()
+    block_cx.in_function_body = True
     block_str = codegen_block(block, block_cx)
 
     if need_self:
@@ -844,7 +854,8 @@ def codegen_lambda(node, cx):
             # TODO same const ref by default etc behaviour as "def"
             param = "auto " + a.name
         params.append(param)
-    newcx = cx.new_scope_context()
+    newcx = cx.enter_scope()
+    newcx.in_function_body = True
     declared_type = None
     type_str = ""
     if node.declared_type is not None:
@@ -858,8 +869,7 @@ def codegen_lambda(node, cx):
     #     node.declared_type = declared_type  # put type in normal position
     #     node.func = node.func.lhs  # func is now 'lambda' keyword
 
-    is_local = True  # FIXME (add this properly to Context)
-    if is_local:
+    if cx.in_function_body:
 
         def is_capture(n):
             if not isinstance(n, Identifier):
@@ -875,7 +885,7 @@ def codegen_lambda(node, cx):
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        # this should also use Context / symbol table!
+        # this should use Context
         possible_captures = []
         for i in idents:
             if i.name == "self":
@@ -1208,7 +1218,9 @@ def codegen_node(node: Node, cx: Context):
         for modarg in node.args:
             if isinstance(modarg, Call):
                 if modarg.func.name == "def":
-                    defcode = codegen_def(modarg, cx)
+                    funcx = cx.enter_scope()
+                    funcx.in_function_param_list = True
+                    defcode = codegen_def(modarg, funcx)
                     cpp.write(defcode)
                     continue
                 elif modarg.func.name == "class":
@@ -1370,25 +1382,14 @@ def codegen_node(node: Node, cx: Context):
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
-                    p = node
-                    is_local = True
-                    capture = "&"
-                    while True:
-                        if isinstance(p, Call):
-                            if creates_new_variable_scope(p):
-                                if p.func.name == "class":
-                                    is_local = False
-                                    capture = ""
-                                break
-                        p = p.parent
+                    capture = "&" if cx.in_function_body else ""
 
                     initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
 
-                    if is_local:
-                        # this also applies to function parameters... seems to work?
+                    if cx.in_function_body or cx.in_function_param_list:
                         assign_str = "auto && " + lhs_str + " = " + initialize
                     else:
-                        # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - may not suffer the issues for which 'auto' was never allowed for non-static members although maybe problematic if initializer is a function call (though we may want simple x=foo() too in class scope via decltype - ODR issues be damned?):
+                        # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - wouldn't suffer ODR issues with allowing 'auto' in non-static member initialization - though we should allow x = 0 to print as decltype(0) {x} = 0 since everying going in one translation unit anyway):
                         assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
 
                     return assign_str

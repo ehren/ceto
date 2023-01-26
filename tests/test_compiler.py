@@ -20,6 +20,34 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_lambda_unevaluated_context():
+    # requires c++20
+    c = compile(r"""
+    
+# handling of globals may change in future e.g. automatic constexpr
+# test tries to ensure the below class scope lambdas not printed with a capture list
+# although detecting decltype/subtype usage still necessary
+g:int = 5
+
+class (Foo:
+    
+    # our current 'is void lambda return?' and 'is typed aggregate initialization?' checks make the codegen for this typed assignment pretty unreadable and slow to compile
+    a : int = lambda(5 + g)()
+    
+    f : std.conditional_t<false, decltype(lambda(x, x + g)), int>
+)
+
+def (main:
+    f = Foo(2)
+    l = lambda (g + f.a)  # this needs a capture list for 'f'. we're including 'g' too - debatable if desirable - sooner value capture better but differs unexpectedly from class scope case (can be fixed by adjust/remove of find_defs)
+    std.cout << f.f << f.a << l()
+)
+
+    """)
+
+    assert c == "21015"
+
+
 def test_requires():
     parse(r"""
     
@@ -32,6 +60,7 @@ def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
 : this would work
 requires(x:T, x + y)
 
+# multi statement
 requires(x:T, y:T:
     x + y
     x * y
@@ -39,14 +68,12 @@ requires(x:T, y:T:
 
 # TODO codegen for:
 
-# single statement
 def (foo: template<typename:T>:requires:requires(x : T, x + y), 
        x: T, 
        y: T:
     return x + y
 ) : T
     
-# multistatement
 def (foo: template<typename:T>:requires:requires(x : T:
     x + x
     x * x
@@ -3036,6 +3063,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_lambda_unevaluated_context()
     # test_braced_call()
     # test_implicit_conversions()
     # test_curly_brace()
