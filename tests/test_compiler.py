@@ -19,6 +19,18 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_ifscopes_defnition_in_test():
+    compile(r"""
+
+def (main:
+    if ((y = 1):
+        y = 5
+    )
+)
+
+""")
+
+
 
 def test_lambda_unevaluated_context():
     # requires c++20
@@ -48,14 +60,21 @@ def (main:
     assert c == "21015"
 
 
+def test_requires_bad():
+    def f():
+        compile(r"""
+# now fails codegen (no braced literals in type declarations - also shouldn't allow ':' in simple calls unless we switch to that syntax for named parameters)
+# (if it passed codegen would also fail c++ compilation because no current way to print "x + x;" ending with a semicolon)
+def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
+    return x + y
+) : T
+    """)
+    raises(f, "unexpected type")
+
+
 def test_requires():
     parse(r"""
     
-# parses but should fail codegen (no reason to allow braced literals in type declarations - also no ':' in simple calls unless we switch to that syntax for named parameters)
-# (fails c++ compilation currently because no way to print "x + x;" ending with a semicolon)
-# def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
-#     return x + y
-# ) : T
 
 # this would work
 requires(x:T, x + y)
@@ -319,7 +338,7 @@ def (main:
 )
     
     """)
-    raises(f2, "Curly brace expression is invalid here. Use 'scope' for an anonymous scope.")
+    raises(f2, "unexpected typed expression")
 
     c = compile(r"""
 
@@ -618,7 +637,7 @@ def (foo:static, x, y:
     return x + y
 ) : int
 
-def (foo2: extern:c"C",  # TODO special case extern:"C" as non std::string literal
+def (foo2: extern:"C",
         x: int,
         y: int:
     return x + y
@@ -713,6 +732,10 @@ def (foo:static, x, y:
 
 
 def test_complex_list_typing():
+    import subprocess
+    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+        return
+
     c = compile(r"""
     
 # TODO: anything of explicit array type in a function param list should be const& by default
@@ -1388,9 +1411,12 @@ def (main:
 
 def test_class_with_attributes_of_generic_class_type():
     import platform
-    if "Darwin" not in platform.system():
-        return
-    #return g++ 11.3 on linux: missing deduction guide. works in 12+
+    #if "Darwin" not in platform.system():
+    #    return
+    #return g++ 11.3 some debian unstable: missing deduction guide. works in 12+ and 11.3 godbolt version
+    #msvc 19 /std:c++20 or latest
+    #<source>(53): error C2641: cannot deduce template arguments for 'Bar'
+
     c = compile(r"""
 class (Foo:
     a
@@ -2938,7 +2964,7 @@ def (foo:
         x = [2]
     else:
         x = [1,2]
-    )
+    ): noscope
     printf("%d\n", x[0])
     printf("%d\n", x.at(0))
     pass
@@ -2968,13 +2994,14 @@ def (bar, x:
         aa = calls_size([1,2,3])
         printf("size: %ld\n", aa)
         printf("size: %ld\n", calls_size([1,2,3]))
-    )
+    ) : noscope
+    # TODO even 'noscope' shouldn't hoist the y=1 defined in the test to the outer scope. This is a bad test!
 
     if (0:
         un = 5
         # un:int = 5   # handling of this is very bad (still get the auto inserted unititialized declaration but with a new shadowed decl too)!
         # TODO just remove python like decltype hoisting (although current implementation should not just discard lhs type when hoisting!)
-    )
+    ) : noscope
     printf("uninit %d", un)
 
     return y
@@ -3068,6 +3095,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_capture()
     # test_complex_list_typing()
     # test_lambda_unevaluated_context()
     # test_braced_call()

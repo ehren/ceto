@@ -60,6 +60,7 @@ class IfWrapper:
 
     def _build(self, args):
         # Assumes that func and args have already been processed by `one_liner_expander`
+        args = list(args)
         self._args = list(args)
         self.cond = args.pop(0)
         self.thenblock = args.pop(0)
@@ -326,6 +327,15 @@ def _find_def(parent, child, node_to_find):
     elif isinstance(parent, Block):
         index = parent.args.index(child)
         preceding = parent.args[0:index]
+
+        if isinstance(parent.parent, Call) and parent.parent.func.name == "if":
+            for i, ifarg in enumerate(parent.parent.args):
+                if parent is ifarg:
+                    assert i > 0
+                    testexpr = parent.parent.args[i - 1]
+                    assert not isinstance(testexpr, Block)
+                    preceding.insert(0, testexpr)
+
         for r in reversed(preceding):
             # if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
             #     return r.lhs, r

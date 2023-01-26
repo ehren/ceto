@@ -286,43 +286,46 @@ def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if"
 
+    ifkind = ifcall.declared_type
+
     ifnode = IfWrapper(ifcall.func, ifcall.args)
 
     indt = cx.indent_str()
-
-    scopes = [ifnode.cond, ifnode.thenblock]
-    if ifnode.elseblock is not None:
-        scopes.append(ifnode.elseblock)
-    for elifcond, elifblock in ifnode.eliftuples:
-        scopes.append(elifcond)
-        scopes.append(elifblock)
-
-    assigns = []
-
-    for scope in scopes:
-        # assigns.extend(find_all(scope, test=lambda n: (isinstance(n, Assign) and not (isinstance(n.parent, Call) and n.parent.func.name == 'if')), stop=stop))
-        assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
-
-    print("all if assigns", list(assigns))
-
-    declarations = {}
-
-    for assign in assigns:
-        if hasattr(assign, "already_declared"):
-            continue
-        # if not isinstance(assign.parent, Block):
-            # don't do any funky auto auto declarations for non-block scoped assigns
-            # uh or not
-        #     continue
-        if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
-            assign.already_declared = True
-            if assign.lhs.name in declarations:
-                continue
-            declarations[str(assign.lhs)] = codegen_node(assign.rhs, cx)
-
     cpp = ""
-    for lhs in declarations:
-        cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
+
+    if ifkind is not None and ifkind.name == "noscope":
+        scopes = [ifnode.cond, ifnode.thenblock]
+        if ifnode.elseblock is not None:
+            scopes.append(ifnode.elseblock)
+        for elifcond, elifblock in ifnode.eliftuples:
+            scopes.append(elifcond)
+            scopes.append(elifblock)
+
+        assigns = []
+
+        for scope in scopes:
+            # assigns.extend(find_all(scope, test=lambda n: (isinstance(n, Assign) and not (isinstance(n.parent, Call) and n.parent.func.name == 'if')), stop=stop))
+            assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
+
+        print("all if assigns", list(assigns))
+
+        declarations = {}
+
+        for assign in assigns:
+            if hasattr(assign, "already_declared"):
+                continue
+            # if not isinstance(assign.parent, Block):
+                # don't do any funky auto auto declarations for non-block scoped assigns
+                # uh or not
+            #     continue
+            if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+                assign.already_declared = True
+                if assign.lhs.name in declarations:
+                    continue
+                declarations[str(assign.lhs)] = codegen_node(assign.rhs, cx)
+
+        for lhs in declarations:
+            cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
 
     cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
     cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
@@ -558,6 +561,17 @@ def codegen_block(block: Block, cx):
                 cpp += indent_str + "; // pass\n"
                 continue
 
+        if isinstance(b, Call):
+            if b.func.name == "for":
+                cpp += codegen_for(b, cx)
+                continue
+            elif b.func.name == "class":
+                cpp += codegen_class(b, cx)
+                continue
+            elif b.func.name == "if":
+                cpp += codegen_if(b, cx)
+                continue
+
         if b.declared_type is not None:
             # typed declaration
             # TODO be more strict here (but allowing non-identifier declarations allows e.g. "std.cout : using" and "boost::somesuch : using")
@@ -567,18 +581,6 @@ def codegen_block(block: Block, cx):
             cpp += " " + codegen_node(b, cx) + ";\n"
             b.declared_type = declared_type
             continue
-
-        elif isinstance(b, Call):
-            # should still do this (handle non-expr if _statements_ separately)
-            # if b.func.name == "if":
-            #     cpp += codegen_if(b)
-
-            if b.func.name == "for":
-                cpp += codegen_for(b, cx)
-                continue
-            elif b.func.name == "class":
-                cpp += codegen_class(b, cx)
-                continue
 
         cpp += indent_str + codegen_node(b, cx) + ";\n"
 
@@ -1194,12 +1196,23 @@ def _shared_ptr_str_for_type(type_node, cx):
     return None
 
 
-def codegen_type(expr_node, type_node, cx):
+def _codegen_extern_C(lhs, rhs):
+    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.func == "C":
+        return 'extern "C"'
+    return None
+
+
+def codegen_type(expr_node, type_node, cx, _is_leading=True):
+
+    if not isinstance(expr_node, (ListLiteral, Identifier, Call, ColonBinOp)):
+        raise CodeGenError("unexpected typed expression", expr_node)
 
     if isinstance(type_node, ColonBinOp):
         lhs = type_node.lhs
         rhs = type_node.rhs
-        return codegen_type(expr_node, lhs, cx) + " " + codegen_type(expr_node, rhs, cx)
+        if s := _codegen_extern_C(lhs, rhs):
+            return s
+        return codegen_type(expr_node, lhs, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, rhs, cx, _is_leading=False)
     elif isinstance(type_node, ListLiteral):
         if len(type_node.args) != 1:
             raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
@@ -1208,15 +1221,28 @@ def codegen_type(expr_node, type_node, cx):
         if type_node.declared_type is not None:
             # TODO removing the 'declared_type' property entirely in favour of unflattened ColonBinOp would solve various probs
             declared_type = type_node.declared_type
+
+            if s := _codegen_extern_C(type_node, declared_type):
+                return s
+
             type_node.declared_type = None
-            output = codegen_type(expr_node, type_node, cx) + " " + codegen_type(expr_node, declared_type, cx)
+            output = codegen_type(expr_node, type_node, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, declared_type, cx, _is_leading=False)
             type_node.declared_type = declared_type
             return output
+
+        if _is_leading and type_node.name in ["ptr", "ref", "rref"]:
+            raise CodeGenError(f"Invalid untyped specifier. Use explicit 'auto:{type_node.name}':", type_node)
 
         if type_node.name == "ptr":
             return "*"
         elif type_node.name == "ref":
             return "&"
+
+        if type_node.name in ["new", "goto"]:
+            raise CodeGenError("nice try", type_node)
+
+    if not isinstance(type_node, (Identifier, Call, ColonBinOp, Template, AttributeAccess, ScopeResolution)):
+        raise CodeGenError("unexpected type", type_node)
 
     return codegen_node(type_node, cx)
 
