@@ -1204,7 +1204,9 @@ def _codegen_extern_C(lhs, rhs):
 
 def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
-    if not isinstance(expr_node, (ListLiteral, Identifier, Call, ColonBinOp)):
+    if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
+        pass
+    elif not isinstance(expr_node, (ListLiteral, Identifier, Call, ColonBinOp)):
         raise CodeGenError("unexpected typed expression", expr_node)
 
     if isinstance(type_node, ColonBinOp):

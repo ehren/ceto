@@ -33,6 +33,10 @@ def (main:
 
 
 def test_lambda_unevaluated_context():
+    import subprocess
+    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+        return
+
     # requires c++20
     c = compile(r"""
     
