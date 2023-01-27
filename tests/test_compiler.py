@@ -29,8 +29,23 @@ class (C:
 def (foo, c: C:
     pass
 )
+
 def (bar, c: const:C:
     pass
+)
+
+def (byval, c: std.type_identity_t<C>:   # not literal "C" or "const:C"/"C:const"  - ordinary function local rules apply: C simply shared_ptr<C>
+    # this only holds for the circumstances in this test (byval called with a temporary should have use_count() == 1)
+    assert ((&c)->use_count() > 1)
+    
+    static_assert(std.is_same_v<std.shared_ptr<C::element_type>, decltype(c)>)  # not portable ceto code of course
+)
+
+def (byconstref, c: C:
+    # this only holds for the circumstances in this test
+    assert ((&c)->use_count() == 1)
+    
+    static_assert(std.is_reference_v<decltype(c)>)
 )
 
 def (main:
@@ -50,6 +65,10 @@ def (main:
     
     # TODO
     # cc = C() : const  # cc is const shared_ptr<const C>
+    
+    c4 = C(1)
+    byval(c4)
+    byconstref(c4)
 )
     """)
 
