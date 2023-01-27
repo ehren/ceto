@@ -284,16 +284,32 @@ def creates_new_variable_scope(e: Node) -> bool:
 
 def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
-    assert ifcall.func.name == "if"
+    assert ifcall.func.name == "if" 
 
     ifkind = ifcall.declared_type
-
-    ifnode = IfWrapper(ifcall.func, ifcall.args)
 
     indt = cx.indent_str()
     cpp = ""
 
+    is_expression = not isinstance(ifcall.parent, Block)
+
+    if is_expression:
+        for a in ifcall.args:
+            for b in a.args:
+                if is_return(b):
+                    raise CodegenError("no explicit return in if expression", b)
+            if isinstance(a, Block):
+                last_statement = a.args[-1]
+                synthetic_return = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                last_statement.parent = synthetic_return
+                a.args = a.args[0:-1] + [synthetic_return]
+
+    ifnode = IfWrapper(ifcall.func, ifcall.args)
+
     if ifkind is not None and ifkind.name == "noscope":
+        if is_expression or not cx.in_function_body:
+            raise CodegenError("unscoped if disallowed in expression context", ifcall)
+
         scopes = [ifnode.cond, ifnode.thenblock]
         if ifnode.elseblock is not None:
             scopes.append(ifnode.elseblock)
@@ -328,6 +344,7 @@ def codegen_if(ifcall : Call, cx):
             cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
 
     cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
+
     cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
 
     for elifcond, elifblock in ifnode.eliftuples:
@@ -339,6 +356,13 @@ def codegen_if(ifcall : Call, cx):
         cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
 
     cpp += indt + "}"
+
+    if is_expression:
+        if cx.in_function_body:
+            capture = "&"
+        else:
+            capture = ""
+        cpp = "[" + capture + "]() {" + cpp + "}()"
 
     return cpp
 

@@ -19,6 +19,27 @@ def raises(func, exc=None):
     else:
         assert 0
 
+
+def test_if_expressions():
+    c = compile(r"""
+
+def (main:
+    x = if (1:
+        [1, 2]
+    else:
+        [2, 1]
+    )
+    
+    std.cout << x[0] << x[1]
+    
+    std.cout << if (1: 2 else: 1)
+)
+
+""")
+
+    assert c == "122"
+
+
 def test_ifscopes_defnition_in_test():
     compile(r"""
 
@@ -2235,6 +2256,10 @@ def (main:
 # ever want to be upcasting to base of both shared and uniq ptr managed hierarchies.
 # probably want to make 'unique' require 'struct' instead of 'func' (note that you still want get_ptr to work (compile to nothing) with uniq instances)
 def test_uniq_ptr():
+    import subprocess
+    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+        return
+
     c = compile(r"""
 class (Foo:
     a:int = 5
@@ -3099,6 +3124,7 @@ if __name__ == '__main__':
     import sys
 
     _run_all_tests(sys.modules[__name__])
+    # test_if_expressions()
     # test_capture()
     # test_complex_list_typing()
     # test_lambda_unevaluated_context()
