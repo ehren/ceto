@@ -294,10 +294,10 @@ def codegen_if(ifcall : Call, cx):
     is_expression = not isinstance(ifcall.parent, Block)
 
     if is_expression:
+        if any(find_all(ifcall, is_return, stop=creates_new_variable_scope)):
+            raise CodeGenError("no explicit return in if expression", ifcall)
+
         for a in ifcall.args:
-            for b in a.args:
-                if is_return(b):
-                    raise CodegenError("no explicit return in if expression", b)
             if isinstance(a, Block):
                 last_statement = a.args[-1]
                 synthetic_return = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
@@ -308,7 +308,7 @@ def codegen_if(ifcall : Call, cx):
 
     if ifkind is not None and ifkind.name == "noscope":
         if is_expression or not cx.in_function_body:
-            raise CodegenError("unscoped if disallowed in expression context", ifcall)
+            raise CodeGenError("unscoped if disallowed in expression context", ifcall)
 
         scopes = [ifnode.cond, ifnode.thenblock]
         if ifnode.elseblock is not None:
