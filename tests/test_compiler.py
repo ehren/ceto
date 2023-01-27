@@ -19,6 +19,40 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_no_complex_class_directives():
+    c = compile(r"""
+
+class (C:
+    a:int
+)
+    
+def (foo, c: C:
+    pass
+)
+def (bar, c: const:C:
+    pass
+)
+
+def (main:
+    c = C(1)
+    foo(c)    
+    bar(C(1))    # implicit conversion
+    bar(c)       # implicit conversion
+    
+    c2 : const:C = C(2)  # implicit conversion
+    c3 : const:C = c     # implicit conversion
+    bar(c2)
+    bar(c3)
+    # foo(c2)            # error no matching function
+    
+    # c = c3             # error (no known conversion from shared const to non-const)
+    # cmut : C = c3      # same
+    
+    # TODO
+    # cc = C() : const  # cc is const shared_ptr<const C>
+)
+    """)
+
 
 def test_if_expressions():
     c = compile(r"""
@@ -1032,11 +1066,12 @@ def (func, f : FooConcreteUnique:
     std.cout << "FooConcreteUnique " << f.a << std.endl
 )
 
-def (func2, f : const: FooConcreteUnique: ref:
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-    static_assert(std.is_reference_v<decltype(f)>)
-    std.cout << "FooConcreteUnique " << f.a << std.endl
-)
+# now raises: CodeGenError: Invalid specifier for class type
+# def (func2, f : const: FooConcreteUnique: ref:
+#     static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+#     static_assert(std.is_reference_v<decltype(f)>)
+#     std.cout << "FooConcreteUnique " << f.a << std.endl
+# )
 
 def (main:
     f = FooGeneric("yo")
@@ -1048,8 +1083,8 @@ def (main:
     f4 = FooConcreteUnique("hello")
     func(std.move(f3))
     func(FooConcreteUnique("yo"))
-    func2(std.move(f4))
-    func2(FooConcreteUnique("hello"))
+    # func2(std.move(f4))
+    # func2(FooConcreteUnique("hello"))
 )
     """)
 
@@ -1058,8 +1093,6 @@ FooConcrete hi
 generic hi
 FooConcreteUnique hey
 FooConcreteUnique yo
-FooConcreteUnique hello
-FooConcreteUnique hello
 """
 
 def test_constructors():

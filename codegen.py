@@ -217,10 +217,11 @@ constexpr default_capture(T t) noexcept
 
 class ClassDefinition:
 
-    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index):
+    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique):
         self.name_node = name_node
         self.class_def_node = class_def_node
         self.is_generic_param_index = is_generic_param_index
+        self.is_unique = is_unique
 
     def has_generic_params(self):
         return True in self.is_generic_param_index.values()
@@ -447,7 +448,9 @@ def codegen_class(node : Call, cx):
     inner_cx.in_class_body = True
     inner_cx.in_function_body = False
 
-    classdef = ClassDefinition(name, node, is_generic_param_index={})
+    classdef = ClassDefinition(name, node, is_generic_param_index={},
+                               is_unique=node.declared_type and node.declared_type.name == "unique")
+
     cx.class_definitions.append(classdef)
 
     cpp = indt
@@ -556,7 +559,7 @@ def codegen_class(node : Call, cx):
 
     default_inherits = ["public " + i for i in local_interfaces]
 
-    if isinstance(node.declared_type, Identifier) and node.declared_type.name == "unique":
+    if classdef.is_unique:
         default_inherits += ["ceto::object"]
     else:
         default_inherits += ["ceto::shared_object"]
@@ -1226,6 +1229,34 @@ def _codegen_extern_C(lhs, rhs):
     return None
 
 
+def _codegen_compound_class_type(lhs, rhs, cx):
+    # these should all create:
+    # c = C() : const  # auto c = make_shared<const decltype(C())> ();
+    # east/west:
+    # c:const:C = C()  # const shared_ptr<const C> c = make_shared<const C)> ();
+    # c:C:const = C()  # const shared_ptr<C const> c = make_shared<C const> ();
+
+    # this would remain as is (c2 is just a const shared_ptr<C>)
+    # s = C()
+    # c2: const:auto = s  # if we continue to disallow just 'const'
+    # c2: const = s  # even if we allow 'const' as a shorthand for 'auto:const' this could still be const shared_ptr<C>
+    # c3: const = C()  # same
+    # c4: const:C = s  # error can't convert shared_ptr<C> to shared_ptr<const C>
+    # c5: const:C = s : const  # do we allow this as a convenient shorthand for static_pointer_cast?
+    # c6: const:C = const(s)   # maybe this?
+
+    for l, r in ((lhs,rhs), (rhs, lhs)):
+        if c := cx.lookup_class(l):
+            if not isinstance(r, Identifier) or r.name != "const":
+                raise CodeGenError("Invalid specifier for class type")
+            if c.is_unique:
+                return "const std::unique_ptr<const " + l.name + ">"
+            return "std::shared_ptr<const " + l.name + ">"
+
+
+
+
+
 def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
@@ -1237,6 +1268,8 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         lhs = type_node.lhs
         rhs = type_node.rhs
         if s := _codegen_extern_C(lhs, rhs):
+            return s
+        elif s := _codegen_compound_class_type(lhs, rhs, cx):
             return s
         return codegen_type(expr_node, lhs, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, rhs, cx, _is_leading=False)
     elif isinstance(type_node, ListLiteral):
@@ -1250,10 +1283,13 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
             if s := _codegen_extern_C(type_node, declared_type):
                 return s
+            elif s := _codegen_compound_class_type(type_node, declared_type, cx):
+                return s
 
             type_node.declared_type = None
             output = codegen_type(expr_node, type_node, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, declared_type, cx, _is_leading=False)
             type_node.declared_type = declared_type
+
             return output
 
         if _is_leading and type_node.name in ["ptr", "ref", "rref"]:
