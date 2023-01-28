@@ -1,10 +1,9 @@
-from compiler import compile as _compile
+from compiler import runtest
 from parser import parse
 
 
 def compile(s):
-    # return _compile(s, compile_cpp=False)
-    return _compile(s, compile_cpp=True)
+    return runtest(s, compile_cpp=True)
 
 
 

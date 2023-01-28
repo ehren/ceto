@@ -6,6 +6,7 @@ from preprocessor import preprocess
 import os
 import subprocess
 import io
+import sys
 
 from time import perf_counter
 
@@ -26,7 +27,7 @@ def safe_unique_filename(name, extension, basepath=""):
     return unique + extension
 
 
-def compile(s, compile_cpp=True):
+def compile(s):
     perf_messages = []
     t = perf_counter()
     expr = parse(s)
@@ -38,6 +39,12 @@ def compile(s, compile_cpp=True):
     t = perf_counter()
     code = codegen(expr)
     perf_messages.append(f"codegen time {perf_counter() - t}")
+    print("\n".join(perf_messages))
+    return code
+
+
+def runtest(s, compile_cpp=True):
+    code = compile(s)
 
     # print("code:\n", code)
     output = None
@@ -62,7 +69,6 @@ def compile(s, compile_cpp=True):
             command = "clang++ " + filename + " -std=c++20 -Wall -Wconversion -Wno-parentheses && echo 'done compile'"
             # command = "g++ " + filename + " -std=c++20 -Wall -pedantic-errors -Wno-parentheses && echo 'done compile'"
 
-        print("\n".join(perf_messages))
 
         t1 = perf_counter()
         p = subprocess.Popen(command, shell=True)
@@ -85,9 +91,21 @@ def compile(s, compile_cpp=True):
 
 
 if __name__ == "__main__":
+    from pyparsing import ParseException
 
-    # x + y = x.add(y)? or rather x.oper=(y)
+    with open(sys.argv[-1]) as f:
+    # with open("./test2.ceto") as f:
+        try:
+            compile(f.read())
+        except ParseException as e:
+            msg = str(e)
+            msg = msg.replace("';'", "[end-of-line]")
+            print(msg, file=sys.stderr)
+            print(e.line, file=sys.stderr)
+            print(" " * (e.col - 1) + "^", file=sys.stderr)
+            sys.exit(-1)
 
+    sys.exit(0)
 
     0 and compile("""
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):

@@ -493,9 +493,9 @@ def parse(s):
     qs = pp.QuotedString('"') | pp.QuotedString("'")
     filter_comments = filter_comments.ignore(qs)
 
-    transformed = s
+    source = s
 
-    transformed = filter_comments.transform_string(transformed)
+    source = filter_comments.transform_string(source)
 
     # pp.ParserElement.set_default_whitespace_chars(" \t")
 
@@ -507,7 +507,7 @@ def parse(s):
             pattern = p
         pattern |= p
 
-    transformed = pattern.transform_string(transformed)
+    source = pattern.transform_string(source)
 
     patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
     pattern = None
@@ -518,13 +518,13 @@ def parse(s):
         pattern |= p
 
     pattern = pattern.ignore(qs)
-    transformed = pattern.transform_string(transformed)
+    source = pattern.transform_string(source)
 
-    sio = io.StringIO(transformed)
-    transformed = preprocess(sio).getvalue()
-    print(transformed.replace("\x07", "!!!").replace("\x06", "&&&"))
+    sio = io.StringIO(source)
+    source = preprocess(sio).getvalue()
+    print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
-    res = grammar.parseString(transformed, parseAll=True)
+    res = grammar.parseString(source, parseAll=True)
 
     res = res[0]
 
