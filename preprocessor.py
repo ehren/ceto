@@ -44,6 +44,8 @@ def preprocess(file_object):
     is_it_a_template_stack = []
 
     rewritten = StringIO()
+    reparse = StringIO()
+    replacements = {}
     began_indent = False
 
     while parsing_stack:
@@ -53,6 +55,7 @@ def preprocess(file_object):
 
             if line == '':
                 rewritten.write("\n")
+                reparse.write("\n")
                 continue
 
             # leading spaces
@@ -85,11 +88,16 @@ def preprocess(file_object):
                     raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
 
             rewritten.write("\n")
+            reparse.write("\n")
             rewritten.write(" " * indent)
+            reparse.write(" " * indent)
 
             # non whitespace char handling
 
             colon_to_write = False
+
+            line_to_write = ""
+            ok_to_hide = parsing_stack[-1] == Indent
 
             n = -1
             while n < len(line) - 1:
@@ -99,11 +107,11 @@ def preprocess(file_object):
                 char = line[n]
 
                 if colon_to_write:
-                    rewritten.write(colon_replacement_char(parsing_stack[-1]))
+                    line_to_write += colon_replacement_char(parsing_stack[-1])
                     colon_to_write = False
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
-                    rewritten.write(char)
+                    line_to_write += char
                     continue
 
                 if char == BEL:
@@ -122,7 +130,7 @@ def preprocess(file_object):
                     break
 
                 if char != ":":
-                    rewritten.write(char)
+                    line_to_write += char
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -169,31 +177,43 @@ def preprocess(file_object):
                                 if c.isspace():
                                     continue
                                 if c in ["(", "[", "{"]:
-                                    rewritten.write("\x06")
+                                    line_to_write += "\x06"
                                 break
 
             if parsing_stack[-1] == OpenParen and line.endswith(":"):
                 parsing_stack.append(Indent)
                 # block_start
-                rewritten.write(BEL)
+                line_to_write += BEL
                 colon_to_write = False
                 began_indent = True
+                ok_to_hide = False
             else:
                 began_indent = False
 
                 if parsing_stack[-1] == Indent and line.strip():
                     # block_line_end
-                    rewritten.write(";")
+                    line_to_write += ";"
                     while len(is_it_a_template_stack) > 0:
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
+                else:
+                    ok_to_hide = False
 
             if colon_to_write:
-                rewritten.write(colon_replacement_char(parsing_stack[-1]))
+                line_to_write += colon_replacement_char(parsing_stack[-1])
+
+            if ok_to_hide:
+                d = "ceto_priv_dummy{}{};".format(line_number, n)
+                reparse.write(d)
+                replacements[d] = line_to_write
+
+            rewritten.write(line_to_write)
+
+        # end for (line)
 
         parsing_stack.pop()
 
-    return rewritten
+    return rewritten, reparse, replacements
 
 
 def run(prog):

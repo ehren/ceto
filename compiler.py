@@ -7,6 +7,7 @@ import os
 import subprocess
 import io
 import sys
+import textwrap
 
 from time import perf_counter
 
@@ -90,20 +91,58 @@ def runtest(s, compile_cpp=True):
     return output
 
 
-if __name__ == "__main__":
-    from pyparsing import ParseException
+from pyparsing import ParseException
 
-    with open(sys.argv[-1]) as f:
-    # with open("./test2.ceto") as f:
+
+def report_error(e : ParseException):
+    msg = str(e)
+    msg = msg.replace("';'", "[end-of-line]")
+    print(msg, file=sys.stderr)
+    print(e.line, file=sys.stderr)
+    print(" " * (e.col - 1) + "^", file=sys.stderr)
+
+
+if __name__ == "__main__":
+
+    # with open(sys.argv[-1]) as f:
+    with open("./test2.ceto") as f:
+        source = f.read()
         try:
-            compile(f.read())
+            compile(source)
         except ParseException as e:
-            msg = str(e)
-            msg = msg.replace("';'", "[end-of-line]")
-            print(msg, file=sys.stderr)
-            print(e.line, file=sys.stderr)
-            print(" " * (e.col - 1) + "^", file=sys.stderr)
-            sys.exit(-1)
+
+            # right idea but should be assisted by the preprocessor:
+
+            replacements = {}
+            rewritten = ""
+            for i,line in enumerate(source.splitlines()):
+                if line.strip() and not line.endswith(":") and not line.strip().startswith(")"):
+                # if line.endswith(";"):
+                    idx = next(idx for idx, chr in enumerate(line) if not chr.isspace())
+                    repl = line[:idx] + f"ceto_priv_stmt_replacement{i}\n"
+                    replacements[repl] = line
+                    rewritten += repl
+                else:
+                    rewritten += line + "\n"
+
+            # print(rewritten)
+
+            new_error = False
+
+            try:
+                parse(rewritten)
+            except ParseException:
+                pass
+            else:
+                for orig in replacements.values():
+                    orig = textwrap.dedent(orig)
+                    try:
+                        parse(orig)
+                    except ParseException as e:
+                        report_error(e)
+                        sys.exit(-1)
+
+            report_error(e)
 
     sys.exit(0)
 

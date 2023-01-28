@@ -521,7 +521,8 @@ def parse(s):
     source = pattern.transform_string(source)
 
     sio = io.StringIO(source)
-    source = preprocess(sio).getvalue()
+    source, _, _ = preprocess(sio)
+    source = source.getvalue()
     print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
     res = grammar.parseString(source, parseAll=True)
