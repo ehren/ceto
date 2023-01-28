@@ -540,8 +540,8 @@ def parse(source: str):
                 try:
                     do_parse(dedented)
                 except pp.ParseException as blockerror:
-                    blockerror._ceto_col = colno
-                    blockerror._ceto_lineno = lineno
+                    blockerror._ceto_col = colno + blockerror.col
+                    blockerror._ceto_lineno = lineno + blockerror.lineno - 2
                     raise blockerror
         else:
             for dummy, real in replacements.items():
@@ -551,8 +551,8 @@ def parse(source: str):
                 except pp.ParseException as lineerror:
                     dummy = dummy[len('ceto_priv_dummy'):-1]
                     line, col = dummy.split("c")
-                    lineerror._ceto_col = int(col) + lineerror.col
-                    lineerror._ceto_lineno = int(line) + lineerror.lineno
+                    lineerror._ceto_col = int(col) + lineerror.col - 1
+                    lineerror._ceto_lineno = int(line) + lineerror.lineno - 1
                     raise lineerror
 
         raise orig

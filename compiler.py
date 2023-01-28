@@ -94,7 +94,7 @@ def runtest(s, compile_cpp=True):
 from pyparsing import ParseException
 
 
-def report_error(e : ParseException):
+def report_error(e : ParseException, source : str):
     msg = str(e)
     msg = msg.replace("';'", "[end-of-line]")
     msg = msg[:msg.rindex("(at")]
@@ -109,8 +109,9 @@ def report_error(e : ParseException):
 
     print("Syntax Error. Line {} Column {}:".format(line, col), file=sys.stderr)
     print(msg, file=sys.stderr)
-    print(e.line, file=sys.stderr)
-    print(" " * (e.col - 1) + "^", file=sys.stderr)
+    # print(e.line, file=sys.stderr)
+    print(source.splitlines()[line-1], file=sys.stderr)
+    print(" " * (col - 1) + "^", file=sys.stderr)
 
 
 if __name__ == "__main__":
@@ -153,7 +154,7 @@ if __name__ == "__main__":
             #             report_error(e)
             #             sys.exit(-1)
 
-            report_error(e)
+            report_error(e, source)
 
     sys.exit(0)
 
