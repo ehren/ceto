@@ -48,6 +48,8 @@ def preprocess(file_object, build_reparse_source = False):
     replacements = {}
     began_indent = False
 
+    blocks = []
+
     while parsing_stack:
 
         for line_number, line in enumerate(file_object, start=1):
@@ -90,6 +92,10 @@ def preprocess(file_object, build_reparse_source = False):
             rewritten.write("\n")
             rewritten.write(" " * indent)
 
+            if build_reparse_source and blocks:
+                blocks[-1][1] += "\n"
+                blocks[-1][1] += " " * indent
+
             # non whitespace char handling
 
             line_to_write = ""
@@ -129,7 +135,8 @@ def preprocess(file_object, build_reparse_source = False):
                     if not char.isspace():
                         colon_eol = False
                 else:
-                    line_to_write += colon_replacement_char(parsing_stack[-1])
+                    repl = colon_replacement_char(parsing_stack[-1])
+                    line_to_write += repl
                     if not char.isspace():
                         colon_eol = True
 
@@ -185,6 +192,8 @@ def preprocess(file_object, build_reparse_source = False):
                 line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
+                if build_reparse_source:
+                    blocks.append([(line_number, n), ""])
             else:
                 began_indent = False
 
@@ -197,6 +206,9 @@ def preprocess(file_object, build_reparse_source = False):
                 else:
                     ok_to_hide = False
 
+                if build_reparse_source:
+                    blocks[-1][1] += line_to_write + "\n"
+
             if ok_to_hide:
                 d = "ceto_priv_dummy{}c{};".format(line_number, n)
                 rewritten.write(d)
@@ -206,7 +218,7 @@ def preprocess(file_object, build_reparse_source = False):
 
         parsing_stack.pop()
 
-    return rewritten, replacements
+    return rewritten, replacements, blocks
 
 
 def run(prog):

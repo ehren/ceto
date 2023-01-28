@@ -6,7 +6,6 @@
 import pyparsing as pp
 
 import sys
-import textwrap
 sys.setrecursionlimit(2**13)
 # pp.ParserElement.enable_left_recursion()
 pp.ParserElement.enable_packrat(2**20)
@@ -518,37 +517,43 @@ def do_parse(source: str):
 
 
 def parse(source: str):
+    from textwrap import dedent
+
     sio = io.StringIO(source)
-    preprocessed, _ = preprocess(sio)
+    preprocessed, _, _ = preprocess(sio, build_reparse_source=False)
     preprocessed = preprocessed.getvalue()
 
     try:
         res = do_parse(preprocessed)
     except pp.ParseException as orig:
         sio.seek(0)
-        reparse, replacements = preprocess(sio, build_reparse_source=True)
+        reparse, replacements, subblocks = preprocess(sio, build_reparse_source=True)
         reparse = reparse.getvalue()
 
         try:
             do_parse(reparse)
         except pp.ParseException:
-            raise orig
 
-        for dummy, real in replacements.items():
-            # reparse = reparse.replace(dummy, real)
-            # try:
-            #     do_parse(reparse)
-            # except pp.ParseException as newerror:
-            #     raise newerror
-            dedented = textwrap.dedent(real)
-            try:
-                do_parse(dedented)
-            except pp.ParseException as lineerror:
-                dummy = dummy[len('ceto_priv_dummy'):-1]
-                line, col = dummy.split("c")
-                lineerror._ceto_col = int(col) + lineerror.col
-                lineerror._ceto_lineno = int(line) + lineerror.lineno
-                raise lineerror
+            for (lineno, colno), block in subblocks:
+                dedented = dedent(block)
+
+                try:
+                    do_parse(dedented)
+                except pp.ParseException as blockerror:
+                    blockerror._ceto_col = colno
+                    blockerror._ceto_lineno = lineno
+                    raise blockerror
+        else:
+            for dummy, real in replacements.items():
+                dedented = dedent(real)
+                try:
+                    do_parse(dedented)
+                except pp.ParseException as lineerror:
+                    dummy = dummy[len('ceto_priv_dummy'):-1]
+                    line, col = dummy.split("c")
+                    lineerror._ceto_col = int(col) + lineerror.col
+                    lineerror._ceto_lineno = int(line) + lineerror.lineno
+                    raise lineerror
 
         raise orig
 
