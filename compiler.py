@@ -108,8 +108,8 @@ def report_error(e : ParseException, source : str):
         col = e.col
 
     print("Syntax Error. Line {} Column {}:".format(line, col), file=sys.stderr)
-    print(msg, file=sys.stderr)
-    # print(e.line, file=sys.stderr)
+    # print(msg, file=sys.stderr)
+    print(e.line, file=sys.stderr)
     print(source.splitlines()[line-1], file=sys.stderr)
     print(" " * (col - 1) + "^", file=sys.stderr)
 
