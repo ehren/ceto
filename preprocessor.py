@@ -39,7 +39,7 @@ class IndentError(PreprocessorError):
     pass
 
 
-def preprocess(file_object):
+def preprocess(file_object, build_reparse_source = False):
     parsing_stack = [Indent]
     is_it_a_template_stack = []
 
@@ -88,27 +88,21 @@ def preprocess(file_object):
                     raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
 
             rewritten.write("\n")
-            reparse.write("\n")
             rewritten.write(" " * indent)
-            reparse.write(" " * indent)
 
             # non whitespace char handling
 
-            colon_to_write = False
-
             line_to_write = ""
-            ok_to_hide = parsing_stack[-1] == Indent
+            ok_to_hide = build_reparse_source and parsing_stack[-1] == Indent
+            colon_eol = False
 
             n = -1
+
             while n < len(line) - 1:
 
                 n += 1
 
                 char = line[n]
-
-                if colon_to_write:
-                    line_to_write += colon_replacement_char(parsing_stack[-1])
-                    colon_to_write = False
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
@@ -132,6 +126,13 @@ def preprocess(file_object):
                 if char != ":":
                     line_to_write += char
 
+                    if not char.isspace():
+                        colon_eol = False
+                else:
+                    line_to_write += colon_replacement_char(parsing_stack[-1])
+                    if not char.isspace():
+                        colon_eol = True
+
                 if char == "(":
                     parsing_stack.append(OpenParen)
                 elif char == "[":
@@ -148,8 +149,6 @@ def preprocess(file_object):
                         raise PreprocessorError("Expected dedent got " + char, line_number)
                     else:
                         raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
-                elif char == ":":
-                    colon_to_write = True
                 elif char in '"\'':
                     if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
                         parsing_stack.pop()
@@ -180,11 +179,10 @@ def preprocess(file_object):
                                     line_to_write += "\x06"
                                 break
 
-            if parsing_stack[-1] == OpenParen and line.endswith(":"):
+            if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
                 # block_start
                 line_to_write += BEL
-                colon_to_write = False
                 began_indent = True
                 ok_to_hide = False
             else:
@@ -199,21 +197,16 @@ def preprocess(file_object):
                 else:
                     ok_to_hide = False
 
-            if colon_to_write:
-                line_to_write += colon_replacement_char(parsing_stack[-1])
-
             if ok_to_hide:
                 d = "ceto_priv_dummy{}{};".format(line_number, n)
-                reparse.write(d)
+                rewritten.write(d)
                 replacements[d] = line_to_write
-
-            rewritten.write(line_to_write)
-
-        # end for (line)
+            else:
+                rewritten.write(line_to_write)
 
         parsing_stack.pop()
 
-    return rewritten, reparse, replacements
+    return rewritten, replacements
 
 
 def run(prog):

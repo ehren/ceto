@@ -18,6 +18,22 @@ def raises(func, exc=None):
     else:
         assert 0
 
+
+def test_parse_errors():
+    c = compile(r"""
+
+class (Foo:#
+    pass
+)
+
+def (main:  #
+    #   
+    pass
+)
+    
+    """)
+
+
 def test_no_complex_class_directives():
     c = compile(r"""
 
@@ -2848,7 +2864,7 @@ def (main:
 def test_correct_shared_ptr():
     output = compile(r"""
 
-class (Foo: #Bar :
+class (Foo: # this is the parse prob
     # x = 1
     # y = 2
 

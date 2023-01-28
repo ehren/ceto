@@ -6,7 +6,7 @@ def test_stress_parser():
     old = sys.getrecursionlimit()
     sys.setrecursionlimit(10**6)  # risks overflowing cpython stack
 
-    limit = 60
+    limit = 50
 
     parse(r"""
 

@@ -111,36 +111,36 @@ if __name__ == "__main__":
             compile(source)
         except ParseException as e:
 
-            # right idea but should be assisted by the preprocessor:
-
-            replacements = {}
-            rewritten = ""
-            for i,line in enumerate(source.splitlines()):
-                if line.strip() and not line.endswith(":") and not line.strip().startswith(")"):
-                # if line.endswith(";"):
-                    idx = next(idx for idx, chr in enumerate(line) if not chr.isspace())
-                    repl = line[:idx] + f"ceto_priv_stmt_replacement{i}\n"
-                    replacements[repl] = line
-                    rewritten += repl
-                else:
-                    rewritten += line + "\n"
-
-            # print(rewritten)
-
-            new_error = False
-
-            try:
-                parse(rewritten)
-            except ParseException:
-                pass
-            else:
-                for orig in replacements.values():
-                    orig = textwrap.dedent(orig)
-                    try:
-                        parse(orig)
-                    except ParseException as e:
-                        report_error(e)
-                        sys.exit(-1)
+            # # right idea but should be assisted by the preprocessor:
+            #
+            # replacements = {}
+            # rewritten = ""
+            # for i,line in enumerate(source.splitlines()):
+            #     if line.strip() and not line.endswith(":") and not line.strip().startswith(")"):
+            #     # if line.endswith(";"):
+            #         idx = next(idx for idx, chr in enumerate(line) if not chr.isspace())
+            #         repl = line[:idx] + f"ceto_priv_stmt_replacement{i}\n"
+            #         replacements[repl] = line
+            #         rewritten += repl
+            #     else:
+            #         rewritten += line + "\n"
+            #
+            # # print(rewritten)
+            #
+            # new_error = False
+            #
+            # try:
+            #     parse(rewritten)
+            # except ParseException:
+            #     pass
+            # else:
+            #     for orig in replacements.values():
+            #         orig = textwrap.dedent(orig)
+            #         try:
+            #             parse(orig)
+            #         except ParseException as e:
+            #             report_error(e)
+            #             sys.exit(-1)
 
             report_error(e)
 

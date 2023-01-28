@@ -6,6 +6,7 @@
 import pyparsing as pp
 
 import sys
+import textwrap
 sys.setrecursionlimit(2**13)
 # pp.ParserElement.enable_left_recursion()
 pp.ParserElement.enable_packrat(2**20)
@@ -408,7 +409,7 @@ def _create():
     braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(BracedLiteral)
 
     block_line_end = pp.Suppress(";")
-    block = bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
+    block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
     ack = pp.Suppress("\x06")
     template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(Template)
@@ -484,20 +485,10 @@ def _create():
 grammar = _create()
 
 
-def parse(s):
-    print(s)
-    # pp.ParserElement.set_default_whitespace_chars(" \t\n")
+def do_parse(source: str):
+    # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
 
-    filter_comments = pp.Regex(r"#.*")
-    filter_comments = filter_comments.suppress()
     qs = pp.QuotedString('"') | pp.QuotedString("'")
-    filter_comments = filter_comments.ignore(qs)
-
-    source = s
-
-    source = filter_comments.transform_string(source)
-
-    # pp.ParserElement.set_default_whitespace_chars(" \t")
 
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
@@ -520,14 +511,43 @@ def parse(s):
     pattern = pattern.ignore(qs)
     source = pattern.transform_string(source)
 
-    sio = io.StringIO(source)
-    source, _, _ = preprocess(sio)
-    source = source.getvalue()
     print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
     res = grammar.parseString(source, parseAll=True)
+    return res[0]
 
-    res = res[0]
+
+def parse(source: str):
+    sio = io.StringIO(source)
+    preprocessed, _ = preprocess(sio)
+    preprocessed = preprocessed.getvalue()
+
+    try:
+        res = do_parse(preprocessed)
+    except pp.ParseException as orig:
+        sio.seek(0)
+        reparse, replacements = preprocess(sio, build_reparse_source=True)
+        reparse = reparse.getvalue()
+
+        try:
+            do_parse(reparse)
+        except pp.ParseException:
+            raise orig
+
+        for dummy, real in replacements.items():
+            # reparse = reparse.replace(dummy, real)
+            # try:
+            #     do_parse(reparse)
+            # except pp.ParseException as newerror:
+            #     raise newerror
+            dedented = textwrap.dedent(real)
+            try:
+                do_parse(dedented)
+            except pp.ParseException as morespecific:
+                raise morespecific
+
+        raise orig
+
 
     def replacer(op):
         if not isinstance(op, Node):
