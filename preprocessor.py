@@ -198,7 +198,7 @@ def preprocess(file_object, build_reparse_source = False):
                     ok_to_hide = False
 
             if ok_to_hide:
-                d = "ceto_priv_dummy{}{};".format(line_number, n)
+                d = "ceto_priv_dummy{}c{};".format(line_number, n)
                 rewritten.write(d)
                 replacements[d] = line_to_write
             else:

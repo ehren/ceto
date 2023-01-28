@@ -543,8 +543,12 @@ def parse(source: str):
             dedented = textwrap.dedent(real)
             try:
                 do_parse(dedented)
-            except pp.ParseException as morespecific:
-                raise morespecific
+            except pp.ParseException as lineerror:
+                dummy = dummy[len('ceto_priv_dummy'):-1]
+                line, col = dummy.split("c")
+                lineerror._ceto_col = int(col) + lineerror.col
+                lineerror._ceto_lineno = int(line) + lineerror.lineno
+                raise lineerror
 
         raise orig
 

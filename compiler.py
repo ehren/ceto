@@ -97,6 +97,17 @@ from pyparsing import ParseException
 def report_error(e : ParseException):
     msg = str(e)
     msg = msg.replace("';'", "[end-of-line]")
+    msg = msg[:msg.rindex("(at")]
+    if hasattr(e, "_ceto_lineno"):
+        line = e._ceto_lineno
+    else:
+        line = e.lineno
+    if hasattr(e, "_ceto_col"):
+        col = e._ceto_col
+    else:
+        col = e.col
+
+    print("Syntax Error. Line {} Column {}:".format(line, col), file=sys.stderr)
     print(msg, file=sys.stderr)
     print(e.line, file=sys.stderr)
     print(" " * (e.col - 1) + "^", file=sys.stderr)
