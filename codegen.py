@@ -2,8 +2,8 @@ import typing
 from typing import Union, Any
 
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
-    ColonBinOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
-    SemanticAnalysisError, SyntaxColonBinOp, find_def, find_use, find_uses, \
+    TypeOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
+    SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
 from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, ScopeResolution
 
@@ -301,7 +301,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                synthetic_return = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -665,6 +665,15 @@ def autoconst(type_str: str):
 #     # return f"std::conditional_t<is_smart_pointer<{type_str}>::value && std::is_base_of_v<{type_str}::element_type, object>, {type_str}&, {type_str}>"
 #     return type_str  # can't do this for arbitrary types (even if something like the above works, going to make error messages sooo much worse.
 #     # TODO if transpiler detects a class type e.g. Foo, add ref, otherwise not
+
+
+def type_inorder_traversal(typenode: Node, func):
+    if isinstance(typenode, TypeOp):
+        if not type_inorder_traversal(typenode.Lhs, func):
+            return type_inorder_traversal(typenode.rhs, func)
+    else:
+        return func(typenode)
+    return True
 
 
 def codegen_def(defnode: Call, cx):
@@ -1261,10 +1270,10 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
-    elif not isinstance(expr_node, (ListLiteral, Identifier, Call, ColonBinOp)):
+    elif not isinstance(expr_node, (ListLiteral, Identifier, Call, TypeOp)):
         raise CodeGenError("unexpected typed expression", expr_node)
 
-    if isinstance(type_node, ColonBinOp):
+    if isinstance(type_node, TypeOp):
         lhs = type_node.lhs
         rhs = type_node.rhs
         if s := _codegen_extern_C(lhs, rhs):
@@ -1278,7 +1287,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
     elif isinstance(type_node, Identifier):
         if type_node.declared_type is not None:
-            # TODO removing the 'declared_type' property entirely in favour of unflattened ColonBinOp would solve various probs
+            # TODO removing the 'declared_type' property entirely in favour of unflattened TypeOp would solve various probs
             declared_type = type_node.declared_type
 
             if s := _codegen_extern_C(type_node, declared_type):
@@ -1303,7 +1312,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
 
-    if not isinstance(type_node, (Identifier, Call, ColonBinOp, Template, AttributeAccess, ScopeResolution)):
+    if not isinstance(type_node, (Identifier, Call, TypeOp, Template, AttributeAccess, ScopeResolution)):
         raise CodeGenError("unexpected type", type_node)
 
     return codegen_node(type_node, cx)
@@ -1412,8 +1421,8 @@ def codegen_node(node: Node, cx: Context):
         if 0 and isinstance(node, NamedParameter):
             raise SemanticAnalysisError("Unparenthesized assignment treated like named parameter in this context (you need '(' and ')'):", node)
 
-        elif isinstance(node, ColonBinOp):
-            if isinstance(node, SyntaxColonBinOp):
+        elif isinstance(node, TypeOp):
+            if isinstance(node, SyntaxTypeOp):
                 if node.lhs.name == "return":
                     ret_body = codegen_node(node.rhs, cx)
                     if hasattr(node, "synthetic_lambda_return_lambda"):
@@ -1438,7 +1447,7 @@ def codegen_node(node: Node, cx: Context):
 
                 # same handling as above case for nested expression with .declared_type
 
-                # codegen_type should be handling compound types safely (any error checking for ColonBinOp lhs rhs should go there)
+                # codegen_type should be handling compound types safely (any error checking for TypeOp lhs rhs should go there)
                 return codegen_type(node, node, cx)
 
 

@@ -107,7 +107,7 @@ def _make_left_associative_bin_op_init_method(astclass = _LeftAssociativeBinOp):
 _LeftAssociativeBinOp.__init__ = _make_left_associative_bin_op_init_method()
 
 
-class ColonBinOp(BinOp):
+class TypeOp(BinOp):
     def __init__(self, tokens):
         super().__init__(tokens)
         if self.func == "as":
@@ -115,14 +115,14 @@ class ColonBinOp(BinOp):
             self.func = ":"
 
 
-class RebuiltColon(ColonBinOp):
+class RebuiltColon(TypeOp):
     def __init__(self, func, args, _is_as_hack=False):
         self.func = func
         self.args = args
         self._is_as_hack = _is_as_hack
 
 
-class SyntaxColonBinOp(ColonBinOp):
+class SyntaxTypeOp(TypeOp):
     def __init__(self, func, args):
         self.func = func
         self.args = args
@@ -471,7 +471,7 @@ def _create():
             (pp.Literal("|"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
             (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
-            (colon, 2, pp.opAssoc.RIGHT, ColonBinOp),
+            (colon, 2, pp.opAssoc.RIGHT, TypeOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return")|pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, UnOp),
         ],

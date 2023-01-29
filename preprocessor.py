@@ -44,7 +44,6 @@ def preprocess(file_object, build_reparse_source = False):
     is_it_a_template_stack = []
 
     rewritten = StringIO()
-    reparse = StringIO()
     replacements = {}
     began_indent = False
 
@@ -57,7 +56,6 @@ def preprocess(file_object, build_reparse_source = False):
 
             if line == '':
                 rewritten.write("\n")
-                reparse.write("\n")
                 continue
 
             # leading spaces

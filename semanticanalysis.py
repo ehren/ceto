@@ -1,8 +1,8 @@
-from parser import Node, Module, Call, Block, UnOp, BinOp, ColonBinOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon, SyntaxColonBinOp
+from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon, SyntaxTypeOp
 import sys
 
 def isa_or_wrapped(node, NodeClass):
-    return isinstance(node, NodeClass) or (isinstance(node, ColonBinOp) and isinstance(node.args[0], NodeClass))
+    return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
 
 
 class RebuiltIdentifer(Identifier):
@@ -77,7 +77,7 @@ class IfWrapper:
             while args:
                 elifcond = args.pop(0)
                 elifblock = args.pop(0)
-                assert isinstance(elifcond, ColonBinOp)
+                assert isinstance(elifcond, TypeOp)
                 assert elifcond.args[0].name == "elif"
                 elifcond = elifcond.args[1]
                 self.eliftuples.append((elifcond, elifblock))
@@ -118,11 +118,11 @@ def build_types(node: Node):
         if not isinstance(node, Node):
             return node
 
-        if isinstance(node, ColonBinOp) and not isinstance(node, SyntaxColonBinOp):
+        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
             lhs, rhs = node.args
             # node = visitor(lhs)
             node = lhs
-            node.declared_type = rhs  # leaving open possibility this is still a ColonBinOp
+            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
             # node.declared_type = visitor(rhs)
 
         node.args = [visitor(arg) for arg in node.args]
@@ -141,7 +141,7 @@ def one_liner_expander(parsed):
 
         if len(ifop.args) == 1 or not isinstance(ifop.args[1],
                                                  Block):
-            if isinstance(ifop.args[0], ColonBinOp):
+            if isinstance(ifop.args[0], TypeOp):
                 # convert second arg of outermost colon to one element block
                 block_arg = ifop.args[0].args[1]
                 if isinstance(block_arg, Assign):
@@ -153,10 +153,10 @@ def one_liner_expander(parsed):
 
         for i, a in enumerate(list(ifop.args[2:]), start=2):
             if isinstance(a, Block):
-                if not (isinstance(ifop.args[i - 1], Identifier) and ifop.args[i - 1].name == "else") and not (isinstance(ifop.args[i - 1], ColonBinOp) and (isinstance(elifliteral := ifop.args[i - 1].args[0], Identifier) and elifliteral.name == "elif")):
+                if not (isinstance(ifop.args[i - 1], Identifier) and ifop.args[i - 1].name == "else") and not (isinstance(ifop.args[i - 1], TypeOp) and (isinstance(elifliteral := ifop.args[i - 1].args[0], Identifier) and elifliteral.name == "elif")):
                     raise SemanticAnalysisError(
                         f"Unexpected if arg. Found block at position {i} but it's not preceded by 'else' or 'elif'")
-            elif isinstance(a, ColonBinOp):
+            elif isinstance(a, TypeOp):
                 if not a.args[0].name in ["elif", "else"]:
                     raise SemanticAnalysisError(
                         f"Unexpected if arg {a} at position {i}")
@@ -167,7 +167,7 @@ def one_liner_expander(parsed):
                 elif a.args[0].name == "elif":
                     if i == len(ifop.args) - 1 or not isinstance(ifop.args[i + 1], Block):
                         c = a.args[1]
-                        if not isinstance(c, ColonBinOp):
+                        if not isinstance(c, TypeOp):
                             raise SemanticAnalysisError("bad if args")
                         cond, rest = c.args
                         new_elif = RebuiltColon(a.func, [a.args[0], cond])
@@ -190,11 +190,11 @@ def one_liner_expander(parsed):
         if not isinstance(op, Node):
             return op
 
-        if isinstance(op, ColonBinOp) and not isinstance(op, SyntaxColonBinOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
-            op = SyntaxColonBinOp(op.func, op.args)
+        if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
+            op = SyntaxTypeOp(op.func, op.args)
 
         if isinstance(op, UnOp) and op.func == "return":
-            op = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
+            op = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
 
         if isinstance(op, Call):
             if isinstance(op.func, Identifier):
@@ -222,18 +222,18 @@ def one_liner_expander(parsed):
                         block = op.args[-1]
                         last_statement = block.args[-1]
                         if not is_return(last_statement):
-                            synthetic_return = SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                            synthetic_return = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
                             synthetic_return.synthetic_lambda_return_lambda = op # bit of a hack so that codegen can print implicit return as "return x, void()  // C++ comma operator to autodeduce 'void' return type if x is void"
                             block.args = block.args[0:-1] + [synthetic_return]
                     # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
                         # if op.func.name == "lambda":
                             # last 'statement' becomes return
-                            # block.args = block.args[0:-1] + [SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
+                            # block.args = block.args[0:-1] + [SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
 
                         # else:
                             # We'd like implicit return None like python - but perhaps return 'default value for type' allows more pythonic c++ code
                             # pass # so wait for code generation to 'return {}'
-                            # block.args.append(SyntaxColonBinOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
+                            # block.args.append(SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
 
         op.args = [visitor(arg) for arg in op.args]
         op.func = visitor(op.func)
@@ -250,7 +250,7 @@ def assign_to_named_parameter(expr):
         if isinstance(op, Call):
             rebuilt = []
             for arg in op.args:
-                if isinstance(arg, ColonBinOp):
+                if isinstance(arg, TypeOp):
                     if isinstance(arg.args[0], Assign):
                         rebuilt.append(RebuiltColon(func=arg.func, args=[NamedParameter(args=arg.args[0].args), arg.args[1]]))
                     else:
@@ -396,7 +396,7 @@ def find_def_starting_from(search_node, node_to_find):
 
 
 def is_return(node):
-    return ((isinstance(node, ColonBinOp) and node.lhs.name == "return") or (
+    return ((isinstance(node, TypeOp) and node.lhs.name == "return") or (
             isinstance(node, Identifier) and node.name == "return") or (
             isinstance(node, UnOp) and node.func == "return"))
 
@@ -404,7 +404,7 @@ def is_return(node):
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
 # (NOTE: requires prior replacing of UnOp return)
 def is_void_return(node):
-    return not isinstance(node, ColonBinOp) and is_return(node) and not (isinstance(node.parent, ColonBinOp) and node.parent.lhs is node)
+    return not isinstance(node, TypeOp) and is_return(node) and not (isinstance(node.parent, TypeOp) and node.parent.lhs is node)
 
 
 def find_defs(node):
