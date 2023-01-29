@@ -69,53 +69,101 @@ shared_from(That* that) {
 
 // mad = maybe allow deref
 
+
 template<typename T>
-T* mad(T & obj) { return &obj; }   // no autoderef
+T* mad(T & obj) { 
+    return &obj;  // no autoderef:
+}   
 
 // e.g. string temporaries
 template<typename T>
-T* mad(T && obj) { return &obj; }  // no autoderef
+T* mad(T && obj) {
+    return &obj;   // no autoderef
+}
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-mad(std::shared_ptr<T>& obj) { return obj; }  // autoderef
+mad(std::shared_ptr<T>& obj) { 
+    if (!obj) {
+        std::terminate();
+    }
+    return obj;   // autoderef
+}  
 
+// autoderef:
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //mad(std::shared_ptr<T> obj) { return obj; }
 
-// odd alternative (at least no warnings):
-//template<typename T>
-//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-//mad(std::shared_ptr<T>&& obj) { return std::move(obj); }
-// this is surely better:
+// autoderef of temporary
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-mad(std::shared_ptr<T>&& obj) { return obj; }
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+mad(std::shared_ptr<T>&& obj) {
+    if (!obj) {
+        std::terminate();
+    }
+    return std::move(obj);  // autoderef
+}
+//template<typename T>
+//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
+//mad(std::shared_ptr<T>&& obj) { return obj; }  // autoderef
 
+// autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
-mad(const std::shared_ptr<T>& obj) { return obj; }
+mad(const std::shared_ptr<T>& obj) {
+    if (!obj) {
+        std::terminate();
+    }
+    return obj;  
+} 
 
+// autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
-mad(std::unique_ptr<T>& obj) { return obj; }
+mad(std::unique_ptr<T>& obj) {
+    if (!obj) {
+        std::terminate();
+    }
+    return obj;
+}  
 
+// autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
-mad(const std::unique_ptr<T>& obj) { return obj; }
+mad(const std::unique_ptr<T>& obj) {
+    if (!obj) {
+        std::terminate();
+    }
+    return obj;
+} 
+
+// autoderef of temporary
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>
+mad(std::unique_ptr<T>&& obj) {
+    if (!obj) {
+        std::terminate();
+    }
+    return std::move(obj);
+}
+//template<typename T>
+//std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
+//mad(std::unique_ptr<T>&& obj) { return obj; }
 
 // no more raw autoderef
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, T*>
 //mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
 
-template<typename T>
-std::enable_if_t<!std::is_base_of_v<object, T>, T**>
-mad(T*&& obj) { return &obj; } // regular pointer - no autoderef!
+// no longer needed now that e.g. 'this' pointers no longer auto-derefed
+//template<typename T>
+//std::enable_if_t<!std::is_base_of_v<object, T>, T**>
+//mad(T*&& obj) { return &obj; } // regular pointer - no autoderef!
 // ^ the forwarding reference to pointer would allow us to wrap arbitrary identifiers
 // and not just attribute access targets e.g. *mad(printf)("hi %d", *mad(x));
 // (though this seems no longer needed with the current autoderef semantics)
+
 
 
 // unused but seemingly workable C++ auto construction logic
@@ -1556,7 +1604,7 @@ def codegen_node(node: Node, cx: Context):
 
             if binop_str is None:
 
-                if isinstance(node.lhs, Call):
+                if 0 and isinstance(node.lhs, Call):
                     if class_node := find_defining_class(node.lhs.func):
                         # mad stuff won't currently work with a temporary here:
                         # detect attribute access of constructor call to class marked unique and print '->' instead

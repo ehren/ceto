@@ -18,17 +18,57 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_no_null_deref():
+    def f():
+        compile(r"""
+class (Foo:
+    def (method:
+        printf("no this")    
+    )
+) 
 
-def test_parse_errors():
+def (main:
+    f = Foo()
+    f = nullptr
+    f.method()
+)
+        """)
+    raises(f)
+
+    # intentional UB to ensure the above test works:
+    c = compile(r"""
+class (Foo:
+    def (method:
+        printf("no this")    
+    )
+) 
+
+def (main:
+    f = Foo()
+    f = nullptr
+    f->method()  # BAD c++ compatibility syntax. No autoderef / No autonull check.
+)
+    """)
+
+    assert c == "no this"
+
+
+def test_const_ptr():
     c = compile(r"""
 
-class (Foo:#
-    pass
+class (Foo:
+    a : int
+    def (method:
+        pass
+    )
 )
 
 def (main:  #
-    #   
-    pass
+    # f : const:Foo = Foo(1)
+    # f : const = Foo(1)  # error in c++
+    f : const:auto = Foo(1)
+    
+    f.method()
 )
     
     """)
