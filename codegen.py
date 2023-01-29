@@ -795,19 +795,20 @@ def codegen_def(defnode: Call, cx):
                     + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
 
             elif isinstance(arg.rhs, ListLiteral):
-                if isinstance(arg.lhs, Identifier):
-                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + str(arg.lhs) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+                if not arg.rhs.args:
+                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + arg.lhs.name + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
                 else:
-                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + codegen_node(arg.lhs, cx) + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
-                # if arg.rhs.args:
-                #     valuepart = "= " + codegen_node(arg.rhs)
-                #     declpart = decltype_str(arg.rhs) + " " + codegen_node(arg.lhs)
-                # else:
-                #     valuepart = ""
-                #     declpart = "std::vector<" + decltype_str(arg.rhs) + "> " + codegen_node(arg.lhs)
-                #
-                # # params.append((decltype_str(arg.rhs) + " " + codegen_node(arg.lhs), "= " + codegen_node(arg.rhs)))
-                # params.append((declpart, valuepart))
+                    # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
+
+                    # c++ gotcha - not usable as a default argument!
+                    # params.append("const auto& " + arg.lhs.name + " = std::vector {" + ", ".join(
+                    #         [codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+
+                    # inferred part still relies on CTAD:
+                    vector_part = "std::vector {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+
+                    # but it's now usable as a default argument:
+                    params.append("const decltype(" + vector_part + ")& " + arg.lhs.name + " = " + vector_part)
             elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
                 # params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
                 assert 0  # need to autoconvert to std::function
@@ -1056,6 +1057,7 @@ def decltype_str(node, cx):
         #             return vds
 
         return "std::vector<" + decltype_str(node.args[0], cx) + ">"
+
         # return vector_decltype_str(node)
 
         result = "" # "std::vector<"
@@ -1542,7 +1544,10 @@ def codegen_node(node: Node, cx: Context):
                     # e.g. l2 : std.vector<std.vector<int>> = 1
                     # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
 
-                    # return direct_initialization
+                    return direct_initialization
+
+                    # the below won't work with template classes anyway e.g. ctad: f : std.function = l
+
                     # ^ see 'requires c++20' comments in test_curly_brace. The below works with g++ 11.3 on linux
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
@@ -1632,7 +1637,9 @@ def codegen_node(node: Node, cx: Context):
         if list_type is not None:
             return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type, cx), ", ".join(elements))
         elif elements:
-            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
+            # no longer necessary CTAD reimplementation - still used in the case x = [] ; x.append(1) handled elsewhere
+            # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
+            return "std::vector {" + ", ".join(elements) + "}"
         else:
             raise CodeGenError("Cannot create vector without elements")
     elif isinstance(node, BracedLiteral):

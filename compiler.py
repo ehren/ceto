@@ -116,11 +116,11 @@ def report_error(e : ParseException, source : str):
 
 if __name__ == "__main__":
 
-    # with open(sys.argv[-1]) as f:
-    with open("./test2.ceto") as f:
+    filename = sys.argv[-1]
+    with open(filename) as f:
         source = f.read()
         try:
-            compile(source)
+            code = compile(source)
         except ParseException as e:
 
             # # right idea but should be assisted by the preprocessor:
@@ -155,6 +155,11 @@ if __name__ == "__main__":
             #             sys.exit(-1)
 
             report_error(e, source)
+
+        with open(filename + ".cpp", "w") as output:
+            output.write(filename)
+
+
 
     sys.exit(0)
 

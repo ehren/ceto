@@ -18,6 +18,29 @@ def raises(func, exc=None):
     else:
         assert 0
 
+
+
+def test_std_function():
+    compile(r"""
+
+# another problem with half flattened TypeOp (inside decltype x:int is a TypeOf not an Identifier with .declared_type):
+# def (foo, f : decltype(std.function(lambda(x:int, 0))) = lambda(x:int, 0):
+#     return f()
+# )
+    
+def (main:
+    l = lambda(x:int:
+        std.cout << "hi" + std.to_string(x)
+        return 5
+    )
+    
+    f : std.function = l
+    v = [f]
+    std.cout << v[0](5)
+)
+    """)
+
+
 def test_no_null_deref():
     def f():
         compile(r"""
@@ -2549,8 +2572,10 @@ def (main:
     printf("f2 %d\n", not f2)
     std.cout << (&f)->use_count() << std.endl
     std.cout << (&f2)->use_count() << std.endl
-    f.foo()  # not sure if actually UB (not technically derefing NULL)
-    f2.foo()
+    # f.foo()  # std::terminate
+    # f2.foo() # std::terminate
+    f->foo()  # intentional UB
+    f2->foo()  # UB
 )
     """)
 
@@ -3230,7 +3255,8 @@ def _run_all_tests(mod):
 if __name__ == '__main__':
     import sys
 
-    _run_all_tests(sys.modules[__name__])
+    #_run_all_tests(sys.modules[__name__])
+    test_std_function()
     # test_if_expressions()
     # test_capture()
     # test_complex_list_typing()
