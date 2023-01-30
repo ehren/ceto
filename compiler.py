@@ -1,13 +1,13 @@
-from parser import parse
+from parser import parse, Module
 from semanticanalysis import semantic_analysis
 from codegen import codegen
 from preprocessor import preprocess
 
 import os
 import subprocess
-import io
 import sys
-import textwrap
+import argparse
+import pathlib
 
 from time import perf_counter
 
@@ -28,24 +28,24 @@ def safe_unique_filename(name, extension, basepath=""):
     return unique + extension
 
 
-def compile(s):
+def compile(s) -> (str, Module):
     perf_messages = []
     t = perf_counter()
-    expr = parse(s)
+    node = parse(s)
     perf_messages.append(f"parse time {perf_counter() - t}")
     t = perf_counter()
-    expr = semantic_analysis(expr)
+    node = semantic_analysis(node)
     perf_messages.append(f"semantic time {perf_counter() - t}")
-    print("semantic", expr)
+    print("semantic", node)
     t = perf_counter()
-    code = codegen(expr)
+    code = codegen(node)
     perf_messages.append(f"codegen time {perf_counter() - t}")
     print("\n".join(perf_messages))
-    return code
+    return code, node
 
 
 def runtest(s, compile_cpp=True):
-    code = compile(s)
+    code, _ = compile(s)
 
     # print("code:\n", code)
     output = None
@@ -116,50 +116,63 @@ def report_error(e : ParseException, source : str):
 
 if __name__ == "__main__":
 
-    filename = sys.argv[-1]
-    with open(filename) as f:
-        source = f.read()
-        try:
-            code = compile(source)
-        except ParseException as e:
+    ap = argparse.ArgumentParser()
+    # -m / -c to mimic python
+    ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
+    ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
+    ap.add_argument("filename")
+    ap.add_argument("args", nargs="*")
+    cetoargs = ap.parse_args()
 
-            # # right idea but should be assisted by the preprocessor:
-            #
-            # replacements = {}
-            # rewritten = ""
-            # for i,line in enumerate(source.splitlines()):
-            #     if line.strip() and not line.endswith(":") and not line.strip().startswith(")"):
-            #     # if line.endswith(";"):
-            #         idx = next(idx for idx, chr in enumerate(line) if not chr.isspace())
-            #         repl = line[:idx] + f"ceto_priv_stmt_replacement{i}\n"
-            #         replacements[repl] = line
-            #         rewritten += repl
-            #     else:
-            #         rewritten += line + "\n"
-            #
-            # # print(rewritten)
-            #
-            # new_error = False
-            #
-            # try:
-            #     parse(rewritten)
-            # except ParseException:
-            #     pass
-            # else:
-            #     for orig in replacements.values():
-            #         orig = textwrap.dedent(orig)
-            #         try:
-            #             parse(orig)
-            #         except ParseException as e:
-            #             report_error(e)
-            #             sys.exit(-1)
+    if cetoargs.runstring:
+        source = cetoargs.filename
+        basename = safe_unique_filename("cetodashccode", extension="")
 
-            report_error(e, source)
+    else:
+        with open(cetoargs.filename) as f:
+            source = f.read()
+        basename = str(pathlib.Path(cetoargs.filename).with_suffix(""))
 
-        with open(filename + ".cpp", "w") as output:
-            output.write(filename)
+    try:
+        code, module = compile(source)
+    except ParseException as e:
+        report_error(e, source)
+        sys.exit(-1)
 
+    ext = ".h"
+    if module.has_main_function:
+        ext = ".cpp"
 
+    cppfilename = basename + ext
+
+    with open(cppfilename, "w") as output:
+        output.write(code)
+
+    if not module.has_main_function or cetoargs.compileonly:
+        sys.exit(0)
+
+    CXX = "c++"
+    CXXFLAGS = "-std=c++20 -Wall -Wconversion -Wno-parentheses"
+    if "CXX" in os.environ:
+        CXX = os.environ["CXX"]
+    if "CXXFLAGS" in os.environ:
+        CXXFLAGS = os.environ["CXXFLAGS"]
+
+    exename = basename
+
+    cmd = " ".join([CXX, cppfilename, "-o " + exename, CXXFLAGS])
+    print(cmd)
+    p = subprocess.Popen(cmd, shell=True)
+    rc = p.wait()
+    if rc != 0:
+        sys.exit(rc)
+
+    args = [os.path.join(".", exename)]
+    if cetoargs.args:
+        args += cetoargs.args
+
+    print(" ".join(args))
+    subprocess.Popen(args)
 
     sys.exit(0)
 

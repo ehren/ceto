@@ -853,13 +853,22 @@ def codegen_def(defnode: Call, cx):
         # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
         # TODO?: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
-    elif is_interface_method or name == "main":
+    elif is_interface_method:
         assert len(typenames) == 0
         template = ""
         inline = ""
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
         inline = ""
+
+    if name == "main":
+        if return_type_node or has_non_trailing_return:
+            raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
+        template = ""
+        inline = ""
+        if not isinstance(defnode.parent, Module):
+            raise CodeGenError("unexpected nested main function", defnode)
+        defnode.parent.has_main_function = True
 
     if return_type_node is not None:
         # return_type = codegen_type(name_node, name_node.declared_type)

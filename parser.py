@@ -347,6 +347,7 @@ class Module(Block):
     def __init__(self, tokens):
         super().__init__(tokens)
         self.func = "Module"
+        self.has_main_function = False
 
 
 def _create():

@@ -31,7 +31,7 @@ def test_std_function():
 def (main:
     l = lambda(x:int:
         std.cout << "hi" + std.to_string(x)
-        return 5
+        5
     )
     
     f : std.function = l
@@ -41,7 +41,7 @@ def (main:
     """)
 
 
-def test_no_null_deref():
+def test_no_null_autoderef():
     def f():
         compile(r"""
 class (Foo:
@@ -86,12 +86,18 @@ class (Foo:
     )
 )
 
-def (main:  #
-    # f : const:Foo = Foo(1)
-    # f : const = Foo(1)  # error in c++
-    f : const:auto = Foo(1)
-    
+def (calls_method, f:
     f.method()
+)
+
+def (main:  #
+    fc : const:Foo = Foo(1)
+    # fc.method()  # error method not const
+    # f : const = Foo(1)  # error from c++ (const alone not valid)
+    f : const:auto = Foo(1)  # const ptr to non-const
+    f.method()
+    calls_method(f)
+    # calls_method(fc)  # error method not const
 )
     
     """)
