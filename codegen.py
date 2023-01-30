@@ -30,6 +30,7 @@ cpp_preamble = """
 #include <functional>
 #include <cassert>
 #include <compare> // for <=>
+#include <thread>
 //#include <ranges>
 //#include <numeric>
 
@@ -245,7 +246,7 @@ template <class T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 constexpr default_capture(std::shared_ptr<T> t) noexcept
 {
-    return std::move(t);
+    return t;
 }
 
 template <class T>
@@ -623,6 +624,21 @@ def codegen_class(node : Call, cx):
     return interface_def_str + template_header + class_header + cpp
 
 
+def codegen_while(whilecall, cx):
+    assert isinstance(whilecall, Call)
+    assert whilecall.func.name == "while"
+    if len(whilecall.args) != 2:
+        raise CodeGenError("Incorrect number of while args", whilecall)
+    if not isinstance(whilecall.args[1], Block):
+        raise CodeGenError("Last while arg must be a block", whilecall.args[1])
+
+    # TODO replace find_defs with handling in Context
+    cpp = "while (" + codegen_node(whilecall.args[0], cx.enter_scope()) + ") {"
+    cpp += codegen_block(whilecall.args[1], cx.enter_scope())
+    cpp += cx.indent_str() + "}\n"
+    return cpp
+
+
 def codegen_block(block: Block, cx):
     assert isinstance(block, Block)
     assert block.args
@@ -645,6 +661,9 @@ def codegen_block(block: Block, cx):
                 continue
             elif b.func.name == "if":
                 cpp += codegen_if(b, cx)
+                continue
+            elif b.func.name == "while":
+                cpp += codegen_while(b, cx)
                 continue
 
         if b.declared_type is not None:

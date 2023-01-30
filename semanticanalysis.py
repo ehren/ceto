@@ -221,9 +221,15 @@ def one_liner_expander(parsed):
                     if op.func.name == "lambda":
                         block = op.args[-1]
                         last_statement = block.args[-1]
-                        if not is_return(last_statement):
+                        if is_return(last_statement):
+                            pass
+                        elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class"]:
+                            synthetic_return = RebuiltIdentifer("return")
+                            block.args += [synthetic_return]
+                        else:
                             synthetic_return = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
-                            synthetic_return.synthetic_lambda_return_lambda = op # bit of a hack so that codegen can print implicit return as "return x, void()  // C++ comma operator to autodeduce 'void' return type if x is void"
+                            if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
+                                synthetic_return.synthetic_lambda_return_lambda = op
                             block.args = block.args[0:-1] + [synthetic_return]
                     # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
                         # if op.func.name == "lambda":

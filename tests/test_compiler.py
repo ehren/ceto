@@ -1,3 +1,5 @@
+import os
+
 from compiler import runtest
 from parser import parse
 
@@ -17,6 +19,37 @@ def raises(func, exc=None):
             print(e)
     else:
         assert 0
+
+
+def test_std_thread():
+    c = compile(r"""
+
+class (Foo:
+    a : std.atomic<int> = 0
+    go : std.atomic<bool> = true
+)
+
+def (main:
+    f = Foo()
+
+    t = std.thread(lambda(:
+        while (f.a < 100000:
+            std.cout << 'hi' << f.a
+        )
+        f.go = false
+    ))
+
+    t2 = std.thread(lambda(:
+        while (f.go:
+            f.a = f.a + 1
+        )
+    ))
+
+    t.join()
+    t2.join()
+)
+
+    """)
 
 
 
