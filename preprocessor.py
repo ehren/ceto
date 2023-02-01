@@ -128,15 +128,18 @@ def preprocess(file_object, build_reparse_source = False):
                     break
 
                 if char != ":":
-                    line_to_write += char
+                    c = char
 
                     if not char.isspace():
                         colon_eol = False
                 else:
-                    repl = colon_replacement_char(parsing_stack[-1])
-                    line_to_write += repl
+                    c = colon_replacement_char(parsing_stack[-1])
                     if not char.isspace():
                         colon_eol = True
+
+                line_to_write += c
+                if build_reparse_source and blocks and parsing_stack[-1] == Indent:
+                    blocks[-1][1] += c
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -191,7 +194,7 @@ def preprocess(file_object, build_reparse_source = False):
                 began_indent = True
                 ok_to_hide = False
                 if build_reparse_source:
-                    blocks.append([(line_number, n), ""])
+                    blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
             else:
                 began_indent = False
 
@@ -201,11 +204,11 @@ def preprocess(file_object, build_reparse_source = False):
                     while len(is_it_a_template_stack) > 0:
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
+
+                    if build_reparse_source and blocks:
+                        blocks[-1][1] += ";"
                 else:
                     ok_to_hide = False
-
-                if build_reparse_source:
-                    blocks[-1][1] += line_to_write + "\n"
 
             if ok_to_hide:
                 d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)

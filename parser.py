@@ -488,7 +488,6 @@ grammar = _create()
 def do_parse(source: str):
     # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
 
-    qs = pp.QuotedString('"') | pp.QuotedString("'")
 
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
@@ -498,6 +497,8 @@ def do_parse(source: str):
             pattern = p
         pattern |= p
 
+    qs = pp.QuotedString('"') | pp.QuotedString("'")
+    pattern = pattern.ignore(qs)
     source = pattern.transform_string(source)
 
     patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
@@ -543,21 +544,21 @@ def parse(source: str):
                     do_parse(block)
                 except pp.ParseException as blockerror:
                     blockerror._ceto_col = blockerror.col# + colno
-                    blockerror._ceto_lineno = lineno + blockerror.lineno - 1
+                    blockerror._ceto_lineno =   blockerror.lineno -  1
                     raise blockerror
-        else:
-            for dummy, real in replacements.items():
-                # dedented = dedent(real)
-                try:
-                    # do_parse(dedented)
-                    do_parse(real)
-                except pp.ParseException as lineerror:
-                    dummy = dummy[len('ceto_priv_dummy'):-1]
-                    line, col = dummy.split("c")
-                    lineerror._ceto_col = int(col) + lineerror.col - 1
-                    # lineerror._ceto_col = lineerror.col
-                    lineerror._ceto_lineno = int(line)# + lineerror.lineno
-                    raise lineerror
+
+        for dummy, real in replacements.items():
+            # dedented = dedent(real)
+            try:
+                # do_parse(dedented)
+                do_parse(real)
+            except pp.ParseException as lineerror:
+                dummy = dummy[len('ceto_priv_dummy'):-1]
+                line, col = dummy.split("c")
+                lineerror._ceto_col = int(col) + lineerror.col - 1
+                # lineerror._ceto_col = lineerror.col
+                lineerror._ceto_lineno = int(line)# + lineerror.lineno
+                raise lineerror
 
         raise orig
 
