@@ -199,7 +199,7 @@ def preprocess(file_object, reparse = False):
             else:
                 began_indent = False
 
-                if parsing_stack[-1] == Indent and line.strip():
+                if parsing_stack[-1] == Indent and line_to_write.strip():
                     # block_line_end
                     line_to_write += ";"
                     while len(is_it_a_template_stack) > 0:

@@ -676,7 +676,9 @@ def codegen_block(block: Block, cx):
             b.declared_type = declared_type
             continue
 
-        cpp += indent_str + codegen_node(b, cx) + ";\n"
+        cpp += indent_str + codegen_node(b, cx)
+        if not is_comment(b):
+            cpp += ";\n"
 
     return cpp
 
@@ -1633,7 +1635,7 @@ def codegen_node(node: Node, cx: Context):
             elif is_comment(node):
                 if not (len(node.rhs.args) == 1 or isinstance(node.rhs.args[0], StringLiteral)):
                     raise CodeGenError("unexpected ceto::comment ", node)
-                return "//" + node.rhs.args[0].func.replace("\n", "\\n")
+                return "//" + node.rhs.args[0].func.replace("\n", "\\n") + "\n"
 
             if binop_str is None:
 
