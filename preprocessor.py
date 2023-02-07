@@ -121,13 +121,8 @@ def preprocess(file_object, reparse = False):
                 if char == "#":
                     if not reparse:
                         comment = line[n + 1:]
-                        comment = comment.replace('"', r'\"')
-                        noncomment = line[:n]
                         if comment:
-                            if parsing_stack[-1] == Indent:
-                                if noncomment and not all(l.isspace() for l in noncomment):
-                                    comment_to_write += ";"
-                            #indt_str = current_indent(parsing_stack)*" "
+                            comment = comment.replace('"', r'\"')
                             comment_to_write += 'ceto::comment("' + comment + '");'
                     line = line[:n]
                     break
