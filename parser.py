@@ -371,8 +371,8 @@ def _create():
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
-    quoted_str = pp.QuotedString("'", multiline=True).set_parse_action(StringLiteral)
-    dblquoted_str = pp.QuotedString('"', multiline=True).set_parse_action(StringLiteral)
+    quoted_str = pp.QuotedString("'", multiline=True, esc_char="\\").set_parse_action(StringLiteral)
+    dblquoted_str = pp.QuotedString('"', multiline=True, esc_char="\\").set_parse_action(StringLiteral)
     cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     atom = (
@@ -522,14 +522,14 @@ def parse(source: str):
     from textwrap import dedent
 
     sio = io.StringIO(source)
-    preprocessed, _, _ = preprocess(sio, build_reparse_source=False)
+    preprocessed, _, _ = preprocess(sio, reparse=False)
     preprocessed = preprocessed.getvalue()
 
     try:
         res = do_parse(preprocessed)
     except pp.ParseException as orig:
         sio.seek(0)
-        reparse, replacements, subblocks = preprocess(sio, build_reparse_source=True)
+        reparse, replacements, subblocks = preprocess(sio, reparse=True)
         reparse = reparse.getvalue()
 
         try:
@@ -543,6 +543,7 @@ def parse(source: str):
                     # do_parse(dedented)
                     do_parse(block)
                 except pp.ParseException as blockerror:
+                    print("blockerr")
                     blockerror._ceto_col = blockerror.col# + colno
                     blockerror._ceto_lineno =   blockerror.lineno -  1
                     raise blockerror
@@ -553,6 +554,7 @@ def parse(source: str):
                 # do_parse(dedented)
                 do_parse(real)
             except pp.ParseException as lineerror:
+                print("lineerr")
                 dummy = dummy[len('ceto_priv_dummy'):-1]
                 line, col = dummy.split("c")
                 lineerror._ceto_col = int(col) + lineerror.col - 1

@@ -1,6 +1,38 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_errors2():
+    parse(r"""
+
+def (main:
+    std.cout <<"hi"
+    #err(
+    a(
+)
+    """)
+
+
+def test_errors():
+    parse(r"""
+def (main:
+    a
+    a
+    a
+    a
+    a
+    a
+    a
+    a
+    if (b+:
+        x+1
+        #a#!
+    )
+    #'''
+    aa
+)
+    """)
+
+
 def test_stress_parser():
     import sys
     old = sys.getrecursionlimit()

@@ -39,7 +39,7 @@ class IndentError(PreprocessorError):
     pass
 
 
-def preprocess(file_object, build_reparse_source = False):
+def preprocess(file_object, reparse = False):
     parsing_stack = [Indent]
     is_it_a_template_stack = []
 
@@ -90,14 +90,15 @@ def preprocess(file_object, build_reparse_source = False):
             rewritten.write("\n")
             rewritten.write(" " * indent)
 
-            if build_reparse_source and blocks:
+            if reparse and blocks:
                 blocks[-1][1] += "\n"
                 blocks[-1][1] += " " * indent
 
             # non whitespace char handling
 
             line_to_write = ""
-            ok_to_hide = build_reparse_source and parsing_stack[-1] == Indent
+            comment_to_write = ""
+            ok_to_hide = reparse and parsing_stack[-1] == Indent
             colon_eol = False
 
             n = -1
@@ -110,21 +111,25 @@ def preprocess(file_object, build_reparse_source = False):
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
+                    if reparse and blocks:
+                        blocks[-1][1] += char
                     continue
 
                 if char == BEL:
                     raise PreprocessorError("no BEL", line_number)
 
                 if char == "#":
+                    if not reparse:
+                        comment = line[n + 1:]
+                        comment = comment.replace('"', r'\"')
+                        noncomment = line[:n]
+                        if comment:
+                            if parsing_stack[-1] == Indent:
+                                if noncomment and not all(l.isspace() for l in noncomment):
+                                    comment_to_write += ";"
+                            #indt_str = current_indent(parsing_stack)*" "
+                            comment_to_write += 'ceto::comment("' + comment + '");'
                     line = line[:n]
-                    # this needs a few fixes but is workable:
-                    # comment = line[n + 1:]
-                    # comment = comment.replace('"', r'\"')
-                    # if parsing_stack[-1] == Indent:
-                    #     if line and not line.isspace():
-                    #         rewritten.write("; ")
-                    #     indt_str = current_indent(parsing_stack)*" "
-                    #     rewritten.write("\n" + indt_str + 'ceto::comment("' + comment + '");')
                     break
 
                 if char != ":":
@@ -138,8 +143,6 @@ def preprocess(file_object, build_reparse_source = False):
                         colon_eol = True
 
                 line_to_write += c
-                if build_reparse_source and blocks and parsing_stack[-1] == Indent:
-                    blocks[-1][1] += c
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -187,13 +190,16 @@ def preprocess(file_object, build_reparse_source = False):
                                     line_to_write += "\x06"
                                 break
 
+                if reparse and blocks:# and parsing_stack[-1] == Indent and char not in '"\'':
+                    blocks[-1][1] += char
+
             if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
                 # block_start
                 line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
-                if build_reparse_source:
+                if reparse:
                     blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
             else:
                 began_indent = False
@@ -205,10 +211,12 @@ def preprocess(file_object, build_reparse_source = False):
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
 
-                    if build_reparse_source and blocks:
+                    if reparse and blocks:
                         blocks[-1][1] += ";"
                 else:
                     ok_to_hide = False
+
+            line_to_write += comment_to_write
 
             if ok_to_hide:
                 d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)

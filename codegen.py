@@ -1633,7 +1633,7 @@ def codegen_node(node: Node, cx: Context):
             elif is_comment(node):
                 if not (len(node.rhs.args) == 1 or isinstance(node.rhs.args[0], StringLiteral)):
                     raise CodeGenError("unexpected ceto::comment ", node)
-                cpp.write(r"// " + str(node.args[0]))
+                return "//" + node.rhs.args[0].func.replace("\n", "\\n")
 
             if binop_str is None:
 
