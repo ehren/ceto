@@ -256,18 +256,6 @@ constexpr default_capture(T t) noexcept
     return t;
 }
 
-
-// User lubgr: https://stackoverflow.com/questions/55703986/stdvector-of-type-deduced-from-initializers-before-c17-any-workaround-fo/55704217#55704217
-// this provides better support for [[[1,2,3,4]]] as a vector (of vectors...) with 1 element rather than a vector of 4 elements!
-template <class ...Args>
-auto make_vec(Args&&... args) ->
-    std::vector<typename std::decay<typename std::tuple_element<0, std::tuple<Args...>>::type>::type>
-{
-   using First = typename std::decay<typename std::tuple_element<0, std::tuple<Args...>>::type>::type;
-
-   return std::vector<First>{std::forward<Args>(args)...};
-}
-
 } // namespace
 """
 
@@ -1702,10 +1690,10 @@ def codegen_node(node: Node, cx: Context):
         elif elements:
             # note: [[[1,2,3,4]]] should be a vector with 1 element not 4!
 
-            # almost does what we want but introduces "warning: braces around scalar initializer" in simple cases
-            # return "std::vector {{" + ", ".join(elements) + "}}"
-
-            return "ceto::make_vec(" + ", ".join(elements) + ")"
+            if len(elements) > 1 or isinstance(node.args[0], ListLiteral):
+                return "std::vector {{" + ", ".join(elements) + "}}"
+            else:
+                return "std::vector {" + ", ".join(elements) + "}"
 
             # no longer necessary CTAD reimplementation:
             # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
