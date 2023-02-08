@@ -1582,19 +1582,34 @@ def codegen_node(node: Node, cx: Context):
                         # ^ this would allow e.g.
                         # l : std.vector<std.vector<int>> = {1}
 
+
+
                     # prefer direct initialization to disable implicit conversions (in these assignments)
+
 
                     direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
                     # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
                     # e.g. l2 : std.vector<std.vector<int>> = 1
                     # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
 
-                    return direct_initialization
+                    # return direct_initialization
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
+                    if isinstance(node.rhs, IntegerLiteral):  # TODO float literals
+                        # allow f: float = 0 without cast like in C++.
+                        return direct_initialization
+
+                    # define our own no-implicit-conversion init (without the mega gotcha for aggregates from naive use of brace initialization). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
+                    compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
+                    return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_elems + "> || std::is_same_v<"  + compare_elems + ">);"
+
                     capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
+
+                    # return lhs_type_str + " " + node.lhs.name + " = [" + capture + "]() -> decltype(auto) { return " + rhs_str + "; } ()"
+
+                    # return lhs_type_str + " " + node.lhs.name + " = [" + capture + "]() -> decltype(auto) { static_assert(std::is_same_v<std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>>); return " + rhs_str + "; } ()"
 
                     # the naive aggregate_v check doesn't work with template classes:
                     # initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
