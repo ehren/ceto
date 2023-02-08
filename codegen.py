@@ -1671,10 +1671,10 @@ def codegen_node(node: Node, cx: Context):
         if list_type is not None:
             return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type, cx), ", ".join(elements))
         elif elements:
-            # <strike>no longer necessary CTAD reimplementation</strike>
-            # this is still necessary in the case e.g. [[[1,2,3,4]]] naively printed as std::vector {std::vector {std::vector {std::vector {1,2,3,4} }}} results in a vector of 4 elements not 1.
-            # return "std::vector {" + ", ".join(elements) + "}"
-            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
+            # use double braces ([[[1,2,3,4]]] should contain 1 element not 4):
+            return "std::vector {{" + ", ".join(elements) + "}}"
+            # no longer necessary CTAD reimplementation:
+            # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
             raise CodeGenError("Cannot create vector without elements")
     elif isinstance(node, BracedLiteral):
