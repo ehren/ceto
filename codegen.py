@@ -1578,18 +1578,18 @@ def codegen_node(node: Node, cx: Context):
                     # e.g. l2 : std.vector<std.vector<int>> = 1
                     # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
 
-                    return direct_initialization
-
-                    # the below won't work with template classes anyway e.g. ctad: f : std.function = l
-
-                    # ^ see 'requires c++20' comments in test_curly_brace. The below works with g++ 11.3 on linux
+                    # return direct_initialization
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
                     capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
 
-                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
+                    # the naive aggregate_v check doesn't work with template classes:
+                    # initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
+
+                    # but more indirection (another decltype) fixes:
+                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<decltype([" + capture + "] { " + direct_initialization + "; return " + lhs_str + "; } ())>) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]] " + direct_initialization + "; return " + lhs_str + "; }}()"
 
                     if cx.in_function_body or cx.in_function_param_list:
                         assign_str = "auto && " + lhs_str + " = " + initialize
