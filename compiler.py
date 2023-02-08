@@ -122,16 +122,16 @@ if __name__ == "__main__":
     ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
-    cetoargs = ap.parse_args()
+    cmdargs = ap.parse_args()
 
-    if cetoargs.runstring:
-        source = cetoargs.filename
+    if cmdargs.runstring:
+        source = cmdargs.filename
         basename = safe_unique_filename("cetodashccode", extension="")
 
     else:
-        with open(cetoargs.filename) as f:
+        with open(cmdargs.filename) as f:
             source = f.read()
-        basename = str(pathlib.Path(cetoargs.filename).with_suffix(""))
+        basename = str(pathlib.Path(cmdargs.filename).with_suffix(""))
 
     try:
         code, module = compile(source)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     with open(cppfilename, "w") as output:
         output.write(code)
 
-    if not module.has_main_function or cetoargs.compileonly:
+    if not module.has_main_function or cmdargs.compileonly:
         sys.exit(0)
 
     CXX = "c++"
@@ -168,8 +168,8 @@ if __name__ == "__main__":
         sys.exit(rc)
 
     args = [os.path.join(".", exename)]
-    if cetoargs.args:
-        args += cetoargs.args
+    if cmdargs.args:
+        args += cmdargs.args
 
     print(" ".join(args))
     subprocess.Popen(args)

@@ -592,8 +592,8 @@ def codegen_class(node : Call, cx):
         # autosynthesize constructor
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
-    else:
-        cpp += inner_indt + "explicit " + name.name + "() = default;\n\n"
+    # else:
+    #     cpp += inner_indt + "explicit " + name.name + "() = default;\n\n"
     interface_def_str = ""
     for interface_type in defined_interfaces:
         # note that shared_ptr<interface_type> is auto derefed
@@ -1450,6 +1450,10 @@ def codegen_node(node: Node, cx: Context):
                     class_node = class_def.class_def_node
                     curly_args = "{" + args_inner + "}"
 
+                    if not node.args:
+                        # just use round parentheses to call default constructor
+                        curly_args = args_str
+
                     # if class_def.has_generic_params():
                     #     class_name += "<" + ", ".join(
                     #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
@@ -1667,9 +1671,10 @@ def codegen_node(node: Node, cx: Context):
         if list_type is not None:
             return "std::vector<{}>{{{}}}".format(codegen_type(node, list_type, cx), ", ".join(elements))
         elif elements:
-            # no longer necessary CTAD reimplementation - still used in the case x = [] ; x.append(1) handled elsewhere
-            # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
-            return "std::vector {" + ", ".join(elements) + "}"
+            # <strike>no longer necessary CTAD reimplementation</strike>
+            # this is still necessary in the case e.g. [[[1,2,3,4]]] naively printed as std::vector {std::vector {std::vector {std::vector {1,2,3,4} }}} results in a vector of 4 elements not 1.
+            # return "std::vector {" + ", ".join(elements) + "}"
+            return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
             raise CodeGenError("Cannot create vector without elements")
     elif isinstance(node, BracedLiteral):
