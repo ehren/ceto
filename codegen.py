@@ -1585,17 +1585,13 @@ def codegen_node(node: Node, cx: Context):
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     decl_str = lhs_type_str + " " + lhs_str
 
-                    copy_list_intl_str = decl_str + " = " + rhs_str
+                    plain_initialization = decl_str + " = " + rhs_str
 
                     if isinstance(node.rhs, BracedLiteral):
-                        # I think this is "copy-list-initialization?"
-                        return copy_list_intl_str
+                        # aka "copy-list-initialization" in this case
+                        return plain_initialization
 
-                        # return decl_str + rhs_str
-                        # ^ this would allow e.g.
-                        # l : std.vector<std.vector<int>> = {1}
-
-                    # prefer direct list initialization to disable narrowing conversions (in these assignments):
+                    # prefer brace initialization to disable narrowing conversions (in these assignments):
 
                     direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
 
@@ -1615,7 +1611,7 @@ def codegen_node(node: Node, cx: Context):
 
                     compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
 
-                    return copy_list_intl_str + "; static_assert((ceto::is_convertible_without_narrowing_v<" + compare_elems + "> || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
+                    return plain_initialization + "; static_assert((ceto::is_convertible_without_narrowing_v<" + compare_elems + "> || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
 
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
