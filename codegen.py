@@ -31,6 +31,7 @@ cpp_preamble = """
 #include <cassert>
 #include <compare> // for <=>
 #include <thread>
+//#include <concepts>
 //#include <ranges>
 //#include <numeric>
 
@@ -255,6 +256,60 @@ constexpr default_capture(T t) noexcept
 {
     return t;
 }
+
+
+// https://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p0870r2.html#P0608R3
+// A proposal for a type trait to detect narrowing conversions
+// "Another possible implementation, that uses the just mentioned workaround, is the following one (courtesy of Zhihao Yuan; received via private communication):"
+
+
+//template<class From, class To>
+//inline constexpr bool is_narrowing_convertible_v = false;
+//
+//template<class T, class U>
+//concept __construct_without_narrowing = requires (U&& x) {
+//    { std::type_identity_t<T[]>{std::forward<U>(x)} } -> T[1];  // compile error??
+//};
+//
+//template<class From, class To> requires std::is_convertible_v<From, To>
+//inline constexpr bool is_narrowing_convertible_v<From, To> =
+//    !__construct_without_narrowing<To, From>;
+    
+// doesn't compile but from paper:
+
+// "Another, much simpler implementation is to rely on SFINAE around an expression such as To{std::declval<From>()}. However, this form is also error-prone: it may accidentally select aggregate initialization for To, or a constructor taking a std::initializer_list, and so on. If for any reason these make the expression ill-formed, then the trait is going to report that there is a narrowing conversion between the types, even when there actually isn't one (or vice-versa, depending on how one builds the trait)."
+
+// (it may be that the behaviour above is desirable for our cases (banning x:float = y_int but keeping x:atomic<int> = y_int)
+
+// Here's an impl from:
+// User: Tavian Barnes
+// https://stackoverflow.com/questions/26705199/how-can-i-write-a-type-trait-to-check-if-a-type-is-convertible-to-another-by-a-n
+
+template <typename From, typename To>
+class is_list_convertible_helper
+{
+  template <typename To2>
+  static void requires_conversion(To2 t);
+
+  template <typename From2, typename To2,
+      typename = decltype(requires_conversion<To2>({std::declval<From2>()}))>
+  //                                               ^ Braced initializer
+  static std::true_type helper(int);
+
+  template <typename From2, typename To2>
+  static std::false_type helper(...);
+
+public:
+  using type = decltype(helper<From, To>(0));
+};
+
+template <typename From, typename To>
+class is_list_convertible
+  : public is_list_convertible_helper<From, To>::type
+{ };
+
+static_assert(!is_list_convertible<double, int>::value,
+    "double -> int is narrowing!");
 
 } // namespace
 """
@@ -1590,8 +1645,18 @@ def codegen_node(node: Node, cx: Context):
                         return direct_initialization
 
                     # define our own no-implicit-conversion init (without the mega gotcha for aggregates from naive use of brace initialization). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
+                    # compare_lhs = "std::decay_t<decltype(" + node.lhs.name + ")>"
+                    # compare_rhs = "std::decay_t<decltype(" + rhs_str + ")>"
+                    # compare_lr = compare_lhs + ", " + compare_rhs
+                    # compare_rl = compare_rhs + ", " + compare_lhs
+                    # return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_rl + "> || !std::is_convertible_v<" + compare_lr + "> || std::is_same_v<"  + compare_lr + ">);"
+                    # return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_rl + "> || !std::is_convertible_v<" + compare_lr + "> || std::is_same_v<"  + compare_lr + ">);"
+
+                    # compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
+                    # return copy_list_intl_str + "; static_assert(!ceto::is_narrowing_convertible_v<" + compare_elems + "> || std::is_same_v<" + compare_elems + ">);"
+
                     compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
-                    return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_elems + "> || std::is_same_v<"  + compare_elems + ">);"
+                    return copy_list_intl_str + "; static_assert(ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">)"
 
                     capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
 
