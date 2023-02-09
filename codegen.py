@@ -257,59 +257,29 @@ constexpr default_capture(T t) noexcept
     return t;
 }
 
-
 // https://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p0870r2.html#P0608R3
-// A proposal for a type trait to detect narrowing conversions
-// "Another possible implementation, that uses the just mentioned workaround, is the following one (courtesy of Zhihao Yuan; received via private communication):"
+// still not in c++20 below is_convertible_without_narrowing implementation taken from
+// https://github.com/GHF/mays/blob/db8b6b5556cc465d326d9e1acdc5483c70999b18/mays/internal/type_traits.h // (C) Copyright 2020 Xo Wang <xo@geekshavefeelings.com> // SPDX-License-Identifier: Apache-2.0
 
+// True if |From| is implicitly convertible to |To| without going through a narrowing conversion.
+// Will likely be included in C++2b through WG21 P0870 (see
+// https://github.com/cplusplus/papers/issues/724).
+template <typename From, typename To, typename Enable = void>
+struct is_convertible_without_narrowing : std::false_type {};
 
-//template<class From, class To>
-//inline constexpr bool is_narrowing_convertible_v = false;
-//
-//template<class T, class U>
-//concept __construct_without_narrowing = requires (U&& x) {
-//    { std::type_identity_t<T[]>{std::forward<U>(x)} } -> T[1];  // compile error??
-//};
-//
-//template<class From, class To> requires std::is_convertible_v<From, To>
-//inline constexpr bool is_narrowing_convertible_v<From, To> =
-//    !__construct_without_narrowing<To, From>;
-    
-// doesn't compile but from paper:
-
-// "Another, much simpler implementation is to rely on SFINAE around an expression such as To{std::declval<From>()}. However, this form is also error-prone: it may accidentally select aggregate initialization for To, or a constructor taking a std::initializer_list, and so on. If for any reason these make the expression ill-formed, then the trait is going to report that there is a narrowing conversion between the types, even when there actually isn't one (or vice-versa, depending on how one builds the trait)."
-
-// (it may be that the behaviour above is desirable for our cases (banning x:float = y_int but keeping x:atomic<int> = y_int)
-
-// Here's an impl from:
-// User: Tavian Barnes
-// https://stackoverflow.com/questions/26705199/how-can-i-write-a-type-trait-to-check-if-a-type-is-convertible-to-another-by-a-n
+// Implement "construct array of From" technique from P0870R4 with SFINAE instead of requires.
+template <typename From, typename To>
+struct is_convertible_without_narrowing<
+    From,
+    To,
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    std::void_t<decltype(std::type_identity_t<To[]>{std::declval<From>()})>> : std::true_type {};
 
 template <typename From, typename To>
-class is_list_convertible_helper
-{
-  template <typename To2>
-  static void requires_conversion(To2 t);
+constexpr bool is_convertible_without_narrowing_v =
+    is_convertible_without_narrowing<From, To>::value;
 
-  template <typename From2, typename To2,
-      typename = decltype(requires_conversion<To2>({std::declval<From2>()}))>
-  //                                               ^ Braced initializer
-  static std::true_type helper(int);
-
-  template <typename From2, typename To2>
-  static std::false_type helper(...);
-
-public:
-  using type = decltype(helper<From, To>(0));
-};
-
-template <typename From, typename To>
-class is_list_convertible
-  : public is_list_convertible_helper<From, To>::type
-{ };
-
-static_assert(!is_list_convertible<double, int>::value,
-    "double -> int is narrowing!");
+static_assert(!is_convertible_without_narrowing_v<float, int>, "float -> int is narrowing!");
 
 } // namespace
 """
@@ -1625,70 +1595,28 @@ def codegen_node(node: Node, cx: Context):
                         # ^ this would allow e.g.
                         # l : std.vector<std.vector<int>> = {1}
 
-
-
-                    # prefer direct initialization to disable implicit conversions (in these assignments)
-
+                    # prefer direct list initialization to disable narrowing conversions (in these assignments):
 
                     direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+
                     # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
                     # e.g. l2 : std.vector<std.vector<int>> = 1
-                    # maybe use: https://stackoverflow.com/questions/47882827/type-trait-for-aggregate-initializability-in-the-standard-library
-
-                    # return direct_initialization
+                    # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
+                    # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
                     if isinstance(node.rhs, IntegerLiteral):  # TODO float literals
-                        # allow f: float = 0 without cast like in C++.
+                        # the below will work but this cuts down on noise for known cases
                         return direct_initialization
 
-                    # define our own no-implicit-conversion init (without the mega gotcha for aggregates from naive use of brace initialization). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
-                    # compare_lhs = "std::decay_t<decltype(" + node.lhs.name + ")>"
-                    # compare_rhs = "std::decay_t<decltype(" + rhs_str + ")>"
-                    # compare_lr = compare_lhs + ", " + compare_rhs
-                    # compare_rl = compare_rhs + ", " + compare_lhs
-                    # return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_rl + "> || !std::is_convertible_v<" + compare_lr + "> || std::is_same_v<"  + compare_lr + ">);"
-                    # return copy_list_intl_str + "; static_assert(!std::is_convertible_v<" + compare_rl + "> || !std::is_convertible_v<" + compare_lr + "> || std::is_same_v<"  + compare_lr + ">);"
-
-                    # compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
-                    # return copy_list_intl_str + "; static_assert(!ceto::is_narrowing_convertible_v<" + compare_elems + "> || std::is_same_v<" + compare_elems + ">);"
+                    # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
                     compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
 
-                    #almost there:
-                    # return copy_list_intl_str + "; static_assert(ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">)"
+                    return copy_list_intl_str + "; static_assert((ceto::is_convertible_without_narrowing_v<" + compare_elems + "> || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
 
-                    return copy_list_intl_str + "; static_assert((ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
-
-                    # return copy_list_intl_str + "; static_assert((ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">) && !std::is_aggregate_v<)"
-
-                    # no: (copy_list_intl_str can still rule out important aggregate mismatches like assigning 2d vec to 4d vec)
-                    # return direct_initialization + f"; static_assert(std::is_aggregate_v<std::decay_t<decltype({lhs_str})>> == std::is_aggregate_v<std::decay_t<decltype({rhs_str})>>)"
-
-                    capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
-
-                    # return lhs_type_str + " " + node.lhs.name + " = [" + capture + "]() -> decltype(auto) { return " + rhs_str + "; } ()"
-
-                    # return lhs_type_str + " " + node.lhs.name + " = [" + capture + "]() -> decltype(auto) { static_assert(std::is_same_v<std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>>); return " + rhs_str + "; } ()"
-
-                    # the naive aggregate_v check doesn't work with template classes:
-                    # initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<" + lhs_type_str + ">) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { [[maybe_unused]]" + direct_initialization + "; return " + lhs_str + "; }}()"
-
-                    # but more indirection (another decltype) fixes:
-
-                    return_direct = "return " + lhs_type_str + " " + " { " + rhs_str + " };"
-
-                    initialize = "[" + capture + "]() -> decltype(auto) { if constexpr(std::is_aggregate_v<decltype([" + capture + "] () -> decltype(auto) {" + return_direct + "} ())>) { [[maybe_unused]] " + copy_list_intl_str + "; return " + lhs_str + "; } else { " + return_direct + " }}()"
-
-                    if cx.in_function_body or cx.in_function_param_list:
-                        assign_str = "auto && " + lhs_str + " = " + initialize
-                    else:
-                        # requires working c++20 to allow lambda exression in decltype (this 'works' in class scope - wouldn't suffer ODR issues with allowing 'auto' in non-static member initialization - though we should allow x = 0 to print as decltype(0) {x} = 0 since everying going in one translation unit anyway):
-                        assign_str = "decltype(" + initialize + ") " + lhs_str + " = " + initialize
-
-                    return assign_str
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
                 # ^^ TODO delete or revise this comment (lambda return types need work anyway)
