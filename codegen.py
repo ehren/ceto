@@ -1656,7 +1656,16 @@ def codegen_node(node: Node, cx: Context):
                     # return copy_list_intl_str + "; static_assert(!ceto::is_narrowing_convertible_v<" + compare_elems + "> || std::is_same_v<" + compare_elems + ">);"
 
                     compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
-                    return copy_list_intl_str + "; static_assert(ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">)"
+
+                    #almost there:
+                    # return copy_list_intl_str + "; static_assert(ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">)"
+
+                    return copy_list_intl_str + "; static_assert((ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
+
+                    # return copy_list_intl_str + "; static_assert((ceto::is_list_convertible<" + compare_elems + ">::value || !std::is_convertible_v<" + compare_elems + ">) && !std::is_aggregate_v<)"
+
+                    # no: (copy_list_intl_str can still rule out important aggregate mismatches like assigning 2d vec to 4d vec)
+                    # return direct_initialization + f"; static_assert(std::is_aggregate_v<std::decay_t<decltype({lhs_str})>> == std::is_aggregate_v<std::decay_t<decltype({rhs_str})>>)"
 
                     capture = "&" if cx.in_function_body or cx.in_function_param_list else ""
 
