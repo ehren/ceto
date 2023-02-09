@@ -281,6 +281,17 @@ constexpr bool is_convertible_without_narrowing_v =
 
 static_assert(!is_convertible_without_narrowing_v<float, int>, "float -> int is narrowing!");
 
+
+// for our own diy impl of "no narrowing conversions in local var definitions" 
+// that avoids some pitfalls always printing ceto "x: Type = y" as c++ "Type x {y}"
+// e.g. ceto code "l : std.vector<int> = 1") should be an error not an aggregate 
+// initialization.
+template <typename From, typename To>
+constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowing_v =
+    std::is_aggregate_v<From> == std::is_aggregate_v<To> &&
+    (!std::is_convertible_v<From, To> ||
+     is_convertible_without_narrowing_v<From, To>);
+
 } // namespace
 """
 
@@ -1609,9 +1620,7 @@ def codegen_node(node: Node, cx: Context):
 
                     # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
-                    compare_elems = "std::decay_t<decltype(" + node.lhs.name + ")>, std::decay_t<decltype(" + rhs_str + ")>"
-
-                    return plain_initialization + "; static_assert((ceto::is_convertible_without_narrowing_v<" + compare_elems + "> || !std::is_convertible_v<" + compare_elems + ">) && std::is_aggregate_v<std::decay_t<decltype(" + lhs_str + ")>> == std::is_aggregate_v<std::decay_t<decltype(" + rhs_str + ")>>)"
+                    return f"{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({node.lhs.name}), decltype({rhs_str})>)"
 
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
