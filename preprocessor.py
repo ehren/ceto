@@ -121,7 +121,7 @@ def preprocess(file_object, reparse = False):
                 if char == "#":
                     if not reparse:
                         comment = line[n + 1:]
-                        if comment:
+                        if 0 and comment:
                             comment = comment.replace('"', r'\"')
                             comment_to_write += 'ceto::comment("' + comment + '");'
                     line = line[:n]
