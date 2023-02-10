@@ -20,13 +20,41 @@ def raises(func, exc=None):
     else:
         assert 0
 
+# for (x = 0, x < 10, x+= 1:
+#     pass
+# )
+#for (,true,):  # error not enough for args
+#    pass
+#)
+#for (void(), true, void():  # if you really must have an empty for loop (loop condition required)
+#    pass
+#)
+
+
+
+def test_more_conversions():
+    c = compile(r"""
+
+def (main:
+    b: bool = true
+    b2 : bool = 1
+    i : int = true
+)
+    
+    """)
+
 
 def test_std_thread():
     c = compile(r"""
 
+class (Bar:
+    a
+)
+    
 class (Foo:
     a : std.atomic<int> = 0
     go : std.atomic<bool> = true
+    go2 : std.atomic<bool> = std.atomic<bool> {true}  # this shouldn't be necessary
 )
 
 def (main:
@@ -41,7 +69,9 @@ def (main:
 
     t2 = std.thread(lambda(:
         while (f.go:
-            f.a = f.a + 1
+            f.a = f.a + 1   # TODO implement += etc
+            f.a.operator("++")()  # alternative
+            f.a.operator("++")(1) 
         )
     ))
 
@@ -54,9 +84,9 @@ def (main:
 
 
 def test_std_function():
-    import subprocess
-    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
-        return
+    # import subprocess
+    # if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+    #     return
 
     compile(r"""
 
@@ -568,78 +598,78 @@ def (main:
 
 def test_curly_brace():
     c = compile(r"""
-    
+
 def (main:
     l : std.vector<std.vector<int>> = {{1}, {1,2,3}}
     l2 : std.vector<std.vector<int>> = {{1,2}}
     l3 : std.vector<std.vector<int>> = {{1}}
     l4 : std.vector<std.vector<int>> = {}
-    
-    
+
+
     a : std.vector<int> = {5,2}
     a2 : std.vector<std.vector<int>> = {l}  # confusing?
     a3 : std.vector<std.vector<int>> = l
     a4 : std.vector<std.vector<int>> = {{l}}
-    
+
     # implement python style chained comparison?
     assert(2 == a.size() and 2 == a2.size() and 2 == a3.size() and 2 == a4.size())
-    
+
     # TODO:
     # for (l in [l, l2, l3]:  # hang: "are we handling this correctly (def args)" (see self assign hang fix)
     #     for (k in l:
     #         std.cout << k
-    #     ) 
+    #     )
     # )
-    
+
     # this broke with previous insertion of declval:
     # for(auto && ll : std::vector<decltype(std::declval<std::vector<std::vector<int>>>())>{l, l2, l3}) {
-    
+
     # now works:
     for (ll in [l, l2, l3, l4, a2]:
         for (li in ll:
             for (lk in li:
                 std.cout << lk
             )
-        ) 
+        )
     )
-    
+
     std.cout << l3[0][0]
-    
+
     arr: std.array<int, 4> = {{1, 2, 3, 4}}
     arr2: std.array<int, 2> = {1, 2}
-    
+
     arr3: std::array<std::array<int, 3>, 2> = { { { {1, 2, 3} }, { { 4, 5, 6} } } }
     arr4: std::array<std::array<int, 3>, 2> = { { {1, 2, 3} } }
     # arr5: std::array<std::array<int, 3>, 2> = { {1, 2, 3} } # warning: suggest braces around initialization of subobject
     # arr6: std::array<std::array<int, 3>, 2> = {1, 2, 3}  # warning: suggest braces around initialization of subobject
     # arr7: std::array<std::array<int, 3>, 2> = {1}        # warning: suggest braces around initialization of subobject
     # arr8: std::array<std::array<int, 3>, 2> = 1        # error
-    
+
     arr8: std::array<std::array<int, 3>, 2> = { { { {1} } } }
-    
+
     std.cout << arr[3]
     std.cout << arr2[1]
-    
+
     for (ll in [arr3, arr4]:
         std.cout << ll[0][0]
     )
-    
+
     v = std.vector<int> (5, 42)
     std.cout << v[4]
     assert(v.size() == 5)
-    
-    # note these are parsed as 'BracedCall' 
+
+    # note these are parsed as 'BracedCall'
     v2 = std.vector<int> {5, 42}
     assert(v2.size() == 2)
-    
+
     vv:std.vector<int> = std.vector<int> (5, 42)
     std.cout << v[4]
     assert(v.size() == 5)
-    
-    # 'BracedCall' 
+
+    # 'BracedCall'
     vv2:std.vector<int> = std.vector<int> {5, 42}
     assert(v2.size() == 2)
-    
+
     v1 : std.vector<int> = {1,2}
     vv1 : std.vector<std.vector<int>> = {v}
 )
@@ -647,51 +677,38 @@ def (main:
 
     assert c == "11231211123142114242"
 
-    try:
-        c = compile(r"""
+    def f():
+        compile(r"""
 def (main:
     l : std.vector<std.vector<int>> = {1}
 )
         """)
-    except Exception as e:
-        pass
-    else:
-        assert 0
+    raises(f)
 
-    try:
-        c = compile(r"""
+    def f2():
+        compile(r"""
 def (main:
     l3 : std.vector<std.vector<int>> = {1,2}
 )
-    """)
-    except Exception as e:
-        pass
-    else:
-        assert 0
+        """)
+    raises(f2)
 
-    try:
-        c = compile(r"""
+    def f3():
+        compile(r"""
 def (main:
     l2 : std.vector<std.vector<int>> = 1
 )
-    
-    """)
-    except Exception as e:
-        pass
-    else:
-        assert 0 # requires c++20 (see use of std::is_aggregate_v in codegen)
+        """)
+    # raises(f3)
 
-    try:
-        c = compile(r"""
+    def f4():
+        compile(r"""
 def (main:
     l : std.vector<int> = {1,2}
     l2 : std.vector<std.vector<int>> = l # this is arguably pretty weird too although some aggregative initialization cases are desirable
 )
         """)
-    except Exception as e:
-        pass
-    else:
-        assert 0  # requires c++20 (see use of std::is_aggregate_v in codegen)
+    raises(f4)
 
 
 def test_self_lambda_safe():
@@ -932,8 +949,8 @@ def (foo:static, x, y:
 
 def test_complex_list_typing():
     import subprocess
-    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
-        return
+    # if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+    #     return
 
     c = compile(r"""
     
@@ -1131,8 +1148,7 @@ def (main:
 
 def test_a_andand_b_wrong():
 
-    try:
-        compile(r"""
+    raises(lambda: compile(r"""
 def (main:
     if (1 & (&2):  # this would be rejected by the c++ compiler
         pass
@@ -1141,16 +1157,12 @@ def (main:
         pass
     )
 )
-    """)
-    except Exception as e:
-        assert "don't use '&&'. use 'and' instead." in str(e)
-    else:
-        assert 0
+    """))
 
 
 def test_contains_helper():
     c = compile(r"""
-# // https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
+# https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
     return std.find(container.begin(), container.end(), element) != container.end()
 )
@@ -2460,7 +2472,6 @@ def (main:
     baz(std.move(f2))
     
     # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
-    # lst = [std.move(Foo()), std.move(Foo()), std.move(Foo())]
     lst = []
     lst.append(Foo())
     f = Foo()
@@ -3291,11 +3302,13 @@ def _run_all_tests(mod):
 if __name__ == '__main__':
     import sys
 
-    _run_all_tests(sys.modules[__name__])
+    # _run_all_tests(sys.modules[__name__])
+    test_more_conversions()
+    #test_curly_brace()
     # test_std_function()
     # test_if_expressions()
     # test_capture()
-    # test_complex_list_typing()
+    #test_complex_list_typing()
     # test_lambda_unevaluated_context()
     # test_braced_call()
     # test_implicit_conversions()

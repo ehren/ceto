@@ -287,7 +287,7 @@ static_assert(!is_convertible_without_narrowing_v<float, int>, "float -> int is 
 // e.g. ceto code "l : std.vector<int> = 1") should be an error not an aggregate 
 // initialization.
 template <typename From, typename To>
-constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowing_v =
+inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowing_v =
     std::is_aggregate_v<From> == std::is_aggregate_v<To> &&
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
@@ -1614,9 +1614,8 @@ def codegen_node(node: Node, cx: Context):
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
-                    if isinstance(node.rhs, IntegerLiteral):  # TODO float literals
-                        # the below will work but this cuts down on noise for known cases
-                        return direct_initialization
+                    if isinstance(node.rhs, IntegerLiteral) or (isinstance(node.rhs, Identifier) and node.rhs.name in ["true", "false"]):  # TODO float literals
+                        return f"{direct_initialization}; static_assert(std::is_convertible_v<decltype({node.lhs.name}), decltype({rhs_str})>)"
 
                     # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
