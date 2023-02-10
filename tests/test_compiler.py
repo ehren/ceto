@@ -2425,14 +2425,7 @@ def (main:
     """)
 
 
-# need to change uniq_ptr managed classes/structs to use separate class hierarchy than object (even though it doesn't inherit from shared_object (enable_shared_from_this) I'm not sure you
-# ever want to be upcasting to base of both shared and uniq ptr managed hierarchies.
-# probably want to make 'unique' require 'struct' instead of 'func' (note that you still want get_ptr to work (compile to nothing) with uniq instances)
 def test_uniq_ptr():
-    import subprocess
-    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
-        return
-
     c = compile(r"""
 class (Foo:
     a:int = 5
@@ -2443,11 +2436,11 @@ class (Foo:
     )
 ): unique
 
-def (bam, f: const: Foo: ref:
+def (bam, f: Foo:
     f.bar()
 )
 
-def (baz, f: const: Foo: ref:
+def (baz, f: Foo:
     f.bar()
     bam(std.move(f))
 )
