@@ -31,6 +31,94 @@ def raises(func, exc=None):
 #)
 
 
+def test_parameter_pack():
+    c = compile(r"""
+    
+# Example from https://en.cppreference.com/w/cpp/language/parameter_pack
+# void tprintf(const char* format) // base function
+# {
+#     std::cout << format;
+# }
+#  
+# template<typename T, typename... Targs>
+# void tprintf(const char* format, T value, Targs... Fargs) // recursive variadic function
+# {
+#     for (; *format != '\0'; format++)
+#     {
+#         if (*format == '%')
+#         {
+#             std::cout << value;
+#             tprintf(format + 1, Fargs...); // recursive call
+#             return;
+#         }
+#         std::cout << *format;
+#     }
+# }
+#  
+# int main()
+# {
+#     tprintf("% world% %\n", "Hello", '!', 123);
+# }
+    
+def (tprintf, format: const:char:ptr: # base function
+    std.cout << format
+)
+    
+def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive variadic function
+      format: const:char:ptr, 
+       value: T, 
+       Fargs: Targs:dotdotdot:
+      
+    while (*format != c""[0]:  # TODO maybe char"%" for char literal
+        if (*format == c"%"[0]:
+            std.cout << value
+            tprintf(format + 1, Fargs...) # recursive call
+            return
+        )
+        std.cout << *format
+        format = format + 1
+    )
+)
+    
+def (main:
+    tprintf(c"% world% %\n", c"Hello", c"!"[0], 123);
+)
+    """)
+
+    assert c == "Hello world! 123\n"
+
+
+def test_forwarder():
+    c = compile(r"""
+    
+# from https://herbsutter.com/2013/05/09/gotw-1-solution/
+
+# template<typename T, typename ...Args>
+# void forwarder( Args&&... args ) {
+#     // ...
+#     T local = { std::forward<Args>(args)... };
+#     // ...
+# }
+
+# with ... as an identifier (not so great)
+# def (forwarder: template<typename:T, typename:...:Args>,
+#           args: Args:rref:... :
+#     # local: T = { std.forward<Args>(args):... }  # abuse of type declaration syntax and doesn't work anyway
+#     pass
+# )
+
+# ... as an op ('dotdotdot' necessary for current low precedence choice for '...'. maybe revisit this? note that 'ellipsis' is hard to spell):
+def (forwarder: template<typename:T, typename:dotdotdot:Args>,
+          args: Args:rref:dotdotdot:
+    local: T = { std.forward<Args>(args)... }
+)
+
+def (main:
+    # from article:  "forwarder<vector<int>> ( 1, 2, 3, 4 ); // ok because of {}
+    forwarder<std.vector<int>> (1, 2, 3, 4)
+)
+    """)
+
 
 def test_more_conversions():
     c = compile(r"""
@@ -699,7 +787,7 @@ def (main:
     l2 : std.vector<std.vector<int>> = 1
 )
         """)
-    # raises(f3)
+    raises(f3)
 
     def f4():
         compile(r"""
@@ -2533,10 +2621,10 @@ def (main:
     else:
         printf("not same\n")
     )
-    f = None
-    b = None
+    f = nullptr
+    b = nullptr
     printf("testing for null...\n")
-    if (f == None:
+    if (f == nullptr:
         printf("we're dead\n")
         # f.bar()  # crashes as expected
     )
@@ -2614,7 +2702,7 @@ def (main:
     std.cout << (&f)->use_count() << std.endl
     std.cout << (&f2)->use_count() << std.endl
     f2 = nullptr
-    f = None
+    f = nullptr
     printf("f %d\n", not f)
     printf("f2 %d\n", not f2)
     std.cout << (&f)->use_count() << std.endl
@@ -3166,7 +3254,7 @@ def test_ifscopes_methodcalls_classes_lottastuff():
     compile(r"""
 
 def (foo:
-    # return None
+    # return nullptr
 
     if (1:
         x = [2]
@@ -3302,8 +3390,9 @@ def _run_all_tests(mod):
 if __name__ == '__main__':
     import sys
 
-    # _run_all_tests(sys.modules[__name__])
-    test_more_conversions()
+    _run_all_tests(sys.modules[__name__])
+    # test_more_conversions()
+    # test_forwarder()
     #test_curly_brace()
     # test_std_function()
     # test_if_expressions()

@@ -5,8 +5,10 @@ from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     TypeOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, \
     find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
-from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, ScopeResolution
-
+from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, \
+    BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, \
+    CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, \
+    ScopeResolution, LeftAssociativeUnOp
 
 import io
 from collections import defaultdict
@@ -1423,6 +1425,8 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
             return "*"
         elif type_node.name == "ref":
             return "&"
+        elif type_node.name == "rref":
+            return "&&"
 
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
@@ -1524,8 +1528,10 @@ def codegen_node(node: Node, cx: Context):
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
         elif name == "string":
             return "std::string"
-        elif name == "None":
-            return "nullptr"
+        # elif name == "None":  # just use 'nullptr' (fine even in pure python syntax)
+        #     return "nullptr"
+        elif name == "dotdotdot":
+            return "..."
         # elif name == "object":
         #     return "std::shared_ptr<object>"
 
@@ -1679,7 +1685,12 @@ def codegen_node(node: Node, cx: Context):
                 if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
                     cpp.write("ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
                 else:
-                    cpp.write(separator.join([codegen_node(node.lhs, cx), node.func, codegen_node(node.rhs, cx)]))
+                    funcstr = node.func  # fix ast: should be Ident
+                    if node.func == "and":  # don't use the weird C operators tho tempting
+                        funcstr = "&&"
+                    elif node.func == "or":
+                        funcstr = "||"
+                    cpp.write(separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)]))
             else:
                 cpp.write(binop_str)
 
@@ -1730,6 +1741,9 @@ def codegen_node(node: Node, cx: Context):
         else:
             return "(" + opername + codegen_node(node.args[0], cx) + ")"
             # return opername + codegen_node(node.args[0], cx)
+    elif isinstance(node, LeftAssociativeUnOp):
+        opername = node.func
+        return codegen_node(node.args[0], cx) + opername
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib

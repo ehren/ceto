@@ -59,8 +59,15 @@ class Node:
 
 class UnOp(Node):
     def __init__(self, tokens):
-        self.func = tokens[0][0]
+        self.func = tokens[0][0]  # TODO should be an Identifier
         self.args = [tokens[0][1]]
+
+
+class LeftAssociativeUnOp(Node):
+    def __init__(self, tokens):
+        self.func = tokens[0][1]  # TODO should be an Identifier
+        self.args = [tokens[0][0]]
+
 
 
 class BinOp(Node):
@@ -442,6 +449,7 @@ def _create():
     not_op = pp.Keyword("not")
     star_op = pp.Literal("*")
     amp_op = pp.Literal("&")
+    ellipsis_op = pp.Literal("...")
 
     _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
     _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
@@ -475,6 +483,8 @@ def _create():
             (colon, 2, pp.opAssoc.RIGHT, TypeOp),
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return")|pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, UnOp),
+            (ellipsis_op, 1, pp.opAssoc.LEFT, LeftAssociativeUnOp),
+            (ellipsis_op, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
         ],
     ).set_parse_action(_InfixExpr)
 

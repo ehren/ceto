@@ -69,7 +69,7 @@ def preprocess(file_object, reparse = False):
             line = line[indent:]  # consume spaces
             curr = current_indent(parsing_stack)
 
-            if parsing_stack[-1] == Indent:
+            if parsing_stack[-1] == Indent and line[0] != "#":
 
                 if indent < curr:
                     # dedent
