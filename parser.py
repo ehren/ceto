@@ -484,7 +484,6 @@ def _create():
             ("=", 2, pp.opAssoc.RIGHT, Assign),
             (pp.Keyword("return")|pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, UnOp),
             (ellipsis_op, 1, pp.opAssoc.LEFT, LeftAssociativeUnOp),
-            (ellipsis_op, 2, pp.opAssoc.LEFT, _LeftAssociativeBinOp),
         ],
     ).set_parse_action(_InfixExpr)
 
