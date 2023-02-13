@@ -179,7 +179,14 @@ mad(std::unique_ptr<T>&& obj) {
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct(Args&&... args) {
+    // using TT = decltype(T{std::forward<Args>(args)...});  // curlies are attempt to disable narrowing conversion but induces "temporary of type 'std::enable_shared_from_this<shared_object>' has protected destructor"
     return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
+template<typename T, typename... Args>
+std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
+call_or_construct(Args&&... args) {
+    return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 // non-object concrete classes/structs (in C++ sense)
@@ -1519,7 +1526,9 @@ def codegen_node(node: Node, cx: Context):
 
                 simple_call_str = func_str + args_str
 
-                if func_str in ("decltype", "static_assert") or isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
+                if func_str in ("decltype", "static_assert") or (
+                        isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) and
+                        node.parent.lhs is not node):
                     return simple_call_str
 
                 dt_str = "decltype(" + simple_call_str + ")"
