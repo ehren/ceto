@@ -175,25 +175,56 @@ mad(std::unique_ptr<T>&& obj) {
 // C style macros could be handleable with #ifdef Foo Foo()#else call_or_construct<...(with ugliness for maybe-constructor calls in subexpressions)
 // OTOH we might want to auto add :const:ref only to function params that are generic/typeless or of type our-language class or struct (so keeping track of class definitions is still required by the transpiler = module dependencies)
 
-// auto make_shared insertion. TODO: unique_ptr
+// auto make_shared insertion.
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct(Args&&... args) {
-    // using TT = decltype(T{std::forward<Args>(args)...});  // curlies are attempt to disable narrowing conversion but induces "temporary of type 'std::enable_shared_from_this<shared_object>' has protected destructor"
-    return std::make_shared<T>(std::forward<Args>(args)...);
+    // if constexpr (sizeof...(Args) == 0) {
+    //     // no braced call for 0-args case - avoid needing to define an explicit no-arg constructor
+    //     return std::make_shared<T>();
+    // }
+
+    // use braced args to disable narrowing conversions
+    using TT = decltype(T{std::forward<Args>(args)...});
+    
+    return std::make_shared<TT>(std::forward<Args>(args)...);
+}
+
+// auto make_shared insertion.
+template<typename T>
+std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
+call_or_construct() {
+    return std::make_shared<T>();
 }
 
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
 call_or_construct(Args&&... args) {
-    return std::make_unique<T>(std::forward<Args>(args)...);
+    // if constexpr (sizeof...(Args) == 0) {
+    //     return std::make_unique<T>();
+    //}
+
+    using TT = decltype(T{std::forward<Args>(args)...});
+    return std::make_unique<TT>(std::forward<Args>(args)...);
+}
+
+template<typename T>
+std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
+call_or_construct() {
+    return std::make_unique<T>();
 }
 
 // non-object concrete classes/structs (in C++ sense)
 template <typename T, typename... Args>
 std::enable_if_t<!std::is_base_of_v<object, T>, T>
 call_or_construct(Args&&... args) {
-    return T(std::forward<Args>(args) ...);
+    // return T(std::forward<Args>(args) ...);
+    
+    if constexpr (sizeof...(Args) == 0) {
+        return T();
+    }
+    
+    return T{std::forward<Args>(args)...};
 }
 
 // non-type template param version needed for e.g. construct_or_call<printf>("hi")
@@ -334,6 +365,7 @@ class Context:
         self.in_function_body = False
         self.in_function_param_list = False
         self.in_class_body = False
+        self.in_decltype = False
 
     def indent_str(self):
         return "    " * self.indent
@@ -356,6 +388,7 @@ class Context:
         self.class_definitions = list(self.class_definitions)
         c.parent = self
         c.in_function_body = self.in_function_body
+        c.in_decltype = self.in_decltype
         c.indent = self.indent + 1
         return c
 
@@ -1489,7 +1522,8 @@ def codegen_node(node: Node, cx: Context):
                 else:
                     raise CodeGenError("range args not supported:", node)
             else:
-                args_inner = ", ".join([codegen_node(a, cx) for a in node.args])
+                arg_strs = [codegen_node(a, cx) for a in node.args]
+                args_inner = ", ".join(arg_strs)
                 args_str = "(" + args_inner + ")"
 
                 if 0:# and class_def := cx.lookup_class(node.func):
@@ -1529,9 +1563,12 @@ def codegen_node(node: Node, cx: Context):
                 if func_str in ("decltype", "static_assert") or (
                         isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) and
                         node.parent.lhs is not node):
+                    if func_str == "decltype":
+                        cx.in_decltype = True
                     return simple_call_str
 
                 dt_str = "decltype(" + simple_call_str + ")"
+                dt_curly_str = "decltype(" + func_str + "{" + args_inner + "})"
 
                 # the void detection part induces a vexing parse in test_capture
                 # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { if constexpr (std::is_void_v<" + dt_str + ">) { " + simple_call_str + "; } else { return " + simple_call_str + "; } } } ()"
@@ -1541,6 +1578,14 @@ def codegen_node(node: Node, cx: Context):
                     simple_return = ""
 
                 call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                return call_str
+
+                # too many crazy probs with this for now (e.g. can't wrap parameter unpacks in a decltype):
+                if not node.args:
+                    call_str = "[" + capture + "] { if constexpr (std::is_constructible_v<" + func_str + ">) { return ceto::call_or_construct<" + func_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+                else:
+                    call_str = "[" + capture + "] { if constexpr (std::is_constructible_v<" +  ", ".join([dt_str] + ["decltype(" + a + ")" for a in arg_strs]) + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 return call_str
         else:
