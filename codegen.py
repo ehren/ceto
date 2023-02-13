@@ -179,18 +179,13 @@ mad(std::unique_ptr<T>&& obj) {
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct(Args&&... args) {
-    // if constexpr (sizeof...(Args) == 0) {
-    //     // no braced call for 0-args case - avoid needing to define an explicit no-arg constructor
-    //     return std::make_shared<T>();
-    // }
-
     // use braced args to disable narrowing conversions
     using TT = decltype(T{std::forward<Args>(args)...});
     
     return std::make_shared<TT>(std::forward<Args>(args)...);
 }
 
-// auto make_shared insertion.
+// no braced call for 0-args case - avoid needing to define an explicit no-arg constructor
 template<typename T>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct() {
@@ -200,10 +195,6 @@ call_or_construct() {
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
 call_or_construct(Args&&... args) {
-    // if constexpr (sizeof...(Args) == 0) {
-    //     return std::make_unique<T>();
-    //}
-
     using TT = decltype(T{std::forward<Args>(args)...});
     return std::make_unique<TT>(std::forward<Args>(args)...);
 }
@@ -218,13 +209,13 @@ call_or_construct() {
 template <typename T, typename... Args>
 std::enable_if_t<!std::is_base_of_v<object, T>, T>
 call_or_construct(Args&&... args) {
-    // return T(std::forward<Args>(args) ...);
-    
-    if constexpr (sizeof...(Args) == 0) {
-        return T();
-    }
-    
     return T{std::forward<Args>(args)...};
+}
+
+template <typename T>
+std::enable_if_t<!std::is_base_of_v<object, T>, T>
+call_or_construct() {
+    return T();
 }
 
 // non-type template param version needed for e.g. construct_or_call<printf>("hi")
@@ -1577,7 +1568,9 @@ def codegen_node(node: Node, cx: Context):
                 if isinstance(node.parent, Block):
                     simple_return = ""
 
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 return call_str
 
