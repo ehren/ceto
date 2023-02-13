@@ -1625,6 +1625,14 @@ def codegen_node(node: Node, cx: Context):
 
                 call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + args_str + ")>) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && !std::is_base_of_v<ceto::object, " + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ")) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
                 # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + arg_str + " ) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
