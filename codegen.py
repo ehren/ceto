@@ -233,6 +233,55 @@ call_or_construct(TArgs&&... args) {
     return call_or_construct<TT>(T(std::forward<TArgs>(args)...));
 }
 
+
+template <typename T>
+//std::enable_if_t<std::is_class_v<T>, bool>
+//requires requires(T )
+bool
+constexpr
+can_construct() {
+    return true;
+}
+
+template <typename T, typename... Args>
+requires requires(Args&&... args) { T{std::forward<Args>(args)...}; }
+std::enable_if_t<std::is_class_v<T> && std::is_constructible_v<T, Args...>, bool>
+constexpr
+can_construct(Args&&... args) {
+    return true;
+}
+
+//template <typename T, typename... Args>
+//std::enable_if_t<std::is_void_v<T>, bool>
+//constexpr
+//can_construct(Args&&... args) {
+//    return false;
+//}
+
+template<typename T, typename... Args>
+constexpr bool
+can_construct(Args&&... args) {
+    return false;
+}
+
+// non-type template param version needed for e.g. construct_or_call<printf>("hi")
+template<auto T, typename... Args>
+constexpr bool
+can_construct(Args&&... args) {
+    return false;
+}
+
+// template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
+template<template<class ...> class T, class... TArgs>
+constexpr bool
+can_construct(TArgs&&... args) {
+    return false;
+    //using TT = decltype(T(std::forward<TArgs>(args)...));
+    //return can_construct<TT>(T(std::forward<TArgs>(args)...));
+}
+
+
+
 // https://stackoverflow.com/a/56225903/1391250
 //template<typename T, typename Enable = void>
 //struct is_smart_pointer
@@ -1568,9 +1617,20 @@ def codegen_node(node: Node, cx: Context):
                 if isinstance(node.parent, Block):
                     simple_return = ""
 
-                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+                # good with testsuite:
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
-                call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+                #
+                # call_str = "[" + capture + "] { if constexpr (!std::is_void_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + arg_str + " ) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                # call_str = "[" + capture + "] { if constexpr (requires { " + dt_str + "{" + args_inner + "}; }) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
 
                 return call_str
 
