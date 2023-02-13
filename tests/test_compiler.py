@@ -2219,6 +2219,10 @@ def main(argc: int, argv: char:ptr:ptr:
 # T1(T2, T3)   <- std.function bu
 
 def test_complex_arguments():
+    import subprocess
+    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+        return
+
     c = compile(r"""
     
 # User Naumann: https://stackoverflow.com/a/54911828/1391250

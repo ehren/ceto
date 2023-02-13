@@ -348,6 +348,7 @@ class Context:
         c.interfaces = self.interfaces.copy()
         self.class_definitions = list(self.class_definitions)
         c.parent = self
+        c.in_function_body = self.in_function_body
         c.indent = self.indent + 1
         return c
 
@@ -1484,7 +1485,7 @@ def codegen_node(node: Node, cx: Context):
                 args_inner = ", ".join([codegen_node(a, cx) for a in node.args])
                 args_str = "(" + args_inner + ")"
 
-                if class_def := cx.lookup_class(node.func):
+                if 0:# and class_def := cx.lookup_class(node.func):
                     class_name = node.func.name
                     class_node = class_def.class_def_node
                     curly_args = "{" + args_inner + "}"
@@ -1504,11 +1505,35 @@ def codegen_node(node: Node, cx: Context):
                     else:
                         func_str = "std::make_shared<" + class_name + ">"
                 else:
+                    pass
+
+                if isinstance(node.func, Identifier):
+                    func_str = node.func.name
+                else:
                     func_str = codegen_node(node.func, cx)
 
-                func_str += args_str
+                if cx.in_function_body:
+                    capture = "&"
+                else:
+                    capture = ""
 
-                return func_str
+                simple_call_str = func_str + args_str
+
+                if func_str in ("decltype", "static_assert") or isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
+                    return simple_call_str
+
+                dt_str = "decltype(" + simple_call_str + ")"
+
+                # the void detection part induces a vexing parse in test_capture
+                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { if constexpr (std::is_void_v<" + dt_str + ">) { " + simple_call_str + "; } else { return " + simple_call_str + "; } } } ()"
+
+                simple_return = "return "
+                if isinstance(node.parent, Block):
+                    simple_return = ""
+
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                return call_str
         else:
             if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
                 func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else

@@ -54,7 +54,9 @@ def runtest(s, compile_cpp=True):
         build_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "build")
         if not os.path.exists(build_dir):
             os.makedirs(build_dir)
-        filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
+        # filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
+        # filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
+        filename = os.path.join(build_dir, "testsuitegenerated.cpp")
 
         with open(filename, "w") as file:
             file.write(code)
@@ -85,7 +87,7 @@ def runtest(s, compile_cpp=True):
         output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
         print(output)
 
-        os.remove(filename)
+        os.remove(os.path.join(".", filename))
         os.remove('./a.out')
 
     return output
