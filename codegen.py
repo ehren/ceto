@@ -207,13 +207,13 @@ call_or_construct() {
 
 // non-object concrete classes/structs (in C++ sense)
 template <typename T, typename... Args>
-std::enable_if_t<!std::is_base_of_v<object, T>, T>
+std::enable_if_t<!std::is_base_of_v<object, T> /*&& !std::is_void_v<T>*/, T>
 call_or_construct(Args&&... args) {
     return T{std::forward<Args>(args)...};
 }
 
 template <typename T>
-std::enable_if_t<!std::is_base_of_v<object, T>, T>
+std::enable_if_t<!std::is_base_of_v<object, T> && !std::is_void_v<T>, T>
 call_or_construct() {
     return T();
 }
@@ -224,6 +224,13 @@ auto
 call_or_construct(Args&&... args) {
     return T(std::forward<Args>(args)...);
 }
+
+// non-type template param version needed for e.g. construct_or_call<printf>("hi")
+//template<typename T, typename... Args>
+//std::enable_if<std::is_void_v<T>, void>
+//call_or_construct(Args&&... args) {
+//    T(std::forward<Args>(args)...);
+//}
 
 // template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
 template<template<class ...> class T, class... TArgs>
@@ -263,6 +270,59 @@ constexpr bool
 can_construct(Args&&... args) {
     return false;
 }
+
+template<auto T>
+constexpr bool
+is_appropriate_class() {
+    return false;
+}
+
+
+template<typename T>
+std::enable_if<std::is_class_v<T>, bool>
+constexpr
+is_appropriate_class() {
+    return true;
+}
+
+template<typename T>
+constexpr bool
+is_appropriate_class() {
+    return false;
+}
+
+// https://stackoverflow.com/questions/67128867/check-if-a-type-is-a-template/67129011#67129011
+template<template<class ...> class T>
+constexpr bool is_template() { return true; }
+
+// ADDITIONAL SPECIALIZATION for non-type arguments
+template<template<auto ...> class T>
+constexpr bool is_template() { return true; }
+
+template<class T>
+constexpr bool is_template() { return false; }
+
+//template<template<class ...> class T>
+//std::enable_if<std::is_class_v<T<>>, bool>
+//constexpr is_appropriate() { return true; }
+
+
+template<template<class ...> class T>
+constexpr bool is_appropriate() { return false; }
+//constexpr bool is_appropriate() { return std::is_class_v<T<>>; }
+
+// ADDITIONAL SPECIALIZATION for non-type arguments
+template<template<auto ...> class T>
+constexpr bool is_appropriate() { return false; }
+
+template<class T>
+constexpr bool is_appropriate() { return false; }
+//constexpr bool is_appropriate() { return std::is_class_v<T>; }
+
+template<class T>
+//constexpr bool is_appropriate() { return false; }
+requires requires() { T{}; }
+constexpr bool is_appropriate() { return std::is_class_v<T>; }
 
 // non-type template param version needed for e.g. construct_or_call<printf>("hi")
 template<auto T, typename... Args>
@@ -373,6 +433,13 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
      is_convertible_without_narrowing_v<From, To>);
 
 } // namespace
+
+// temporary until 'struct' definition support added
+struct PlainStructTest {
+    int x;
+    int y;
+};
+
 """
 
 
@@ -1620,6 +1687,15 @@ def codegen_node(node: Node, cx: Context):
                 # good with testsuite:
                 call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
+                return call_str
+
+                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (ceto::is_appropriate_class<" + func_str + ">()) { return ceto::call_or_construct<" + dt_str + ">" + args_str + " ; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (ceto::is_appropriate<" + dt_str + ">()) { return ceto::call_or_construct<" + dt_str + ">" + args_str + " ; } else { " + simple_return + simple_call_str + "; } } ()"
+
+
+                return call_str
+
                 #
                 # call_str = "[" + capture + "] { if constexpr (!std::is_void_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
@@ -1630,6 +1706,8 @@ def codegen_node(node: Node, cx: Context):
                 # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + args_str + ")>) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && !std::is_base_of_v<ceto::object, " + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + func_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ")) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 

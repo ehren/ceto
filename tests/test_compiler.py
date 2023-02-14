@@ -31,6 +31,22 @@ def raises(func, exc=None):
 #)
 
 
+def test_no_narrowing_plain_struct():
+    c = compile(r"""
+def (main:
+    PlainStructTest(1,2)
+)
+    """)
+
+    raises(lambda: compile(r"""
+def (main:
+    f: float = 0
+    PlainStructTest(1,f)
+)
+    """))
+
+
+
 def test_more_dotdotdot():
     c = compile(r"""
     
