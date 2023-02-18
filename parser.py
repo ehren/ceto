@@ -7,8 +7,8 @@ import pyparsing as pp
 
 import sys
 sys.setrecursionlimit(2**13)
-pp.ParserElement.enable_left_recursion()
-# pp.ParserElement.enable_packrat(2**20)
+# pp.ParserElement.enable_left_recursion()
+pp.ParserElement.enable_packrat(2**20)
 
 import io
 
@@ -152,9 +152,17 @@ class ArrowOp(BinOp):  # doesn't get special auto deref logic of '.' (use at own
 
 
 class ScopeResolution(BinOp):
+
     def __init__(self, t):
+        # manual left associative parse tree creation:
         self.func = "::"
-        self.args = t.as_list()
+        t = t.as_list()
+        if len(t) > 2:
+            last = t[-1]
+            beg = t[0:-1]
+            self.args = [ScopeResolution(pp.ParseResults(beg))] + [last]
+        else:
+            self.args = t
 
 
 class Assign(BinOp):
@@ -384,8 +392,7 @@ def _create():
     cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     atom = (
-        scope_resolution
-        | template
+        template
         | real
         | integer
         | cdblquoted_str
@@ -417,8 +424,6 @@ def _create():
 
     braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(BracedLiteral)
 
-    scope_resolution <<= (atom + pp.Suppress("::") + atom).set_parse_action(ScopeResolution)
-
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
@@ -441,7 +446,11 @@ def _create():
 
     call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
 
-    function_call <<= ((atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")"))) + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
+    call_func = (atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
+
+    scope_resolution <<= (call_func + pp.OneOrMore(pp.Suppress("::") + call_func)).set_parse_action(ScopeResolution)
+
+    function_call <<= ((scope_resolution | call_func) + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -464,7 +473,7 @@ def _create():
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
-        function_call | atom,
+        function_call | scope_resolution | atom,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),

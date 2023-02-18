@@ -5,6 +5,9 @@ def test_call_scope_resolution():
     parse(r"""
 
 foo::bar()
+foo::foo2::bar()
+(foo::foo2)::bar()
+foo::foo2::foo3::bar()
 foo.bar()
 
     
