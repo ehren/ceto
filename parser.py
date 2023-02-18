@@ -165,6 +165,13 @@ class ScopeResolution(BinOp):
             self.args = t
 
 
+class RequiltScopeResolution(ScopeResolution):
+
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+
 class Assign(BinOp):
     pass
     # def __init__(self, s, loc, tokens):
@@ -476,6 +483,7 @@ def _create():
         function_call | scope_resolution | atom,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
+            (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, UnOp),
             # (expop, 2, pp.opAssoc.RIGHT, BinOp),
@@ -507,7 +515,6 @@ grammar = _create()
 
 def do_parse(source: str):
     # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
-
 
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
@@ -598,6 +605,8 @@ def parse(source: str):
         if isinstance(op, AttributeAccess):
             if op.func == "->":
                 op = ArrowOp(op.args)
+            elif op.func == "::":
+                op = RequiltScopeResolution(op.func, op.args)
         elif isinstance(op, Call):
             if op._is_array:
                 op = ArrayAccess(op.func, op.args)

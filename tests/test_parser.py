@@ -2,7 +2,7 @@ from parser import parse, TupleLiteral, Module
 
 
 def test_call_scope_resolution():
-    parse(r"""
+    a = parse(r"""
 
 foo::bar()
 foo::foo2::bar()
@@ -10,8 +10,13 @@ foo::foo2::bar()
 foo::foo2::foo3::bar()
 foo.bar()
 
+bar()::blah
+bar()()::blah::blah2
     
     """)
+    assert str(a) == "Module((foo :: bar)(),((foo :: foo2) :: bar)(),((foo :: foo2) :: bar)(),(((foo :: foo2) :: foo3) :: bar)(),foo.bar(),(bar() :: blah),(bar()() :: (blah :: blah2)))"
+
+    # last result should really be parsed as (bar()()::blah)::blah2 but above is ok for now
 
 
 def test_errors2():
