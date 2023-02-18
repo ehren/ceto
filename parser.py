@@ -7,8 +7,8 @@ import pyparsing as pp
 
 import sys
 sys.setrecursionlimit(2**13)
-# pp.ParserElement.enable_left_recursion()
-pp.ParserElement.enable_packrat(2**20)
+pp.ParserElement.enable_left_recursion()
+# pp.ParserElement.enable_packrat(2**20)
 
 import io
 
@@ -152,9 +152,9 @@ class ArrowOp(BinOp):  # doesn't get special auto deref logic of '.' (use at own
 
 
 class ScopeResolution(BinOp):
-    def __init__(self, args):
+    def __init__(self, t):
         self.func = "::"
-        self.args = args
+        self.args = t.as_list()
 
 
 class Assign(BinOp):
@@ -375,6 +375,7 @@ def _create():
     braced_literal = pp.Forward()
     function_call = pp.Forward()
     template = pp.Forward()
+    scope_resolution = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
@@ -383,7 +384,8 @@ def _create():
     cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
 
     atom = (
-        template
+        scope_resolution
+        | template
         | real
         | integer
         | cdblquoted_str
@@ -415,6 +417,8 @@ def _create():
 
     braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(BracedLiteral)
 
+    scope_resolution <<= (atom + pp.Suppress("::") + atom).set_parse_action(ScopeResolution)
+
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(Block)
 
@@ -444,7 +448,6 @@ def _create():
     plusop = pp.oneOf("+ -")
     colon = pp.Literal(":")
     dot = pp.Literal(".")
-    scope_resolution_op = pp.Literal("::")
     arrow_op = pp.Literal("->")
     not_op = pp.Keyword("not")
     star_op = pp.Literal("*")
@@ -464,7 +467,6 @@ def _create():
         function_call | atom,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
-            (scope_resolution_op, 2, pp.opAssoc.LEFT, AttributeAccess),
             (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, UnOp),
             # (expop, 2, pp.opAssoc.RIGHT, BinOp),
@@ -587,8 +589,6 @@ def parse(source: str):
         if isinstance(op, AttributeAccess):
             if op.func == "->":
                 op = ArrowOp(op.args)
-            elif op.func == "::":
-                op = ScopeResolution(op.args)
         elif isinstance(op, Call):
             if op._is_array:
                 op = ArrayAccess(op.func, op.args)

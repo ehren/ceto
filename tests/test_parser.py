@@ -1,6 +1,16 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_call_scope_resolution():
+    parse(r"""
+
+foo::bar()
+foo.bar()
+
+    
+    """)
+
+
 def test_errors2():
     parse(r"""
 
