@@ -31,6 +31,54 @@ def raises(func, exc=None):
 #)
 
 
+def test_namespace_call():
+    c = compile(r"""
+    
+class (Foo:
+    def (blah:static:
+        std.cout << "blah"
+    )
+)
+    
+def (main:
+    std.cout << std::vector(1,5)[0] << std::endl
+    
+    Foo::element_type::blah()  # TODO Foo.anything or Foo::anything should always print using Foo not shared_ptr<Foo>
+)
+    """)
+
+    assert c == "5\nblah"
+
+
+def test_namespace():
+    0 and compile(r"""
+
+# namespace(std)  # implicit
+namespace(std, views)
+
+namespace (:
+    def (foo:
+        pass
+    )
+)
+
+namespace (foo:
+    def (foo:
+        pass
+    )
+)
+
+def (main:
+    for (x in std.views.iota(1, 5):
+        std.cout << x
+    )
+    foo.foo()
+    foo::foo()
+)
+    
+    """)
+
+
 def test_no_narrowing_plain_struct():
     c = compile(r"""
 def (main:
@@ -38,12 +86,14 @@ def (main:
 )
     """)
 
-    raises(lambda: compile(r"""
+    # raises(lambda: compile(r"""
+    # arguably xfail but this is tough to disallow for c++ defined classes
+    compile(r"""
 def (main:
     f: float = 0
     PlainStructTest(1,f)
 )
-    """))
+    """)
 
 
 

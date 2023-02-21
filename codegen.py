@@ -697,20 +697,28 @@ def codegen_class(node : Call, cx):
         if isinstance(b, Call) and b.func.name == "def":
             methodname = b.args[0]
 
-            if (interface_call := b.args[0].declared_type) is not None:
-                if isinstance(interface_call, Call) and interface_call.func.name == "interface" and len(interface_call.args) == 1:
-                    interface_type = interface_call.args[0]
+            interface_type = None
+
+            if (method_type := b.args[0].declared_type) is not None:
+                if isinstance(method_type, Call) and method_type.func.name == "interface" and len(method_type.args) == 1:
+                    interface_type = method_type.args[0]
                     if methodname.name in ["init", "destruct"]:
                         raise CodeGenError("init or destruct cannot be defined as interface methods", b)
+
+                    if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
+                        defined_interfaces[interface_type.name].append(b)
+
+                    cx.interfaces[interface_type.name].append(b)
+                    local_interfaces.add(interface_type.name)
                 else:
+                    # def method_type_visitor(type_node):
+                    #     if type_node.name in ["static", "const"]:
+                    #         return type_node
+                    #
+                    # type_inorder_traversal(method_type, method_type_visitor)
+
                     # TODO const method signatures
-                    raise CodeGenError("unexpected type", interface_call)
-
-                if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
-                    defined_interfaces[interface_type.name].append(b)
-
-                cx.interfaces[interface_type.name].append(b)
-                local_interfaces.add(interface_type.name)
+                    pass # let codegen_def handle (works for 'static')
 
             if methodname.name == "init":
                 constructor_args = b.args[1:-1]
@@ -923,11 +931,11 @@ def autoconst(type_str: str):
 
 def type_inorder_traversal(typenode: Node, func):
     if isinstance(typenode, TypeOp):
-        if not type_inorder_traversal(typenode.Lhs, func):
-            return type_inorder_traversal(typenode.rhs, func)
+        if res := type_inorder_traversal(typenode.Lhs, func) is not None:
+            return res
+        return type_inorder_traversal(typenode.rhs, func)
     else:
         return func(typenode)
-    return True
 
 
 def codegen_def(defnode: Call, cx):
