@@ -8,7 +8,6 @@ def compile(s):
     return runtest(s, compile_cpp=True)
 
 
-
 def raises(func, exc=None):
     try:
         func()
@@ -20,18 +19,8 @@ def raises(func, exc=None):
     else:
         assert 0
 
-# for (x = 0, x < 10, x+= 1:
-#     pass
-# )
-#for (,true,):  # error not enough for args
-#    pass
-#)
-#for (void(), true, void():  # if you really must have an empty for loop (loop condition required)
-#    pass
-#)
 
-
-def test_namespace_call():
+def test_scope_resolution_call_target_and_static_method():
     c = compile(r"""
     
 class (Foo:
@@ -41,10 +30,13 @@ class (Foo:
 )
     
 def (main:
-    std.cout << std::vector(1,5)[0] << std::endl
-    
+    # note different precedence of these two expressions (not sure if 'print some AttributeAccess instances with ::' needs to be more robust ie include post parse ast fixups - it will be required if we want call_or_construct wrapper for namespace resolved ceto class constructor calls e.g. f = mymodule.Foo())
     Foo::blah()
-    Foo.blah()  # template metaprogramming solution to treat as scope resolution if Foo is a type, attribute access otherwise? (it would be ugly if possible and would require forwarding)
+    Foo.blah()  # template metaprogramming solution to treat as scope resolution if Foo is a type, attribute access otherwise? (would be ugly if possible? would require forwarding).
+    
+    # note this Call node is currently not wrapped in call_or_construct (this will have to change when a module/import system is implemented):
+    std.cout << std::vector(500, 5).at(499) << std::endl
+    
 )
     """)
 
@@ -2578,6 +2570,18 @@ def (main:
     """)
 
     assert c.count("huh") == 5
+
+
+# TODO c-style for loops:
+# for (x = 0, x < 10, x+= 1:
+#     pass
+# )
+#for (,true,):  # error not enough for args
+#    pass
+#)
+#for (void(), true, void():  # if you really must have an empty for loop (loop condition required)
+#    pass
+#)
 
 
 def test_for():
