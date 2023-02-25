@@ -43,11 +43,12 @@ class (Foo:
 def (main:
     std.cout << std::vector(1,5)[0] << std::endl
     
-    Foo::element_type::blah()  # TODO Foo.anything or Foo::anything should always print using Foo not shared_ptr<Foo>
+    Foo::blah()
+    Foo.blah()  # template metaprogramming solution to treat as scope resolution if Foo is a type, attribute access otherwise? (it would be ugly if possible and would require forwarding)
 )
     """)
 
-    assert c == "5\nblah"
+    assert c == "5\nblahblah"
 
 
 def test_namespace():
@@ -398,7 +399,17 @@ def (byval, c: std.type_identity_t<C>:   # not literal "C" or "const:C"/"C:const
     # this only holds for the circumstances in this test (byval called with a temporary should have use_count() == 1)
     assert ((&c)->use_count() > 1)
     
-    static_assert(std.is_same_v<std.shared_ptr<C::element_type>, decltype(c)>)  # not portable ceto code of course
+    # writing C:: or C. now results in just "C" not shared_ptr<C>:
+    # static_assert(std.is_same_v<std.shared_ptr<C::element_type>, decltype(c)>)  # not portable ceto code of course
+    # ^ so this sort of wonky stuff needs to be rewritten:
+    
+    # we currently print C (not in a scope resolution or attribute access context) as shared_ptr<C>
+    # so this is probably the most canonical way to get at the real class (still not "portable" of course):
+    static_assert(std.is_same_v<std.shared_ptr<std.type_identity_t<C>::element_type>, decltype(c)>)
+    
+    # other similar "non-portable" (imaging a non-C++ backend) code:
+    # static_assert(std.is_same_v<std.shared_ptr<decltype(*c)>, decltype(c)>)  # TODO this fails because an UnOp is always overparenthesized due to current naive use of pyparsing.infix_expression (e.g. (*p).foo() is parsed correctly precedence-wise but need for parenthesese in code printing discarded or rather handled by overparenthesizing all UnOps in every context) - leading to use of overparenthesized decltype((*p)) in c++. "workaround" for now is:
+    static_assert(std.is_same_v<std.shared_ptr<std.remove_reference_t<decltype(*c)>>, decltype(c)>)
 )
 
 def (byconstref, c: C:
@@ -1658,7 +1669,8 @@ class (A:
 # note that this approach needs adjustments for template classes (codegen now correctly handles 'self' even in template case via ceto::shared_from)
 class (S:
     def (foo:
-        return std.static_pointer_cast<S::element_type>(shared_from_this())
+        # note that S:: or S. is treated as static attribute access of the c++ class S (fool transpiler by inserting std.type_identity_t so that S as an identifier's parent is not an instance of ScopeResolution/AttributeAccess):
+        return std.static_pointer_cast<std.type_identity_t<S>::element_type>(shared_from_this())
     )
     
     def (foo2:
@@ -1667,7 +1679,7 @@ class (S:
         
         # no need for overparenthization any more (debatable if we need to parse this now that other template parse improvements have been made)
         return (std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>)(shared_from_this())
-    ) : S  # no need for return type (but S correctly handles as shared_ptr<S> here)
+    ) : S  # no need for return type (but S correctly handled as shared_ptr<S> here)
 )
 
 def (main:

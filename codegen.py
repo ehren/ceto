@@ -1762,7 +1762,9 @@ def codegen_node(node: Node, cx: Context):
         # elif name == "object":
         #     return "std::shared_ptr<object>"
 
-        if ptr_name := _shared_ptr_str_for_type(node, cx):
+        if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
+                node is node.parent.lhs) and (
+           ptr_name := _shared_ptr_str_for_type(node, cx)):
             return ptr_name + "<" + name + ">"
 
         return name
@@ -1879,8 +1881,9 @@ def codegen_node(node: Node, cx: Context):
 
             if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
 
-                if isinstance(node.lhs, Identifier) and node.lhs.name == "std":
-                    return "std::" + codegen_node(node.rhs, cx)
+                if isinstance(node.lhs, Identifier) and (node.lhs.name == "std" or
+                                                         cx.lookup_class(node.lhs)):
+                    return node.lhs.name + "::" + codegen_node(node.rhs, cx)
 
                 separator = ""
 
