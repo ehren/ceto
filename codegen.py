@@ -435,12 +435,6 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
 
 } // namespace
 
-// temporary until 'struct' definition support added
-struct PlainStructTest {
-    int x;
-    int y;
-};
-
 """
 
 
