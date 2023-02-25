@@ -211,16 +211,46 @@ def (main:
     """)
 
 
+
 def test_more_conversions():
+    # these are all considered non-narrowing in C++ (or at least allowed by braced initialization)
+    # we want the same (without necessarilly relying on braced init)
     c = compile(r"""
 
 def (main:
     b: bool = true
     b2 : bool = 1
     i : int = true
-)
+    # u : unsigned:int = i # error (narrowing)
+    u2 : unsigned:int = 5
+    ur : const:unsigned:int:ref = u2
+    um = ur  # um is not const
+    static_assert(not std.is_const_v<decltype(um)>)  # ensure this assumption of the test holds (note idea for enable_const_by_default() as an ast rewriting macro)
     
+    std.cout << b << b2 << i << u2 << ur << um
+)
     """)
+
+    assert c == "111555"
+
+    raises(lambda: compile(r"""
+def (main:
+    u : unsigned:int = -1
+)
+    """))
+
+    raises(lambda: compile(r"""
+def (main:
+    uc : unsigned:char = -150
+)
+    """))
+
+    raises(lambda: compile(r"""
+def (main:
+    i = 5
+    u : unsigned:int = i
+)
+    """))
 
 
 def test_std_thread():

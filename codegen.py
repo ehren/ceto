@@ -12,6 +12,7 @@ from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, \
 
 import io
 from collections import defaultdict
+import re
 
 
 class CodeGenError(Exception):
@@ -1846,12 +1847,19 @@ def codegen_node(node: Node, cx: Context):
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                         return direct_initialization
 
+                    # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
+                    # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
+                    # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
+                    # for now with this case, just ensure use of non-overparenthesized version via regex:
+                    rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
+
                     if isinstance(node.rhs, IntegerLiteral) or (isinstance(node.rhs, Identifier) and node.rhs.name in ["true", "false"]):  # TODO float literals
-                        return f"{direct_initialization}; static_assert(std::is_convertible_v<decltype({node.lhs.name}), decltype({rhs_str})>)"
+                        return f"{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
 
                     # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
-                    return f"{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({node.lhs.name}), decltype({rhs_str})>)"
+                    # note that 'plain_initialization' will handle cvref mismatch errors!
+                    return f"{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
 
             else:
                 # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
