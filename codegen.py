@@ -432,6 +432,26 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
     std::is_aggregate_v<From> == std::is_aggregate_v<To> &&
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
+     
+     
+// just let .at() do the bounds checking
+auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
+    requires (std::is_integral_v<std::remove_cvref_t<decltype(index)>> &&
+              requires { std::size(v); v.at(index); v[index]; } &&
+              std::is_same_v<decltype(v.at(index)), decltype(v[index])>)
+{
+    return std::forward<decltype(v)>(v).at(std::forward<decltype(index)>(index));
+}
+
+// allow unsafe raw array accesses, blame memory safety violations on either known-unsafe syntax use (e.g. unary &) or known unsafe API use e.g. (ceto code) [1,2,3,4].data()   
+auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
+    requires (!(std::is_integral_v<std::remove_cvref_t<decltype(index)>>) ||
+              !(requires { std::size(v); }) ||
+              !(requires { v.at(index); }))
+{
+    // no bounds check!
+    return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
+}
 
 } // namespace
 
@@ -1955,7 +1975,9 @@ def codegen_node(node: Node, cx: Context):
     elif isinstance(node, ArrayAccess):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
-        return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
+        func_str = codegen_node(node.func, cx)
+        idx_str = codegen_node(node.args[0], cx)
+        return "ceto::maybe_bounds_check_access(" + func_str + "," + idx_str + ")"
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)

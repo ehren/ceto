@@ -20,6 +20,50 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_attribute_call_array_access():
+    c = compile(r"""
+def (main:
+    v = [0, 1, 2]
+    std::cout << v.data()[2]  # precedence for '.' wrong 
+)
+    """)
+
+
+def test_bounds_check():
+    raises(lambda: compile(r"""
+def (main:
+    v = [0, 1, 2]
+    v[3]
+)
+    """))
+
+    c = compile(r"""
+def (main:
+    v = [0, 1, 2]
+    std::cout << v[2]
+)
+    """)
+    assert c == "2"
+
+    c = compile(r"""
+def (main:
+    v = [0, 1, 2]
+    std::cout << v.operator("[]")(50)   # UB!
+)
+    """)
+    assert c == "0"  # probably true
+
+    c = compile(r"""
+def (main:
+    v = [0, 1, 2]
+    std::cout << (v.data())[50]  # more UB from unsafe API usage
+    # TODO precedence/codegen issue with:
+    # std::cout << v.data()[50]
+)
+    """)
+    assert c == "0"  # probably true
+
+
 def test_scope_resolution_call_target_and_static_method():
     c = compile(r"""
     
@@ -37,10 +81,13 @@ def (main:
     # note this Call node is currently not wrapped in call_or_construct (this will have to change when a module/import system is implemented):
     std.cout << std::vector(500, 5).at(499) << std::endl
     
+    std::vector : using
+    v = vector(500, 5)  # ensure vector survives current 'call_or_construct' handling
+    std.cout << v.at(499)
 )
     """)
 
-    assert c == "5\nblahblah"
+    assert c == "blahblah5\n5"
 
 
 def test_namespace():
@@ -3457,7 +3504,7 @@ def (bar, x:
 # https://stackoverflow.com/questions/30240131/lambda-as-default-argument-fails
 # def (default_args, x=[1], y=2, z = lambda (zz, return 1):
 # def (default_args, x=[], y=2:  # broken by appending to copy instead of directly (now that func params const ref by default)
-def (default_args, x=[1], y=2:
+def (default_args, x=[1, 2], y=2:
     # x.push_back(2)
     # x.append(2)  # error x is now const & by default
     # copy = x
