@@ -1153,12 +1153,14 @@ def codegen_def(defnode: Call, cx):
             this = RebuiltIdentifer("this")
             arrow = ArrowOp(args=[this, s.parent.rhs])
             arrow.parent = s.parent.parent
-
-            index = s.parent.parent.args.index(s.parent)
-            s.parent.parent.args[index] = arrow
-
-            arrow.rhs.parent = arrow
             this.parent = arrow
+            arrow.rhs.parent = arrow
+
+            if s.parent in s.parent.parent.args:
+                index = s.parent.parent.args.index(s.parent)
+                s.parent.parent.args[index] = arrow
+            elif s.parent is s.parent.parent.func:
+                s.parent.parent.func = arrow
         else:
             need_self = True
 
