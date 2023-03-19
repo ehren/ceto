@@ -453,18 +453,23 @@ def _create():
 
     call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
 
-    call_func = (atom | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
+    dot = pp.Literal(".")
+    arrow_op = pp.Literal("->")
 
-    scope_resolution <<= (call_func + pp.OneOrMore(pp.Suppress("::") + call_func)).set_parse_action(ScopeResolution)
+    scope_resolution <<= pp.infix_notation(atom, [
+            (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
+            (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
+        ],
+    )
 
-    function_call <<= ((scope_resolution | call_func) + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
+    call_func = (scope_resolution | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
+
+    function_call <<= (call_func + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
     plusop = pp.oneOf("+ -")
     colon = pp.Literal(":")
-    dot = pp.Literal(".")
-    arrow_op = pp.Literal("->")
     not_op = pp.Keyword("not")
     star_op = pp.Literal("*")
     amp_op = pp.Literal("&")
@@ -480,7 +485,7 @@ def _create():
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
-        function_call | scope_resolution | atom,
+        function_call | scope_resolution,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),

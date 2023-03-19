@@ -1634,15 +1634,16 @@ def codegen_node(node: Node, cx: Context):
             cpp.write(codegen_node(modarg, cx) + ";\n")  # untested # TODO: pass at global scope
     elif isinstance(node, Call):
         if isinstance(node.func, Identifier):
-            if node.func.name == "if":
+            func_name = node.func.name
+            if func_name == "if":
                 cpp.write(codegen_if(node, cx))
-            elif node.func.name == "def":
+            elif func_name == "def":
                 print("need to handle nested def")
-            elif node.func.name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
+            elif func_name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
                 newcx = cx.enter_scope()
                 newcx.in_function_param_list = True
                 cpp.write(codegen_lambda(node, newcx))
-            elif node.func.name == "range":
+            elif func_name == "range":
                 if len(node.args) == 1:
                     return "std::views::iota(0, " + codegen_node(node.args[0], cx) + ")"
                     # return "std::ranges:iota_view(0, " + codegen_node(node.args[0], cx) + ")"
@@ -1651,6 +1652,8 @@ def codegen_node(node: Node, cx: Context):
                     # return "std::ranges:iota_view(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
                 else:
                     raise CodeGenError("range args not supported:", node)
+            elif func_name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
+                return "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
             else:
                 arg_strs = [codegen_node(a, cx) for a in node.args]
                 args_inner = ", ".join(arg_strs)
@@ -1751,10 +1754,18 @@ def codegen_node(node: Node, cx: Context):
 
                 return call_str
         else:
-            if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-                func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-            else:
-                func_str = codegen_node(node.func, cx)
+            # wrong precedence:
+            # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+            #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+            # else:
+            #     func_str = codegen_node(node.func, cx)
+
+            # not auto-flattening args is becoming annoying!
+            # TODO fix multi-attribute access (or flatten some args earlier!)
+            if isinstance(node.func, (AttributeAccess, ScopeResolution)) and node.func.rhs.name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
+                return "ceto::mad(" + codegen_node(node.func.lhs, cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+
+            func_str = codegen_node(node.func, cx)
 
             cpp.write(func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")")
 
