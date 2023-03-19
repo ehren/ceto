@@ -20,6 +20,20 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_non_indexable_thing():
+    compile(r"""
+def (main:
+    1+std.array<int, 27>()[5]
+)
+        """)
+
+    raises(lambda: compile(r"""
+def (main:
+    (1+std.array<int, 27>())[5]
+)
+    """))
+
+
 def test_attribute_call_array_access():
     c = compile(r"""
 def (main:
@@ -1320,19 +1334,20 @@ def (main:
     a : std.array<int, 3>
     static_cast<void>(a)
 
-    if (((std.array)<int, 30>())[5]:
+    if (((std.array)<int, 25>())[5]:
         pass 
     )
-    if ((std.array<int, 30>())[5]:
+    if ((std.array<int, 26>())[5]:
         pass 
     )
-    if ((1+std.array<int, 30>())[5]:
-        pass 
-    )
-    if (std.array<int, 30>()[5]:
+    # this is now an error: 1 + std.array<int, 27>() is not something you can index (see test_non_indexable_thing)
+    # if ((1+std.array<int, 27>())[5]:
+    #     pass 
+    # )
+    if (std.array<int, 28>()[5]:
         pass
     )
-    if (1+std.array<int, 30>()[5]:
+    if (1+std.array<int, 29>()[5]:
         pass 
     )
     
