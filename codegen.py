@@ -1898,7 +1898,11 @@ def codegen_node(node: Node, cx: Context):
             assign_str = " ".join([lhs_str, node.func, rhs_str])
 
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-                assign_str = "auto " + assign_str
+                if cx.in_function_body:
+                    assign_str = "auto " + assign_str
+                else:
+                    # for global case we should probably print all typed assignments as constexpr (not just python style untyped ones)
+                    assign_str = "constexpr auto " + assign_str
 
             return assign_str
         else:
