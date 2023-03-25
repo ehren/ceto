@@ -1891,8 +1891,6 @@ def codegen_node(node: Node, cx: Context):
                     return f"{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
 
             else:
-                # note this handles declared type for the lhs of a lambda-assign (must actually be a typed lhs not a typed assignment)
-                # ^^ TODO delete or revise this comment (lambda return types need work anyway)
                 lhs_str = codegen_node(node.lhs, cx)
 
             assign_str = " ".join([lhs_str, node.func, rhs_str])
@@ -1951,16 +1949,21 @@ def codegen_node(node: Node, cx: Context):
                             return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
 
                 if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
-                    cpp.write("ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx))
+                    binop_str = "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
                 else:
                     funcstr = node.func  # fix ast: should be Ident
                     if node.func == "and":  # don't use the weird C operators tho tempting
                         funcstr = "&&"
                     elif node.func == "or":
                         funcstr = "||"
-                    cpp.write(separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)]))
-            else:
-                cpp.write(binop_str)
+                    binop_str = separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
+
+            if isinstance(node.parent, (BinOp, UnOp)):
+                # guard against precedence mismatch (e.g. extra parenthesese
+                # not strictly preserved in the ast)
+                binop_str = "(" + binop_str + ")"
+
+            return binop_str
 
     elif isinstance(node, ListLiteral):
 
