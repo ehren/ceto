@@ -1481,13 +1481,14 @@ def vector_decltype_str(node, cx):
         while rhs_str is None and not isinstance(parent, Block):
             found_use_context = parent
 
-            if isinstance(found_use_context,
-                          AttributeAccess) and found_use_context.lhs is found_use_node and isinstance(
-                found_use_context.rhs,
-                Call) and found_use_context.rhs.func.name == "append":
-                apnd = found_use_context.rhs
-                assert len(apnd.args) == 1
-                rhs_str = decltype_str(apnd.args[0], cx)
+            if isinstance(found_use_context, AttributeAccess) and (
+               found_use_context.lhs is found_use_node and found_use_context.rhs.name == "append"):
+
+                append_call_node = None
+                if isinstance(found_use_context.parent, Call) and len(found_use_context.parent.args) == 1:
+                    append_arg = found_use_context.parent.args[0]
+
+                    rhs_str = decltype_str(append_arg, cx)
 
             parent = parent.parent
 
@@ -1763,13 +1764,61 @@ def codegen_node(node: Node, cx: Context):
             #     func_str = codegen_node(node.func, cx)
 
             # not auto-flattening args is becoming annoying!
-            # TODO fix multi-attribute access (or flatten some args earlier!)
-            if isinstance(node.func, (AttributeAccess, ScopeResolution)) and node.func.rhs.name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
-                return "ceto::mad(" + codegen_node(node.func.lhs, cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+            # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
+            method_name = None
+            if isinstance(node.func, (AttributeAccess, ScopeResolution)):
+                method_name = node.func.rhs
+                while isinstance(method_name, (AttributeAccess, ScopeResolution)):
+                    method_name = method_name.rhs
 
-            func_str = codegen_node(node.func, cx)
+            func_str = None
 
-            cpp.write(func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")")
+            if method_name is not None:
+
+                # modify node.func
+                def consume_method_name():
+                    method_parent = method_name.parent
+                    assert method_parent.rhs is method_name
+                    if method_parent in method_parent.parent.args:
+                        # note that empty list type deduction works for variables but not data members (making this branch currently hopefully unreachable)
+                        assert 0
+                        method_parent.parent.args.remove(method_parent)
+                        method_parent.parent.args.append(method_parent.lhs)
+                        method_parent.lhs.parent = method_parent.parent
+                    elif method_parent is method_parent.parent.func:
+                        method_parent.parent.func = method_parent.lhs
+                        method_parent.lhs.parent = method_parent.parent
+                    else:
+                        assert 0
+
+                if method_name.name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
+                    consume_method_name()
+                    return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+                elif method_name.name == "append" and len(node.args) == 1 and not isinstance(method_name.parent, (ScopeResolution, ArrowOp)):
+                    # perhaps controversial rewriting of append to push_back
+                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+                    consume_method_name()
+
+                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
+                    append_str = "append"
+                    is_list = False
+                    if isinstance(node.func, ListLiteral):
+                        is_list = True
+                    else:
+                        for d in find_defs(node.func):
+                            # print("found def", d, "when determining if an append is really a push_back")
+                            if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
+                                is_list = True
+                                break
+                    if is_list:
+                        append_str = "push_back"
+
+                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
+
+            if func_str is None:
+                func_str = codegen_node(node.func, cx)
+
+            return func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
     elif isinstance(node, IntegerLiteral):
         cpp.write(str(node))
@@ -1908,7 +1957,7 @@ def codegen_node(node: Node, cx: Context):
 
             separator = " "
 
-            if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
+            if isinstance(node, AttributeAccess) and not isinstance(node, (ScopeResolution, ArrowOp)):
 
                 if isinstance(node.lhs, Identifier) and (node.lhs.name == "std" or
                                                          cx.lookup_class(node.lhs)):
@@ -1917,6 +1966,9 @@ def codegen_node(node: Node, cx: Context):
                 separator = ""
 
                 if isinstance(node.rhs, Call) and node.rhs.func.name == "append":
+                    # this predates :: . vs call precedence change. TODO remove this entirely (handling in Call-node only should suffice)
+                    assert 0
+
                     apnd = node.rhs
                     assert len(apnd.args) == 1
 
@@ -1958,9 +2010,10 @@ def codegen_node(node: Node, cx: Context):
                         funcstr = "||"
                     binop_str = separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
 
-            if isinstance(node.parent, (BinOp, UnOp)):
+            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
                 # guard against precedence mismatch (e.g. extra parenthesese
                 # not strictly preserved in the ast)
+                # untested / maybe-buggy
                 binop_str = "(" + binop_str + ")"
 
             return binop_str
