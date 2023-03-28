@@ -1775,7 +1775,7 @@ def codegen_node(node: Node, cx: Context):
 
             if method_name is not None:
 
-                assert isinstance(method_name, Identifier)
+                # assert isinstance(method_name, Identifier)
 
                 # modify node.func
                 def consume_method_name():
@@ -1815,10 +1815,15 @@ def codegen_node(node: Node, cx: Context):
                         append_str = "push_back"
 
                     func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
-                else:
+                elif method_name.parent.func == ".":
+
                     consume_method_name()
 
-                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + method_name.name
+                    # TODO fix AttributeAccess logic repeated here
+                    if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
+                        func_str = node.func.name + "::" + codegen_node(method_name, cx)
+                    else:
+                        func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + codegen_node(method_name, cx)
 
             if func_str is None:
                 func_str = codegen_node(node.func, cx)
