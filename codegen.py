@@ -1769,12 +1769,13 @@ def codegen_node(node: Node, cx: Context):
             if isinstance(node.func, (AttributeAccess, ScopeResolution)):
                 method_name = node.func.rhs
                 while isinstance(method_name, (AttributeAccess, ScopeResolution)):
-                    assert 0
                     method_name = method_name.rhs
 
             func_str = None
 
             if method_name is not None:
+
+                assert isinstance(method_name, Identifier)
 
                 # modify node.func
                 def consume_method_name():
@@ -1782,8 +1783,6 @@ def codegen_node(node: Node, cx: Context):
                     assert method_parent.rhs is method_name
 
                     if method_parent in method_parent.parent.args:
-                        # note that empty list type deduction works for variables but not data members (making this branch currently hopefully unreachable)
-                        assert 0
                         method_parent.parent.args.remove(method_parent)
                         method_parent.parent.args.append(method_parent.lhs)
                         method_parent.lhs.parent = method_parent.parent
@@ -1816,6 +1815,10 @@ def codegen_node(node: Node, cx: Context):
                         append_str = "push_back"
 
                     func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
+                else:
+                    consume_method_name()
+
+                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + method_name.name
 
             if func_str is None:
                 func_str = codegen_node(node.func, cx)
