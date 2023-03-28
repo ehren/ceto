@@ -1,6 +1,14 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_scope_resolve_call():
+    a = parse(r"""
+# foo()()()
+FooList().l.push_back(f)
+
+    """)
+
+
 def test_call_scope_resolution():
     a = parse(r"""
 

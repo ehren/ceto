@@ -20,6 +20,37 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_multiple_attribute_access_method_call():
+    c = compile(r"""
+    
+class (Foo:
+    f : Foo
+    def (use_count:
+        return (&self)->use_count()
+    )
+)
+
+class (FooList:
+    # f : [Foo] = []  # TODO fix
+    l : [Foo] = [] : Foo
+)
+    
+def (main:
+    f = Foo(Foo(Foo(Foo(Foo(nullptr)))))
+    # std.cout << f.f.f.f.f.use_count()
+    
+    FooList().l.push_back(f)   # FIXME
+    # FooList().l.operator("[]")(0)   # UB but fails to compile
+    
+    # fl = FooList()
+    # fl.l.push_back(f)
+    # std.cout << fl.l.operator("[]")(0).use_count()
+)
+
+    
+    """)
+
+
 def test_none():
     # use of 'None' like python is up to you
     c = compile(r"""

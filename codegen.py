@@ -1769,6 +1769,7 @@ def codegen_node(node: Node, cx: Context):
             if isinstance(node.func, (AttributeAccess, ScopeResolution)):
                 method_name = node.func.rhs
                 while isinstance(method_name, (AttributeAccess, ScopeResolution)):
+                    assert 0
                     method_name = method_name.rhs
 
             func_str = None
@@ -1779,6 +1780,7 @@ def codegen_node(node: Node, cx: Context):
                 def consume_method_name():
                     method_parent = method_name.parent
                     assert method_parent.rhs is method_name
+
                     if method_parent in method_parent.parent.args:
                         # note that empty list type deduction works for variables but not data members (making this branch currently hopefully unreachable)
                         assert 0

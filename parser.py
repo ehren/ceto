@@ -165,7 +165,13 @@ class ScopeResolution(BinOp):
             self.args = t
 
 
-class RequiltScopeResolution(ScopeResolution):
+class RebuiltScopeResolution(ScopeResolution):
+
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+class RebuiltAttributeAccess(AttributeAccess):
 
     def __init__(self, func, args):
         self.func = func
@@ -203,7 +209,13 @@ class Call(Node):
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
-    def __init__(self, t):
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
+
+
+
+    def __init2__(self, t):
         tokens = t.as_list()
         if len(tokens) == 2:
             self.func = tokens[0]
@@ -221,6 +233,51 @@ class Call(Node):
 
         # print("callargs", self.args)
         # print("done")
+
+
+def call_parse_action(s, l, t):
+    tokens = t.as_list()
+
+    if len(tokens) == 2:
+        func = tokens[0]
+        args = tokens[1]
+    else:
+        assert len(tokens) > 2
+        func = call_parse_action(s, l, pp.ParseResults(tokens[:-1]))  # left-associative
+        args = tokens[-1]
+
+    # res = Call(func, args)
+
+    scope_resolve_part = args.pop()
+
+    leading_punctuation = args.pop(0)
+    if leading_punctuation == "(":
+        end_punctuation = args.pop()
+        assert end_punctuation == ")"
+        call = Call(func, args)
+    elif leading_punctuation == "[":
+        end_punctuation = args.pop()
+        assert end_punctuation == "]"
+        call = ArrayAccess(func, args)
+    elif leading_punctuation == "{":
+        end_punctuation = args.pop()
+        assert end_punctuation == "}"
+        call = BracedCall(func, args)
+    else:
+        print("fatal parse error. unexpected scope resolved call.", file=sys.stderr)
+        sys.exit(-1)
+
+    if scope_resolve_part:
+        scope_op, scope_op_rhs = scope_resolve_part
+
+        if scope_op == ".":
+            return RebuiltAttributeAccess(func=".", args=[call, scope_op_rhs])
+        elif scope_op == "->":
+            return ArrowOp(args=[call, scope_op_rhs])
+        elif scope_op == "::":
+            return RebuiltScopeResolution(func="::", args=[call, scope_op_rhs])
+
+    return call
 
 
 class ArrayAccess(Node):
@@ -391,6 +448,7 @@ def _create():
     function_call = pp.Forward()
     template = pp.Forward()
     scope_resolution = pp.Forward()
+    scope_resolved_call = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(Identifier)
 
@@ -456,15 +514,22 @@ def _create():
     dot = pp.Literal(".")
     arrow_op = pp.Literal("->")
 
-    scope_resolution <<= pp.infix_notation(atom, [
+    scope_resolution <<= pp.infix_notation(atom|(pp.Suppress("(") + infix_expr + pp.Suppress(")")), [
             (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
             (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
-        ],
-    )
+    ])
 
-    call_func = (scope_resolution | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
+    call_func = (scope_resolution) #| (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
+    # call_func = (scope_resolution | scope_resolved_call | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
 
-    function_call <<= (call_func + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
+    # function_call <<= (call_func + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
+
+    function_call <<= (call_func + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(call_parse_action)
+
+    # scope_resolved_call <<= pp.infix_notation(function_call, [
+    #     (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
+    #     (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
+    # ])
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -485,11 +550,11 @@ def _create():
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
-        function_call | scope_resolution,
+        function_call|scope_resolution,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
-            (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
-            (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
+            # (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
+            # (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, UnOp),
             # (expop, 2, pp.opAssoc.RIGHT, BinOp),
             (signop, 1, pp.opAssoc.RIGHT, UnOp),
@@ -611,12 +676,22 @@ def parse(source: str):
             if op.func == "->":
                 op = ArrowOp(op.args)
             elif op.func == "::":
-                op = RequiltScopeResolution(op.func, op.args)
+                op = RebuiltScopeResolution(op.func, op.args)
         elif isinstance(op, Call):
-            if op._is_array:
-                op = ArrayAccess(op.func, op.args)
-            elif op._is_braced_call:
-                op = BracedCall(op.func, op.args)
+
+            pass
+
+            # this can be fixed by refactoring parse actions from classes to plain functions (that construct the appropriate class inline)
+            # if op._is_array:
+            #     op = ArrayAccess(op.func, op.args)
+            # elif op._is_braced_call:
+            #     op = BracedCall(op.func, op.args)
+
+            # we've also got an annoying precedence issues left for the case:
+            # Blah()::foo.method()
+            # parsed as ScopeResolution(Call(Blah, []), Call(AttributeAccess(foo,method), []))
+            # should be
+            # Call(AttributeAccess(ScopeResolution(Call(Blah, []), foo), method), [])
 
         if not isinstance(op, Node):
             return op
