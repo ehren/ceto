@@ -97,9 +97,12 @@ def test_attribute_call_array_access():
     c = compile(r"""
 def (main:
     v = [0, 1, 2]
-    std::cout << v.data()[2]  # precedence for '.' wrong 
+    # std::cout << v.data()[2]  # TODO ensure test_parser is adequate (no longer allowed in codegen)
+    std::cout << v.data().unsafe_at(2)
 )
     """)
+
+    assert c == "2"
 
 
 def test_bounds_check():
@@ -129,9 +132,11 @@ def (main:
     c = compile(r"""
 def (main:
     v = [0, 1, 2]
-    std::cout << (v.data())[50]  # more UB from unsafe API usage
-    # TODO precedence/codegen issue with:
+    # std::cout << (v.data())[50]  # more UB from unsafe API usage (and use of a.unsafe_at(i) aka real c++ a[i])
+    # TODO ^ these are important precedence/parsing tests but we no longer allow raw array access in codegen. ensure these are tested properly in test_parser.py
     # std::cout << v.data()[50]
+    std::cout << v.data().unsafe_at(50)
+    
 )
     """)
     assert c == "0"  # probably true
@@ -282,8 +287,8 @@ def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive varia
        value: T, 
        Fargs: Targs:dotdotdot:
       
-    while (*format != c""[0]:  # TODO maybe char"%" for char literal
-        if (*format == c"%"[0]:
+    while (*format != c"".unsafe_at(0):  # TODO maybe char"%" for char literal
+        if (*format == c"%".unsafe_at(0):
             std.cout << value
             tprintf(format + 1, Fargs...) # recursive call
             return
@@ -294,7 +299,7 @@ def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive varia
 )
     
 def (main:
-    tprintf(c"% world% %\n", c"Hello", c"!"[0], 123);
+    tprintf(c"% world% %\n", c"Hello", c"!".unsafe_at(0), 123);
 )
     """)
 
@@ -734,7 +739,7 @@ def (main:
 def (main:
     x = 1
     y : const:int:ref = x  # fine to copy capture
-    c = c"A"[0]  # TODO maybe c'A' for a char literal
+    c = c"A".unsafe_at(0)  # TODO maybe c'A' for a char literal
     nullbyte: unsigned:char = 0
 
     lambda (:
@@ -2538,7 +2543,7 @@ def (foo, items:[string]:
     
 def (main, argc: int, argv: char:ptr:ptr:
     printf("argc %d\n", argc)
-    printf("%s\n", argv[0])
+    printf("%s\n", argv.unsafe_at(0))
     
     lst = ["hello", "world"] 
     foo(lst)

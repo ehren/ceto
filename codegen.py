@@ -463,15 +463,14 @@ auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
     return std::forward<decltype(v)>(v).at(std::forward<decltype(index)>(index));
 }
 
-// allow unsafe raw array accesses, blame memory safety violations on either known-unsafe syntax use (e.g. unary &) or known unsafe API use e.g. (ceto code) [1,2,3,4].data()   
 auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
-    requires (!(std::is_integral_v<std::remove_cvref_t<decltype(index)>>) ||
-              !(requires { std::size(v); }) ||
-              !(requires { v.at(index); }))
+    requires (!(std::is_integral_v<std::remove_cvref_t<decltype(index)>>))
 {
     // no bounds check!
     return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
 }
+
+
 
 } // namespace
 
@@ -1815,35 +1814,39 @@ def codegen_node(node: Node, cx: Context):
                 if method_name.name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
                     consume_method_name()
                     return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-                elif method_name.name == "append" and len(node.args) == 1 and not isinstance(method_name.parent, (ScopeResolution, ArrowOp)):
-                    # perhaps controversial rewriting of append to push_back
-                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+
+                elif not isinstance(method_name.parent, (ScopeResolution, ArrowOp)):
                     consume_method_name()
 
-                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
-                    append_str = "append"
-                    is_list = False
-                    if isinstance(node.func, ListLiteral):
-                        is_list = True
+                    if method_name.name == "unsafe_at" and len(node.args) == 1:
+                        return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
+
+                    if method_name.name == "append" and len(node.args) == 1:
+                        # perhaps controversial rewriting of append to push_back
+                        # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+
+                        # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
+                        append_str = "append"
+                        is_list = False
+                        if isinstance(node.func, ListLiteral):
+                            is_list = True
+                        else:
+                            for d in find_defs(node.func):
+                                # print("found def", d, "when determining if an append is really a push_back")
+                                if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
+                                    is_list = True
+                                    break
+                        if is_list:
+                            append_str = "push_back"
+
+                        func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
                     else:
-                        for d in find_defs(node.func):
-                            # print("found def", d, "when determining if an append is really a push_back")
-                            if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
-                                is_list = True
-                                break
-                    if is_list:
-                        append_str = "push_back"
 
-                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
-                elif method_name.parent.func == ".":
-
-                    consume_method_name()
-
-                    # TODO fix AttributeAccess logic repeated here
-                    if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
-                        func_str = node.func.name + "::" + codegen_node(method_name, cx)
-                    else:
-                        func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + codegen_node(method_name, cx)
+                        # TODO fix AttributeAccess logic repeated here
+                        if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
+                            func_str = node.func.name + "::" + codegen_node(method_name, cx)
+                        else:
+                            func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + codegen_node(method_name, cx)
 
             if func_str is None:
                 func_str = codegen_node(node.func, cx)
