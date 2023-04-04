@@ -19,7 +19,7 @@ class CodeGenError(Exception):
     pass
 
 
-cpp_preamble = """
+cpp_preamble = r"""
 #include <memory>
 #include <vector>
 #include <string>
@@ -34,6 +34,10 @@ cpp_preamble = """
 #include <cassert>
 #include <compare> // for <=>
 #include <thread>
+#include <stdexcept>
+#include <source_location>
+
+
 //#include <concepts>
 //#include <ranges>
 //#include <numeric>
@@ -74,6 +78,22 @@ shared_from(That* that) {
 
 // mad = maybe allow deref
 
+class null_deref_error : public std::runtime_error
+{
+public:
+    
+    static inline std::string build_message(const std::source_location& location) {
+        std::string message = "Attempted null deref in attribute access:";
+        message += location.file_name();
+        message += ":";
+        message += std::to_string(location.line());
+        message += " (" + std::string(location.function_name()) + ")";
+        message += " column " + std::to_string(location.column()) + "\n";
+        return message;
+    }
+    
+    using std::runtime_error::runtime_error;
+};
 
 template<typename T>
 T* mad(T & obj) { 
@@ -88,9 +108,9 @@ T* mad(T && obj) {
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-mad(std::shared_ptr<T>& obj) { 
+mad(std::shared_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return obj;   // autoderef
 }  
@@ -103,9 +123,9 @@ mad(std::shared_ptr<T>& obj) {
 // autoderef of temporary
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-mad(std::shared_ptr<T>&& obj) {
+mad(std::shared_ptr<T>&& obj, const std::source_location& location = std::source_location::current()) {
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return std::move(obj);  // autoderef
 }
@@ -116,9 +136,9 @@ mad(std::shared_ptr<T>&& obj) {
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
-mad(const std::shared_ptr<T>& obj) {
+mad(const std::shared_ptr<T>& obj, const std::source_location& location = std::source_location::current()) { 
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return obj;  
 } 
@@ -126,9 +146,9 @@ mad(const std::shared_ptr<T>& obj) {
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
-mad(std::unique_ptr<T>& obj) {
+mad(std::unique_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return obj;
 }  
@@ -136,9 +156,9 @@ mad(std::unique_ptr<T>& obj) {
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
-mad(const std::unique_ptr<T>& obj) {
+mad(const std::unique_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return obj;
 } 
@@ -146,9 +166,9 @@ mad(const std::unique_ptr<T>& obj) {
 // autoderef of temporary
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>
-mad(std::unique_ptr<T>&& obj) {
+mad(std::unique_ptr<T>&& obj, const std::source_location& location = std::source_location::current()) {
     if (!obj) {
-        std::terminate();
+        throw null_deref_error(null_deref_error::build_message(location));
     }
     return std::move(obj);
 }
