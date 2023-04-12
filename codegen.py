@@ -496,13 +496,13 @@ class InterfaceDefinition(ClassDefinition):
     def __init__(self):
         pass
 
-class Context:
+class Scope:
 
     def __init__(self):
         self.interfaces = defaultdict(list)
         self.class_definitions = []
         self.indent = 0
-        self.parent : Context = None
+        self.parent : Scope = None
         self.in_function_body = False
         self.in_function_param_list = False
         self.in_class_body = False
@@ -524,14 +524,14 @@ class Context:
         return None
 
     def enter_scope(self):
-        c = Context()
-        c.interfaces = self.interfaces.copy()
+        s = Scope()
+        s.interfaces = self.interfaces.copy()
         self.class_definitions = list(self.class_definitions)
-        c.parent = self
-        c.in_function_body = self.in_function_body
-        c.in_decltype = self.in_decltype
-        c.indent = self.indent + 1
-        return c
+        s.parent = self
+        s.in_function_body = self.in_function_body
+        s.in_decltype = self.in_decltype
+        s.indent = self.indent + 1
+        return s
 
 
 # method_declarations = []
@@ -851,7 +851,7 @@ def codegen_while(whilecall, cx):
     if not isinstance(whilecall.args[1], Block):
         raise CodeGenError("Last while arg must be a block", whilecall.args[1])
 
-    # TODO replace find_defs with handling in Context
+    # TODO replace find_defs with handling in Scope
     cpp = "while (" + codegen_node(whilecall.args[0], cx.enter_scope()) + ") {"
     cpp += codegen_block(whilecall.args[1], cx.enter_scope())
     cpp += cx.indent_str() + "}\n"
@@ -1239,7 +1239,7 @@ def codegen_lambda(node, cx):
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        # this should use Context
+        # this should use Scope
         possible_captures = []
         for i in idents:
             if i.name == "self":
@@ -1270,7 +1270,7 @@ def codegen_lambda(node, cx):
 
 def codegen(expr: Node):
     assert isinstance(expr, Module)
-    cx = Context()
+    cx = Scope()
     s = codegen_node(expr, cx)
     s = cpp_preamble + s
     print(s)
@@ -1622,7 +1622,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
     return codegen_node(type_node, cx)
 
 
-def codegen_node(node: Node, cx: Context):
+def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
