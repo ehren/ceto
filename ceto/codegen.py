@@ -191,12 +191,8 @@ mad(std::unique_ptr<T>&& obj, const std::source_location& location = std::source
 
 
 
-// unused but seemingly workable C++ auto construction logic
-// doesn't work for variadic template functions (should be fixable?). 
-// C style macros could be handleable with #ifdef Foo Foo()#else call_or_construct<...(with ugliness for maybe-constructor calls in subexpressions)
-// OTOH we might want to auto add :const:ref only to function params that are generic/typeless or of type our-language class or struct (so keeping track of class definitions is still required by the transpiler = module dependencies)
+// automatic make_shared insertion
 
-// auto make_shared insertion.
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct(Args&&... args) {
@@ -246,13 +242,6 @@ call_or_construct(Args&&... args) {
     return T(std::forward<Args>(args)...);
 }
 
-// non-type template param version needed for e.g. construct_or_call<printf>("hi")
-//template<typename T, typename... Args>
-//std::enable_if<std::is_void_v<T>, void>
-//call_or_construct(Args&&... args) {
-//    T(std::forward<Args>(args)...);
-//}
-
 // template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
 template<template<class ...> class T, class... TArgs>
 auto
@@ -260,133 +249,6 @@ call_or_construct(TArgs&&... args) {
     using TT = decltype(T(std::forward<TArgs>(args)...));
     return call_or_construct<TT>(T(std::forward<TArgs>(args)...));
 }
-
-
-template <typename T>
-//std::enable_if_t<std::is_class_v<T>, bool>
-//requires requires(T )
-bool
-constexpr
-can_construct() {
-    return true;
-}
-
-template <typename T, typename... Args>
-requires requires(Args&&... args) { T{std::forward<Args>(args)...}; }
-std::enable_if_t<std::is_class_v<T> && std::is_constructible_v<T, Args...>, bool>
-constexpr
-can_construct(Args&&... args) {
-    return true;
-}
-
-//template <typename T, typename... Args>
-//std::enable_if_t<std::is_void_v<T>, bool>
-//constexpr
-//can_construct(Args&&... args) {
-//    return false;
-//}
-
-template<typename T, typename... Args>
-constexpr bool
-can_construct(Args&&... args) {
-    return false;
-}
-
-template<auto T>
-constexpr bool
-is_appropriate_class() {
-    return false;
-}
-
-
-template<typename T>
-std::enable_if<std::is_class_v<T>, bool>
-constexpr
-is_appropriate_class() {
-    return true;
-}
-
-template<typename T>
-constexpr bool
-is_appropriate_class() {
-    return false;
-}
-
-// https://stackoverflow.com/questions/67128867/check-if-a-type-is-a-template/67129011#67129011
-template<template<class ...> class T>
-constexpr bool is_template() { return true; }
-
-// ADDITIONAL SPECIALIZATION for non-type arguments
-template<template<auto ...> class T>
-constexpr bool is_template() { return true; }
-
-template<class T>
-constexpr bool is_template() { return false; }
-
-//template<template<class ...> class T>
-//std::enable_if<std::is_class_v<T<>>, bool>
-//constexpr is_appropriate() { return true; }
-
-
-template<template<class ...> class T>
-constexpr bool is_appropriate() { return false; }
-//constexpr bool is_appropriate() { return std::is_class_v<T<>>; }
-
-// ADDITIONAL SPECIALIZATION for non-type arguments
-template<template<auto ...> class T>
-constexpr bool is_appropriate() { return false; }
-
-template<class T>
-constexpr bool is_appropriate() { return false; }
-//constexpr bool is_appropriate() { return std::is_class_v<T>; }
-
-template<class T>
-//constexpr bool is_appropriate() { return false; }
-requires requires() { T{}; }
-constexpr bool is_appropriate() { return std::is_class_v<T>; }
-
-// non-type template param version needed for e.g. construct_or_call<printf>("hi")
-template<auto T, typename... Args>
-constexpr bool
-can_construct(Args&&... args) {
-    return false;
-}
-
-// template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
-template<template<class ...> class T, class... TArgs>
-constexpr bool
-can_construct(TArgs&&... args) {
-    return false;
-    //using TT = decltype(T(std::forward<TArgs>(args)...));
-    //return can_construct<TT>(T(std::forward<TArgs>(args)...));
-}
-
-
-
-// https://stackoverflow.com/a/56225903/1391250
-//template<typename T, typename Enable = void>
-//struct is_smart_pointer
-//{
-//    enum { value = false };
-//};
-//
-//template<typename T>
-//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::shared_ptr<typename T::element_type>>::value>::type>
-//{
-//    enum { value = true };
-//};
-//
-//template<typename T>
-//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value>::type>
-//{
-//    enum { value = true };
-//};
-//
-//template<typename T>
-//struct is_smart_pointer<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::weak_ptr<typename T::element_type>>::value>::type>
-//{
-//    enum { value = true };
-//};
 
 
 // preparation for auto-move last use of unique object
@@ -1571,6 +1433,7 @@ def codegen_node(node: Node, cx: Scope):
                 args_inner = ", ".join(arg_strs)
                 args_str = "(" + args_inner + ")"
 
+                # TODO we should re-enable this and leave "call_or_construct" only for "importing" raw but ceto-generated c++ code (would also require sprinkling conditional_t everywhere)
                 if 0:# and class_def := cx.lookup_class(node.func):
                     class_name = node.func.name
                     class_node = class_def.class_def_node
@@ -1613,56 +1476,12 @@ def codegen_node(node: Node, cx: Scope):
                     return simple_call_str
 
                 dt_str = "decltype(" + simple_call_str + ")"
-                dt_curly_str = "decltype(" + func_str + "{" + args_inner + "})"
-
-                # the void detection part induces a vexing parse in test_capture
-                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { if constexpr (std::is_void_v<" + dt_str + ">) { " + simple_call_str + "; } else { return " + simple_call_str + "; } } } ()"
 
                 simple_return = "return "
                 if isinstance(node.parent, Block):
                     simple_return = ""
 
-                # good with testsuite:
                 call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                return call_str
-
-                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (ceto::is_appropriate_class<" + func_str + ">()) { return ceto::call_or_construct<" + dt_str + ">" + args_str + " ; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (ceto::is_appropriate<" + dt_str + ">()) { return ceto::call_or_construct<" + dt_str + ">" + args_str + " ; } else { " + simple_return + simple_call_str + "; } } ()"
-
-
-                return call_str
-
-                #
-                # call_str = "[" + capture + "] { if constexpr (!std::is_void_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + args_str + ")>) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && !std::is_same_v<decltype(ceto::call_or_construct<" + dt_str  + ">" + args_str + "), " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && !std::is_base_of_v<ceto::object, " + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + func_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                # call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + "> && (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ")) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + args_str + ") { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                # call_str = "[" + capture + "] { if constexpr (std::is_class_v<" + dt_str + "> && ceto::can_construct<" + dt_str + ">" + arg_str + " ) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                # call_str = "[" + capture + "] { if constexpr (requires { " + dt_str + "{" + args_inner + "}; }) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-
-                return call_str
-
-                # too many crazy probs with this for now (e.g. can't wrap parameter unpacks in a decltype):
-                if not node.args:
-                    call_str = "[" + capture + "] { if constexpr (std::is_constructible_v<" + func_str + ">) { return ceto::call_or_construct<" + func_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-                else:
-                    call_str = "[" + capture + "] { if constexpr (std::is_constructible_v<" +  ", ".join([dt_str] + ["decltype(" + a + ")" for a in arg_strs]) + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
 
                 return call_str
         else:
