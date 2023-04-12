@@ -599,10 +599,6 @@ def codegen_if(ifcall : Call, cx):
         for assign in assigns:
             if hasattr(assign, "already_declared"):
                 continue
-            # if not isinstance(assign.parent, Block):
-                # don't do any funky auto auto declarations for non-block scoped assigns
-                # uh or not
-            #     continue
             if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
                 assign.already_declared = True
                 if assign.lhs.name in declarations:
@@ -652,14 +648,10 @@ def codegen_for(node, cx):
     # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
     var_str = codegen_node(var, cx)
 
+    # TODO: remove 'range' as a builtin entirely (needs testsuite fixes)
     if isinstance(iterable, Call) and iterable.func.name == "range":
         if not 0 <= len(iterable.args) <= 2:
             raise CodeGenError("unsupported range args", iterable)
-
-        # is_signed = False
-        # for arg in iterable.args:
-        #     if isinstance(arg, IntegerLiteral) and arg.integer < 0:
-        #         is_signed = True
 
         start = iterable.args[0]
         if len(iterable.args) == 2:
@@ -1632,7 +1624,6 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
 def codegen_node(node: Node, cx: Context):
     assert isinstance(node, Node)
-    cpp = io.StringIO()
 
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
         if not isinstance(node, Identifier):
@@ -1641,30 +1632,32 @@ def codegen_node(node: Node, cx: Context):
         return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
 
     if isinstance(node, Module):
+        modcpp = ""
         for modarg in node.args:
             if isinstance(modarg, Call):
                 if modarg.func.name == "def":
                     funcx = cx.enter_scope()
                     funcx.in_function_param_list = True
                     defcode = codegen_def(modarg, funcx)
-                    cpp.write(defcode)
+                    modcpp += defcode
                     continue
                 elif modarg.func.name == "class":
                     classcode = codegen_class(modarg, cx)
-                    cpp.write(classcode)
+                    modcpp += classcode
                     continue
-            cpp.write(codegen_node(modarg, cx) + ";\n")  # untested # TODO: pass at global scope
+            modcpp += codegen_node(modarg, cx) + ";\n"  # untested # TODO: pass at global scope
+        return modcpp
     elif isinstance(node, Call):
         if isinstance(node.func, Identifier):
             func_name = node.func.name
             if func_name == "if":
-                cpp.write(codegen_if(node, cx))
+                return codegen_if(node, cx)
             elif func_name == "def":
-                print("need to handle nested def")
+                raise CodeGenError("nested def not yet implemented")
             elif func_name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
                 newcx = cx.enter_scope()
                 newcx.in_function_param_list = True
-                cpp.write(codegen_lambda(node, newcx))
+                return codegen_lambda(node, newcx)
             elif func_name == "range":
                 if len(node.args) == 1:
                     return "std::views::iota(0, " + codegen_node(node.args[0], cx) + ")"
@@ -1854,7 +1847,7 @@ def codegen_node(node: Node, cx: Context):
             return func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
     elif isinstance(node, IntegerLiteral):
-        cpp.write(str(node))
+        return str(node)
     elif isinstance(node, Identifier):
         name = node.name
 
@@ -2092,9 +2085,5 @@ def codegen_node(node: Node, cx: Context):
         else:
             return codegen_node(node.func, cx) + template_args
 
-    # TODO we should probably just remove all unnecessary StringIO use
-    # plus refactoring
-    s = cpp.getvalue()
-    assert len(s)
-    return s
+    assert False, "unhandled node"
 
