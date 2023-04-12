@@ -4,7 +4,7 @@ from typing import Union, Any
 from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
     TypeOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
     SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, \
-    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer, build_parents, find_def_starting_from
+    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer
 from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, \
     BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, \
     CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, \
@@ -1304,29 +1304,6 @@ def decltype_str(node, cx):
             return "decltype({})".format(_decltype_str(node, cx))
         except _NoDeclTypeNeeded as n:
             return n.result
-
-
-def find_defining_class(node):
-    if not isinstance(node, Identifier):
-        return None
-    for defnode, defcontext in find_defs(node):
-        if isinstance(defcontext, Call) and defcontext.func.name == "class":
-            class_name = defcontext.args[0]
-            assert isinstance(class_name, Identifier)
-            return defcontext
-    return None
-
-
-def find_defining_class_of_type(typenode, searchnode):
-    # if not isinstance(node, Identifier):
-    #     return False
-    if res := find_def_starting_from(searchnode, typenode):
-        defnode, defcontext = res
-        if isinstance(defcontext, Call) and defcontext.func.name == "class":
-            class_name = defcontext.args[0]
-            assert isinstance(class_name, Identifier)
-            return defcontext
-    return None
 
 
 def _decltype_str(node, cx):

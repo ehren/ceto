@@ -396,11 +396,6 @@ def find_def(node):
     return res
 
 
-def find_def_starting_from(search_node, node_to_find):
-    res = _find_def(search_node.parent, search_node, node_to_find)
-    return res
-
-
 def is_return(node):
     return ((isinstance(node, TypeOp) and node.lhs.name == "return") or (
             isinstance(node, Identifier) and node.name == "return") or (
