@@ -226,7 +226,8 @@ def codegen_for(node, cx):
             start.parent = end.parent
         sub = RebuiltBinOp(func="-", args=[end, start])
         sub.parent = start.parent
-        ds = decltype_str(sub, cx)
+        # ds = decltype_str(sub, cx)
+        ds = "decltype(" + codegen_node(sub, cx) + ")"
         startstr = codegen_node(start, cx)
         endstr = codegen_node(end, cx)
         forstr = f"for ({ds} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
@@ -841,12 +842,6 @@ def codegen(expr: Node):
     return s
 
 
-# should probably adjust the callers of decltype_str instead of this hackery
-class _NoDeclTypeNeeded(Exception):
-    def __init__(self, result):
-        self.result = result
-
-
 def decltype_str(node, cx):
     if isinstance(node, ArrayAccess):
         if not isinstance(node.func, Identifier):
@@ -864,25 +859,28 @@ def decltype_str(node, cx):
         return "std::vector<" + decltype_str(node.args[0], cx) + ">"
 
     else:
-        try:
-            return "decltype({})".format(_decltype_str(node, cx))
-        except _NoDeclTypeNeeded as n:
-            return n.result
+
+        needs_outer_decltype, code = _decltype_str(node, cx)
+        if needs_outer_decltype:
+            code = "decltype(" + code + ")"
+        return code
 
 
 def _decltype_str(node, cx):
 
     if isinstance(node, IntegerLiteral):
-        return str(node)
+        return True, str(node)
     elif isinstance(node, StringLiteral):
         # return "std::declval(" + str(node) + "sv" + ")"
-        return "std::string {" + str(node) + "}"
+        return True, "std::string {" + str(node) + "}"
 
     if isinstance(node, BinOp):
         binop = node
-        return _decltype_str(binop.lhs, cx) + str(binop.func) + _decltype_str(binop.rhs, cx)
+        assert False, "this should be unreachable. TODO: just remove this code"
+        return True, _decltype_str(binop.lhs, cx)[1] + str(binop.func) + _decltype_str(binop.rhs, cx)[1]
     elif isinstance(node, UnOp):
-        return "(" + str(node.func) + _decltype_str(node.args[0], cx) + ")"  # the other place unop is parenthesized is "necessary". here too?
+        assert False, "this should be unreachable. TODO: just remove this code"
+        return True, "(" + str(node.func) + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
 
@@ -905,39 +903,41 @@ def _decltype_str(node, cx):
             else:
                 func_str = "std::shared_ptr<" + class_name + ">"
 
-            raise _NoDeclTypeNeeded(func_str)
+            return False, func_str
 
         else:
-            return codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx) for a in call.args]) + ")"
+            return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
     elif isinstance(node, ListLiteral):
-        return "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
+        return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
 
     assert isinstance(node, Identifier)
 
     defs = list(find_defs(node))
     if not defs:
-        return str(node)
+        return True, node.name
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            raise _NoDeclTypeNeeded(codegen_type(def_node, def_node.declared_type, cx))
+            return False, codegen_type(def_node, def_node.declared_type, cx)
 
     last_ident, last_context = defs[-1]
 
     if isinstance(last_context, Assign):
         assign = last_context
 
-        return _decltype_str(assign.rhs, cx)
+        _, code = _decltype_str(assign.rhs, cx)
+
+        return True, code
 
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
         if not isinstance(instmt, BinOp) and instmt.func == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
-            return "std::declval<typename std::remove_reference_t<std::remove_const_t<" + decltype_str(instmt.rhs, cx) + ">>::value_type>()"
+            return True, "std::declval<typename std::remove_reference_t<std::remove_const_t<" + decltype_str(instmt.rhs, cx) + ">>::value_type>()"
 
     else:
-        return codegen_node(last_ident, cx)
+        return True, codegen_node(last_ident, cx)
 
 
 def vector_decltype_str(node, cx):
