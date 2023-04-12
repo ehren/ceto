@@ -1286,51 +1286,18 @@ class _NoDeclTypeNeeded(Exception):
 def decltype_str(node, cx):
     if isinstance(node, ArrayAccess):
         if not isinstance(node.func, Identifier):
-            raise CodeGenError("no idea what to do with this indirect array access when printing decltypes")
+            assert False
 
         for n, c in find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
                     return vds
-                # return c.rhs._element_decltype_str
-            # print("array def", d)
 
         return "decltype({})::value_type".format(str(node.func))
 
-    # elif isinstance(node, Call) and isinstance(node.func, Identifier) and is_defined_by_class(node.func):
-    #     return f"std::declval<std::shared_ptr<{node.func.name}>> ()"
-
     elif isinstance(node, ListLiteral):
-        # never succeeded
-        # if not node.args:
-        #     if isinstance(node.parent, Assign):
-        #         if vds := vector_decltype_str(node.parent):
-        #             return vds
 
         return "std::vector<" + decltype_str(node.args[0], cx) + ">"
-
-        # return vector_decltype_str(node)
-
-        result = "" # "std::vector<"
-        end = ">"
-        ll = node#.args[0]
-
-        while isinstance(ll, ListLiteral):
-            result += "std::vector<" #+ _decltype_str(node.args[0])
-            end += ">"
-            ll = ll.args[0]
-
-        result += decltype_str(ll)
-        result += end
-
-        # if isinstance(node.args[0], ListLiteral):
-        #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
-        # else:
-        #     return "std::vector<" + decltype_str(node.args[0]) + ">"
-        return result
-
-    # elif isinstance(node, IntegerLiteral):  # this is nice for readability but not so much debugging output
-    #     return "int"
 
     else:
         try:
@@ -1377,17 +1344,6 @@ def _decltype_str(node, cx):
         return "(" + str(node.func) + _decltype_str(node.args[0], cx) + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
-        # if call.func.name == "lambda":
-        #     return codegen_node(call)
-        #return codegen_node(call.func) + "(" + ", ".join([_decltype_str(a) for a in call.args]) + ")"
-
-        # if class_node := find_defining_class(node.func):
-        #     if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-        #         result = f"std::unique_ptr<{node.func.name}>"
-        #     else:
-        #         result = f"std::shared_ptr<{node.func.name}>"
-        #     # this is wrong
-        #     raise _NoDeclTypeNeeded(result)
 
         if class_def := cx.lookup_class(node.func):
             class_name = node.func.name
@@ -1408,27 +1364,14 @@ def _decltype_str(node, cx):
             else:
                 func_str = "std::shared_ptr<" + class_name + ">"
 
-            # return func_str # + "(" + ", ".join([decltype_str(a, cx) for a in call.args]) + ")"
-            # non-local goto is still wrong here (source of future bugs but not immediately apparent in test suite)
             raise _NoDeclTypeNeeded(func_str)
 
         else:
             return codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx) for a in call.args]) + ")"
-    # elif isinstance(node, ArrayAccess):
-    #     return "decltype({})::value_type".format(codegen_node(node.func))
-        # return "[&](){{ return {}; }}".format(codegen_node(node))
     elif isinstance(node, ListLiteral):
-        # if isinstance(node.args[0], ListLiteral):
-        #     return "std::vector<" + _decltype_str(node.args[0]) + ">"
-        # else:
-        #     return "std::vector<" + decltype_str(node.args[0]) + ">"
         return "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
-        # return _decltype_str(node.args[0])
 
-
-    if not isinstance(node, Identifier):
-        print("uh oh", node)
-        assert 0
+    assert isinstance(node, Identifier)
 
     defs = list(find_defs(node))
     if not defs:
@@ -1436,36 +1379,15 @@ def _decltype_str(node, cx):
 
     for def_node, def_context in defs:
         if def_node.declared_type:
-            # return "std::declval<{}>()".format(codegen_type(def_node, def_node.declared_type, cx))
             raise _NoDeclTypeNeeded(codegen_type(def_node, def_node.declared_type, cx))
 
-        if isinstance(def_context, Assign) and def_context.declared_type:
-            assert 0
-            # return str(def_context.declared_type)
-            return "std::declval<{}>()".format(codegen_type(def_context, def_context.declared_type, cx))
-
-
     last_ident, last_context = defs[-1]
-
-    # return decltype_str(last_ident)
 
     if isinstance(last_context, Assign):
         assign = last_context
 
         return _decltype_str(assign.rhs, cx)
 
-        if isinstance(assign.rhs, BinOp):
-            # for arg in assign.rhs.args:
-            #     if found := decltype_str(arg):
-            #         return found
-            binop = assign.rhs
-            return decltype_str(binop.lhs) + str(binop.func) + decltype_str(binop.rhs)
-        elif isinstance(assign.rhs, Call):
-            call = assign.rhs
-            return codegen_node(call.func) + "(" + ", ".join([decltype_str(a) for a in call.args]) + ")"
-        else:
-            print("hmm?1")
-            return codegen_node(assign.rhs)
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
         if not isinstance(instmt, BinOp) and instmt.func == "in":
@@ -1474,8 +1396,6 @@ def _decltype_str(node, cx):
             return "std::declval<typename std::remove_reference_t<std::remove_const_t<" + decltype_str(instmt.rhs, cx) + ">>::value_type>()"
 
     else:
-        print("hmm?2")
-        # assert 0
         return codegen_node(last_ident, cx)
 
 
