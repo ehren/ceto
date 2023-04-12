@@ -1998,40 +1998,13 @@ def codegen_node(node: Node, cx: Context):
 
                 separator = ""
 
-                if isinstance(node.rhs, Call) and node.rhs.func.name == "append":
-                    # this predates :: . vs call precedence change. TODO remove this entirely (handling in Call-node only should suffice)
-                    assert 0
-
-                    apnd = node.rhs
-                    assert len(apnd.args) == 1
-
-                    is_list = False
-                    if isinstance(node.lhs, ListLiteral):
-                        is_list = True
-                    else:
-                        for d in find_defs(node.lhs):
-                            # print("found def", d, "when determining if an append is really a push_back")
-                            if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
-                                is_list = True
-                                break
-                    if is_list:
-                        binop_str = "{}.push_back({})".format(codegen_node(node.lhs, cx), codegen_node(apnd.args[0], cx))
             elif is_comment(node):
+                # probably needs to go near method handling logic now that precedence issue fixed (TODO re-enable comment stashing)
                 if not (len(node.rhs.args) == 1 or isinstance(node.rhs.args[0], StringLiteral)):
                     raise CodeGenError("unexpected ceto::comment ", node)
                 return "//" + node.rhs.args[0].func.replace("\n", "\\n") + "\n"
 
             if binop_str is None:
-
-                if 0 and isinstance(node.lhs, Call):
-                    if class_node := find_defining_class(node.lhs.func):
-                        # mad stuff won't currently work with a temporary here:
-                        # detect attribute access of constructor call to class marked unique and print '->' instead
-                        if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                            # without (test_unique_ptr):
-                            # error: no member named 'bar' in 'std::__1::unique_ptr<Foo, std::__1::default_delete<Foo> >'
-                            #     ceto::mad(std::make_unique<decltype(Foo())>())->bar();
-                            return separator.join([codegen_node(node.lhs, cx), "->", codegen_node(node.rhs, cx)])
 
                 if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
                     binop_str = "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
