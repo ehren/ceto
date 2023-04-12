@@ -10,7 +10,6 @@ from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, \
     CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, \
     ScopeResolution, LeftAssociativeUnOp
 
-import io
 from collections import defaultdict
 import re
 
@@ -114,11 +113,11 @@ mad(std::shared_ptr<T>& obj, const std::source_location& location = std::source_
     }
     return obj;   // autoderef
 }  
-
 // autoderef:
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //mad(std::shared_ptr<T> obj) { return obj; }
+
 
 // autoderef of temporary
 template<typename T>
@@ -175,20 +174,6 @@ mad(std::unique_ptr<T>&& obj, const std::source_location& location = std::source
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
 //mad(std::unique_ptr<T>&& obj) { return obj; }
-
-// no more raw autoderef
-//template<typename T>
-//std::enable_if_t<std::is_base_of_v<object, T>, T*>
-//mad(T* obj) { return obj; }  // already a raw obj pointer (like 'this'), return it (for autoderef)
-
-// no longer needed now that e.g. 'this' pointers no longer auto-derefed
-//template<typename T>
-//std::enable_if_t<!std::is_base_of_v<object, T>, T**>
-//mad(T*&& obj) { return &obj; } // regular pointer - no autoderef!
-// ^ the forwarding reference to pointer would allow us to wrap arbitrary identifiers
-// and not just attribute access targets e.g. *mad(printf)("hi %d", *mad(x));
-// (though this seems no longer needed with the current autoderef semantics)
-
 
 
 // automatic make_shared insertion
