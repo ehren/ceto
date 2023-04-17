@@ -1029,7 +1029,7 @@ def _codegen_compound_class_type(lhs, rhs, cx):
                 raise CodeGenError("Invalid specifier for class type")
             if c.is_unique:
                 return "const std::unique_ptr<const " + l.name + ">"
-            return "std::shared_ptr<const " + l.name + ">"
+            return "const std::shared_ptr<const " + l.name + ">"
 
 
 
