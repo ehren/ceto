@@ -315,15 +315,22 @@ def codegen_class(node : Call, cx):
                 constructor_block = b.args[-1]
                 assert isinstance(constructor_block, Block)
                 initializerlist_assignments = []
+                initializerlist_super_calls = []
                 for stmt in constructor_block.args:
 
                     # handle self.whatever = something
                     if isinstance(stmt, Assign) and isinstance(stmt.lhs, AttributeAccess) and stmt.lhs.lhs.name == "self":
-                        initializerlist_assignments.append(stmt)
+                        field = stmt.lhs.rhs
+                        if not isinstance(field, Identifier):
+                            raise CodeGenError("unexpected field", field)
+                        initializerlist_assignments.append((field, stmt.rhs))
+                    elif isinstance(stmt, Call) and isinstance(stmt.func, AttributeAccess) and stmt.func.lhs.name == "super" and stmt.func.rhs.name == "init":
+                        initializerlist_super_calls.append(stmt)
                     else:
-                        # anything that follows won't be printed as an initializer-list assignment
+                        # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
                         break
-                constructor_block.args = constructor_block.args[len(initializerlist_assignments):]
+
+                constructor_block.args = constructor_block.args[len(initializerlist_assignments) + len(initializerlist_super_calls):]
 
                 # for assign in initializerlist_assignments:
 
@@ -528,6 +535,72 @@ def type_inorder_traversal(typenode: Node, func):
         return func(typenode)
 
 
+def codegen_typed_def_param(arg, cx):
+    if arg.declared_type is not None:
+        if isinstance(arg, Identifier):
+            if cx.lookup_class(arg.declared_type) is not None:
+                return "const " + codegen_type(arg, arg.declared_type, cx) + "& " + arg.name
+            else:
+                return autoconst(codegen_type(arg, arg.declared_type, cx)) + " " + arg.name
+        else:
+            # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
+            # note precedence change making
+            raise SemanticAnalysisError(
+                "unexpected typed expr in defs parameter list", arg)
+            # TODO: list typing needs fix after : precedence change
+    elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
+        raise SemanticAnalysisError(
+            "Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:",
+            arg)
+    elif isinstance(arg, NamedParameter):
+        if not isinstance(arg.lhs, Identifier):
+            raise SemanticAnalysisError(
+                "Non identifier left hand side in def arg", arg)
+
+        if arg.lhs.declared_type is not None:
+            # params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
+            if cx.lookup_class(arg.lhs.declared_type) is not None:
+                # this only succeeds for literal Foo (not const: Foo: ref)
+                # (so no possibility of double adding 'const' - plus can already create a by-value param of class type using std::remove_const)
+                return "const " + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + "& = " + codegen_node( arg.rhs, cx)
+            else:
+                return codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+
+        elif isinstance(arg.rhs, ListLiteral):
+            if not arg.rhs.args:
+                return "const std::vector<" + vector_decltype_str(arg, cx) + ">&" + arg.lhs.name + " = {" + ", ".join( [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+            else:
+                # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
+
+                # c++ gotcha - not usable as a default argument!
+                # params.append("const auto& " + arg.lhs.name + " = std::vector {" + ", ".join(
+                #         [codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+
+                # inferred part still relies on CTAD:
+                vector_part = "std::vector {" + ", ".join(
+                    [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+
+                # but it's now usable as a default argument:
+                return "const decltype(" + vector_part + ")& " + arg.lhs.name + " = " + vector_part
+        # elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
+        #     pass
+        else:
+            # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added
+            if isinstance(arg.rhs, Call) and cx.lookup_class(
+                    arg.rhs.func) is not None:
+                # it's a known class (object derived). auto add const&
+                # (though std::add_const_t works here, we can be direct)
+                make_shared = codegen_node(arg.rhs, cx)
+                # (we can also be direct with the decltype addition as well though decltype_str works now)
+                return "const decltype(" + make_shared + ") " + arg.lhs.name + "& = " + make_shared
+            else:
+                return autoconst(decltype_str(arg.rhs, cx)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+            # else:
+            #     raise SemanticAnalysisError(
+            #         "Non identifier left hand side in def arg", arg)
+            #     # params.append("const " + decltype_str(arg.rhs, cx) + "& " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
+
+
 def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -564,77 +637,13 @@ def codegen_def(defnode: Call, cx):
     for i, arg in enumerate(args):
         if is_interface_method:
             if arg.declared_type is None:
-                raise CodeGenError("parameter types must be specified for interface methods")
+                raise CodeGenError(
+                    "parameter types must be specified for interface methods")
             if not isinstance(arg, Identifier):
-                raise CodeGenError("Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
-
-        if arg.declared_type is not None:
-            if isinstance(arg, Identifier):
-                if cx.lookup_class(arg.declared_type) is not None:
-                    params.append("const " + codegen_type(arg, arg.declared_type, cx) + "& " + str(arg))
-                else:
-                    params.append(autoconst(codegen_type(arg, arg.declared_type, cx)) + " " + str(arg))
-            else:
-                # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
-                # note precedence change making
-                raise SemanticAnalysisError("unexpected typed expr in defs parameter list", arg)
-                # TODO: list typing needs fix after : precedence change
-        elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
-            raise SemanticAnalysisError("Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:", arg)
-        elif isinstance(arg, NamedParameter):
-            if not isinstance(arg.lhs, Identifier):
-                raise SemanticAnalysisError(
-                    "Non identifier left hand side in def arg", arg)
-
-            if arg.lhs.declared_type is not None:
-                # params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
-                if cx.lookup_class(arg.lhs.declared_type) is not None:
-                    # this only succeeds for literal Foo (not const: Foo: ref)
-                    # (so no possibility of double adding 'const' - plus can already create a by-value param of class type using std::remove_const)
-                    params.append("const " + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + "& = " + codegen_node(arg.rhs, cx))
-                else:
-                    params.append(
-                        # autoconst(
-                        codegen_type(arg.lhs, arg.lhs.declared_type, cx)#)
-                    + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
-
-            elif isinstance(arg.rhs, ListLiteral):
-                if not arg.rhs.args:
-                    params.append("const std::vector<" + vector_decltype_str(arg, cx) + ">&" + arg.lhs.name + " = {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}")
-                else:
-                    # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
-
-                    # c++ gotcha - not usable as a default argument!
-                    # params.append("const auto& " + arg.lhs.name + " = std::vector {" + ", ".join(
-                    #         [codegen_node(a, cx) for a in arg.rhs.args]) + "}")
-
-                    # inferred part still relies on CTAD:
-                    vector_part = "std::vector {" + ", ".join([codegen_node(a, cx) for a in arg.rhs.args]) + "}"
-
-                    # but it's now usable as a default argument:
-                    params.append("const decltype(" + vector_part + ")& " + arg.lhs.name + " = " + vector_part)
-            elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
-                # params.append("auto " + codegen_node(arg.lhs, cx) + "= " + codegen_node(arg.rhs, cx))
-                assert 0  # need to autoconvert to std::function
-            else:
-                # if isinstance(arg.lhs, Identifier):
-                # auto insertion of const & here might be problematic
-                # params.append("const " + decltype_str(arg.rhs, cx) + "& " + str(arg.lhs) + " = " + codegen_node(arg.rhs, cx))
-
-                # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added
-                if isinstance(arg.rhs, Call) and cx.lookup_class(arg.rhs.func) is not None:
-                    # it's a known class (object derived). auto add const&
-                    # (though std::add_const_t works here, we can be direct)
-                    make_shared = codegen_node(arg.rhs, cx)
-                    # (we can also be direct with the decltype addition as well though decltype_str works now)
-                    params.append("const decltype(" + make_shared + ") " + arg.lhs.name + "& = " + make_shared)
-                else:
-                    params.append(autoconst(decltype_str(arg.rhs, cx)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
-                # else:
-                #     raise SemanticAnalysisError(
-                #         "Non identifier left hand side in def arg", arg)
-                #     # params.append("const " + decltype_str(arg.rhs, cx) + "& " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
-
+                raise CodeGenError(
+                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
+        elif typed_param := codegen_typed_def_param(arg, cx):
+            params.append(typed_param)
         else:
             t = "T" + str(i + 1)
             # params.append(t + "&& " + arg.name)
