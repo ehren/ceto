@@ -775,12 +775,10 @@ def codegen_lambda(node, cx):
             if isinstance(a, Assign):
                 raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
             raise CodeGenError("Unexpected lambda argument", a)
-        if a.declared_type is not None:
-            param = codegen_type(a, a.declared_type, cx) + " " + a.name
+        if typed_param := codegen_typed_def_param(a, cx):
+            params.append(typed_param)
         else:
-            # TODO same const ref by default etc behaviour as "def"
-            param = "auto " + a.name
-        params.append(param)
+            params.append("const auto &" + a.name)
     newcx = cx.enter_scope()
     newcx.in_function_body = True
     declared_type = None
