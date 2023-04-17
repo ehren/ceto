@@ -311,11 +311,15 @@ def codegen_class(node : Call, cx):
                     pass # let codegen_def handle (works for 'static')
 
             if methodname.name == "init":
+
                 constructor_args = b.args[1:-1]
                 constructor_block = b.args[-1]
                 assert isinstance(constructor_block, Block)
                 initializerlist_assignments = []
                 initializerlist_super_calls = []
+                initcx = cx.enter_scope()
+                # initcx.in_function_param_list = True  # TODO remove this field
+
                 for stmt in constructor_block.args:
 
                     # handle self.whatever = something
@@ -332,17 +336,27 @@ def codegen_class(node : Call, cx):
 
                 constructor_block.args = constructor_block.args[len(initializerlist_assignments) + len(initializerlist_super_calls):]
 
-                # for assign in initializerlist_assignments:
+                initializer_list_items = [codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")" for field, rhs in initializerlist_assignments]
+                initializer_list = ", ".join(initializer_list_items)
 
-                # cpp += inner_indt + "explicit " + name.name + "("
+                init_params = []
 
                 for arg in constructor_args:
-                    if isinstance(arg, Identifier):
+                    if typed_arg := codegen_typed_def_param(arg, initcx):
+                        init_params.append(typed_arg)
+                    elif isinstance(arg, Identifier):  # TODO generic init params
                         pass
                     elif isinstance(arg, NamedParameter):
                         pass
                     else:
                         raise CodeGenError("unexpected constructor arg", b)
+
+                cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(init_params) + ")"
+                if initializer_list:
+                    cpp += " : " + initializer_list
+                cpp += "{\n"
+                cpp += codegen_function_body(b, constructor_block, initcx)
+                cpp += cx.indent_str() + "}\n"
 
             else:
                 funcx = inner_cx.enter_scope()
@@ -601,6 +615,50 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
             #     # params.append("const " + decltype_str(arg.rhs, cx) + "& " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
 
 
+def codegen_function_body(defnode, block, cx):
+    # methods or functions only (not lambdas!)
+
+    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
+    need_self = False
+    for s in find_all(defnode, test=lambda a: a.name == "self"):
+
+        replace_self = True
+        p = s
+        while p is not defnode:
+            if creates_new_variable_scope(p):
+                # 'self.foo' inside e.g. a lambda body
+                replace_self = False
+                break
+            p = p.parent
+
+        if replace_self and isinstance(s.parent,
+                                       AttributeAccess) and s.parent.lhs is s:
+            # rewrite as this->foo:
+            this = RebuiltIdentifer("this")
+            arrow = ArrowOp(args=[this, s.parent.rhs])
+            arrow.parent = s.parent.parent
+            this.parent = arrow
+            arrow.rhs.parent = arrow
+
+            if s.parent in s.parent.parent.args:
+                index = s.parent.parent.args.index(s.parent)
+                s.parent.parent.args[index] = arrow
+            elif s.parent is s.parent.parent.func:
+                s.parent.parent.func = arrow
+        else:
+            need_self = True
+    block_cx = cx.enter_scope()
+    block_cx.in_function_body = True
+    block_str = codegen_block(block, block_cx)
+    if need_self:
+        # (note: this will be a compile error in a non-member function / non-shared_from_this deriving class)
+        block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
+    # if not is_destructor and not is_return(block.args[-1]):
+    #     block_str += block_cx.indent_str() + "return {};\n"
+    # no longer doing this^
+    return block_str
+
+
 def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -712,54 +770,15 @@ def codegen_def(defnode: Call, cx):
         #                pass
         #            )
         # TODO: 'virtual' if class is 'inheritable' ('overridable'? 'nonfinal'?) (c++ class marked 'final' otherwise)
-        # not marked virtual because inheritance not implimented yet (note that interface abcs have a virtual destructor)
+        # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
         funcdef = "~" + class_name + "()"
     else:
         funcdef = "{}{}{}auto {}({}) -> {}".format(template, non_trailing_return, inline, name, ", ".join(params), return_type)
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
-    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
-    need_self = False
-    for s in find_all(defnode, test=lambda a: a.name == "self"):
-
-        replace_self = True
-        p = s
-        while p is not defnode:
-            if creates_new_variable_scope(p):
-                # 'self.foo' inside e.g. a lambda body
-                replace_self = False
-                break
-            p = p.parent
-
-        if replace_self and isinstance(s.parent, AttributeAccess) and s.parent.lhs is s:
-            # rewrite as this->foo:
-            this = RebuiltIdentifer("this")
-            arrow = ArrowOp(args=[this, s.parent.rhs])
-            arrow.parent = s.parent.parent
-            this.parent = arrow
-            arrow.rhs.parent = arrow
-
-            if s.parent in s.parent.parent.args:
-                index = s.parent.parent.args.index(s.parent)
-                s.parent.parent.args[index] = arrow
-            elif s.parent is s.parent.parent.func:
-                s.parent.parent.func = arrow
-        else:
-            need_self = True
-
     indt = cx.indent_str()
-    block_cx = cx.enter_scope()
-    block_cx.in_function_body = True
-    block_str = codegen_block(block, block_cx)
-
-    if need_self:
-        # (note: this will be a compile error in a non-member function / non-shared_from_this deriving class)
-        block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
-
-    # if not is_destructor and not is_return(block.args[-1]):
-    #     block_str += block_cx.indent_str() + "return {};\n"
-    # no longer doing this^
+    block_str = codegen_function_body(defnode, block, cx)
 
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 
@@ -1030,9 +1049,6 @@ def _codegen_compound_class_type(lhs, rhs, cx):
             if c.is_unique:
                 return "const std::unique_ptr<const " + l.name + ">"
             return "const std::shared_ptr<const " + l.name + ">"
-
-
-
 
 
 def codegen_type(expr_node, type_node, cx, _is_leading=True):
