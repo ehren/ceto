@@ -535,7 +535,7 @@ def type_inorder_traversal(typenode: Node, func):
         return func(typenode)
 
 
-def codegen_typed_def_param(arg, cx):
+def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
             if cx.lookup_class(arg.declared_type) is not None:
@@ -642,7 +642,7 @@ def codegen_def(defnode: Call, cx):
             if not isinstance(arg, Identifier):
                 raise CodeGenError(
                     "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
-        elif typed_param := codegen_typed_def_param(arg, cx):
+        if typed_param := codegen_typed_def_param(arg, cx):
             params.append(typed_param)
         else:
             t = "T" + str(i + 1)
