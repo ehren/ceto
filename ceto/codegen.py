@@ -29,7 +29,6 @@ cpp_preamble = r"""
 #include <cassert>
 #include <compare> // for <=>
 #include <thread>
-#include <stdexcept>
 
 //#include <concepts>
 //#include <ranges>

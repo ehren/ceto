@@ -3,8 +3,9 @@
 
 #include <memory>
 #include <vector>
-#include <type_traits>
 #include <utility>
+#include <type_traits>
+#include <stdexcept>
 #include <source_location>
 
 namespace ceto {
