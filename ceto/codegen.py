@@ -284,6 +284,7 @@ def codegen_class(node : Call, cx):
     uninitialized_attribute_declarations : typing.List[str] = []
     constructor_initialized_field_names : typing.List[str] = []
     has_user_defined_constructor = False
+    has_non_default_constructor = False
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
@@ -318,7 +319,7 @@ def codegen_class(node : Call, cx):
                 assert isinstance(constructor_block, Block)
                 initializerlist_assignments = []
                 initializerlist_super_calls = []
-                initcx = cx.enter_scope()
+                initcx = inner_cx.enter_scope()
                 # initcx.in_function_param_list = True  # TODO remove this field
 
                 for stmt in constructor_block.args:
@@ -353,12 +354,15 @@ def codegen_class(node : Call, cx):
                     else:
                         raise CodeGenError("unexpected constructor arg", b)
 
+                if constructor_args:
+                    has_non_default_constructor = True
+
                 cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(init_params) + ")"
                 if initializer_list:
                     cpp += " : " + initializer_list
                 cpp += "{\n"
                 cpp += codegen_function_body(b, constructor_block, initcx)
-                cpp += cx.indent_str() + "}\n"
+                cpp += inner_indt + "}\n\n"
 
             else:
                 funcx = inner_cx.enter_scope()
@@ -403,8 +407,12 @@ def codegen_class(node : Call, cx):
         # autosynthesize constructor
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
-    # else:
-    #     cpp += inner_indt + "explicit " + name.name + "() = default;\n\n"
+        has_non_default_constructor = True
+
+    if has_non_default_constructor:
+        # this matches python behavior (though we allow a default constructor for a class with no uninitialized attributes and no user defined constructor)
+        cpp += inner_indt + name.name + "() = delete;\n\n"
+
     interface_def_str = ""
     for interface_type in defined_interfaces:
         # note that shared_ptr<interface_type> is auto derefed

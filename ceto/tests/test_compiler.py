@@ -52,6 +52,20 @@ def (main:
 )
     """), "class Foo defines a constructor (init method) but does not initialize these attributes: b")
 
+    raises(lambda: compile(r"""
+
+class (Foo:
+    a : int
+    def (init, x : int:
+        self.a = x
+    )
+)
+
+def (main:
+    Foo()  # ensure Foo lacks a default constructor
+)
+    """))
+
 
 def test_multiple_attribute_access_method_call():
     c = compile(r"""
