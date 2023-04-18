@@ -278,7 +278,6 @@ def codegen_class(node : Call, cx):
     cx.class_definitions.append(classdef)
 
     cpp = indt
-    cpp += "int x;\n\n"
     inner_indt = inner_cx.indent_str()
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
@@ -1427,6 +1426,10 @@ def codegen_node(node: Node, cx: Scope):
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
                 if cx.in_function_body:
                     assign_str = "auto " + assign_str
+                elif cx.in_class_body:
+                    # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
+                    # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
+                    assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
                 else:
                     # for global case we should probably print all typed assignments as constexpr (not just python style untyped ones)
                     assign_str = "constexpr auto " + assign_str

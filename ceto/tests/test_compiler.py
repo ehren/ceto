@@ -2757,10 +2757,12 @@ def (main:
 #)
 
 
-def test_for():
+def test_for_with_uniq_and_shared():
     c = compile(r"""
 
 class (Uniq:
+    x = 0  # note untyped (hidden decltype inserted)
+
     def (bar:
         self.x = self.x + 1
         printf("in bar %d %p\n", self.x, this)
@@ -2772,8 +2774,9 @@ class (Uniq:
     )
 ): unique
 
-
 class (Shared:
+    x:int = 0
+
     def (foo:
         printf("foo\n")
         return 10
@@ -2902,6 +2905,8 @@ def test_reset_ptr():
     # should be avoided in the normal course of things
     c = compile(r"""
 class (Foo:
+    x = 0
+
     def (bar:
         printf("bar %d\n", self.x)
     )
@@ -3391,6 +3396,7 @@ def test_correct_shared_ptr():
 class (Foo: # this is the parse prob
     # x = 1
     # y = 2
+    x = 0
 
     # def (init:
     #     printf("init\n")
