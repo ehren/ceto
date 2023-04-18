@@ -20,6 +20,39 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_init():
+    c = compile(r"""
+
+class (Foo:
+    a : int
+    def (init, x : int:
+        self.a = x
+    )
+)
+
+def (main:
+    std.cout << Foo(5).a
+)
+    """)
+
+    assert c == "5"
+
+    raises(lambda: compile(r"""
+
+class (Foo:
+    a : int
+    b : int
+    def (init, x : int:
+        self.a = x
+    )
+)
+
+def (main:
+    Foo(5)
+)
+    """), "class Foo defines a constructor (init method) but does not initialize these attributes: b")
+
+
 def test_multiple_attribute_access_method_call():
     c = compile(r"""
     

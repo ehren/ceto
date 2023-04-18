@@ -282,12 +282,12 @@ def codegen_class(node : Call, cx):
     inner_indt = inner_cx.indent_str()
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
+    constructor_initialized_field_names : typing.List[str] = []
+    has_user_defined_constructor = False
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
             methodname = b.args[0]
-
-            interface_type = None
 
             if (method_type := b.args[0].declared_type) is not None:
                 if isinstance(method_type, Call) and method_type.func.name == "interface" and len(method_type.args) == 1:
@@ -312,6 +312,7 @@ def codegen_class(node : Call, cx):
 
             if methodname.name == "init":
 
+                has_user_defined_constructor = True
                 constructor_args = b.args[1:-1]
                 constructor_block = b.args[-1]
                 assert isinstance(constructor_block, Block)
@@ -328,6 +329,7 @@ def codegen_class(node : Call, cx):
                         if not isinstance(field, Identifier):
                             raise CodeGenError("unexpected field", field)
                         initializerlist_assignments.append((field, stmt.rhs))
+                        constructor_initialized_field_names.append(field.name)
                     elif isinstance(stmt, Call) and isinstance(stmt.func, AttributeAccess) and stmt.func.lhs.name == "super" and stmt.func.rhs.name == "init":
                         initializerlist_super_calls.append(stmt)
                     else:
@@ -392,7 +394,12 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
+    uninitialized_attributes = [u for u in uninitialized_attributes if u.name not in constructor_initialized_field_names]
+
     if uninitialized_attributes:
+        if has_user_defined_constructor:
+            raise CodeGenError("class {} defines a constructor (init method) but does not initialize these attributes: {}".format(name.name, ", ".join(str(u) for u in uninitialized_attributes)))
+
         # autosynthesize constructor
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
@@ -445,7 +452,6 @@ def codegen_while(whilecall, cx):
 
 def codegen_block(block: Block, cx):
     assert isinstance(block, Block)
-    assert block.args
     assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
     indent_str = cx.indent_str()
