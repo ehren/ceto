@@ -1363,6 +1363,11 @@ def codegen_node(node: Node, cx: Scope):
         elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
             is_lambda_rhs_with_return_type = False
 
+            constexpr_specifier = ""
+            if not cx.in_function_body and not cx.in_class_body:
+                # add constexpr to all global defns
+                constexpr_specifier = "constexpr "
+
             if node.declared_type is not None and isinstance(node.rhs, Call) and node.rhs.func.name == "lambda":
                 # TODO lambda return types need fixes
                 lambdaliteral = node.rhs
@@ -1382,6 +1387,7 @@ def codegen_node(node: Node, cx: Scope):
 
             if isinstance(node.lhs, Identifier):
                 lhs_str = node.lhs.name
+
                 if node.lhs.declared_type:
                     lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                     decl_str = lhs_type_str + " " + lhs_str
@@ -1390,7 +1396,7 @@ def codegen_node(node: Node, cx: Scope):
 
                     if isinstance(node.rhs, BracedLiteral):
                         # aka "copy-list-initialization" in this case
-                        return plain_initialization
+                        return constexpr_specifier + plain_initialization
 
                     # prefer brace initialization to disable narrowing conversions (in these assignments):
 
@@ -1402,7 +1408,7 @@ def codegen_node(node: Node, cx: Scope):
                     # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
 
                     if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
-                        return direct_initialization
+                        return constexpr_specifier + direct_initialization
 
                     # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
                     # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
@@ -1411,12 +1417,12 @@ def codegen_node(node: Node, cx: Scope):
                     rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
 
                     if isinstance(node.rhs, IntegerLiteral) or (isinstance(node.rhs, Identifier) and node.rhs.name in ["true", "false"]):  # TODO float literals
-                        return f"{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+                        return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
 
                     # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
                     # note that 'plain_initialization' will handle cvref mismatch errors!
-                    return f"{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+                    return f"{constexpr_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
 
             else:
                 lhs_str = codegen_node(node.lhs, cx)
@@ -1424,17 +1430,14 @@ def codegen_node(node: Node, cx: Scope):
             assign_str = " ".join([lhs_str, node.func, rhs_str])
 
             if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-                if cx.in_function_body:
-                    assign_str = "auto " + assign_str
-                elif cx.in_class_body:
+                if cx.in_class_body:
                     # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
                     # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
                     assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
                 else:
-                    # for global case we should probably print all typed assignments as constexpr (not just python style untyped ones)
-                    assign_str = "constexpr auto " + assign_str
+                    assign_str = "auto " + assign_str
 
-            return assign_str
+            return constexpr_specifier + assign_str
         else:
             binop_str = None
 

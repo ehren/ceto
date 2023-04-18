@@ -103,27 +103,23 @@ def (main:
 
 
 def test_none():
-    # use of 'None' like python is up to you
+    # use of 'None' like python is up to you (might revise this but should be implemented by prepending ceto code rather than logic in the transpiler proper)
     c = compile(r"""
 
-# untyped definitions at global scope constexpr by default (TODO: typed definitions too - see fiasco)
+# all definitions at global scope constexpr by default:
 None = nullptr
-    
-None2:constexpr:auto = nullptr
-
-Nonemut:auto = nullptr  # TODO should be constexpr
+None2:auto = nullptr  # even ones with an explicit 'type'
 
 def (main:
-    std.cout << None << None2 << Nonemut
+    std.cout << None << None2
     
     static_assert(std.is_const_v<decltype(None)>)
     static_assert(std.is_const_v<decltype(None2)>)
-    static_assert(not std.is_const_v<decltype(Nonemut)>)  # TODO this should fail
     static_assert(std.is_same_v<decltype(None), const:std.nullptr_t>)
 )
     """)
 
-    assert c == "nullptrnullptrnullptr"
+    assert c == "nullptrnullptr"
 
 
 def test_non_indexable_thing():
