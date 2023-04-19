@@ -20,9 +20,54 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_init_with_generic_params():
+    # fully generic case:
+    c = compile(r"""
+class (Foo:
+    x
+    def (init, p:
+        self.x = p
+    )
+)
+
+def (main:
+    std.cout << Foo(5).x
+)
+    """)
+    assert c == "5"
+
+    # not really generic (constructor arg's type inferred from field's type)
+    c = compile(r"""
+class (Foo:
+    x : int
+    def (init, p:
+        self.x = p
+    )
+)
+
+def (main:
+    std.cout << Foo(5).x
+)
+    """)
+    assert c == "5"
+
+    # c++ doesn't like this (CTAD failed - bit silly); maybe generating explicit deduction guides not the worst idea in general (we could also de-templatify this class)
+    raises(lambda: compile(r"""
+class (Foo:
+    x
+    def (init, p : int:
+        self.x = p
+    )
+)
+
+def (main:
+    std.cout << Foo(5).x
+)
+    """))
+
+
 def test_init():
     c = compile(r"""
-
 class (Foo:
     a : int
     def (init, x : int:
@@ -45,10 +90,6 @@ class (Foo:
     def (init, x : int:
         self.a = x
     )
-)
-
-def (main:
-    Foo(5)
 )
     """), "class Foo defines a constructor (init method) but does not initialize these attributes: b")
 

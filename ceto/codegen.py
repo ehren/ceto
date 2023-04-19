@@ -281,9 +281,10 @@ def codegen_class(node : Call, cx):
     inner_indt = inner_cx.indent_str()
     uninitialized_attributes = []
     uninitialized_attribute_declarations : typing.List[str] = []
+    constructor_node = None
     constructor_initialized_field_names : typing.List[str] = []
-    has_user_defined_constructor = False
     has_non_default_constructor = False
+    field_types : typing.Dict[str, typing.Union[str, Node]] = {}
 
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
@@ -311,58 +312,9 @@ def codegen_class(node : Call, cx):
                     pass # let codegen_def handle (works for 'static')
 
             if methodname.name == "init":
-
-                has_user_defined_constructor = True
-                constructor_args = b.args[1:-1]
-                constructor_block = b.args[-1]
-                assert isinstance(constructor_block, Block)
-                initializerlist_assignments = []
-                initializerlist_super_calls = []
-                initcx = inner_cx.enter_scope()
-                # initcx.in_function_param_list = True  # TODO remove this field
-
-                for stmt in constructor_block.args:
-
-                    # handle self.whatever = something
-                    if isinstance(stmt, Assign) and isinstance(stmt.lhs, AttributeAccess) and stmt.lhs.lhs.name == "self":
-                        field = stmt.lhs.rhs
-                        if not isinstance(field, Identifier):
-                            raise CodeGenError("unexpected field", field)
-                        initializerlist_assignments.append((field, stmt.rhs))
-                        constructor_initialized_field_names.append(field.name)
-                    elif isinstance(stmt, Call) and isinstance(stmt.func, AttributeAccess) and stmt.func.lhs.name == "super" and stmt.func.rhs.name == "init":
-                        initializerlist_super_calls.append(stmt)
-                    else:
-                        # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
-                        break
-
-                constructor_block.args = constructor_block.args[len(initializerlist_assignments) + len(initializerlist_super_calls):]
-
-                initializer_list_items = [codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")" for field, rhs in initializerlist_assignments]
-                initializer_list = ", ".join(initializer_list_items)
-
-                init_params = []
-
-                for arg in constructor_args:
-                    if typed_arg := codegen_typed_def_param(arg, initcx):
-                        init_params.append(typed_arg)
-                    elif isinstance(arg, Identifier):  # TODO generic init params
-                        pass
-                    elif isinstance(arg, NamedParameter):
-                        pass
-                    else:
-                        raise CodeGenError("unexpected constructor arg", b)
-
-                if constructor_args:
-                    has_non_default_constructor = True
-
-                cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(init_params) + ")"
-                if initializer_list:
-                    cpp += " : " + initializer_list
-                cpp += "{\n"
-                cpp += codegen_function_body(b, constructor_block, initcx)
-                cpp += inner_indt + "}\n\n"
-
+                if constructor_node is not None:
+                    raise CodeGenError("Delegating constructors are not yet implemented (only one init method allowed for now)", b)
+                constructor_node = b
             else:
                 funcx = inner_cx.enter_scope()
                 funcx.in_function_param_list = True
@@ -377,12 +329,15 @@ def codegen_class(node : Call, cx):
                 #     typenames.extend(deps)
                 #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
                 # else:
+                field_type = b.declared_type
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
+                field_types[b.name] = field_type
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
             else:
                 t = gensym("C")
                 typenames.append(t)
+                field_types[b.name] = t
                 decl = t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = True
@@ -397,10 +352,83 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
+    if constructor_node is not None:
+        constructor_args = constructor_node.args[1:-1]
+        constructor_block = constructor_node.args[-1]
+        assert isinstance(constructor_block, Block)
+        initializerlist_assignments = []
+        initializerlist_super_calls = []
+        possible_generic_constructor_params = []
+        initcx = inner_cx.enter_scope()
+        # initcx.in_function_param_list = True  # TODO remove this field
+
+        for stmt in constructor_block.args:
+
+            # handle self.whatever = something
+            if isinstance(stmt, Assign) and isinstance(stmt.lhs,
+                                                       AttributeAccess) and stmt.lhs.lhs.name == "self":
+                field = stmt.lhs.rhs
+                if not isinstance(field, Identifier):
+                    raise CodeGenError("unexpected field", field)
+                initializerlist_assignments.append((field, stmt.rhs))
+                constructor_initialized_field_names.append(field.name)
+                possible_generic_constructor_params.extend(
+                    (a, field.name) for a in constructor_args if
+                    a.name == stmt.rhs.name)
+            elif isinstance(stmt, Call) and isinstance(stmt.func,
+                                                       AttributeAccess) and stmt.func.lhs.name == "super" and stmt.func.rhs.name == "init":
+                initializerlist_super_calls.append(stmt)
+            else:
+                # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
+                break
+
+        constructor_block.args = constructor_block.args[
+                                 len(initializerlist_assignments) + len(
+                                     initializerlist_super_calls):]
+
+        initializer_list_items = [
+            codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")"
+            for field, rhs in initializerlist_assignments]
+
+        initializer_list = ", ".join(initializer_list_items)
+
+        init_params = []
+
+        for arg in constructor_args:
+            if typed_arg := codegen_typed_def_param(arg, initcx):
+                init_params.append(typed_arg)
+            elif isinstance(arg, Identifier):
+                # generic constructor arg:
+                for param, field_name in possible_generic_constructor_params:
+                    if arg is param and field_name in field_types:
+                        field_type = field_types[field_name]
+                        if isinstance(field_type, Node):
+                            # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
+                            arg.declared_type = field_type
+                            typed_arg = codegen_typed_def_param(arg, initcx)
+                            assert len(typed_arg) > 0
+                            init_params.append(typed_arg)
+                        else:
+                            # generic field case
+                            init_params.append("const " + field_type + "& " + arg.name)
+            else:
+                raise CodeGenError("unexpected constructor arg", b)
+
+        if constructor_args:
+            has_non_default_constructor = True
+
+        cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(
+            init_params) + ")"
+        if initializer_list:
+            cpp += " : " + initializer_list
+        cpp += "{\n"
+        cpp += codegen_function_body(constructor_node, constructor_block, initcx)
+        cpp += inner_indt + "}\n\n"
+
     uninitialized_attributes = [u for u in uninitialized_attributes if u.name not in constructor_initialized_field_names]
 
     if uninitialized_attributes:
-        if has_user_defined_constructor:
+        if constructor_node is not None:
             raise CodeGenError("class {} defines a constructor (init method) but does not initialize these attributes: {}".format(name.name, ", ".join(str(u) for u in uninitialized_attributes)))
 
         # autosynthesize constructor
