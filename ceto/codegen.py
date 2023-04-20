@@ -548,16 +548,9 @@ def interface_method_declaration_str(defnode: Call, cx):
             raise CodeGenError("parameter types must be specified for interface methods")
         if not isinstance(arg, Identifier):
             raise CodeGenError("Only simple args allowed for interface method (you don't want c++ virtual functions with default arguments)")
-
-        # TODO unify with codegen_def
-        if cx.lookup_class(arg.declared_type) is not None:
-            autoconst = "const "
-            autoref = "&"
-        else:
-            autoconst = ""
-            autoref = ""
-
-        params.append(autoconst + codegen_type(arg, arg.declared_type, cx) + autoref + " " + str(arg))
+        param = codegen_typed_def_param(arg, cx)
+        assert len(param) > 0
+        params.append(param)
 
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
 
