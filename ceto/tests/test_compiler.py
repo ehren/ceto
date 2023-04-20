@@ -20,6 +20,26 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_constructors_with_atomic_attributes():
+    c = compile(r"""
+class (Foo:
+    a : std.atomic<int> = 0
+)
+class (Foo2:
+    a : std.atomic<int>
+    def (init, p:int:
+        self.a = p
+    )
+)
+
+def (main:
+    f = Foo()
+    f2 = Foo2(1)
+)
+
+        """)
+
+
 def test_init_with_generic_params():
     # fully generic case:
     c = compile(r"""
@@ -35,6 +55,8 @@ def (main:
 )
     """)
     assert c == "5"
+
+
 
     # not really generic (constructor arg's type inferred from field's type)
     c = compile(r"""
@@ -64,6 +86,56 @@ def (main:
     std.cout << Foo(5).x
 )
     """))
+
+    # another generic case
+    c = compile(r"""
+class (Foo:
+    x
+    y = 2
+    def (init, y:
+        self.x = y  # note that the name of the constructor param is immaterial
+        # self.y = 2
+    )
+)
+
+def (main:
+    f = Foo(5)
+    std.cout << f.x << f.y
+)
+    """)
+    assert c == "52"
+
+    c = compile(r"""
+class (Foo:
+    x : int
+    y : int
+    # ^ these can't be generic for now (because constructor params are typed from the decltype of default argument...)
+    def (init, x = 5, y = 4:
+        self.x = x
+        self.y = y
+    )
+)
+
+def (main:
+    # f1 = Foo()  # TODO: don't =delete default constructor when a zero arg constructor is already present (constructors with arguments can be zero-arg if all args have a default value)
+    # Note: when the above is corrected this example fails msvc only - likely bug
+    f2 = Foo(1)
+    f3 = Foo(2, 3)
+    
+    l = [#f1, 
+         f2, 
+         f3
+    ]
+    
+    # plain for-loop here would be fine too
+    std.for_each(l.begin(), l.end(), lambda(f:
+        std.cout << f.x << f.y
+        return
+    ))
+)
+    """)
+    # assert c == "541423"
+    assert c == "1423"
 
 
 def test_init():
