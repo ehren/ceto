@@ -117,25 +117,16 @@ class (Foo:
 )
 
 def (main:
-    # f1 = Foo()  # TODO: don't =delete default constructor when a zero arg constructor is already present (constructors with arguments can be zero-arg if all args have a default value)
-    # Note: when the above is corrected this example fails msvc only - likely bug
+    f1 = Foo()
     f2 = Foo(1)
     f3 = Foo(2, 3)
     
-    l = [#f1, 
-         f2, 
-         f3
-    ]
-    
-    # plain for-loop here would be fine too
-    std.for_each(l.begin(), l.end(), lambda(f:
+    for (f in {f1, f2, f3}:
         std.cout << f.x << f.y
-        return
-    ))
+    )
 )
     """)
-    # assert c == "541423"
-    assert c == "1423"
+    assert c == "541423"
 
 
 def test_init():

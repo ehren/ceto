@@ -283,7 +283,7 @@ def codegen_class(node : Call, cx):
     uninitialized_attribute_declarations : typing.List[str] = []
     constructor_node = None
     constructor_initialized_field_names : typing.List[str] = []
-    has_non_default_constructor = False
+    should_disable_default_constructor = False
     field_types : typing.Dict[str, typing.Union[str, Node]] = {}
 
     for block_index, b in enumerate(block.args):
@@ -395,6 +395,9 @@ def codegen_class(node : Call, cx):
         init_params = []
 
         for arg in constructor_args:
+            if not isinstance(arg, Assign):
+                should_disable_default_constructor = True
+
             if typed_arg := codegen_typed_def_param(arg, initcx):
                 init_params.append(typed_arg)
             elif isinstance(arg, Identifier):
@@ -414,9 +417,6 @@ def codegen_class(node : Call, cx):
             else:
                 raise CodeGenError("unexpected constructor arg", b)
 
-        if constructor_args:
-            has_non_default_constructor = True
-
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(
             init_params) + ")"
         if initializer_list:
@@ -434,9 +434,9 @@ def codegen_class(node : Call, cx):
         # autosynthesize constructor
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
-        has_non_default_constructor = True
+        should_disable_default_constructor = True
 
-    if has_non_default_constructor:
+    if should_disable_default_constructor:
         # this matches python behavior (though we allow a default constructor for a class with no uninitialized attributes and no user defined constructor)
         cpp += inner_indt + name.name + "() = delete;\n\n"
 
