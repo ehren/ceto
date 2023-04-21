@@ -1139,6 +1139,273 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
     return codegen_node(type_node, cx)
 
 
+def codegen_call(node: Call, cx: Scope):
+    assert isinstance(node, Call)
+
+    if isinstance(node.func, Identifier):
+        func_name = node.func.name
+        if func_name == "if":
+            return codegen_if(node, cx)
+        elif func_name == "def":
+            raise CodeGenError("nested def not yet implemented")
+        elif func_name == "lambda" or (
+                isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
+            newcx = cx.enter_scope()
+            newcx.in_function_param_list = True
+            return codegen_lambda(node, newcx)
+        elif func_name == "range":
+            if len(node.args) == 1:
+                return "std::views::iota(0, " + codegen_node(node.args[0],
+                                                             cx) + ")"
+                # return "std::ranges:iota_view(0, " + codegen_node(node.args[0], cx) + ")"
+            elif len(node.args) == 2:
+                return "std::views::iota(" + codegen_node(node.args[0],
+                                                          cx) + ", " + codegen_node(
+                    node.args[1], cx) + ")"
+                # return "std::ranges:iota_view(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
+            else:
+                raise CodeGenError("range args not supported:", node)
+        elif func_name == "operator" and len(node.args) == 1 and isinstance(
+                operator_name_node := node.args[0], StringLiteral):
+            return "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+        else:
+            arg_strs = [codegen_node(a, cx) for a in node.args]
+            args_inner = ", ".join(arg_strs)
+            args_str = "(" + args_inner + ")"
+
+            # TODO we should re-enable this and leave "call_or_construct" only for "importing" raw but ceto-generated c++ code (would also require sprinkling conditional_t everywhere)
+            if 0:  # and class_def := cx.lookup_class(node.func):
+                class_name = node.func.name
+                class_node = class_def.class_def_node
+                curly_args = "{" + args_inner + "}"
+
+                if not node.args:
+                    # just use round parentheses to call default constructor
+                    curly_args = args_str
+
+                # if class_def.has_generic_params():
+                #     class_name += "<" + ", ".join(
+                #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
+                #          class_def.is_generic_param_index[i]]) + ">"
+                class_name = "decltype(" + class_name + curly_args + ")"
+
+                if isinstance(class_node.declared_type,
+                              Identifier) and class_node.declared_type.name == "unique":
+                    func_str = "std::make_unique<" + class_name + ">"
+                else:
+                    func_str = "std::make_shared<" + class_name + ">"
+            else:
+                pass
+
+            if isinstance(node.func, Identifier):
+                func_str = node.func.name
+            else:
+                func_str = codegen_node(node.func, cx)
+
+            if cx.in_function_body:
+                capture = "&"
+            else:
+                capture = ""
+
+            simple_call_str = func_str + args_str
+
+            if func_str in ("decltype", "static_assert") or (
+                    isinstance(node.parent,
+                               (ScopeResolution, ArrowOp, AttributeAccess)) and
+                    node.parent.lhs is not node):
+                if func_str == "decltype":
+                    cx.in_decltype = True
+                return simple_call_str
+
+            dt_str = "decltype(" + simple_call_str + ")"
+
+            simple_return = "return "
+            if isinstance(node.parent, Block):
+                simple_return = ""
+
+            call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+            return call_str
+    else:
+        # wrong precedence:
+        # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
+        #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+        # else:
+        #     func_str = codegen_node(node.func, cx)
+
+        # not auto-flattening args is becoming annoying!
+        # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
+        method_name = None
+        if isinstance(node.func, (AttributeAccess, ScopeResolution)):
+            method_name = node.func.rhs
+            while isinstance(method_name, (AttributeAccess, ScopeResolution)):
+                method_name = method_name.rhs
+
+        func_str = None
+
+        if method_name is not None:
+
+            # assert isinstance(method_name, Identifier)
+
+            # modify node.func
+            def consume_method_name():
+                method_parent = method_name.parent
+                assert method_parent.rhs is method_name
+
+                if method_parent in method_parent.parent.args:
+                    method_parent.parent.args.remove(method_parent)
+                    method_parent.parent.args.append(method_parent.lhs)
+                    method_parent.lhs.parent = method_parent.parent
+                elif method_parent is method_parent.parent.func:
+                    method_parent.parent.func = method_parent.lhs
+                    method_parent.lhs.parent = method_parent.parent
+                else:
+                    assert 0
+
+            if method_name.name == "operator" and len(
+                    node.args) == 1 and isinstance(
+                operator_name_node := node.args[0], StringLiteral):
+                consume_method_name()
+                return "ceto::mad(" + codegen_node(node.func,
+                                                   cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+
+            elif not isinstance(method_name.parent,
+                                (ScopeResolution, ArrowOp)):
+                consume_method_name()
+
+                if method_name.name == "unsafe_at" and len(node.args) == 1:
+                    return codegen_node(node.func, cx) + "[" + codegen_node(
+                        node.args[0], cx) + "]"
+
+                if method_name.name == "append" and len(node.args) == 1:
+                    # perhaps controversial rewriting of append to push_back
+                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+
+                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
+                    append_str = "append"
+                    is_list = False
+                    if isinstance(node.func, ListLiteral):
+                        is_list = True
+                    else:
+                        for d in find_defs(node.func):
+                            # print("found def", d, "when determining if an append is really a push_back")
+                            if isinstance(d[1], Assign) and isinstance(
+                                    d[1].rhs, ListLiteral):
+                                is_list = True
+                                break
+                    if is_list:
+                        append_str = "push_back"
+
+                    func_str = "ceto::mad(" + codegen_node(node.func,
+                                                           cx) + ")->" + append_str
+                else:
+
+                    # TODO fix AttributeAccess logic repeated here
+                    if isinstance(node.func, Identifier) and (
+                            node.func.name == "std" or cx.lookup_class(
+                        node.func)):
+                        func_str = node.func.name + "::" + codegen_node(
+                            method_name, cx)
+                    else:
+                        func_str = "ceto::mad(" + codegen_node(node.func,
+                                                               cx) + ")->" + codegen_node(
+                            method_name, cx)
+
+        if func_str is None:
+            func_str = codegen_node(node.func, cx)
+
+        return func_str + "(" + ", ".join(
+            map(lambda a: codegen_node(a, cx), node.args)) + ")"
+
+
+def codegen_assign(node: Node, cx: Scope):
+    if not isinstance(node.lhs, Identifier):
+        return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
+
+    is_lambda_rhs_with_return_type = False
+
+    constexpr_specifier = ""
+    if not cx.in_function_body and not cx.in_class_body:
+        # add constexpr to all global defns
+        constexpr_specifier = "constexpr "
+
+    if node.declared_type is not None and isinstance(node.rhs,
+                                                     Call) and node.rhs.func.name == "lambda":
+        # TODO lambda return types need fixes
+        lambdaliteral = node.rhs
+        is_lambda_rhs_with_return_type = True
+        # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
+        if lambdaliteral.declared_type is not None:
+            raise CodeGenError("Two return types defined for lambda:",
+                               node.rhs)
+        lambdaliteral.declared_type = node.declared_type
+        newcx = cx.enter_scope()
+        newcx.in_function_param_list = True
+        rhs_str = codegen_lambda(lambdaliteral, newcx)
+    elif node.lhs.declared_type is None and isinstance(node.rhs,
+                                                       ListLiteral) and not node.rhs.args and node.rhs.declared_type is None:
+        # handle untyped empty list literal by searching for uses
+        rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
+    else:
+        rhs_str = codegen_node(node.rhs, cx)
+
+    if isinstance(node.lhs, Identifier):
+        lhs_str = node.lhs.name
+
+        if node.lhs.declared_type:
+            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+            decl_str = lhs_type_str + " " + lhs_str
+
+            plain_initialization = decl_str + " = " + rhs_str
+
+            if isinstance(node.rhs, BracedLiteral):
+                # aka "copy-list-initialization" in this case
+                return constexpr_specifier + plain_initialization
+
+            # prefer brace initialization to disable narrowing conversions (in these assignments):
+
+            direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+
+            # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
+            # e.g. l2 : std.vector<std.vector<int>> = 1
+            # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
+            # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
+
+            if any(find_all(node.lhs.declared_type, test=lambda
+                    n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
+                return constexpr_specifier + direct_initialization
+
+            # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
+            # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
+            # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
+            # for now with this case, just ensure use of non-overparenthesized version via regex:
+            rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
+
+            if isinstance(node.rhs, IntegerLiteral) or (
+                    isinstance(node.rhs, Identifier) and node.rhs.name in [
+                "true", "false"]):  # TODO float literals
+                return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+
+            # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
+
+            # note that 'plain_initialization' will handle cvref mismatch errors!
+            return f"{constexpr_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+    else:
+        lhs_str = codegen_node(node.lhs, cx)
+
+    assign_str = " ".join([lhs_str, node.func, rhs_str])
+
+    if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+        if cx.in_class_body:
+            # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
+            # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
+            assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
+        else:
+            assign_str = "auto " + assign_str
+
+    return constexpr_specifier + assign_str
+
+
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
@@ -1165,160 +1432,7 @@ def codegen_node(node: Node, cx: Scope):
             modcpp += codegen_node(modarg, cx) + ";\n"  # untested # TODO: pass at global scope
         return modcpp
     elif isinstance(node, Call):
-        if isinstance(node.func, Identifier):
-            func_name = node.func.name
-            if func_name == "if":
-                return codegen_if(node, cx)
-            elif func_name == "def":
-                raise CodeGenError("nested def not yet implemented")
-            elif func_name == "lambda" or (isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
-                newcx = cx.enter_scope()
-                newcx.in_function_param_list = True
-                return codegen_lambda(node, newcx)
-            elif func_name == "range":
-                if len(node.args) == 1:
-                    return "std::views::iota(0, " + codegen_node(node.args[0], cx) + ")"
-                    # return "std::ranges:iota_view(0, " + codegen_node(node.args[0], cx) + ")"
-                elif len(node.args) == 2:
-                    return "std::views::iota(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
-                    # return "std::ranges:iota_view(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
-                else:
-                    raise CodeGenError("range args not supported:", node)
-            elif func_name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
-                return "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-            else:
-                arg_strs = [codegen_node(a, cx) for a in node.args]
-                args_inner = ", ".join(arg_strs)
-                args_str = "(" + args_inner + ")"
-
-                # TODO we should re-enable this and leave "call_or_construct" only for "importing" raw but ceto-generated c++ code (would also require sprinkling conditional_t everywhere)
-                if 0:# and class_def := cx.lookup_class(node.func):
-                    class_name = node.func.name
-                    class_node = class_def.class_def_node
-                    curly_args = "{" + args_inner + "}"
-
-                    if not node.args:
-                        # just use round parentheses to call default constructor
-                        curly_args = args_str
-
-                    # if class_def.has_generic_params():
-                    #     class_name += "<" + ", ".join(
-                    #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
-                    #          class_def.is_generic_param_index[i]]) + ">"
-                    class_name = "decltype(" + class_name + curly_args + ")"
-
-                    if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
-                        func_str = "std::make_unique<" + class_name + ">"
-                    else:
-                        func_str = "std::make_shared<" + class_name + ">"
-                else:
-                    pass
-
-                if isinstance(node.func, Identifier):
-                    func_str = node.func.name
-                else:
-                    func_str = codegen_node(node.func, cx)
-
-                if cx.in_function_body:
-                    capture = "&"
-                else:
-                    capture = ""
-
-                simple_call_str = func_str + args_str
-
-                if func_str in ("decltype", "static_assert") or (
-                        isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) and
-                        node.parent.lhs is not node):
-                    if func_str == "decltype":
-                        cx.in_decltype = True
-                    return simple_call_str
-
-                dt_str = "decltype(" + simple_call_str + ")"
-
-                simple_return = "return "
-                if isinstance(node.parent, Block):
-                    simple_return = ""
-
-                call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-                return call_str
-        else:
-            # wrong precedence:
-            # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-            #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-            # else:
-            #     func_str = codegen_node(node.func, cx)
-
-            # not auto-flattening args is becoming annoying!
-            # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
-            method_name = None
-            if isinstance(node.func, (AttributeAccess, ScopeResolution)):
-                method_name = node.func.rhs
-                while isinstance(method_name, (AttributeAccess, ScopeResolution)):
-                    method_name = method_name.rhs
-
-            func_str = None
-
-            if method_name is not None:
-
-                # assert isinstance(method_name, Identifier)
-
-                # modify node.func
-                def consume_method_name():
-                    method_parent = method_name.parent
-                    assert method_parent.rhs is method_name
-
-                    if method_parent in method_parent.parent.args:
-                        method_parent.parent.args.remove(method_parent)
-                        method_parent.parent.args.append(method_parent.lhs)
-                        method_parent.lhs.parent = method_parent.parent
-                    elif method_parent is method_parent.parent.func:
-                        method_parent.parent.func = method_parent.lhs
-                        method_parent.lhs.parent = method_parent.parent
-                    else:
-                        assert 0
-
-                if method_name.name == "operator" and len(node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
-                    consume_method_name()
-                    return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-
-                elif not isinstance(method_name.parent, (ScopeResolution, ArrowOp)):
-                    consume_method_name()
-
-                    if method_name.name == "unsafe_at" and len(node.args) == 1:
-                        return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
-
-                    if method_name.name == "append" and len(node.args) == 1:
-                        # perhaps controversial rewriting of append to push_back
-                        # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
-
-                        # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
-                        append_str = "append"
-                        is_list = False
-                        if isinstance(node.func, ListLiteral):
-                            is_list = True
-                        else:
-                            for d in find_defs(node.func):
-                                # print("found def", d, "when determining if an append is really a push_back")
-                                if isinstance(d[1], Assign) and isinstance(d[1].rhs, ListLiteral):
-                                    is_list = True
-                                    break
-                        if is_list:
-                            append_str = "push_back"
-
-                        func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
-                    else:
-
-                        # TODO fix AttributeAccess logic repeated here
-                        if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
-                            func_str = node.func.name + "::" + codegen_node(method_name, cx)
-                        else:
-                            func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + codegen_node(method_name, cx)
-
-            if func_str is None:
-                func_str = codegen_node(node.func, cx)
-
-            return func_str + "(" + ", ".join(map(lambda a: codegen_node(a, cx), node.args)) + ")"
+        return codegen_call(node, cx)
 
     elif isinstance(node, IntegerLiteral):
         return str(node)
@@ -1344,7 +1458,6 @@ def codegen_node(node: Node, cx: Scope):
             return ptr_name + "<" + name + ">"
 
         return name
-
 
     elif isinstance(node, BinOp):
 
@@ -1380,85 +1493,9 @@ def codegen_node(node: Node, cx: Scope):
                 # codegen_type should be handling compound types safely (any error checking for TypeOp lhs rhs should go there)
                 return codegen_type(node, node, cx)
 
+        elif isinstance(node, Assign):
+            return codegen_assign(node, cx)
 
-        elif isinstance(node, Assign) and isinstance(node.lhs, Identifier):
-            is_lambda_rhs_with_return_type = False
-
-            constexpr_specifier = ""
-            if not cx.in_function_body and not cx.in_class_body:
-                # add constexpr to all global defns
-                constexpr_specifier = "constexpr "
-
-            if node.declared_type is not None and isinstance(node.rhs, Call) and node.rhs.func.name == "lambda":
-                # TODO lambda return types need fixes
-                lambdaliteral = node.rhs
-                is_lambda_rhs_with_return_type = True
-                # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
-                if lambdaliteral.declared_type is not None:
-                    raise CodeGenError("Two return types defined for lambda:", node.rhs)
-                lambdaliteral.declared_type = node.declared_type
-                newcx = cx.enter_scope()
-                newcx.in_function_param_list = True
-                rhs_str = codegen_lambda(lambdaliteral, newcx)
-            elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None:
-                # handle untyped empty list literal by searching for uses
-                rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
-            else:
-                rhs_str = codegen_node(node.rhs, cx)
-
-            if isinstance(node.lhs, Identifier):
-                lhs_str = node.lhs.name
-
-                if node.lhs.declared_type:
-                    lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                    decl_str = lhs_type_str + " " + lhs_str
-
-                    plain_initialization = decl_str + " = " + rhs_str
-
-                    if isinstance(node.rhs, BracedLiteral):
-                        # aka "copy-list-initialization" in this case
-                        return constexpr_specifier + plain_initialization
-
-                    # prefer brace initialization to disable narrowing conversions (in these assignments):
-
-                    direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
-
-                    # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
-                    # e.g. l2 : std.vector<std.vector<int>> = 1
-                    # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
-                    # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
-
-                    if any(find_all(node.lhs.declared_type, test=lambda n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
-                        return constexpr_specifier + direct_initialization
-
-                    # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
-                    # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
-                    # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
-                    # for now with this case, just ensure use of non-overparenthesized version via regex:
-                    rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
-
-                    if isinstance(node.rhs, IntegerLiteral) or (isinstance(node.rhs, Identifier) and node.rhs.name in ["true", "false"]):  # TODO float literals
-                        return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
-
-                    # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
-
-                    # note that 'plain_initialization' will handle cvref mismatch errors!
-                    return f"{constexpr_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
-
-            else:
-                lhs_str = codegen_node(node.lhs, cx)
-
-            assign_str = " ".join([lhs_str, node.func, rhs_str])
-
-            if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-                if cx.in_class_body:
-                    # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
-                    # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
-                    assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
-                else:
-                    assign_str = "auto " + assign_str
-
-            return constexpr_specifier + assign_str
         else:
             binop_str = None
 
@@ -1567,4 +1604,3 @@ def codegen_node(node: Node, cx: Scope):
             return codegen_node(node.func, cx) + template_args
 
     assert False, "unhandled node"
-
