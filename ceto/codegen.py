@@ -344,9 +344,7 @@ def codegen_class(node : Call, cx):
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
-            # see how far this gets us
-            # TODO fix simple assignments
-            cpp += inner_indt + codegen_node(b, inner_cx) + ";\n\n"
+            cpp += inner_indt + codegen_assign(b, inner_cx) + ";\n\n"
         elif is_comment(b):
             cpp += codegen_node(b, inner_cx)
         else:
@@ -358,7 +356,7 @@ def codegen_class(node : Call, cx):
         assert isinstance(constructor_block, Block)
         initializerlist_assignments = []
         initializerlist_super_calls = []
-        possible_generic_constructor_params = []
+        params_initializing_fields = []
         initcx = inner_cx.enter_scope()
         # initcx.in_function_param_list = True  # TODO remove this field
 
@@ -372,7 +370,7 @@ def codegen_class(node : Call, cx):
                     raise CodeGenError("unexpected field", field)
                 initializerlist_assignments.append((field, stmt.rhs))
                 constructor_initialized_field_names.append(field.name)
-                possible_generic_constructor_params.extend(
+                params_initializing_fields.extend(
                     (a, field.name) for a in constructor_args if
                     a.name == stmt.rhs.name)
             elif isinstance(stmt, Call) and isinstance(stmt.func,
@@ -402,7 +400,7 @@ def codegen_class(node : Call, cx):
                 init_params.append(typed_arg)
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
-                for param, field_name in possible_generic_constructor_params:
+                for param, field_name in params_initializing_fields:
                     if arg is param and field_name in field_types:
                         field_type = field_types[field_name]
                         if isinstance(field_type, Node):
