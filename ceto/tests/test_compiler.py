@@ -20,6 +20,19 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_new_find_defs_list_problem():
+    # see TODO in Scope.find_defs - we should attach scopes to the nodes themselves (build scopes in earlier pass)
+    c = compile("""
+def (main:
+    x = []
+    zz = [1,2,3]
+    x.append(zz[1])
+    std.cout << x[0]
+)
+    """)
+    assert c == "2"
+
+
 def test_constructors_with_atomic_attributes():
     c = compile(r"""
 class (Foo:

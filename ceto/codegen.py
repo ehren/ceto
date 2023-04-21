@@ -59,15 +59,24 @@ class InterfaceDefinition(ClassDefinition):
     def __init__(self):
         pass
 
+
+class VariableDefinition:
+
+    def __init__(self, defined_node: Identifier, defining_node: Node):
+        self.defined_node = defined_node
+        self.defining_node = defining_node
+
+
 class Scope:
 
     def __init__(self):
         self.interfaces = defaultdict(list)
         self.class_definitions = []
+        self.variable_definitions = []
         self.indent = 0
         self.parent : Scope = None
         self.in_function_body = False
-        self.in_function_param_list = False
+        self.in_function_param_list = False  # TODO unused remove
         self.in_class_body = False
         self.in_decltype = False
 
@@ -86,10 +95,35 @@ class Scope:
             return self.parent.lookup_class(class_node)
         return None
 
+    # NOTE: TODO: this doesn't work for forward inference e.g. when determing type of x = [] from subsequent append calls
+    # (this would take 2 passes over the AST). It's looking like attaching the scopes to the nodes themselves (in semanticanalysis)
+    # would be a better approach (this is py14s approach). Also matches the advice at https://www.cs.mcgill.ca/~cs520/2020/slides/7-symbol.pdf
+    # (for some reason link is down but I recall "attach a symbol table to each program point")
+    def find_defs(self, var_node):
+        if not isinstance(var_node, Identifier):
+            return
+
+        for d in self.variable_definitions:
+            if d.defined_node.name == var_node.name:
+                yield d.defined_node, d.defining_node
+                if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
+                    yield from self.find_defs(d.defining_node.rhs)
+
+        if self.parent is not None:
+            yield from self.parent.find_defs(var_node)
+
+    # debugging (rename above method to _find_defs:
+    # def find_defs(self, var_node):
+    #     from semanticanalysis import find_defs
+    #     if (a:= list(find_defs(var_node))) != (b := list(self._find_defs(var_node))):
+    #         print(a)
+    #         print(b)
+    #         raise False
+    #     return find_defs(var_node)
+
+
     def enter_scope(self):
         s = Scope()
-        s.interfaces = self.interfaces.copy()
-        self.class_definitions = list(self.class_definitions)
         s.parent = self
         s.in_function_body = self.in_function_body
         s.in_decltype = self.in_decltype
@@ -246,7 +280,10 @@ def codegen_for(node, cx):
     else:
         forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
 
-    forstr += codegen_block(block, cx.enter_scope())
+    block_cx = cx.enter_scope()
+    block_cx.variable_definitions.append(VariableDefinition(defined_node=var, defining_node=node))
+
+    forstr += codegen_block(block, block_cx)
     forstr += indt + "}\n"
     return forstr
 
@@ -599,6 +636,8 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
             "Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:",
             arg)
     elif isinstance(arg, NamedParameter):
+        cx.variable_definitions.append(VariableDefinition(defined_node=arg.lhs, defining_node=arg))
+
         if not isinstance(arg.lhs, Identifier):
             raise SemanticAnalysisError(
                 "Non identifier left hand side in def arg", arg)
@@ -904,6 +943,7 @@ def decltype_str(node, cx):
         if not isinstance(node.func, Identifier):
             assert False
 
+        # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
         for n, c in find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
@@ -969,6 +1009,7 @@ def _decltype_str(node, cx):
 
     assert isinstance(node, Identifier)
 
+    # defs = list(cx.find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
     defs = list(find_defs(node))
     if not defs:
         return True, node.name
@@ -1285,7 +1326,7 @@ def codegen_call(node: Call, cx: Scope):
                     if isinstance(node.func, ListLiteral):
                         is_list = True
                     else:
-                        for d in find_defs(node.func):
+                        for d in cx.find_defs(node.func):
                             # print("found def", d, "when determining if an append is really a push_back")
                             if isinstance(d[1], Assign) and isinstance(
                                     d[1].rhs, ListLiteral):
@@ -1319,6 +1360,8 @@ def codegen_call(node: Call, cx: Scope):
 def codegen_assign(node: Node, cx: Scope):
     if not isinstance(node.lhs, Identifier):
         return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
+
+    cx.variable_definitions.append(VariableDefinition(defined_node=node.lhs, defining_node=node))
 
     is_lambda_rhs_with_return_type = False
 
