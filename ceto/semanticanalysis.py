@@ -337,7 +337,7 @@ def _find_def(parent, child, node_to_find):
         index = parent.args.index(child)
         preceding = parent.args[0:index]
 
-        if isinstance(parent.parent, Call) and parent.parent.func.name == "if":
+        if isinstance(parent.parent, Call) and parent.parent.func.name in ["if", "while"]:
             for i, ifarg in enumerate(parent.parent.args):
                 if parent is ifarg:
                     assert i > 0
