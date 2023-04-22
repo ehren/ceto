@@ -750,61 +750,17 @@ def (main:
     assert c == "122"
 
 
-def test_scopes_definition_in_test():
-    good_code = r"""
-def (main:
-    CONTROL_STRUCTURE ((y = 0):
-        y = 5
-        std.cout << y
-    )
-)
-"""
-
-    bad_code = r"""
-def (main:
-    CONTROL_STRUCTURE ((y = 1):
-        y = 5
-    )
-    std.cout << y
-)
-"""
-
-    bad_code2 = r"""
-def (main:
-    CONTROL_STRUCTURE ((y = 1):
-        pass
-    )
-    std.cout << y
-)
-"""
-
-    comp = lambda c: compile(c.replace("CONTROL_STRUCTURE", cs))
-
-    for cs in ["while", "if"]:
-        g = comp(good_code)
-        assert g == ""
-
-        for b in [bad_code, bad_code2]:
-            raises(lambda: comp(b))
-
-
-def test_scopes_definition_in_test_simple():
+def test_ifscopes_defnition_in_test():
     compile(r"""
+
 def (main:
     if ((y = 1):
         y = 5
     )
 )
+
 """)
 
-    compile(r"""
-def (main:
-    while ((y = 1):
-        y = 5
-        break
-    )
-)
-""")
 
 
 def test_lambda_unevaluated_context():

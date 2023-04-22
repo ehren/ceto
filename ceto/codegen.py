@@ -196,8 +196,8 @@ def codegen_if(ifcall : Call, cx):
         for assign in assigns:
             if hasattr(assign, "already_declared"):
                 continue
-            # if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
-            if isinstance(assign.lhs, Identifier) and not any(assign.lhs.scope.find_defs(assign.lhs)):
+            if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+                assign.already_declared = True
                 if assign.lhs.name in declarations:
                     continue
                 declarations[str(assign.lhs)] = codegen_node(assign.rhs, cx)
@@ -907,18 +907,16 @@ def codegen_lambda(node, cx):
         for i in idents:
             if i.name == "self":
                 possible_captures.append(i.name)
-            else:
-                for d in i.scope.find_defs(i):
-                    defnode, defcontext = d
-                    is_capture = True
-                    while is_capture and defnode is not None:
-                        if defnode is node:
-                            # defined in lambda or by lambda params (not a capture)
-                            is_capture = False
-                        defnode = defnode.parent
-                    if is_capture:
-                        possible_captures.append(i.name)
-                    break
+            elif d := find_def(i):
+                defnode, defcontext = d
+                is_capture = True
+                while is_capture and defnode is not None:
+                    if defnode is node:
+                        # defined in lambda or by lambda params (not a capture)
+                        is_capture = False
+                    defnode = defnode.parent
+                if is_capture:
+                    possible_captures.append(i.name)
 
         capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
     # elif TODO is nonescaping or immediately invoked:
@@ -1440,8 +1438,7 @@ def codegen_assign(node: Node, cx: Scope):
 
     assign_str = " ".join([lhs_str, node.func, rhs_str])
 
-    # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-    if not any(node.scope.find_defs(node.lhs)):
+    if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
@@ -1649,4 +1646,4 @@ def codegen_node(node: Node, cx: Scope):
         else:
             return codegen_node(node.func, cx) + template_args
 
-    assert False, "unhandled node {}".format(str(node))
+    assert False, "unhandled node"
