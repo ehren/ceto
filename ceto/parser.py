@@ -41,6 +41,16 @@ class Node:
     def parent(self, n):
         self._parent = n
 
+    # @property
+    # def scope(self):
+    #     if not hasattr(self, "_scope"):
+    #         self._scope = None
+    #     return self._scope
+    #
+    # @parent.setter
+    # def scope(self, n):
+    #     self._scope = n
+
     @property
     def declared_type(self):
         if not hasattr(self, "_declared_type"):

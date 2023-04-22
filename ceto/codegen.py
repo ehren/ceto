@@ -707,6 +707,8 @@ def codegen_function_body(defnode, block, cx):
             # rewrite as this->foo:
             this = RebuiltIdentifer("this")
             arrow = ArrowOp(args=[this, s.parent.rhs])
+            arrow.scope = s.scope
+            this.scope = s.scope
             arrow.parent = s.parent.parent
             this.parent = arrow
             arrow.rhs.parent = arrow

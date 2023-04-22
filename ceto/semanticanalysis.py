@@ -602,16 +602,27 @@ class Scope:
 class ScopeVisitor:
 
     def visit_Node(self, node):
-        node.scope = node.parent.scope
+        if not hasattr(node, "scope"):
+            node.scope = node.parent.scope
         return node
 
     def visit_Call(self, call):
         call = self.visit_Node(call)
 
+        scope = call.scope
+        if call.func.name in ["def", "lambda", "class"]:
+            scope = scope.enter_scope()
+
         for a in call.args:
             if isinstance(a, Block):
-                a.scope = a.parent.scope.enter_scope()
+                a.scope = scope.enter_scope()
         return call
+
+    def visit_Identifier(self, ident):
+        ident = self.visit_Node(ident)
+        if ident.declared_type:
+            ident.scope.variable_definitions.append(VariableDefinition(defined_node=ident, defining_node=ident))
+        return ident
 
     def visit_Assign(self, assign):
         assign = self.visit_Node(assign)
@@ -639,6 +650,7 @@ def apply_visitors(module: Module, visitors):
                 node = v.visit_Node(node)
 
         node.args = [_visit(a) for a in node.args]
+        node.func = _visit(node.func)
         return node
 
     return _visit(module)
@@ -662,8 +674,9 @@ def semantic_analysis(expr: Module):
             return
 
         x = find_def(node)
+        x2 = node.scope.find_defs(node)
         if x:
-            print("found def", node, x)
+            print("found def", node, x, x2)
         else:
             pass
             # print("no def for", node)
@@ -672,14 +685,21 @@ def semantic_analysis(expr: Module):
             print("found use ", node, u, u.parent, u.parent.parent)
 
         d = list(find_defs(node))
+        d2 = list(node.scope.find_defs(node))
         if d:
-            print("defs list ", node, d)
+            print("defs list ", node, d, d2)
+        # if d != d2:
+        #     assert False
 
         for a in node.args:
             defs(a)
             defs(a.func)
 
     defs(expr)
+
+
+
+
 
     return expr
 
