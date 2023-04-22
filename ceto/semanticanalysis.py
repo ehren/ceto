@@ -610,12 +610,23 @@ class ScopeVisitor:
         call = self.visit_Node(call)
 
         scope = call.scope
-        if call.func.name in ["def", "lambda", "class"]:
-            scope = scope.enter_scope()
+        newscope = None
+        if call.func.name in ["def", "lambda", "class", "while", "for"]:
+            newscope = scope.enter_scope()
 
         for a in call.args:
+            if newscope is not None:
+                a.scope = newscope
             if isinstance(a, Block):
-                a.scope = scope.enter_scope()
+                if a.scope:
+                    a.scope = a.scope.enter_scope()
+                else:
+                    a.scope = scope.enter_scope()
+            if isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
+                a.scope.variable_definitions.append(
+                    VariableDefinition(defined_node=a.lhs,
+                                       defining_node=call))
+
         return call
 
     def visit_Identifier(self, ident):
@@ -688,9 +699,8 @@ def semantic_analysis(expr: Module):
         d2 = list(node.scope.find_defs(node))
         if d:
             print("defs list ", node, d, d2)
-        # if d != d2:
-        #     assert False
-
+        if d != d2:
+            print("maybe a prob")
         for a in node.args:
             defs(a)
             defs(a.func)
