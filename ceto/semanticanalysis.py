@@ -600,23 +600,28 @@ class Scope:
 
 
 class ScopeVisitor:
+
+    def visit_Node(self, node):
+        node.scope = node.parent.scope
+        return node
+
     def visit_Call(self, call):
+        call = self.visit_Node(call)
+
         for a in call.args:
             if isinstance(a, Block):
                 a.scope = a.parent.scope.enter_scope()
         return call
 
     def visit_Assign(self, assign):
+        assign = self.visit_Node(assign)
+        if isinstance(assign.lhs, Identifier):
+            assign.scope.variable_definitions.append(VariableDefinition(defined_node=assign.lhs, defining_node=assign))
         return assign
 
     def visit_Module(self, module):
         module.scope = Scope()
-
         return module
-
-    def visit_Node(self, node):
-        node.scope = node.parent.scope
-        return node
 
 
 def apply_visitors(module: Module, visitors):
@@ -627,9 +632,11 @@ def apply_visitors(module: Module, visitors):
             return node
 
         for v in visitors:
-            visit_func = getattr(v, "visit_" + node.__class__.__name__)
-            if visit_func:
-                node = visit_func(v, node)
+            func_name = "visit_" + node.__class__.__name__
+            if hasattr(v, func_name):
+                node = getattr(v, func_name)(node)
+            else:
+                node = v.visit_Node(node)
 
         node.args = [_visit(a) for a in node.args]
         return node
@@ -646,6 +653,7 @@ def semantic_analysis(expr: Module):
 
     expr = build_types(expr)
     expr = build_parents(expr)
+    expr = apply_visitors(expr, [ScopeVisitor()])
 
     print("after lowering", expr)
 
