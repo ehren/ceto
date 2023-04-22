@@ -582,7 +582,7 @@ class Scope:
             return
 
         for d in self.variable_definitions:
-            if d.defined_node.name == var_node.name:
+            if d.defined_node is not var_node and d.defined_node.name == var_node.name:
                 yield d.defined_node, d.defining_node
                 if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                     yield from self.find_defs(d.defining_node.rhs)
@@ -610,7 +610,7 @@ class ScopeVisitor:
         call = self.visit_Node(call)
 
         scope = call.scope
-        if call.func.name in ["def", "lambda", "class", "while", "for"]:
+        if call.func.name in ["def", "lambda", "class", "while", "for", "if"]:
             scope = scope.enter_scope()
 
         for a in call.args:
