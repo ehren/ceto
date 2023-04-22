@@ -1,3 +1,6 @@
+import typing
+from collections import defaultdict
+
 from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon, SyntaxTypeOp
 import sys
 
@@ -500,6 +503,138 @@ def _find_uses(node, search_node):
         for a in search_node.args:
             yield from find_nodes(assign.lhs, a)
         yield from find_nodes(assign.lhs, search_node.func)
+
+
+def build_types(node: Node):
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return node
+
+        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
+            lhs, rhs = node.args
+            # node = visitor(lhs)
+            node = lhs
+            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
+            # node.declared_type = visitor(rhs)
+
+        node.args = [visitor(arg) for arg in node.args]
+        node.func = visitor(node.func)
+        return node
+
+    return visitor(node)
+
+
+class ClassDefinition:
+
+    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique):
+        self.name_node = name_node
+        self.class_def_node = class_def_node
+        self.is_generic_param_index = is_generic_param_index
+        self.is_unique = is_unique
+
+    def has_generic_params(self):
+        return True in self.is_generic_param_index.values()
+
+
+class InterfaceDefinition(ClassDefinition):
+    def __init__(self):
+        pass
+
+
+class VariableDefinition:
+
+    def __init__(self, defined_node: Identifier, defining_node: Node):
+        self.defined_node = defined_node
+        self.defining_node = defining_node
+
+
+class Scope:
+
+    def __init__(self):
+        self.interfaces = defaultdict(list)
+        self.class_definitions = []
+        self.variable_definitions = []
+        self.indent = 0
+        self.parent : Scope = None
+        self.in_function_body = False
+        self.in_function_param_list = False  # TODO unused remove
+        self.in_class_body = False
+        self.in_decltype = False
+
+    def indent_str(self):
+        return "    " * self.indent
+
+    def lookup_class(self, class_node) -> typing.Optional[ClassDefinition]:
+        if not isinstance(class_node, Identifier):
+            return None
+        for c in self.class_definitions:
+            if isinstance(c.name_node, Identifier) and c.name_node.name == class_node.name:
+                return c
+        if class_node.name in self.interfaces:
+            return InterfaceDefinition()
+        if self.parent:
+            return self.parent.lookup_class(class_node)
+        return None
+
+    def find_defs(self, var_node):
+        if not isinstance(var_node, Identifier):
+            return
+
+        for d in self.variable_definitions:
+            if d.defined_node.name == var_node.name:
+                yield d.defined_node, d.defining_node
+                if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
+                    yield from self.find_defs(d.defining_node.rhs)
+
+        if self.parent is not None:
+            yield from self.parent.find_defs(var_node)
+
+    def enter_scope(self):
+        s = Scope()
+        s.parent = self
+        s.in_function_body = self.in_function_body
+        s.in_decltype = self.in_decltype
+        s.indent = self.indent + 1
+        return s
+
+
+class ScopeVisitor:
+    def visit_Call(self, call):
+        for a in call.args:
+            if isinstance(a, Block):
+                a.scope = a.parent.scope.enter_scope()
+        return call
+
+    def visit_Assign(self, assign):
+        return assign
+
+    def visit_Module(self, module):
+        module.scope = Scope()
+
+        return module
+
+    def visit_Node(self, node):
+        node.scope = node.parent.scope
+        return node
+
+
+def apply_visitors(module: Module, visitors):
+
+    def _visit(node):
+
+        if not isinstance(node, Node):
+            return node
+
+        for v in visitors:
+            visit_func = getattr(v, "visit_" + node.__class__.__name__)
+            if visit_func:
+                node = visit_func(v, node)
+
+        node.args = [_visit(a) for a in node.args]
+        return node
+
+    return _visit(module)
 
 
 def semantic_analysis(expr: Module):
