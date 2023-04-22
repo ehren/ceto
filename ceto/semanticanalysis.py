@@ -544,9 +544,10 @@ class InterfaceDefinition(ClassDefinition):
 
 class VariableDefinition:
 
-    def __init__(self, defined_node: Identifier, defining_node: Node):
+    def __init__(self, defined_node: Identifier, defining_node: Node, definition_number: int):
         self.defined_node = defined_node
         self.defining_node = defining_node
+        self.defining_number = definition_number
 
 
 class Scope:
@@ -561,6 +562,7 @@ class Scope:
         self.in_function_param_list = False  # TODO unused remove
         self.in_class_body = False
         self.in_decltype = False
+        self.block = None
 
     def indent_str(self):
         return "    " * self.indent
@@ -581,8 +583,46 @@ class Scope:
         if not isinstance(var_node, Identifier):
             return
 
-        for d in self.variable_definitions:
+        non_var_node_idx = -1
+        var_node_idx = -1
+
+        for i, d in enumerate(self.variable_definitions):
+
             if d.defined_node is not var_node and d.defined_node.name == var_node.name:
+                non_var_node_idx = i
+            elif d.defined_node.name == var_node.name:
+                var_node_idx = i
+
+
+                # if d.defined_node.scope is var_node.scope:
+                # if self is var_node.scope:
+                #     var_node_defn = None
+                #     for defn in var_node.scope.variable_definitions:
+                #         if defn.defined_node is var_node:
+                #             var_node_defn = defn
+                #             break
+                #     if var_node_defn:
+                #         if var_node.scope.variable_definitions.index(d) > var_node.scope.variable_definitions.index(var_node_defn):
+                #             continue
+
+            print(non_var_node_idx, var_node_idx)
+
+            if non_var_node_idx == var_node_idx:
+                continue
+
+            yield d.defined_node, d.defining_node
+            if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
+                yield from self.find_defs(d.defining_node.rhs)
+
+        if self.parent is not None:
+            yield from self.parent.find_defs(var_node)
+
+    def find_def(self, var_node):
+        if not isinstance(var_node, Identifier):
+            return
+
+        for d in self.variable_definitions:
+            if d.defined_node is var_node and d.defined_node.name == var_node.name:
                 yield d.defined_node, d.defining_node
                 if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                     yield from self.find_defs(d.defining_node.rhs)
@@ -601,6 +641,9 @@ class Scope:
 
 class ScopeVisitor:
 
+    def __init__(self):
+        self.var_def_no = 0
+
     def visit_Node(self, node):
         if not hasattr(node, "scope"):
             node.scope = node.parent.scope
@@ -618,29 +661,67 @@ class ScopeVisitor:
 
             if isinstance(a, Block):
                 a.scope = a.scope.enter_scope()
+                a.scope.block = a
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
+                self.var_def_no += 1
                 a.scope.variable_definitions.append(
                     VariableDefinition(defined_node=a.lhs,
-                                       defining_node=call))
+                                       defining_node=call,
+                                       definition_number=self.var_def_no))
 
         return call
 
     def visit_Identifier(self, ident):
         ident = self.visit_Node(ident)
         if ident.declared_type:
-            ident.scope.variable_definitions.append(VariableDefinition(defined_node=ident, defining_node=ident))
+            defining_node = ident
+            # if isinstance(defining_node.parent, Call) and defining_node.parent.func.name in ["def", "lambda"]:
+            #     defining_node = defining_node.parent
+            self.var_def_no += 1
+            ident.scope.variable_definitions.append(VariableDefinition(defined_node=ident, defining_node=defining_node, definition_number=self.var_def_no))
         return ident
 
     def visit_Assign(self, assign):
         assign = self.visit_Node(assign)
         if isinstance(assign.lhs, Identifier):
-            assign.scope.variable_definitions.append(VariableDefinition(defined_node=assign.lhs, defining_node=assign))
+            self.var_def_no += 1
+            assign.scope.variable_definitions.append(VariableDefinition(defined_node=assign.lhs, defining_node=assign, definition_number=self.var_def_no))
         return assign
 
     def visit_Module(self, module):
         module.scope = Scope()
         return module
+
+
+
+def build_scopes(node: Node):
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return
+
+        if isinstance(node, Module):
+            node.scope = Scope()
+        elif isinstance(node, Call):
+            if node.func.name in ["def", "lambda", "class", "while", "for", "if"]:
+
+                inner_scope = node.scope.enter_scope()
+
+                for a in node.args:
+                    a.scope = inner_scope
+
+                    if isinstance(a, Block):
+                        a.scope = inner_scope.enter_scope()
+
+                    elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
+                        a.scope.variable_definitions.append(
+                            VariableDefinition(defined_node=a.lhs,
+                                               defining_node=node))
+        map(visitor, node.args)
+        visitor(node.func)
+
+    return visitor(node)
 
 
 def apply_visitors(module: Module, visitors):
