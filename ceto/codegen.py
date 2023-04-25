@@ -2,7 +2,7 @@ import typing
 from typing import Union, Any
 
 from semanticanalysis import  NamedParameter, IfWrapper, SemanticAnalysisError, SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, Scope, ClassDefinition, InterfaceDefinition
-from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
+from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
 import re

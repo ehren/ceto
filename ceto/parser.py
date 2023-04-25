@@ -1,5 +1,5 @@
 #
-# Based on the pyparsing examples: parsePythonValue.py, left_recursion.py, simpleBool.py
+# Based on the pyparsing example parsePythonValue.py
 #
 # 
 #
@@ -14,71 +14,14 @@ import io
 
 from preprocessor import preprocess
 
+from abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
+    Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
+    BracedCall, IntegerLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
+    Block, Module, StringLiteral, CStringLiteral, RedundantParens, Assign, \
+    Template
+
 
 class ParserError(Exception):
-    pass
-
-
-class Node:
-
-    def __init__(self, func, args, source):
-        self.name = None
-        self.parent = None
-        self.declared_type = None
-        self.func = func
-        self.args = args
-        self.source = source
-
-    def __repr__(self):
-        return "{}({})({!r})".format(self.__class__.__name__,
-                                     self.func, self.args)
-
-
-class UnOp(Node):
-    pass
-
-
-class LeftAssociativeUnOp(Node):
-    pass
-
-
-class BinOp(Node):
-
-    def __repr__(self):
-        return "({} {} {})".format(self.lhs, self.func, self.rhs)
-
-    @property
-    def lhs(self):
-        return self.args[0]
-
-    @property
-    def rhs(self):
-        return self.args[1]
-
-
-class TypeOp(BinOp):
-    pass
-
-
-class SyntaxTypeOp(TypeOp):
-    pass
-
-
-class AttributeAccess(BinOp):
-
-    def __repr__(self):
-        return "{}.{}".format(self.lhs, self.rhs)
-
-
-class ArrowOp(BinOp):
-    pass
-
-
-class ScopeResolution(BinOp):
-    pass
-
-
-class Assign(BinOp):
     pass
 
 
@@ -150,29 +93,6 @@ class _InfixExpr(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-# Note: This is not created by the parser (later used to signify non-named parameters)
-class RedundantParens(Node):
-    def __init__(self, args):
-        self.func = "RedundantParens"
-        self.args = args
-        super().__init__(self.func,self.args,None)
-
-
-class Call(Node):
-    def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
-
-
-class ArrayAccess(Node):
-    def __repr__(self):
-        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
-
-
-class BracedCall(Node):
-    def __repr__(self):
-        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
-
-
 def call_parse_action(s, l, t):
     tokens = t.as_list()
 
@@ -218,12 +138,6 @@ def call_parse_action(s, l, t):
     return call
 
 
-class Template(Node):
-    # template-id in proper standardese
-    def __repr__(self):
-        return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
-
-
 def parse_template(s, l, t):
     lst = t.as_list()
     func = lst[0]
@@ -232,30 +146,10 @@ def parse_template(s, l, t):
     return Template(func, args, source)
 
 
-class Identifier(Node):
-    def __init__(self, name, source):
-        super().__init__(None, [], source)
-        self.name = name
-
-    def __repr__(self):
-        return self.name
-
-
 def parse_identifier(s, l, t):
     name = str(t[0])
     source = s, l
     return Identifier(name, source)
-
-
-class StringLiteral(Node):
-
-    def __repr__(self):
-        escaped = self.func.replace("\n", r"\n")
-        return '"' + escaped + '"'
-
-
-class CStringLiteral(StringLiteral):
-    pass
 
 
 def make_parse_action_string_literal(clazz):
@@ -267,25 +161,10 @@ def make_parse_action_string_literal(clazz):
     return parse
 
 
-class IntegerLiteral(Node):
-    def __init__(self, integer, source):
-        func = None
-        args = []
-        self.integer = integer
-        super().__init__(None, args, source)
-
-    def __repr__(self):
-        return str(self.integer)
-
-
 def parse_integer_literal(s, l, t):
     integer = int(t[0])
     source = s, l
     return IntegerLiteral(integer, source)
-
-
-class ListLiteral(Node):
-    pass
 
 
 def parse_list_literal(s, l, t):
@@ -295,10 +174,6 @@ def parse_list_literal(s, l, t):
     return ListLiteral(func, args, source)
 
 
-class TupleLiteral(Node):
-    pass
-
-
 def parse_tuple_literal(s, l, t):
     func = None
     args = t.as_list()
@@ -306,27 +181,11 @@ def parse_tuple_literal(s, l, t):
     return TupleLiteral(func, args, source)
 
 
-class BracedLiteral(Node):
-    pass
-
-
 def parse_braced_literal(s, l, t):
     func = None
     args = t.as_list()
     source = s, l
     return BracedLiteral(func, args, source)
-
-
-class Block(Node):
-
-    def __init__(self, args):
-        super().__init__(None, args, None)
-
-
-class Module(Block):
-    def __init__(self, args):
-        self.has_main_function = False
-        super().__init__(args)
 
 
 def parse_block(s, l, t):

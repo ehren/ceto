@@ -1,7 +1,7 @@
 import typing
 from collections import defaultdict
 
-from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp
+from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp
 import sys
 
 def isa_or_wrapped(node, NodeClass):
