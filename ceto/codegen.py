@@ -190,7 +190,8 @@ def codegen_if(ifcall : Call, cx):
         for assign in assigns:
             if hasattr(assign, "already_declared"):
                 continue
-            if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+            #if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
+            if isinstance(assign.lhs, Identifier) and not assign.scope.find_def(assign.lhs):
                 assign.already_declared = True
                 if assign.lhs.name in declarations:
                     continue
@@ -901,7 +902,8 @@ def codegen_lambda(node, cx):
         for i in idents:
             if i.name == "self":
                 possible_captures.append(i.name)
-            elif d := find_def(i):
+            #elif d := find_def(i):
+            elif d := i.scope.find_def(i):
                 defnode, defcontext = d
                 is_capture = True
                 while is_capture and defnode is not None:
@@ -940,7 +942,8 @@ def decltype_str(node, cx):
             assert False
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
-        for n, c in find_defs(node.func):
+        # for n, c in find_defs(node.func):
+        for n, c in node.scope.find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
                     return vds
@@ -1005,9 +1008,9 @@ def _decltype_str(node, cx):
 
     assert isinstance(node, Identifier)
 
-    defs = list(find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
+    # defs = list(find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
     # defs = list(cx.find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
-    # defs = list(node.scope.find_defs(node))
+    defs = list(node.scope.find_defs(node))
     if not defs:
         return True, node.name
 
@@ -1323,7 +1326,8 @@ def codegen_call(node: Call, cx: Scope):
                     if isinstance(node.func, ListLiteral):
                         is_list = True
                     else:
-                        for d in find_defs(node.func):
+                        #for d in find_defs(node.func):
+                        for d in node.scope.find_defs(node.func):
                             # print("found def", d, "when determining if an append is really a push_back")
                             if isinstance(d[1], Assign) and isinstance(
                                     d[1].rhs, ListLiteral):
@@ -1380,10 +1384,9 @@ def codegen_assign(node: Node, cx: Scope):
         newcx = cx.enter_scope()
         newcx.in_function_param_list = True
         rhs_str = codegen_lambda(lambdaliteral, newcx)
-    elif node.lhs.declared_type is None and isinstance(node.rhs,
-                                                       ListLiteral) and not node.rhs.args and node.rhs.declared_type is None:
+    elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
         # handle untyped empty list literal by searching for uses
-        rhs_str = "std::vector<" + vector_decltype_str(node, cx) + ">()"
+        rhs_str = "std::vector<" + vds + ">()"
     else:
         rhs_str = codegen_node(node.rhs, cx)
 
@@ -1433,7 +1436,8 @@ def codegen_assign(node: Node, cx: Scope):
 
     assign_str = " ".join([lhs_str, node.func, rhs_str])
 
-    if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+    # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+    if not hasattr(node, "already_declared") and node.scope.find_def(node.lhs) is None:
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html

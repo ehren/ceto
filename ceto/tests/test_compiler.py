@@ -20,6 +20,20 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_dont_capture_lambda_args():
+    c = compile(r"""
+def (main:
+    x = []  # this should not be captured (that is, make sure the def of 'x' in 'x + y' points to the lambda arg 'x' and not the list 'x')
+    lfunc = lambda (x, y, x + y)
+    x.append(1)
+    std.cout << lfunc(x[0], x[0])
+)
+    """)
+
+    assert c == "2"
+
+
+
 def test_new_find_defs_list_problem():
     # see TODO in Scope.find_defs - we should attach scopes to the nodes themselves (build scopes in earlier pass)
     c = compile("""

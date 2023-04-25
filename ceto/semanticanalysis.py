@@ -556,13 +556,21 @@ class Scope:
             return
 
         for d in self.variable_definitions:
-            if d.defined_node.name == var_node.name:
-                yield d.defined_node, d.defining_node
-                if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
-                    yield from self.find_defs(d.defining_node.rhs)
+            if d.defined_node.name == var_node.name and d.defined_node is not var_node:
+                _ , defined_loc = d.defined_node.source
+                _ , var_loc = var_node.source
+
+                if defined_loc < var_loc:
+                    yield d.defined_node, d.defining_node
+                    if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
+                        yield from self.find_defs(d.defining_node.rhs)
 
         if self.parent is not None:
             yield from self.parent.find_defs(var_node)
+
+    def find_def(self, var_node):
+        for d in self.find_defs(var_node):
+            return d
 
     def enter_scope(self):
         s = Scope()
@@ -592,6 +600,12 @@ class ScopeVisitor:
 
             if isinstance(a, Block):
                 a.scope = a.scope.enter_scope()
+
+            elif isinstance(a, Identifier) and call.func.name in ["def", "lambda"]:
+                a.scope.variable_definitions.append(
+                    VariableDefinition(defined_node=a,
+                                       defining_node=call))
+                # note that default parameters handled as generic Assign
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
                 a.scope.variable_definitions.append(
