@@ -946,7 +946,7 @@ def decltype_str(node, cx):
             assert False
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
-        for n, c in node.func.scope.find_defs(node.func):
+        for n, c in find_defs(node.func):
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
                     return vds
@@ -1011,8 +1011,9 @@ def _decltype_str(node, cx):
 
     assert isinstance(node, Identifier)
 
+    defs = list(find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
     # defs = list(cx.find_defs(node))   # fails because only 1 (uncompleted) pass over ast to build scopes
-    defs = list(node.scope.find_defs(node))
+    # defs = list(node.scope.find_defs(node))
     if not defs:
         return True, node.name
 
@@ -1328,7 +1329,7 @@ def codegen_call(node: Call, cx: Scope):
                     if isinstance(node.func, ListLiteral):
                         is_list = True
                     else:
-                        for d in node.func.scope.find_defs(node.func):
+                        for d in find_defs(node.func):
                             # print("found def", d, "when determining if an append is really a push_back")
                             if isinstance(d[1], Assign) and isinstance(
                                     d[1].rhs, ListLiteral):
