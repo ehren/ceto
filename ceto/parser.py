@@ -93,7 +93,7 @@ class _InfixExpr(Node):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-def call_parse_action(s, l, t):
+def parse_call(s, l, t):
     tokens = t.as_list()
 
     if len(tokens) == 2:
@@ -101,7 +101,7 @@ def call_parse_action(s, l, t):
         args = tokens[1]
     else:
         assert len(tokens) > 2
-        func = call_parse_action(s, l, pp.ParseResults(tokens[:-1]))  # left-associative
+        func = parse_call(s, l, pp.ParseResults(tokens[:-1]))
         args = tokens[-1]
 
     source = s, l
@@ -109,21 +109,16 @@ def call_parse_action(s, l, t):
     scope_resolve_part = args.pop()
 
     leading_punctuation = args.pop(0)
+    end_punctuation = args.pop()
     if leading_punctuation == "(":
-        end_punctuation = args.pop()
         assert end_punctuation == ")"
         call = Call(func, args, source)
     elif leading_punctuation == "[":
-        end_punctuation = args.pop()
         assert end_punctuation == "]"
         call = ArrayAccess(func, args, source)
     elif leading_punctuation == "{":
-        end_punctuation = args.pop()
         assert end_punctuation == "}"
         call = BracedCall(func, args, source)
-    else:
-        print("fatal parse error. unexpected scope resolved call.", file=sys.stderr)
-        sys.exit(-1)
 
     if scope_resolve_part:
         scope_op, scope_op_rhs = scope_resolve_part
@@ -138,18 +133,24 @@ def call_parse_action(s, l, t):
     return call
 
 
+def parse_identifier(s, l, t):
+    name = str(t[0])
+    source = s, l
+    return Identifier(name, source)
+
+
+def parse_integer_literal(s, l, t):
+    integer = int(t[0])
+    source = s, l
+    return IntegerLiteral(integer, source)
+
+
 def parse_template(s, l, t):
     lst = t.as_list()
     func = lst[0]
     args = lst[1:]
     source = s, l
     return Template(func, args, source)
-
-
-def parse_identifier(s, l, t):
-    name = str(t[0])
-    source = s, l
-    return Identifier(name, source)
 
 
 def make_parse_action_string_literal(clazz):
@@ -161,31 +162,13 @@ def make_parse_action_string_literal(clazz):
     return parse
 
 
-def parse_integer_literal(s, l, t):
-    integer = int(t[0])
-    source = s, l
-    return IntegerLiteral(integer, source)
-
-
-def parse_list_literal(s, l, t):
-    func = None
-    args = t.as_list()
-    source = s, l
-    return ListLiteral(func, args, source)
-
-
-def parse_tuple_literal(s, l, t):
-    func = None
-    args = t.as_list()
-    source = s, l
-    return TupleLiteral(func, args, source)
-
-
-def parse_braced_literal(s, l, t):
-    func = None
-    args = t.as_list()
-    source = s, l
-    return BracedLiteral(func, args, source)
+def make_parse_action_list_literal(clazz):
+    def parse(s, l, t):
+        func = None
+        args = t.as_list()
+        source = s, l
+        return clazz(func, args, source)
+    return parse
 
 
 def parse_block(s, l, t):
@@ -198,7 +181,7 @@ def parse_module(s, l, t):
     return Module(args)
 
 
-def _create():
+def _build_grammar():
 
     cvtReal = lambda toks: float(toks[0])
 
@@ -241,18 +224,18 @@ def _create():
         (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
         (lparen + pp.Optional(infix_expr) + comma + rparen) |
         (lparen + rparen)
-    ).set_parse_action(parse_tuple_literal)
+    ).set_parse_action(make_parse_action_list_literal(TupleLiteral))
 
     list_literal <<= (
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-    ).set_parse_action(parse_list_literal)
+    ).set_parse_action(make_parse_action_list_literal(ListLiteral))
 
     bel = pp.Suppress('\x07')
 
     dict_entry = pp.Group(infix_expr + bel + infix_expr)
     dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
-    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(parse_braced_literal)
+    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(make_parse_action_list_literal(BracedLiteral))
 
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(parse_block)
@@ -284,7 +267,7 @@ def _create():
             (dot|arrow_op, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
     ])
 
-    function_call <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(call_parse_action)
+    function_call <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(parse_call)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -333,7 +316,7 @@ def _create():
 
     return module
 
-grammar = _create()
+grammar = _build_grammar()
 
 
 def do_parse(source: str):
