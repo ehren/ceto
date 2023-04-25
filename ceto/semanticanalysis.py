@@ -1,44 +1,18 @@
 import typing
 from collections import defaultdict
 
-from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, IntegerLiteral, RebuiltColon, SyntaxTypeOp
+from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp
 import sys
 
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
 
 
-class RebuiltIdentifer(Identifier):
-    def __init__(self, name):
-        self.func = name
-        self.args = []
-        self.name = name
-
-
-class RebuiltBlock(Block):
-
-    def __init__(self, args):
-        self.func = "Block"
-        self.args = args
-
-
-class RebuiltCall(Call):
-    def __init__(self, func, args):
-        self.func = func
-        self.args = args
-
-
-class RebuiltAssign(Assign):
-    def __init__(self, args):
-        self.func = "Assign"
-        self.args = args
-
-
 class NamedParameter(Assign):
-    def __init__(self, args):
-        # self.func = "NamedParameter"
-        self.func = "="  # paper over that we've further loosened named parameter vs assignment distinction in codegen
-        self.args = args
+    # def __init__(self, args):
+    #     # self.func = "NamedParameter"
+    #     func = "="  # paper over that we've further loosened named parameter vs assignment distinction in codegen
+    #     super(Node).__init__(func, args, None)
 
     def __repr__(self):
         return "{}({})".format(self.func, ",".join(map(str, self.args)))
@@ -149,8 +123,8 @@ def one_liner_expander(parsed):
                 block_arg = ifop.args[0].args[1]
                 if isinstance(block_arg, Assign):
                     raise SemanticAnalysisError("no assignment statements in if one liners")
-                rebuilt = [ifop.args[0].args[0], RebuiltBlock(args=[block_arg])] + ifop.args[1:]
-                return RebuiltCall(func=ifop.func, args=rebuilt)
+                rebuilt = [ifop.args[0].args[0], Block(args=[block_arg])] + ifop.args[1:]
+                return Call(func=ifop.func, args=rebuilt, source=ifop.source)
             else:
                 raise SemanticAnalysisError("bad first if-args")
 
@@ -164,19 +138,19 @@ def one_liner_expander(parsed):
                     raise SemanticAnalysisError(
                         f"Unexpected if arg {a} at position {i}")
                 if a.args[0].name == "else":
-                    rebuilt = ifop.args[0:i] + [a.args[0], RebuiltBlock(
+                    rebuilt = ifop.args[0:i] + [a.args[0], Block(
                         args=[a.args[1]])] + ifop.args[i + 1:]
-                    return RebuiltCall(ifop.func, args=rebuilt)
+                    return Call(ifop.func, args=rebuilt, source=ifop.source)
                 elif a.args[0].name == "elif":
                     if i == len(ifop.args) - 1 or not isinstance(ifop.args[i + 1], Block):
                         c = a.args[1]
                         if not isinstance(c, TypeOp):
                             raise SemanticAnalysisError("bad if args")
                         cond, rest = c.args
-                        new_elif = RebuiltColon(a.func, [a.args[0], cond])
-                        new_block = RebuiltBlock(args=[rest])
+                        new_elif = TypeOp(a.func, [a.args[0], cond], a.source)
+                        new_block = Block(args=[rest])
                         rebuilt = ifop.args[0:i] + [new_elif, new_block] + ifop.args[i + 1:]
-                        return RebuiltCall(ifop.func, args=rebuilt)
+                        return Call(func=ifop.func, args=rebuilt, source=ifop.source)
             elif isinstance(a, Identifier) and a.name == "else":
                 if not i == len(ifop.args) - 2:
                     raise SemanticAnalysisError("bad else placement")
@@ -194,10 +168,10 @@ def one_liner_expander(parsed):
             return op
 
         if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
-            op = SyntaxTypeOp(op.func, op.args)
+            op = SyntaxTypeOp(op.func, op.args, op.source)
 
         if isinstance(op, UnOp) and op.func == "return":
-            op = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return")] + op.args)
+            op = SyntaxTypeOp(func=":", args=[Identifier("return", op.source)] + op.args, source=op.source)
 
         if isinstance(op, Call):
             if isinstance(op.func, Identifier):
@@ -220,17 +194,17 @@ def one_liner_expander(parsed):
                 if op.func.name == "lambda":
                     if not isinstance(op.args[-1], Block):
                         # last arg becomes one-element block
-                        op = RebuiltCall(func=op.func, args=op.args[0:-1] + [RebuiltBlock(args=[op.args[-1]])])
+                        op = Call(func=op.func, args=op.args[0:-1] + [Block(args=[op.args[-1]])], source=op.source)
                     if op.func.name == "lambda":
                         block = op.args[-1]
                         last_statement = block.args[-1]
                         if is_return(last_statement):
                             pass
                         elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class"]:
-                            synthetic_return = RebuiltIdentifer("return")
+                            synthetic_return = Identifier("return", None)
                             block.args += [synthetic_return]
                         else:
-                            synthetic_return = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                            synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", None), last_statement], source=None)
                             if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
                                 synthetic_return.synthetic_lambda_return_lambda = op
                             block.args = block.args[0:-1] + [synthetic_return]
@@ -261,11 +235,11 @@ def assign_to_named_parameter(expr):
             for arg in op.args:
                 if isinstance(arg, TypeOp):
                     if isinstance(arg.args[0], Assign):
-                        rebuilt.append(RebuiltColon(func=arg.func, args=[NamedParameter(args=arg.args[0].args), arg.args[1]]))
+                        rebuilt.append(TypeOp(func=arg.func, args=[NamedParameter(func=arg.func, args=arg.args[0].args, source=arg.source), arg.args[1]], source=arg.source))
                     else:
                         rebuilt.append(arg)
                 elif isinstance(arg, Assign):
-                    rebuilt.append(NamedParameter(args=arg.args))
+                    rebuilt.append(NamedParameter(func=arg.func, args=arg.args, source=arg.source))
                 elif isinstance(arg, RedundantParens) and isa_or_wrapped(arg.args[0], Assign):
                     rebuilt.append(arg.args[0])
                 else:

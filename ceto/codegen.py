@@ -1,14 +1,8 @@
 import typing
 from typing import Union, Any
 
-from semanticanalysis import Node, Module, Call, Block, UnOp, BinOp, \
-    TypeOp, Assign, NamedParameter, Identifier, IntegerLiteral, IfWrapper, \
-    SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, \
-    find_all, find_defs, is_return, is_void_return, RebuiltCall, RebuiltIdentifer
-from parser import ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, \
-    BracedCall, StringLiteral, AttributeAccess, RebuiltStringLiteral, \
-    CStringLiteral, RebuiltBinOp, RebuiltInteger, Template, ArrowOp, \
-    ScopeResolution, LeftAssociativeUnOp
+from semanticanalysis import  NamedParameter, IfWrapper, SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, find_all, find_defs, is_return, is_void_return
+from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
 import re
@@ -166,7 +160,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])
+                synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", source=None), last_statement], source=None)
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -255,9 +249,9 @@ def codegen_for(node, cx):
             end = iterable.args[1]
         else:
             end = start
-            start = RebuiltInteger(integer=0)
+            start = IntegerLiteral(integer=0, source=None)
             start.parent = end.parent
-        sub = RebuiltBinOp(func="-", args=[end, start])
+        sub = BinOp(func="-", args=[end, start], source=None)
         sub.parent = start.parent
         # ds = decltype_str(sub, cx)
         ds = "decltype(" + codegen_node(sub, cx) + ")"
@@ -705,8 +699,8 @@ def codegen_function_body(defnode, block, cx):
         if replace_self and isinstance(s.parent,
                                        AttributeAccess) and s.parent.lhs is s:
             # rewrite as this->foo:
-            this = RebuiltIdentifer("this")
-            arrow = ArrowOp(args=[this, s.parent.rhs])
+            this = Identifier(name="this", source=None)
+            arrow = ArrowOp(func="->", args=[this, s.parent.rhs], source=None)
             arrow.scope = s.scope
             this.scope = s.scope
             arrow.parent = s.parent.parent
