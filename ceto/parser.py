@@ -223,11 +223,13 @@ class Template(Node):
     def __repr__(self):
         return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
 
-    def __init__(self, s, l, tokens):
-        func = tokens[0]
-        args = tokens.as_list()[1:]
-        source = s, l
-        super().__init__(func, args, source)
+
+def parse_template(s, l, t):
+    lst = t.as_list()
+    func = lst[0]
+    args = lst[1:]
+    source = s, l
+    return Template(func, args, source)
 
 
 class Identifier(Node):
@@ -246,21 +248,23 @@ def parse_identifier(s, l, t):
 
 
 class StringLiteral(Node):
-    def __init__(self, s, l, token):
-        func = str(token[0])
-        args = []
-        source = s,l
-        super().__init__(func, args, source)
-
 
     def __repr__(self):
         escaped = self.func.replace("\n", r"\n")
-
         return '"' + escaped + '"'
 
 
 class CStringLiteral(StringLiteral):
     pass
+
+
+def make_parse_action_string_literal(clazz):
+    def parse(s, l, t):
+        func = str(t[0])
+        args = []
+        source = s, l
+        return clazz(func, args, source)
+    return parse
 
 
 class IntegerLiteral(Node):
@@ -356,9 +360,9 @@ def _create():
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(parse_identifier)
 
-    quoted_str = pp.QuotedString("'", multiline=True, esc_char="\\").set_parse_action(StringLiteral)
-    dblquoted_str = pp.QuotedString('"', multiline=True, esc_char="\\").set_parse_action(StringLiteral)
-    cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(CStringLiteral)
+    quoted_str = pp.QuotedString("'", multiline=True, esc_char="\\").set_parse_action(make_parse_action_string_literal(StringLiteral))
+    dblquoted_str = pp.QuotedString('"', multiline=True, esc_char="\\").set_parse_action(make_parse_action_string_literal(StringLiteral))
+    cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(make_parse_action_string_literal(CStringLiteral))
 
     atom = (
         template
@@ -395,7 +399,7 @@ def _create():
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(parse_block)
 
     ack = pp.Suppress("\x06")
-    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(Template)
+    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(parse_template)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
