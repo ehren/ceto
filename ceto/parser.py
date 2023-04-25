@@ -184,8 +184,6 @@ def call_parse_action(s, l, t):
         func = call_parse_action(s, l, pp.ParseResults(tokens[:-1]))  # left-associative
         args = tokens[-1]
 
-    # res = Call(func, args)
-
     source = s, l
 
     scope_resolve_part = args.pop()
@@ -256,7 +254,6 @@ class StringLiteral(Node):
 
 
     def __repr__(self):
-        # escaped = self.func.translate(str.maketrans({"\n": r"\n" }))
         escaped = self.func.replace("\n", r"\n")
 
         return '"' + escaped + '"'
@@ -356,7 +353,6 @@ def _create():
     function_call = pp.Forward()
     template = pp.Forward()
     scope_resolution = pp.Forward()
-    scope_resolved_call = pp.Forward()
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(parse_identifier)
 
@@ -379,8 +375,6 @@ def _create():
     )
 
     tuple_literal <<= (
-        # lparen + pp.Optional(pp.delimitedList(infix_expr)) + pp.Optional(comma) + rparen
-        # lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen
         (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
         (lparen + pp.Optional(infix_expr) + comma + rparen) |
         (lparen + rparen)
@@ -427,17 +421,7 @@ def _create():
             (dot|arrow_op, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
     ])
 
-    call_func = (scope_resolution) #| (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
-    # call_func = (scope_resolution | scope_resolved_call | (pp.Suppress("(") + infix_expr + pp.Suppress(")")))
-
-    # function_call <<= (call_func + pp.OneOrMore(pp.Group(call_args|array_access_args|braced_args))).set_parse_action(Call)
-
-    function_call <<= (call_func + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(call_parse_action)
-
-    # scope_resolved_call <<= pp.infix_notation(function_call, [
-    #     (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
-    #     (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
-    # ])
+    function_call <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(call_parse_action)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -461,10 +445,8 @@ def _create():
         function_call|scope_resolution,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
-            # (pp.Literal("::"), 2, pp.opAssoc.LEFT, AttributeAccess),
-            # (dot|arrow_op, 2, pp.opAssoc.LEFT, AttributeAccess),
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, parse_right_unop),
-            # (expop, 2, pp.opAssoc.RIGHT, BinOp),
+            # (expop, 2, pp.opAssoc.RIGHT, parse_right_associative_bin_op),
             (signop, 1, pp.opAssoc.RIGHT, parse_right_unop),
             (multop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
             (plusop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
@@ -579,28 +561,6 @@ def parse(source: str):
                 op = RedundantParens(args=[op.args[0].args[0]])
             else:
                 op = op.args[0]
-
-        if isinstance(op, AttributeAccess):
-            # if op.func == "->":
-            #     op = ArrowOp(op.args)
-            # elif op.func == "::":
-            #     op = RebuiltScopeResolution(op.func, op.args)
-            pass
-        elif isinstance(op, Call):
-
-            pass
-
-            # this can be fixed by refactoring parse actions from classes to plain functions (that construct the appropriate class inline)
-            # if op._is_array:
-            #     op = ArrayAccess(op.func, op.args)
-            # elif op._is_braced_call:
-            #     op = BracedCall(op.func, op.args)
-
-            # we've also got an annoying precedence issues left for the case:
-            # Blah()::foo.method()
-            # parsed as ScopeResolution(Call(Blah, []), Call(AttributeAccess(foo,method), []))
-            # should be
-            # Call(AttributeAccess(ScopeResolution(Call(Blah, []), foo), method), [])
 
         if not isinstance(op, Node):
             return op
