@@ -1,7 +1,7 @@
 import typing
 from typing import Union, Any
 
-from semanticanalysis import  NamedParameter, IfWrapper, SemanticAnalysisError, SyntaxTypeOp, find_def, find_use, find_uses, find_all, find_defs, is_return, is_void_return
+from semanticanalysis import  NamedParameter, IfWrapper, SemanticAnalysisError, SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, Scope, ClassDefinition, InterfaceDefinition
 from parser import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -35,95 +35,6 @@ cpp_preamble = r"""
 
 
 # Uses code and ideas from https://github.com/lukasmartinelli/py14
-
-
-class ClassDefinition:
-
-    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique):
-        self.name_node = name_node
-        self.class_def_node = class_def_node
-        self.is_generic_param_index = is_generic_param_index
-        self.is_unique = is_unique
-
-    def has_generic_params(self):
-        return True in self.is_generic_param_index.values()
-
-
-class InterfaceDefinition(ClassDefinition):
-    def __init__(self):
-        pass
-
-
-class VariableDefinition:
-
-    def __init__(self, defined_node: Identifier, defining_node: Node):
-        self.defined_node = defined_node
-        self.defining_node = defining_node
-
-
-class Scope:
-
-    def __init__(self):
-        self.interfaces = defaultdict(list)
-        self.class_definitions = []
-        self.variable_definitions = []
-        self.indent = 0
-        self.parent : Scope = None
-        self.in_function_body = False
-        self.in_function_param_list = False  # TODO unused remove
-        self.in_class_body = False
-        self.in_decltype = False
-
-    def indent_str(self):
-        return "    " * self.indent
-
-    def lookup_class(self, class_node) -> typing.Optional[ClassDefinition]:
-        if not isinstance(class_node, Identifier):
-            return None
-        for c in self.class_definitions:
-            if isinstance(c.name_node, Identifier) and c.name_node.name == class_node.name:
-                return c
-        if class_node.name in self.interfaces:
-            return InterfaceDefinition()
-        if self.parent:
-            return self.parent.lookup_class(class_node)
-        return None
-
-    # NOTE: TODO: this doesn't work for forward inference e.g. when determing type of x = [] from subsequent append calls
-    # (this would take 2 passes over the AST). It's looking like attaching the scopes to the nodes themselves (in semanticanalysis)
-    # would be a better approach (this is py14s approach). Also matches the advice at https://www.cs.mcgill.ca/~cs520/2020/slides/7-symbol.pdf
-    # (for some reason link is down but I recall "attach a symbol table to each program point")
-    def find_defs(self, var_node):
-        if not isinstance(var_node, Identifier):
-            return
-
-        for d in self.variable_definitions:
-            if d.defined_node.name == var_node.name:
-                yield d.defined_node, d.defining_node
-                if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
-                    yield from self.find_defs(d.defining_node.rhs)
-
-        if self.parent is not None:
-            yield from self.parent.find_defs(var_node)
-
-    # debugging (rename above method to _find_defs:
-    # def find_defs(self, var_node):
-    #     from semanticanalysis import find_defs
-    #     if (a:= list(find_defs(var_node))) != (b := list(self._find_defs(var_node))):
-    #         print(a)
-    #         print(b)
-    #         raise False
-    #     return find_defs(var_node)
-
-
-    def enter_scope(self):
-        s = Scope()
-        s.parent = self
-        s.in_function_body = self.in_function_body
-        s.in_decltype = self.in_decltype
-        s.indent = self.indent + 1
-        return s
-
 
 # method_declarations = []
 cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
@@ -276,7 +187,6 @@ def codegen_for(node, cx):
         forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
 
     block_cx = cx.enter_scope()
-    block_cx.variable_definitions.append(VariableDefinition(defined_node=var, defining_node=node))
 
     forstr += codegen_block(block, block_cx)
     forstr += indt + "}\n"
@@ -508,7 +418,6 @@ def codegen_while(whilecall, cx):
     if not isinstance(whilecall.args[1], Block):
         raise CodeGenError("Last while arg must be a block", whilecall.args[1])
 
-    # TODO replace find_defs with handling in Scope
     cpp = "while (" + codegen_node(whilecall.args[0], cx.enter_scope()) + ") {"
     cpp += codegen_block(whilecall.args[1], cx.enter_scope())
     cpp += cx.indent_str() + "}\n"
@@ -631,8 +540,6 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
             "Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:",
             arg)
     elif isinstance(arg, NamedParameter):
-        cx.variable_definitions.append(VariableDefinition(defined_node=arg.lhs, defining_node=arg))
-
         if not isinstance(arg.lhs, Identifier):
             raise SemanticAnalysisError(
                 "Non identifier left hand side in def arg", arg)
@@ -1361,8 +1268,6 @@ def codegen_call(node: Call, cx: Scope):
 def codegen_assign(node: Node, cx: Scope):
     if not isinstance(node.lhs, Identifier):
         return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
-
-    cx.variable_definitions.append(VariableDefinition(defined_node=node.lhs, defining_node=node))
 
     is_lambda_rhs_with_return_type = False
 

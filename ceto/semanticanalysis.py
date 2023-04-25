@@ -271,108 +271,6 @@ def warn_and_remove_redundant_parens(expr, error=False):
     return replacer(expr)
 
 
-def _find_def(parent, child, node_to_find):
-    def _find_assign(r, node_to_find):
-        if not isinstance(r, Node):
-            return None
-        if isinstance(r, Block):
-            return None
-        if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name and r.lhs is not node_to_find:
-            return r.lhs, r
-        if isinstance(r, Call):
-            call_func_name = r.func.name
-            if call_func_name == "class":
-                class_name = r.args[0]
-                if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
-                    return class_name, r
-            # elif call_func_name == "for":
-            #     instmt = r.args[0]
-            #     if isinstance(instmt, BinOp) and instmt.func == "in":
-            #         itervar = instmt.args[0]
-            #         if isinstance(itervar, Identifier) and itervar.name == node_to_find.name:
-            #             return itervar, r
-        for a in r.args:
-            if f := _find_assign(a, node_to_find):
-                return f
-        return None
-
-    if parent is None:
-        return None
-    if not isinstance(node_to_find, Identifier):
-        return None
-    if not isinstance(node_to_find, Node):
-        return None
-    # if isinstance(parent, Module):
-    #
-    #     # need to handle this like a block
-    #
-    #     return None
-    elif isinstance(parent, Block):
-        index = parent.args.index(child)
-        preceding = parent.args[0:index]
-
-        if isinstance(parent.parent, Call) and parent.parent.func.name in ["if", "while"]:
-            for i, ifarg in enumerate(parent.parent.args):
-                if parent is ifarg:
-                    assert i > 0
-                    testexpr = parent.parent.args[i - 1]
-                    assert not isinstance(testexpr, Block)
-                    preceding.insert(0, testexpr)
-
-        for r in reversed(preceding):
-            # if isinstance(r, Assign) and isinstance(r.lhs, Identifier) and r.lhs.name == node_to_find.name:
-            #     return r.lhs, r
-            f = _find_assign(r, node_to_find)
-            if f is not None:
-                return f
-            if isinstance(r, Identifier) and r.declared_type is not None and r.name == node_to_find.name:
-                # treat declarations of block-level locals (which require a type!) like defs. TODO: There may be places in codegen that improperly ignore such a def (expecting an assignment) e.g. typed list declarations
-                return r, r
-
-        # call = parent.parent
-        # assert isinstance(call, Call)
-        # for a in call.args:
-        #     if a.name == node_to_find.name:
-        #         return a, call
-
-        return _find_def(parent.parent, parent, node_to_find)
-    elif isinstance(parent, Call):
-        if parent.func.name in ["def", "lambda"]:
-            for callarg in parent.args:
-                if callarg.name == node_to_find.name and callarg is not node_to_find:
-                    return callarg, parent
-                elif isinstance(callarg, NamedParameter) and callarg.lhs.name == node_to_find.name:
-                    return callarg.lhs, callarg
-        elif parent.func.name == "class":
-            class_name = parent.args[0]
-            if isinstance(class_name, Identifier) and class_name.name == node_to_find.name and class_name is not node_to_find:
-                # assert 0
-                print("why was this commented out?")
-                return class_name, parent
-        elif parent.func.name == "for":
-            instmt = parent.args[0]
-            if isinstance(instmt, BinOp) and instmt.func == "in":
-                itervar = instmt.args[0]
-                if isinstance(itervar, Identifier) and itervar.name == node_to_find.name:
-                    return itervar, parent
-            else:
-                assert 0 # remove when func str fixed
-
-        return _find_def(parent.parent, parent, node_to_find)
-    elif isinstance(parent, Assign) and parent.lhs.name == node_to_find.name and parent.lhs is not node_to_find:
-        return parent.lhs, parent
-    else:
-        return _find_def(parent.parent, parent, node_to_find)
-
-
-# find closest preceding def
-def find_def(node):
-    if not isinstance(node, Node):
-        return None
-    res = _find_def(node.parent, node, node)
-    return res
-
-
 def is_return(node):
     return ((isinstance(node, TypeOp) and node.lhs.name == "return") or (
             isinstance(node, Identifier) and node.name == "return") or (
@@ -383,23 +281,6 @@ def is_return(node):
 # (NOTE: requires prior replacing of UnOp return)
 def is_void_return(node):
     return not isinstance(node, TypeOp) and is_return(node) and not (isinstance(node.parent, TypeOp) and node.parent.lhs is node)
-
-
-def find_defs(node):
-
-    found = find_def(node)
-
-    if found is not None:
-        yield found
-
-        found_node, found_context = found
-        if isinstance(found_context, Assign):
-            if isinstance(found_context.rhs, Identifier):
-                yield from find_defs(found_context.rhs)
-            else:
-                print("stopping at complex definition")
-        else:
-            print("are we handling this correctly? (def args)", found_node, found_context)
 
 
 # find closest following use
@@ -669,10 +550,9 @@ def semantic_analysis(expr: Module):
         if not isinstance(node, Node):
             return
 
-        x = find_def(node)
-        x2 = node.scope.find_defs(node)
+        x = node.scope.find_defs(node)
         if x:
-            print("found def", node, x, x2)
+            print("found def", node, x)
         else:
             pass
             # print("no def for", node)
@@ -680,12 +560,9 @@ def semantic_analysis(expr: Module):
         for u in find_uses(node):
             print("found use ", node, u, u.parent, u.parent.parent)
 
-        d = list(find_defs(node))
-        d2 = list(node.scope.find_defs(node))
+        d = list(node.scope.find_defs(node))
         if d:
-            print("defs list ", node, d, d2)
-        if d != d2:
-            print("maybe a prob")
+            print("defs list ", node, d)
         for a in node.args:
             defs(a)
             defs(a.func)
@@ -693,5 +570,3 @@ def semantic_analysis(expr: Module):
     defs(expr)
 
     return expr
-
-

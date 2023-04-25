@@ -211,11 +211,11 @@ def call_parse_action(s, l, t):
         scope_op, scope_op_rhs = scope_resolve_part
 
         if scope_op == ".":
-            return AttributeAccess(func=".", args=[call, scope_op_rhs], source=source)
+            return AttributeAccess(func=scope_op, args=[call, scope_op_rhs], source=source)
         elif scope_op == "->":
-            return ArrowOp(args=[call, scope_op_rhs], source=source)
+            return ArrowOp(func=scope_op, args=[call, scope_op_rhs], source=source)
         elif scope_op == "::":
-            return ScopeResolution(func="::", args=[call, scope_op_rhs], source=source)
+            return ScopeResolution(func=scope_op, args=[call, scope_op_rhs], source=source)
 
     return call
 
