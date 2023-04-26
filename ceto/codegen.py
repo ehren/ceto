@@ -203,6 +203,14 @@ def is_super_init(call):
         AttributeAccess) and call.func.lhs.name == "super" and call.func.rhs.name == "init"
 
 
+def is_self_field_access(node):
+    if isinstance(node, AttributeAccess) and node.lhs.name == "self":
+        if not isinstance(node.rhs, Identifier):
+            raise CodeGenError("unexpected attribute access", node)
+        return True
+    return False
+
+
 def codegen_class(node : Call, cx):
     assert isinstance(node, Call)
     name = node.args[0]
@@ -322,11 +330,8 @@ def codegen_class(node : Call, cx):
         for stmt in constructor_block.args:
 
             # handle self.whatever = something
-            if isinstance(stmt, Assign) and isinstance(stmt.lhs,
-                                                       AttributeAccess) and stmt.lhs.lhs.name == "self":
+            if isinstance(stmt, Assign) and is_self_field_access(stmt.lhs):
                 field = stmt.lhs.rhs
-                if not isinstance(field, Identifier):
-                    raise CodeGenError("unexpected field", field)
                 initializerlist_assignments.append((field, stmt.rhs))
                 constructor_initialized_field_names.append(field.name)
                 params_initializing_fields.extend(
@@ -346,13 +351,8 @@ def codegen_class(node : Call, cx):
         if any(find_all(constructor_block, is_super_init)):
             raise CodeGenError("A call to super.init must occur in the 'initializer list' (that is, any statements before super.init must be of the form self.field = param")
 
-        initializer_list_items = [
-            codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")"
-            for field, rhs in initializerlist_assignments]
-
-        initializer_list = ", ".join(initializer_list_items)
-
         init_params = []
+        init_param_type_from_name = {}
 
         for arg in constructor_args:
             if not isinstance(arg, Assign):
@@ -360,6 +360,13 @@ def codegen_class(node : Call, cx):
 
             if typed_arg := codegen_typed_def_param(arg, initcx):
                 init_params.append(typed_arg)
+                if isinstance(arg, (Assign, NamedParameter)):
+                    assert arg.lhs.name
+                    init_param_type_from_name[arg.lhs.name] = typed_arg
+                else:
+                    assert isinstance(arg, Identifier)
+                    init_param_type_from_name[arg.name] = typed_arg
+
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
                 for param, field_name in params_initializing_fields:
@@ -368,19 +375,52 @@ def codegen_class(node : Call, cx):
                         if isinstance(field_type, Node):
                             # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
                             arg.declared_type = field_type
-                            typed_arg = codegen_typed_def_param(arg, initcx)
+                            typed_arg = codegen_typed_def_param(arg, initcx)  # this might add const& etc
                             assert len(typed_arg) > 0
                             init_params.append(typed_arg)
+                            unadorned_type = codegen_type(arg, arg.declared_type, inner_cx)
+                            init_param_type_from_name[arg.name] = unadorned_type
                         else:
                             # generic field case
                             init_params.append("const " + field_type + "& " + arg.name)
+                            init_param_type_from_name[arg.name] = field_type
             else:
                 raise CodeGenError("unexpected constructor arg", b)
 
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(
             init_params) + ")"
+
+        initializer_list_items = [
+            codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")"
+            for field, rhs in initializerlist_assignments]
+
+        if super_init_call is not None:
+            if len(super_init_call.args) == 0:
+                raise CodeGenError("no explicit calls to super.init() without args (just let c++ do this implicitly)")
+
+            super_init_fake_args = []
+
+            for arg in super_init_call.args:
+                if isinstance(arg, Identifier) and (type_str := init_param_type_from_name[arg.name]):
+                    # forward the type of the constructor arg to the base class constructor call
+                    super_init_fake_args += "std::declval<" + type_str +  ">()"
+                elif is_self_field_access(arg):  # this would fail compile in c++ too
+                    raise CodeGenError("no reads from self in super.init call", arg)
+                else:
+                    super_init_fake_args += codegen_node(arg, inner_cx)
+
+            super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
+
+            # here CTAD takes care of the real type of the base class (in case the base class is a template)
+            # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
+            super_init_str = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + ")) (" + ", ".join(super_init_args) + ")"
+            initializer_list_items += super_init_str
+
+        initializer_list = ", ".join(initializer_list_items)
+
         if initializer_list:
             cpp += " : " + initializer_list
+
         cpp += "{\n"
         cpp += codegen_function_body(constructor_node, constructor_block, initcx)
         cpp += inner_indt + "}\n\n"
