@@ -550,7 +550,7 @@ def semantic_analysis(expr: Module):
         if not isinstance(node, Node):
             return
 
-        x = node.scope.find_defs(node)
+        x = node.scope.find_def(node)
         if x:
             print("found def", node, x)
         else:

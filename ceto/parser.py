@@ -164,7 +164,7 @@ def make_parse_action_string_literal(clazz):
 
 def make_parse_action_list_literal(clazz):
     def parse(s, l, t):
-        func = None
+        func = clazz.__name__
         args = t.as_list()
         source = s, l
         return clazz(func, args, source)
@@ -240,8 +240,8 @@ def _build_grammar():
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(parse_block)
 
-    ack = pp.Suppress("\x06")
-    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(ack)).set_parse_action(parse_template)
+    template_disambig_char = pp.Suppress("\x06")
+    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(template_disambig_char)).set_parse_action(parse_template)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
@@ -259,15 +259,17 @@ def _build_grammar():
 
     call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
 
-    dot = pp.Literal(".")
-    arrow_op = pp.Literal("->")
+    dotop = pp.Literal(".")
+    arrowop = pp.Literal("->")
+    scopeop = pp.Literal("::")
+    dotop_or_arrowop = dotop|arrowop
 
     scope_resolution <<= pp.infix_notation(atom|(pp.Suppress("(") + infix_expr + pp.Suppress(")")), [
-            (pp.Literal("::"), 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
-            (dot|arrow_op, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
+            (scopeop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
+            (dotop_or_arrowop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
     ])
 
-    function_call <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((pp.Literal("::")|pp.Literal(".")|pp.Literal("->")) + scope_resolution))))).set_parse_action(parse_call)
+    function_call <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(parse_call)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")

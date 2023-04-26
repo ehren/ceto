@@ -113,22 +113,27 @@ class IntegerLiteral(Node):
         return str(self.integer)
 
 
-class ListLiteral(Node):
+class _ListLike(Node):
+    def __repr__(self):
+        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+
+
+class ListLiteral(_ListLike):
     pass
 
 
-class TupleLiteral(Node):
+class TupleLiteral(_ListLike):
     pass
 
 
-class BracedLiteral(Node):
+class BracedLiteral(_ListLike):
     pass
 
 
-class Block(Node):
+class Block(_ListLike):
 
     def __init__(self, args):
-        super().__init__(None, args, None)
+        super().__init__(func=self.__class__.__name__, args=args, source=None)
 
 
 class Module(Block):
