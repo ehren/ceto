@@ -201,9 +201,21 @@ def is_comment(node):
 def codegen_class(node : Call, cx):
     assert isinstance(node, Call)
     name = node.args[0]
-    assert isinstance(name, Identifier)
+    inherits = None
+
+    if isinstance(name, Call):
+        if len(name.args) != 1:
+            if len(name.args) == 0:
+                raise CodeGenError("empty inherits list", name)
+            raise CodeGenError("Multiple inheritance is not supported (and we're leaning towards not ever using the 'inheritance list' for interface conformance etc either)", name)
+        inherits = node.args[0]
+        name = node.func
+
+    if not isinstance(name, Identifier):
+        raise CodeGenError("bad class first arg", name)
     block = node.args[-1]
-    assert isinstance(block, Block)
+    if not isinstance(block, Block):
+        raise CodeGenError("class missing block (TODO forward declarations)", node)
 
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
