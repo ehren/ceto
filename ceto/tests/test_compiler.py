@@ -20,6 +20,25 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_super_init():
+    c = compile(r"""
+class (Generic:
+    x 
+)
+
+class (GenericChild(Generic):
+    def (init, x: int:   # TODO a generic constructor param should auto create a class template param...
+        super.init(x)
+    )
+)
+
+def (main:
+    f = Generic(5)
+    f2 = GenericChild(5)
+)
+    """)
+
+
 def test_dont_capture_lambda_args():
     c = compile(r"""
 def (main:

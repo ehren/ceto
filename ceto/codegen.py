@@ -362,10 +362,10 @@ def codegen_class(node : Call, cx):
                 init_params.append(typed_arg)
                 if isinstance(arg, (Assign, NamedParameter)):
                     assert arg.lhs.name
-                    init_param_type_from_name[arg.lhs.name] = typed_arg
+                    init_param_type_from_name[arg.lhs.name] = typed_arg  # TODO this is wrong
                 else:
                     assert isinstance(arg, Identifier)
-                    init_param_type_from_name[arg.name] = typed_arg
+                    init_param_type_from_name[arg.name] = typed_arg.split(" ")[0]  # TODO this is ugly
 
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
