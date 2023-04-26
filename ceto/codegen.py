@@ -317,6 +317,8 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
+    base_class_type : str = inherits.name if inherits is not None else None
+
     if constructor_node is not None:
         constructor_args = constructor_node.args[1:-1]
         constructor_block = constructor_node.args[-1]
@@ -365,7 +367,7 @@ def codegen_class(node : Call, cx):
                     init_param_type_from_name[arg.lhs.name] = typed_arg  # TODO this is wrong
                 else:
                     assert isinstance(arg, Identifier)
-                    init_param_type_from_name[arg.name] = typed_arg.split(" ")[0]  # TODO this is ugly
+                    init_param_type_from_name[arg.name] = typed_arg.split(" ")[0]  # TODO this is ugly/wrong
 
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
@@ -413,13 +415,14 @@ def codegen_class(node : Call, cx):
 
             # here CTAD takes care of the real type of the base class (in case the base class is a template)
             # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
-            super_init_str = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + ")) (" + ", ".join(super_init_args) + ")"
+            base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
+            super_init_str = base_class_type + " (" + ", ".join(super_init_args) + ")"
             initializer_list_items.append(super_init_str)
 
         initializer_list = ", ".join(initializer_list_items)
 
         if initializer_list:
-            cpp += " : " + initializer_list
+            cpp += " : " + initializer_list + " "
 
         cpp += "{\n"
         cpp += codegen_function_body(constructor_node, constructor_block, initcx)
@@ -453,6 +456,8 @@ def codegen_class(node : Call, cx):
     cpp += indt + "};\n\n"
 
     default_inherits = ["public " + i for i in local_interfaces]
+    if base_class_type is not None:
+        default_inherits.append("public " + base_class_type)
 
     if classdef.is_unique:
         default_inherits += ["ceto::object"]

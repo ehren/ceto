@@ -35,8 +35,10 @@ class (GenericChild(Generic):
 def (main:
     f = Generic(5)
     f2 = GenericChild(5)
+    std.cout << f.x << f2.x
 )
     """)
+    assert c == "55"
 
 
 def test_dont_capture_lambda_args():
