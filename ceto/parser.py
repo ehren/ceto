@@ -321,9 +321,9 @@ def _build_grammar():
 grammar = _build_grammar()
 
 
-def do_parse(source: str):
-    # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
+def _parse(source: str):
 
+    # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
     for p in patterns:
@@ -361,33 +361,41 @@ def parse(source: str):
     preprocessed = preprocessed.getvalue()
 
     try:
-        res = do_parse(preprocessed)
+        res = _parse(preprocessed)
     except pp.ParseException as orig:
+        # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
+        # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+
         sio.seek(0)
         reparse, replacements, subblocks = preprocess(sio, reparse=True)
         reparse = reparse.getvalue()
 
         try:
-            do_parse(reparse)
+            _parse(reparse)
         except pp.ParseException:
+
+            # if a control structure defining a block (aka call with block arg)
+            # is responsible for the error find the first erroring subblock:
 
             for (lineno, colno), block in subblocks:
                 # dedented = dedent(block)
 
                 try:
                     # do_parse(dedented)
-                    do_parse(block)
+                    _parse(block)
                 except pp.ParseException as blockerror:
                     print("blockerr")
                     blockerror._ceto_col = blockerror.col# + colno
                     blockerror._ceto_lineno =   blockerror.lineno -  1
                     raise blockerror
 
+        # otherwise if a single line (that doesn't begin an indented block) fails to parse:
+
         for dummy, real in replacements.items():
             # dedented = dedent(real)
             try:
                 # do_parse(dedented)
-                do_parse(real)
+                _parse(real)
             except pp.ParseException as lineerror:
                 print("lineerr")
                 dummy = dummy[len('ceto_priv_dummy'):-1]
