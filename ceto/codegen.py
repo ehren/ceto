@@ -221,8 +221,8 @@ def codegen_class(node : Call, cx):
             if len(name.args) == 0:
                 raise CodeGenError("empty inherits list", name)
             raise CodeGenError("Multiple inheritance is not supported (and we're leaning towards not ever using the 'inheritance list' for interface conformance etc either)", name)
-        inherits = node.args[0]
-        name = node.func
+        inherits = name.args[0]
+        name = name.func
 
     if not isinstance(name, Identifier):
         raise CodeGenError("bad class first arg", name)
@@ -401,20 +401,20 @@ def codegen_class(node : Call, cx):
             super_init_fake_args = []
 
             for arg in super_init_call.args:
-                if isinstance(arg, Identifier) and (type_str := init_param_type_from_name[arg.name]):
+                if isinstance(arg, Identifier) and arg.name in init_param_type_from_name:
                     # forward the type of the constructor arg to the base class constructor call
-                    super_init_fake_args += "std::declval<" + type_str +  ">()"
+                    super_init_fake_args.append("std::declval<" + init_param_type_from_name[arg.name] +  ">()")
                 elif is_self_field_access(arg):  # this would fail compile in c++ too
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
-                    super_init_fake_args += codegen_node(arg, inner_cx)
+                    super_init_fake_args.append(codegen_node(arg, inner_cx))
 
             super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
 
             # here CTAD takes care of the real type of the base class (in case the base class is a template)
             # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
             super_init_str = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + ")) (" + ", ".join(super_init_args) + ")"
-            initializer_list_items += super_init_str
+            initializer_list_items.append(super_init_str)
 
         initializer_list = ", ".join(initializer_list_items)
 
