@@ -198,6 +198,11 @@ def is_comment(node):
             isinstance(node.rhs, Call) and node.rhs.func.name == "comment")
 
 
+def is_super_init(call):
+    return isinstance(call, Call) and isinstance(call.func,
+        AttributeAccess) and call.func.lhs.name == "super" and call.func.rhs.name == "init"
+
+
 def codegen_class(node : Call, cx):
     assert isinstance(node, Call)
     name = node.args[0]
@@ -309,7 +314,7 @@ def codegen_class(node : Call, cx):
         constructor_block = constructor_node.args[-1]
         assert isinstance(constructor_block, Block)
         initializerlist_assignments = []
-        initializerlist_super_calls = []
+        super_init_call = None
         params_initializing_fields = []
         initcx = inner_cx.enter_scope()
         # initcx.in_function_param_list = True  # TODO remove this field
@@ -327,16 +332,19 @@ def codegen_class(node : Call, cx):
                 params_initializing_fields.extend(
                     (a, field.name) for a in constructor_args if
                     a.name == stmt.rhs.name)
-            elif isinstance(stmt, Call) and isinstance(stmt.func,
-                                                       AttributeAccess) and stmt.func.lhs.name == "super" and stmt.func.rhs.name == "init":
-                initializerlist_super_calls.append(stmt)
+            elif is_super_init(stmt):
+                if super_init_call is not None:
+                    raise CodeGenError("only one call to super.init allowed", stmt)
+                super_init_call = stmt
             else:
                 # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
                 break
 
         constructor_block.args = constructor_block.args[
-                                 len(initializerlist_assignments) + len(
-                                     initializerlist_super_calls):]
+                                 len(initializerlist_assignments) + int(super_init_call is not None):]
+
+        if any(find_all(constructor_block, is_super_init)):
+            raise CodeGenError("A call to super.init must occur in the 'initializer list' (that is, any statements before super.init must be of the form self.field = param")
 
         initializer_list_items = [
             codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")"
