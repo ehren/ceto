@@ -418,6 +418,8 @@ def codegen_class(node : Call, cx):
                 elif is_self_field_access(arg):  # this would fail compile in c++ too
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
+                    # this is silly:
+                    # super_init_fake_args.append("std::declval<std::remove_cvref_t<decltype(" + codegen_node(arg, inner_cx) + ")>>()")
                     super_init_fake_args.append(codegen_node(arg, inner_cx))
 
             super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
