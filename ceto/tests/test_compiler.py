@@ -20,23 +20,6 @@ def raises(func, exc=None):
         assert 0
 
 
-def test_multiple_assign():
-    raises(lambda: compile(r"""
-def (main:
-    x = y = 0  # error in c++ but TODO should error early instead of generating "auto x = auto y = 0"
-)
-    """))
-
-    c = compile(r"""
-def (main:
-    y = 1
-    x = y = 0
-    std.cout << x << y
-)
-    """)
-    assert c == "00"
-
-
 def test_super_init():
     c = compile(r"""
 class (Generic:
@@ -49,13 +32,22 @@ class (GenericChild(Generic):
     )
 )
 
+class (GenericChild2(Generic):
+    y
+    def (init, p:
+        self.y = p
+        super.init(p)
+    )
+)
+
 def (main:
     f = Generic(5)
     f2 = GenericChild(5)
-    std.cout << f.x << f2.x
+    f3 = GenericChild2(5)
+    std.cout << f.x << f2.x << f3.x
 )
     """)
-    assert c == "55"
+    assert c == "555"
 
 
 def test_dont_capture_lambda_args():
@@ -1644,6 +1636,23 @@ def (main:
     """)
 
     assert c == "0000000000000000000000000000000000000000000000000000000000"
+
+
+def test_multiple_assign():
+    raises(lambda: compile(r"""
+def (main:
+    x = y = 0  # error in c++ but TODO should error early instead of generating "auto x = auto y = 0"
+)
+    """))
+
+    c = compile(r"""
+def (main:
+    y = 1
+    x = y = 0
+    std.cout << x << y
+)
+    """)
+    assert c == "00"
 
 
 def test_compound_comparison():

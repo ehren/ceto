@@ -360,14 +360,15 @@ def codegen_class(node : Call, cx):
             if not isinstance(arg, Assign):
                 should_disable_default_constructor = True
 
-            if typed_arg := codegen_typed_def_param(arg, initcx):
-                init_params.append(typed_arg)
+            if typed_arg_tuple := _codegen_typed_def_param_as_tuple(arg, initcx):
+                typed_arg_str_lhs, typed_arg_str_rhs = typed_arg_tuple
+                init_params.append(typed_arg_str_lhs + " " + typed_arg_str_rhs)
                 if isinstance(arg, (Assign, NamedParameter)):
                     assert arg.lhs.name
-                    init_param_type_from_name[arg.lhs.name] = typed_arg  # TODO this is wrong
+                    init_param_type_from_name[arg.lhs.name] = typed_arg_str_lhs
                 else:
                     assert isinstance(arg, Identifier)
-                    init_param_type_from_name[arg.name] = typed_arg.split(" ")[0]  # TODO this is ugly/wrong
+                    init_param_type_from_name[arg.name] = typed_arg_str_lhs
 
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
@@ -377,11 +378,9 @@ def codegen_class(node : Call, cx):
                         if isinstance(field_type, Node):
                             # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
                             arg.declared_type = field_type
-                            typed_arg = codegen_typed_def_param(arg, initcx)  # this might add const& etc
-                            assert len(typed_arg) > 0
-                            init_params.append(typed_arg)
-                            unadorned_type = codegen_type(arg, arg.declared_type, inner_cx)
-                            init_param_type_from_name[arg.name] = unadorned_type
+                            typed_arg_str_lhs, typed_arg_str_rhs = _codegen_typed_def_param_as_tuple(arg, initcx)  # this might add const& etc
+                            init_params.append(typed_arg_str_lhs + " " + typed_arg_str_rhs)
+                            init_param_type_from_name[arg.name] = typed_arg_str_lhs
                         else:
                             # generic field case
                             init_params.append("const " + field_type + "& " + arg.name)
@@ -405,7 +404,8 @@ def codegen_class(node : Call, cx):
             for arg in super_init_call.args:
                 if isinstance(arg, Identifier) and arg.name in init_param_type_from_name:
                     # forward the type of the constructor arg to the base class constructor call
-                    super_init_fake_args.append("std::declval<" + init_param_type_from_name[arg.name] +  ">()")
+                    # TODO we could be smarter about not adding const ref to the types in the below map in the first place (that is make _codegen_typed_def_param_as_tuple return the non const ref unadorned type too)
+                    super_init_fake_args.append("std::declval<std::remove_cvref_t<" + init_param_type_from_name[arg.name] +  ">>()")
                 elif is_self_field_access(arg):  # this would fail compile in c++ too
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
@@ -417,7 +417,7 @@ def codegen_class(node : Call, cx):
             # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
             base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
             super_init_str = base_class_type + " (" + ", ".join(super_init_args) + ")"
-            initializer_list_items.append(super_init_str)
+            initializer_list_items.insert(0, super_init_str)  # TODO we should preserve the user defined order
 
         initializer_list = ", ".join(initializer_list_items)
 
@@ -573,7 +573,15 @@ def _should_add_const_ref_to_typed_param(param, cx):
     ListLiteral) or param.declared_type.name == "string" or (isinstance(param.declared_type,
     (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string")
 
+
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
+    t = _codegen_typed_def_param_as_tuple(arg, cx)
+    if t:
+        return " ".join(t)
+    return None
+
+def _codegen_typed_def_param_as_tuple(arg, cx):
+
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
 
@@ -585,7 +593,7 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                 automatic_ref_part = "&"
 
                 # treat e.g. external C++ types verbatim
-            return automatic_const_part + codegen_type(arg, arg.declared_type, cx) + automatic_ref_part + " " + arg.name
+            return automatic_const_part + codegen_type(arg, arg.declared_type, cx) + automatic_ref_part, " " + arg.name
         else:
             # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
             # note precedence change making
@@ -610,11 +618,11 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                 automatic_const_part = "const "
                 automatic_ref_part = "&"
 
-            return automatic_const_part + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + automatic_ref_part + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+            return automatic_const_part + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + automatic_ref_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
 
         elif isinstance(arg.rhs, ListLiteral):
             if not arg.rhs.args:
-                return "const std::vector<" + vector_decltype_str(arg, cx) + ">&" + arg.lhs.name + " = {" + ", ".join( [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+                return "const std::vector<" + vector_decltype_str(arg, cx) + ">&", arg.lhs.name + " = {" + ", ".join( [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
             else:
                 # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
 
@@ -627,7 +635,7 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                     [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
 
                 # but it's now usable as a default argument:
-                return "const decltype(" + vector_part + ")& " + arg.lhs.name + " = " + vector_part
+                return "const decltype(" + vector_part + ")& ", arg.lhs.name + " = " + vector_part
         # elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
         #     pass
         else:
@@ -639,7 +647,7 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                 make_shared = codegen_node(arg.rhs, cx)
                 # (we can also be direct with the decltype addition as well though decltype_str works now)
                 # TODO needs tests
-                return "const decltype(" + make_shared + ") &" + arg.lhs.name + " = " + make_shared
+                return "const decltype(" + make_shared + ") &", arg.lhs.name + " = " + make_shared
             else:
                 # untyped default value
 
@@ -650,7 +658,7 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                     automatic_ref_part = "& "
 
                 # TODO - used to call _decltype_str here unnecessarilly (can simplify that function more)
-                return automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+                return automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
         # else:
             #     raise SemanticAnalysisError(
             #         "Non identifier left hand side in def arg", arg)
@@ -659,8 +667,9 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     return None
 
 
-def codegen_function_body(defnode, block, cx):
+def codegen_function_body(defnode : Call, block, cx):
     # methods or functions only (not lambdas!)
+    assert defnode.func.name == "def"
 
     # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
     need_self = False
@@ -1010,7 +1019,7 @@ def _decltype_str(node, cx):
         if not isinstance(instmt, BinOp) and instmt.func == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
-            return True, "std::declval<typename std::remove_reference_t<std::remove_const_t<" + decltype_str(instmt.rhs, cx) + ">>::value_type>()"
+            return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"
 
     else:
         return True, codegen_node(last_ident, cx)
