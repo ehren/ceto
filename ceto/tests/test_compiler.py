@@ -170,6 +170,9 @@ def (main:
     """)
     assert c == "52"
 
+
+def test_init_with_generic_params2():
+
     c = compile(r"""
 class (Foo:
     x : int

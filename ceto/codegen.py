@@ -559,25 +559,6 @@ def interface_method_declaration_str(defnode: Call, cx):
     return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
 
 
-def autoconst(type_str: str):
-    # return f"std::conditional_t<std::is_const_v<{type_str}>, {type_str}, const {type_str}>"
-    # return "std::add_const_t<" + type_str + ">"
-    # this is a nice idea that works with the testsuite right now but requires
-    # a new keyword for e.g. taking a param by value or non-const reference
-    # (disabling to lower mental overhead of 'unsafe' c++ integration code - 'safe' code should be fully generic or use the ourlang class/struct system anyway)
-    return type_str
-
-
-# def autoref(type_str: str):
-#     # suprisingly compiles with a few examples (note that type_str would also be a conditional_t)but ends up warning about "const qualifier on reference type has no effect"
-#     # return f"std::conditional_t<std::is_reference_v<{type_str}>, {type_str}, {type_str}&>"
-#     # seem promising but not going to work
-#     # return "std::add_lvalue_reference_t<" + type_str + ">"
-#     # return f"std::conditional_t<is_smart_pointer<{type_str}>::value && std::is_base_of_v<{type_str}::element_type, object>, {type_str}&, {type_str}>"
-#     return type_str  # can't do this for arbitrary types (even if something like the above works, going to make error messages sooo much worse.
-#     # TODO if transpiler detects a class type e.g. Foo, add ref, otherwise not
-
-
 def type_inorder_traversal(typenode: Node, func):
     if isinstance(typenode, TypeOp):
         if res := type_inorder_traversal(typenode.Lhs, func) is not None:
@@ -587,13 +568,24 @@ def type_inorder_traversal(typenode: Node, func):
         return func(typenode)
 
 
+def _should_add_const_ref_to_typed_param(param, cx):
+  return cx.lookup_class(param.declared_type) is not None or isinstance(param.declared_type,
+    ListLiteral) or param.declared_type.name == "string" or (isinstance(param.declared_type,
+    (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string")
+
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
-            if cx.lookup_class(arg.declared_type) is not None:
-                return "const " + codegen_type(arg, arg.declared_type, cx) + "& " + arg.name
-            else:
-                return autoconst(codegen_type(arg, arg.declared_type, cx)) + " " + arg.name
+
+            automatic_const_part = ""
+            automatic_ref_part = ""
+
+            if _should_add_const_ref_to_typed_param(arg, cx):
+                automatic_const_part = "const "
+                automatic_ref_part = "&"
+
+                # treat e.g. external C++ types verbatim
+            return automatic_const_part + codegen_type(arg, arg.declared_type, cx) + automatic_ref_part + " " + arg.name
         else:
             # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
             # note precedence change making
@@ -610,13 +602,15 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                 "Non identifier left hand side in def arg", arg)
 
         if arg.lhs.declared_type is not None:
-            # params.append(autoconst(autoref(codegen_node(arg.lhs.declared_type))) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx))
-            if cx.lookup_class(arg.lhs.declared_type) is not None:
-                # this only succeeds for literal Foo (not const: Foo: ref)
-                # (so no possibility of double adding 'const' - plus can already create a by-value param of class type using std::remove_const)
-                return "const " + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + "& = " + codegen_node( arg.rhs, cx)
-            else:
-                return codegen_type(arg.lhs, arg.lhs.declared_type, cx) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+
+            automatic_const_part = ""
+            automatic_ref_part = ""
+
+            if _should_add_const_ref_to_typed_param(arg.lhs, cx):
+                automatic_const_part = "const "
+                automatic_ref_part = "&"
+
+            return automatic_const_part + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + automatic_ref_part + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
 
         elif isinstance(arg.rhs, ListLiteral):
             if not arg.rhs.args:
@@ -644,13 +638,25 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
                 # (though std::add_const_t works here, we can be direct)
                 make_shared = codegen_node(arg.rhs, cx)
                 # (we can also be direct with the decltype addition as well though decltype_str works now)
-                return "const decltype(" + make_shared + ") " + arg.lhs.name + "& = " + make_shared
+                # TODO needs tests
+                return "const decltype(" + make_shared + ") &" + arg.lhs.name + " = " + make_shared
             else:
-                return autoconst(decltype_str(arg.rhs, cx)) + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
-            # else:
+                # untyped default value
+
+                automatic_const_part = ""
+                automatic_ref_part = ""
+                if isinstance(arg.rhs, (ListLiteral, StringLiteral)):
+                    automatic_const_part = "const "
+                    automatic_ref_part = "& "
+
+                # TODO - used to call _decltype_str here unnecessarilly (can simplify that function more)
+                return automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part + arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+        # else:
             #     raise SemanticAnalysisError(
             #         "Non identifier left hand side in def arg", arg)
             #     # params.append("const " + decltype_str(arg.rhs, cx) + "& " + codegen_node(arg.lhs, cx) + " = " + codegen_node(arg.rhs, cx))
+
+    return None
 
 
 def codegen_function_body(defnode, block, cx):
