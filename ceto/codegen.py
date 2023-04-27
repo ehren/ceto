@@ -43,7 +43,7 @@ counter = 0
 def gensym(prefix=None):
     global counter
     counter += 1
-    pre = "_langsym_"
+    pre = "_ceto_private_"
     if prefix is not None:
         pre += prefix
     return pre + str(counter)
@@ -372,9 +372,12 @@ def codegen_class(node : Call, cx):
 
             elif isinstance(arg, Identifier):
                 # generic constructor arg:
+
+                found_type = False
                 for param, field_name in params_initializing_fields:
                     if arg is param and field_name in field_types:
                         field_type = field_types[field_name]
+                        found_type = True
                         if isinstance(field_type, Node):
                             # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
                             arg.declared_type = field_type
@@ -385,6 +388,12 @@ def codegen_class(node : Call, cx):
                             # generic field case
                             init_params.append("const " + field_type + "& " + arg.name)
                             init_param_type_from_name[arg.name] = field_type
+
+                if not found_type:
+                    t = gensym("C")
+                    typenames.append(t)
+                    init_params.append("const " + t + "& " + arg.name)
+                    init_param_type_from_name[arg.name] = t
             else:
                 raise CodeGenError("unexpected constructor arg", b)
 

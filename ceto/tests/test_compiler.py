@@ -20,14 +20,37 @@ def raises(func, exc=None):
         assert 0
 
 
-def test_super_init():
+
+
+def test_super_init_fully_generic():
     c = compile(r"""
 class (Generic:
-    x 
+    x
 )
 
 class (GenericChild(Generic):
-    def (init, x: int:   # TODO a generic constructor param should auto create a class template param...
+    def (init, x:
+        super.init(x)
+    )
+)
+
+def (main:
+    f = Generic(5)
+    f2 = GenericChild("A")
+    std.cout << f.x << f2.x
+)
+    """)
+    assert c == "5A"
+
+
+def test_super_init():
+    c = compile(r"""
+class (Generic:
+    x
+)
+
+class (GenericChild(Generic):
+    def (init, x: int:
         super.init(x)
     )
 )
