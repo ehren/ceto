@@ -1,12 +1,15 @@
+import typing
+
+
 class Node:
 
     def __init__(self, func, args, source):
-        self.name = None
-        self.parent = None
-        self.declared_type = None
-        self.func = func
-        self.args = args
-        self.source = source
+        self.name : str = None
+        self.parent : Node = None
+        self.declared_type : Node = None
+        self.func : Node = func
+        self.args : typing.List[Node] = args
+        self.source : typing.Tuple[str, int] = source
 
     def __repr__(self):
         return "{}({})({!r})".format(self.__class__.__name__,
@@ -73,7 +76,7 @@ class ArrayAccess(Node):
 
 class BracedCall(Node):
     def __repr__(self):
-        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
+        return str(self.func) + "{" + ",".join(map(str, self.args)) + "}"
 
 
 class Template(Node):

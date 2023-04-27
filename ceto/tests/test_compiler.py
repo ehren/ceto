@@ -20,6 +20,23 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_multiple_assign():
+    raises(lambda: compile(r"""
+def (main:
+    x = y = 0  # error in c++ but TODO should error early instead of generating "auto x = auto y = 0"
+)
+    """))
+
+    c = compile(r"""
+def (main:
+    y = 1
+    x = y = 0
+    std.cout << x << y
+)
+    """)
+    assert c == "00"
+
+
 def test_super_init():
     c = compile(r"""
 class (Generic:

@@ -190,6 +190,11 @@ def _build_grammar():
         pp.Suppress, "()[]{},"
     )
 
+    # don't pp.Suppress these to allow post-parse array vs call detection
+    lit_lparen, lit_rparen, lit_lbrack, lit_rbrack, lit_lbrace , lit_rbrace = map(
+        pp.Literal, "()[]{}"
+    )
+
     integer = pp.Regex(r"[+-]?\d+").setName("integer").set_parse_action(parse_integer_literal)
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
@@ -245,26 +250,18 @@ def _build_grammar():
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
-    # don't pp.Suppress these to allow post-parse array vs call detection
-    unsupressed_lparen = pp.Literal("(")
-    unsupressed_rparen = pp.Literal(")")
-    unsupressed_lbrack = pp.Literal("[")
-    unsupressed_rbrack = pp.Literal("]")
-    unsupressed_lbrace = pp.Literal("{")
-    unsupressed_rbrace = pp.Literal("}")
+    array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
 
-    array_access_args = unsupressed_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + unsupressed_rbrack
+    braced_args = lit_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrace
 
-    braced_args = unsupressed_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + unsupressed_rbrace
-
-    call_args = unsupressed_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + unsupressed_rparen
+    call_args = lit_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + lit_rparen
 
     dotop = pp.Literal(".")
     arrowop = pp.Literal("->")
     scopeop = pp.Literal("::")
     dotop_or_arrowop = dotop|arrowop
 
-    scope_resolution <<= pp.infix_notation(atom|(pp.Suppress("(") + infix_expr + pp.Suppress(")")), [
+    scope_resolution <<= pp.infix_notation(atom|(lparen + infix_expr + rparen), [
             (scopeop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
             (dotop_or_arrowop, 2, pp.opAssoc.LEFT, parse_left_associative_bin_op),
     ])
