@@ -257,7 +257,7 @@ def codegen_class(node : Call, cx):
         if isinstance(b, Call) and b.func.name == "def":
             methodname = b.args[0]
 
-            if (method_type := b.declared_type) is not None:
+            if (method_type := b.args[0].declared_type) is not None:
                 if isinstance(method_type, Call) and method_type.func.name == "interface" and len(method_type.args) == 1:
                     interface_type = method_type.args[0]
                     if methodname.name in ["init", "destruct"]:
@@ -552,7 +552,7 @@ def interface_method_declaration_str(defnode: Call, cx):
     assert isinstance(block, Block)
 
     params = []
-    return_type_node = name_node.declared_type
+    return_type_node = defnode.declared_type
 
     if return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
@@ -732,8 +732,7 @@ def codegen_def(defnode: Call, cx):
     args = defnode.args[1:]
     block = args.pop()
     assert isinstance(block, Block)
-    return_type_node = name_node.declared_type
-    specifier_node = defnode.declared_type
+    return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
         name = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
@@ -753,8 +752,8 @@ def codegen_def(defnode: Call, cx):
             raise CodeGenError("destructors can't take arguments")
         is_destructor = True
 
-    is_interface_method = isinstance(specifier_node, Call) and specifier_node.func.name == "interface"
-    has_non_trailing_return = specifier_node is not None and not is_interface_method
+    is_interface_method = isinstance(name_node.declared_type, Call) and name_node.declared_type.func.name == "interface"
+    has_non_trailing_return = name_node.declared_type is not None and not is_interface_method
 
     if is_interface_method and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
@@ -780,8 +779,8 @@ def codegen_def(defnode: Call, cx):
     inline = "inline "
     non_trailing_return = ""
     if has_non_trailing_return:
-        non_trailing_return_node = specifier_node
-        non_trailing_return = " " + codegen_type(defnode, non_trailing_return_node, cx) + " "
+        non_trailing_return_node = name_node.declared_type
+        non_trailing_return = " " + codegen_type(name_node, non_trailing_return_node, cx) + " "
         def is_template_test(expr):
             return isinstance(expr, Template) and expr.func.name == "template"
         if list(find_all(non_trailing_return_node, test=is_template_test)):
@@ -810,7 +809,7 @@ def codegen_def(defnode: Call, cx):
 
     if return_type_node is not None:
         # return_type = codegen_type(name_node, name_node.declared_type)
-        return_type = codegen_type(name_node, return_type_node, cx)
+        return_type = codegen_type(defnode, return_type_node, cx)
         if is_destructor:
             raise CodeGenError("destruct methods can't specifiy a return type")
     elif name == "main":
