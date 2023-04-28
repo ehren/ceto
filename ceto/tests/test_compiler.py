@@ -25,10 +25,22 @@ def test_toy_ast():
 class (Node:
     func : Node
     args : [Node]
+    
+    # TODO "overridable" / "canoverride" / "yesoverride"? otherwise "final" by default
+    def (repr: virtual:
+        return "generic node with func '" + if (self.func: self.func.repr() else: "none") + "' and " + std.to_string(self.args.size()) + " args.\n"
+    ) : string
+    
+    # TODO "overridable" implies virtual destructor
 )
 
 class (Identifier(Node):
     name : string
+    
+    def (repr:
+        return "identifier node with name: " + self.name
+    ) : string
+    
     def (init, name:
         self.name = name
         # super.init(nullptr, std.vector<Node> {})  # awkward
@@ -43,11 +55,12 @@ def (main:
     std.cout << id.name
     args = [id] : Node
     node = Node(id, args)
-    isnull = node.args[0] == nullptr
-    std.cout << isnull
+    std.cout << (node.args[0] == nullptr)  # TODO do we have the precedence right here?
+    std.cout << "\n" << node.repr()
+    std.cout << node.args[0].repr()
 )
     """)
-    assert c == "a0"
+    assert c == "a0\ngeneric node with func 'identifier node with name: a' and 1 args.\nidentifier node with name: a"
 
 
 def test_init_generic():
