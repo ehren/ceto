@@ -20,6 +20,36 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_toy_ast():
+    c = compile(r"""
+class (Node:
+    func : Node
+    args : [Node]
+)
+
+class (Identifier(Node):
+    name : string
+    def (init, name:
+        self.name = name
+        # super.init(nullptr, std.vector<Node> {})  # awkward
+        # super.init(nullptr, {})  # confusing for non c++ programmers + not typesafe
+        super.init(nullptr, [] : Node)  # not that bad?
+        # super.init(nullptr, [])  # transpiler error. TODO maybe just print "[]" as "{}" as a final fallback? only as a param?
+    )
+)
+
+def (main:
+    id = Identifier("a")
+    std.cout << id.name
+    args = [id] : Node
+    node = Node(id, args)
+    isnull = node.args[0] == nullptr
+    std.cout << isnull
+)
+    """)
+    assert c == "a0"
+
+
 def test_init_generic():
     c = compile(r"""
 class (Generic:
