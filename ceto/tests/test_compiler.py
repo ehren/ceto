@@ -28,7 +28,11 @@ class (Node:
     
     # TODO "overridable" / "canoverride" / "yesoverride"? otherwise "final" by default
     def (repr: virtual:
-        return "generic node with func '" + if (self.func: self.func.repr() else: "none") + "' and " + std.to_string(self.args.size()) + " args.\n"
+        r = "generic node with func " + if (self.func: self.func.repr() else: "none") + " (" + std.to_string(self.args.size()) + " args.)\n"
+        for (a in self.args:
+            r = r + "arg: " + a.repr()
+        )
+        return r
     ) : string
     
     # TODO "overridable" implies virtual destructor
@@ -38,7 +42,7 @@ class (Identifier(Node):
     name : string
     
     def (repr:
-        return "identifier node with name: " + self.name
+        return "identifier node with name: " + self.name + "\n"
     ) : string
     
     def (init, name:
@@ -53,14 +57,23 @@ class (Identifier(Node):
 def (main:
     id = Identifier("a")
     std.cout << id.name
-    args = [id] : Node
+    id_node : Node = Identifier("a")  # TODO virtual destructor in Node if overridable or any method overridable
+    std.cout << static_pointer_cast<std.type_identity_t<Identifier>::element_type>(id_node).name  # TODO 'asinstance' (dynamic_pointer_cast)
+    args = [id, id_node] : Node
     node = Node(id, args)
     std.cout << (node.args[0] == nullptr)  # TODO do we have the precedence right here?
     std.cout << "\n" << node.repr()
     std.cout << node.args[0].repr()
 )
     """)
-    assert c == "a0\ngeneric node with func 'identifier node with name: a' and 1 args.\nidentifier node with name: a"
+    assert c.strip() == """
+aa0
+generic node with func identifier node with name: a
+ (2 args.)
+arg: identifier node with name: a
+arg: identifier node with name: a
+identifier node with name: a
+    """.strip()
 
 
 def test_init_generic():
