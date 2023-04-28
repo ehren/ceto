@@ -117,8 +117,11 @@ class IntegerLiteral(Node):
 
 
 class _ListLike(Node):
+    def __init__(self, args, source):
+        super().__init__(func=None, args=args, source=source)
+
     def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+        return "{}({})".format(self.__class__.__name__, ",".join(map(str, self.args)))
 
 
 class ListLiteral(_ListLike):
@@ -134,15 +137,14 @@ class BracedLiteral(_ListLike):
 
 
 class Block(_ListLike):
-
-    def __init__(self, args):
-        super().__init__(func=self.__class__.__name__, args=args, source=None)
+    def __init__(self, args, source=None):
+        super().__init__(args, source)
 
 
 class Module(Block):
-    def __init__(self, args):
+    def __init__(self, args, source):
         self.has_main_function = False
-        super().__init__(args)
+        super().__init__(args, source)
 
 
 class RedundantParens(Node):

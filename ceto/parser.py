@@ -164,21 +164,22 @@ def make_parse_action_string_literal(clazz):
 
 def make_parse_action_list_literal(clazz):
     def parse(s, l, t):
-        func = clazz.__name__
         args = t.as_list()
         source = s, l
-        return clazz(func, args, source)
+        return clazz(args, source)
     return parse
 
 
 def parse_block(s, l, t):
     args = t.as_list()
-    return Block(args)
+    source = s, l
+    return Block(args, source)
 
 
 def parse_module(s, l, t):
     args = t.as_list()
-    return Module(args)
+    source = s, l
+    return Module(args, source)
 
 
 def _build_grammar():
