@@ -27,9 +27,12 @@ class (Node:
     args : [Node]
     
     # TODO "overridable" / "canoverride" / "yesoverride"? otherwise "final" by default
-    def (repr: virtual:
+    # def (repr: virtual:
+    #     return "generic node with func '" + if (self.func: self.func.repr() else: "none") + "' and " + std.to_string(self.args.size()) + " args.\n"
+    # ) : string
+    def (repr: string:
         return "generic node with func '" + if (self.func: self.func.repr() else: "none") + "' and " + std.to_string(self.args.size()) + " args.\n"
-    ) : string
+    ) : virtual
     
     # TODO "overridable" implies virtual destructor
 )
@@ -37,9 +40,9 @@ class (Node:
 class (Identifier(Node):
     name : string
     
-    def (repr:
+    def (repr: string:
         return "identifier node with name: " + self.name
-    ) : string
+    )
     
     def (init, name:
         self.name = name
@@ -446,9 +449,9 @@ def test_scope_resolution_call_target_and_static_method():
     c = compile(r"""
     
 class (Foo:
-    def (blah:static:
+    def (blah:
         std.cout << "blah"
-    )
+    ):static
 )
     
 def (main:
@@ -536,9 +539,9 @@ def test_more_dotdotdot():
 
 # no explicit template class support yet
 
-def (count: template<typename:dotdotdot:Types>:
+def (count:
     return (sizeof...)(Types)   # note extra parethese to "call" non-atom
-)
+):template<typename:dotdotdot:Types>
 
 def (main:
     std::cout << count<int, float, char>()
@@ -582,7 +585,7 @@ def (tprintf, format: const:char:ptr: # base function
     std.cout << format
 )
     
-def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive variadic function
+def (tprintf, # recursive variadic function
       format: const:char:ptr, 
        value: T, 
        Fargs: Targs:dotdotdot:
@@ -596,7 +599,7 @@ def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive varia
         std.cout << *format
         format = format + 1
     )
-)
+) : template<typename:T, typename:dotdotdot:Targs>
     
 def (main:
     tprintf(c"% world% %\n", c"Hello", c"!".unsafe_at(0), 123);
@@ -626,10 +629,9 @@ def test_forwarder():
 # )
 
 # ... as an op ('dotdotdot' necessary for current low precedence choice for '...'. maybe revisit this? note that 'ellipsis' is hard to spell):
-def (forwarder: template<typename:T, typename:dotdotdot:Args>,
-          args: Args:rref:dotdotdot:
+def (forwarder, args: Args:rref:dotdotdot:
     local: T = { std.forward<Args>(args)... }
-)
+) : template<typename:T, typename:dotdotdot:Args>
 
 def (main:
     # from article:  "forwarder<vector<int>> ( 1, 2, 3, 4 ); // ok because of {}
@@ -1037,18 +1039,17 @@ def (foo: template<typename:T>:requires:requires(x : T:
 def test_simple_explicit_template():
     c = compile(r"""
 
-def (foo: template<typename:T, typename:Y>, 
+def (foo: decltype(x*y),
        x: const:T:ref,
        y: const:Y:ref:
     return x + y
-) : decltype(x*y)
+) : template<typename:T, typename:Y>
 
-def (foo: template<typename:T, typename:Y>, 
+def (foo: std.enable_if_t<std.is_pointer_v<T>, decltype(x)>,
        x: T,
        y: const:Y:ref:
     return x + y
-) : std.enable_if_t<std.is_pointer_v<T>, decltype(x)>
-# ^ enable_if_t required here due to codegen trailing return type always style
+) : template<typename:T, typename:Y>
 
 def (main:
     std.cout << foo(1, 2)
@@ -1552,15 +1553,15 @@ def test_complicated_function_directives():
 
     c = compile(r"""
     
-def (foo:static, x, y:
+def (foo: int, x, y:
     return x + y
-) : int
+) : static
 
-def (foo2: extern:"C",
+def (foo2: int,
         x: int,
         y: int:
     return x + y
-) : int
+) : extern:"C"
     
 def (main:
     std.cout << foo(1, 2) << foo2(3, 4)
@@ -2174,13 +2175,13 @@ class (S:
         return std.static_pointer_cast<std.type_identity_t<S>::element_type>(shared_from_this())
     )
     
-    def (foo2:
+    def (foo2: S:  # no need for return type (but S correctly handled as shared_ptr<S> here)
         # alternately
         return std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>(shared_from_this())
         
         # no need for overparenthization any more (debatable if we need to parse this now that other template parse improvements have been made)
         return (std.static_pointer_cast<std.remove_reference<decltype(*this)>::type>)(shared_from_this())
-    ) : S  # no need for return type (but S correctly handled as shared_ptr<S> here)
+    ) 
 )
 
 def (main:
@@ -3455,10 +3456,11 @@ class (Blah1:
     # or explicit interface(A) although meaning of 'A' is clear from scope if already defined (not so much for auto-definition; could also add 'concept' although not sure worth it just to improve C++ compiler error messages)
     
     # We've switched to this which makes "which code uses the interfaces feature" possible via text search
-    def (foo:interface(A), x:A:
+    # (note return type location was switched again since these comments ^)
+    def (foo: int, x:A:
         printf("Blah1 foo\n")
         return x.huh()
-    ):int
+    ):interface(A)
     
     # Previous implementation. Totally inconcistent - how to return a shared_ptr<A> ? (that is an A in whatever-lang-called code). You can't! (or rather must hope auto return type deduction suffices!)
     # def (foo, x:A:
@@ -3466,25 +3468,25 @@ class (Blah1:
     #     x.huh()
     # ):int:A  # requires checking that A not in [const, ref, ptr] - not the only problem with this approach ^^ !
     
-    def (huh:interface(A):
+    def (huh:int:
         printf("huh 1\n")
         return 76
-    ):int
+    ):interface(A)
     
     # def (huh:A:
         
 )
 
 class (Blah2:
-    def (foo:interface(A), x:A:
+    def (foo:int, x:A:
         printf("Blah2 foo\n")
         return x.huh()
-    ):int
+    ):interface(A)
     
-    def (huh:interface(A):
+    def (huh:int:
         printf("huh 2\n")
         return 89
-    ):int
+    ):interface(A)
 )
 
 def (main:
