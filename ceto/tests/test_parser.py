@@ -1,6 +1,23 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_for_typed():
+    a = parse(r"""
+for (x : const:auto:ref in iter(iterable).moreiter()[idx].iter() and blah + 1:
+    pass
+) 
+for (x:int in iterable:
+    pass
+) 
+for ((x,y) : const:auto:ref in iterable:
+    pass
+) 
+    
+    """)
+
+
+
+
 def test_scope_resolve_call():
     a = parse(r"""
 # foo()()()

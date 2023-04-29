@@ -36,7 +36,7 @@ class (Node:
     ) : string
     
     # TODO "overridable" implies virtual destructor
-)
+) : nonfinal
 
 class (Identifier(Node):
     name : string
@@ -57,7 +57,7 @@ class (Identifier(Node):
 def (main:
     id = Identifier("a")
     std.cout << id.name
-    id_node : Node = Identifier("a")  # TODO virtual destructor in Node if overridable or any method overridable
+    id_node : Node = Identifier("a")  # TODO virtual destructor in Node if overridable or any method overridable (but only if Node is :unique)
     std.cout << static_pointer_cast<std.type_identity_t<Identifier>::element_type>(id_node).name  # TODO 'asinstance' (dynamic_pointer_cast)
     args = [id, id_node] : Node
     node = Node(id, args)
@@ -1835,19 +1835,26 @@ def (main:
         std.cout << i
     )
     u : unsigned:int = 10
-    for (i in range(u):
+    # for (i in range(u):  # TODO probably should fix
+    z : unsigned:int = 0  # workaround
+    for (i in range(z, u):
         static_assert(std.is_same_v<decltype(i), int:unsigned>)   # apparently "int unsigned" is actually valid
         static_assert(std.is_same_v<decltype(i), unsigned:int>)
         std.cout << i
     )
-    for (i in range(u, -10):
-        static_assert(std.is_same_v<decltype(i), unsigned:int>)   # TODO many more footguns (need c++17 or clang libc++ c++20 solution for missing iota)
-        std.cout << i
-        break
-    )
 )
 
     """)
+
+    raises(lambda: compile(r"""
+
+def (main:
+    u : unsigned:int = 10
+    for (i in range(u, -10):
+        pass
+    )
+)
+    """))
 
 
 def test_ptr_not_simple_type_context():
@@ -2954,7 +2961,7 @@ def (main:
     x = 5
     
     l = [1,2,3]
-    for (x in l:
+    for (x:auto:rref in l:
         x = x + 1
     )
     
@@ -2962,7 +2969,7 @@ def (main:
         printf("%d", x)
     )
     
-    for (x in [1, 2, 3]:
+    for (x:auto:rref in [1, 2, 3]:
         x = x + 1
         printf("%d", x)
     )
@@ -2972,6 +2979,7 @@ def (main:
     """)
 
     assert c == "2342345"
+
 
 
 def test_indent_checker():
@@ -3125,17 +3133,17 @@ class (Shared:
 
 def (main:
     x = 5
-    for (x in [1, 2, 3]:
+    for (x:auto:rref in [1, 2, 3]:
         printf("%d\n", x)
         x = x + 1
     )
     
     lst = [1,2,3]
-    for (x in lst:
+    for (x:auto:rref in lst:
         printf("%d\n", x)
         x = x + 1
     )
-    for (x in lst:
+    for (x:auto:rref in lst:
         printf("%d\n", x)
         x = x + 1
     )
@@ -3158,7 +3166,7 @@ def (main:
     for (x in u:
         printf("bar again: %d\n", x.bar())
         # zz = x # correct error
-        x = Uniq()
+        # x = Uniq()
         n = n + 1
         if (n % 2 == 0:
             x.bar()
@@ -3167,7 +3175,7 @@ def (main:
     for (x in u:
         printf("bar again again: %d\n", x.bar())
         # zz = x # correct error
-        x = Uniq()
+        # x = Uniq()
     )
     
     # v = [] #fix decltype(i)

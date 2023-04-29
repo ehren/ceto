@@ -139,22 +139,56 @@ def codegen_for(node, cx):
     assert isinstance(node, Call)
     if len(node.args) != 2:
         raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
-    instmt = node.args[0]
-    block = node.args[1]
+    arg, block = node.args
     if not isinstance(block, Block):
         raise CodeGenError("expected block as last arg of for", node)
+    type_str = None
+
+    if isinstance(arg, Identifier) and arg.declared_type is not None:
+        # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
+        # - does not work so well for:
+        # for (x: const:int in it:
+        #     pass
+        # )
+        # still, the syntax above even if "parsed wrong" beats the alternatives (odd for loop syntax with type at the end or tightening precedence of : or loosening precedence of 'in'). so we'll just accept that typed-fors are represented oddly in the ast
+        # (though maybe this should be done in an earlier pass like expanded if one-liners)
+        itertypes = type_node_to_list_of_types(arg.declared_type)
+        if not itertypes:
+            raise CodeGenError("unexpected typed for-loop first arg (not enough elements", node)
+        instmt = itertypes.pop()
+        lasttype = instmt.lhs
+        # we should really re-create or mutate here (wrong parent) but it's fine for now
+        itertypes.append(lasttype)
+        if not all(isinstance(i, Identifier) for i in itertypes):
+            raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
+
+        arg.declared_type = None  # this sort of thing is unfortunate (TODO remove .declared_type)
+        instmt.args[0] = arg
+        # TODO we should rebuild a TypeOp instead of copying the logic of codegen_type
+        first_type = codegen_type(arg, itertypes.pop(0), cx)
+        type_str = first_type + " ".join(codegen_type(arg, t, cx, _is_leading=False) for t in itertypes)
+    else:
+        instmt = node.args[0]
+
     if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
         raise CodeGenError("unexpected 1st argument to for", node)
+
     var = instmt.lhs
     iterable = instmt.rhs
     indt = cx.indent_str()
-    # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
+
     var_str = codegen_node(var, cx)
 
-    # TODO: remove 'range' as a builtin entirely (needs testsuite fixes)
+    # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
+
+    # TODO: remove 'range' as a builtin entirely? (needs testsuite fixes) or maybe still keep simple for x in range(x, y) as a built-in macro (but remove printing of std.views.iota in other contexts?)
     if isinstance(iterable, Call) and iterable.func.name == "range":
         if not 0 <= len(iterable.args) <= 2:
             raise CodeGenError("unsupported range args", iterable)
+
+        # use of types with range untested
+        # if not isinstance(var, Identifier) or var.declared_type is not None or type_str is not None:
+        #     raise CodeGenError("no complex iteration type declarations with 'range' builtin", var)
 
         start = iterable.args[0]
         if len(iterable.args) == 2:
@@ -163,13 +197,16 @@ def codegen_for(node, cx):
             end = start
             start = IntegerLiteral(integer=0, source=None)
             start.parent = end.parent
-        sub = BinOp(func="-", args=[end, start], source=None)
-        sub.parent = start.parent
+        # sub = BinOp(func="-", args=[end, start], source=None)
+        # sub.parent = start.parent
         # ds = decltype_str(sub, cx)
-        ds = "decltype(" + codegen_node(sub, cx) + ")"
+        # ds = "decltype(" + codegen_node(sub, cx) + ")"
         startstr = codegen_node(start, cx)
+        if type_str is None:
+            type_str = f"decltype({startstr})"
         endstr = codegen_node(end, cx)
-        forstr = f"for ({ds} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
+        forstr = f"{indt}static_assert(std::is_same_v<decltype({startstr}), decltype({endstr})>);\n"
+        forstr += f"{indt}for ({type_str} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
         #     start_str = codegen_node(start, cx)
         #     end_str = codegen_node(end, cx)
         #     preamble = "{\n"
@@ -184,10 +221,22 @@ def codegen_for(node, cx):
         # itertype = "decltype("
         # forstr +=
     else:
-        forstr = indt + 'for(auto && {} : {}) {{\n'.format(codegen_node(var, cx), codegen_node(iterable, cx))
+        # if var.declared_type is not None:
+        #     # TODO this is awkward
+        #     typed_var_str = codegen_type(var, var.declared_type, cx)
+        #     vartype = var.declared_type
+        #     var.declared_type = None
+        #     typed_var = typed_var_str + " " + codegen_node(var, cx)
+        #     var.declared_type = vartype
+        #
+        #     # varnode =
+
+        if type_str is None:
+            type_str = "const auto&"
+
+        forstr = indt + 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
 
     block_cx = cx.enter_scope()
-
     forstr += codegen_block(block, block_cx)
     forstr += indt + "}\n"
     return forstr
@@ -572,11 +621,24 @@ def interface_method_declaration_str(defnode: Call, cx):
 
 def type_inorder_traversal(typenode: Node, func):
     if isinstance(typenode, TypeOp):
-        if res := type_inorder_traversal(typenode.Lhs, func) is not None:
-            return res
-        return type_inorder_traversal(typenode.rhs, func)
+        if not type_inorder_traversal(typenode.lhs, func):
+            return False
+        if not type_inorder_traversal(typenode.rhs, func):
+            return False
+        return True
     else:
         return func(typenode)
+
+
+def type_node_to_list_of_types(typenode: Node):
+    types = []
+
+    def callback(t):
+        types.append(t)
+        return True
+
+    type_inorder_traversal(typenode, callback)
+    return types
 
 
 def _should_add_const_ref_to_typed_param(param, cx):
@@ -1450,6 +1512,9 @@ def codegen_node(node: Node, cx: Scope):
     if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
         if not isinstance(node, Identifier):
             raise CodeGenError("unexpected typed construct", node)
+
+        if not isinstance(node.parent, Template):
+            raise CodeGenError("unexpected context for typed construct", node)
 
         return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
 
