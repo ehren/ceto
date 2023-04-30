@@ -78,38 +78,55 @@ def codegen_if(ifcall : Call, cx):
     ifnode = IfWrapper(ifcall.func, ifcall.args)
 
     if ifkind is not None and ifkind.name == "noscope":
+        # python-style "noscope" ifs requires a specifier
+
         if is_expression or not cx.in_function_body:
             raise CodeGenError("unscoped if disallowed in expression context", ifcall)
 
-        scopes = [ifnode.cond, ifnode.thenblock]
+        # scopes = [ifnode.cond, ifnode.thenblock]
+        scopes = [ifnode.thenblock]
         if ifnode.elseblock is not None:
             scopes.append(ifnode.elseblock)
+        else:
+            raise CodeGenError("unscoped if without else block disallowed", ifcall)
+
         for elifcond, elifblock in ifnode.eliftuples:
-            scopes.append(elifcond)
+            # scopes.append(elifcond)
             scopes.append(elifblock)
 
-        assigns = []
+        assigns = { scope:[] for scope in scopes }
 
         for scope in scopes:
-            # assigns.extend(find_all(scope, test=lambda n: (isinstance(n, Assign) and not (isinstance(n.parent, Call) and n.parent.func.name == 'if')), stop=stop))
-            assigns.extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
+            assigns[scope].extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
 
         print("all if assigns", list(assigns))
 
-        declarations = {}
+        declarations = { scope:{} for scope in scopes }
 
-        for assign in assigns:
-            if hasattr(assign, "already_declared"):
-                continue
-            #if isinstance(assign.lhs, Identifier) and not find_def(assign.lhs):
-            if isinstance(assign.lhs, Identifier) and not assign.scope.find_def(assign.lhs):
-                assign.already_declared = True
-                if assign.lhs.name in declarations:
+        for scope in scopes:
+            for assign in assigns[scope]:
+                if hasattr(assign, "already_declared"):
                     continue
-                declarations[str(assign.lhs)] = codegen_node(assign.rhs, cx)
+                if isinstance(assign.lhs, Identifier) and not assign.lhs.declared_type and not assign.scope.find_def(assign.lhs):
+                    if assign.lhs.name in declarations[scope]:
+                        continue
+                    declarations[scope][assign.lhs.name] = assign, codegen_node(assign.rhs, cx)
+                else:
+                    raise CodeGenError("unexpected non-simple assign in noscope if", assign)
 
-        for lhs in declarations:
-            cpp += f"decltype({declarations[lhs]}) {lhs};\n" + indt
+        if all(declarations[scopes[0]].keys() == declarations[s].keys() for s in scopes[1:]):
+            # allow noscope
+
+            for lhs in declarations[scopes[0]]:
+                assign, declname = declarations[scopes[0]][lhs]
+                assign.already_declared = True
+                cpp += f"decltype({declname}) {lhs};\n" + indt
+            for scope in scopes[1:]:
+                for lhs in declarations[scope]:
+                    assign, declname = declarations[scope][lhs]
+                    assign.already_declared = True
+        else:
+            raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
 
     cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
 

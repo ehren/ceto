@@ -20,6 +20,48 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_noscope_if():
+    c = compile(r"""
+def (main:
+    if (1:
+        x = 5
+    else:
+        x = 4
+    ) : noscope
+    std.cout << x
+)
+    """)
+    assert c == "5"
+    raises(lambda: compile(r"""
+def (main:
+    if (1:
+        x = 5
+    else:
+        pass
+    ) : noscope
+    std.cout << x
+)
+    """))
+    raises(lambda: compile(r"""
+def (main:
+    if (1:
+        x:int = 5
+    else:
+        x = 4
+    ) : noscope
+    std.cout << x
+)
+    """))
+    raises(lambda: compile(r"""
+def (main:
+    if (1:
+        x = 5
+    ) : noscope
+    std.cout << x
+)
+    """))
+
+
 def test_toy_ast():
     c = compile(r"""
 class (Node:
@@ -3929,7 +3971,8 @@ def test_ifscopes_methodcalls_classes_lottastuff():
     # pytest doesn't like this and it's not the uninitialized access:
     # return
 
-    compile(r"""
+    # most of these "noscope" ifs fail now (for good reasons). TODO just delete this test
+    raises(lambda: compile(r"""
 
 def (foo:
     # return nullptr
@@ -4010,7 +4053,7 @@ def (main:
     # calls_method(object())
     calls_method(Foo())
 )
-    """)
+    """))
 
 
 def test_append_to_empty_list_type_deduction():
