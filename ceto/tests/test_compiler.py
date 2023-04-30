@@ -19,20 +19,27 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_better_lambda_error():
+    raises(lambda: compile(r"""
+def (main:
+    lambda(x: x+1)
+)
+    """), "do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] ")
+
 
 def test_const_lambda_var():
-    # TODO
     c = compile(r"""
 def (main:
-    l : const:auto = lambda(x: x+1)
-    l2 : const:auto = lambda(x: x*2) : int
-    lmut = lambda(x: x*3)
+    l : const:auto = lambda(x, x+1)
+    l2 : const:auto = lambda(x, x*2) : int
+    lmut = lambda(x, x*3)
     std.cout << l(2) << l2(2)
-    static_assert(std.is_const_v<decltype(l)>)
-    static_assert(not std.is_const_v<decltype(lmut)>)
+    std.cout << std.is_const_v<decltype(l)>
+    std.cout << std.is_const_v<decltype(l2)>
+    std.cout << not std.is_const_v<decltype(lmut)>
 )
     """)
-    assert c == "5"
+    assert c == "34111"
 
 
 def test_lambda_return_type_immediately_invoked():

@@ -1255,7 +1255,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         pass
     elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp)):
         raise CodeGenError("unexpected typed expression", expr_node)
-    if isinstance(expr_node, Call) and expr_node.func.name != "lambda":
+    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
         raise CodeGenError("unexpected typed call", expr_node)
 
     if isinstance(type_node, TypeOp):
@@ -1299,7 +1299,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
 
-    if not isinstance(type_node, (Identifier, TypeOp, Template, AttributeAccess, ScopeResolution)):
+    if not isinstance(type_node, (Identifier, TypeOp, Call, Template, AttributeAccess, ScopeResolution)):
         raise CodeGenError("unexpected type", type_node)
 
     return codegen_node(type_node, cx)
@@ -1581,6 +1581,23 @@ def codegen_node(node: Node, cx: Scope):
                 raise CodeGenError("unexpected typed construct", node)
 
             if not isinstance(node.parent, Template):
+                made_easy_lambda_args_mistake = False
+                parent = node.parent
+                while parent:
+                    if isinstance(parent, Call):
+                        if parent.func.name == "lambda":
+                            made_easy_lambda_args_mistake = True
+                            break
+                        elif parent.func.name in ["def", "class"]:
+                            made_easy_lambda_args_mistake = False
+                            break
+                    elif isinstance(parent, Block) and len(parent.args) != 1:
+                        made_easy_lambda_args_mistake = False
+                        break
+                    parent = parent.parent
+                if made_easy_lambda_args_mistake:
+                    raise CodeGenError("do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] in ", parent)
+
                 raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
