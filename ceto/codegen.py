@@ -40,6 +40,7 @@ cpp_preamble = r"""
 cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
 counter = 0
 
+
 def gensym(prefix=None):
     global counter
     counter += 1
@@ -161,7 +162,7 @@ def codegen_for(node, cx):
         raise CodeGenError("expected block as last arg of for", node)
     type_str = None
 
-    if isinstance(arg, Identifier) and arg.declared_type is not None:
+    if not isinstance(arg, BinOp) and isinstance(arg, Identifier) and arg.declared_type is not None:
         # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
         # - does not work so well for:
         # for (x: const:int in it:
@@ -187,14 +188,26 @@ def codegen_for(node, cx):
     else:
         instmt = node.args[0]
 
+
     if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
         raise CodeGenError("unexpected 1st argument to for", node)
 
     var = instmt.lhs
     iterable = instmt.rhs
-    indt = cx.indent_str()
 
-    var_str = codegen_node(var, cx)
+    if not isinstance(var, Identifier):
+        # TODO for ((x,y):const:auto in pairs:
+        raise CodeGenError("Unexpected iter var", var)
+
+    # if the user took enough care to consult the precedence table followed by using parenthesese for their for loop variable...
+    if var.declared_type is not None:
+        assert type_str is None
+        type_str = codegen_type(var, var.declared_type, cx)
+        var_str = var.name
+    else:
+        var_str = codegen_node(var, cx)
+
+    indt = cx.indent_str()
 
     # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
 
@@ -658,6 +671,25 @@ def type_node_to_list_of_types(typenode: Node):
     return types
 
 
+def list_to_typed_node(lst):
+    op = None
+    first = None
+    lst = lst.copy()
+    assert lst
+    if len(lst) == 1:
+        return lst[0]
+    while lst:
+        if first is None:
+            first = lst.pop(0)
+        else:
+            second = lst.pop(0)
+            if op is None:
+                op = TypeOp(func=":", args=[first, second], source=first.source)
+            else:
+                op = TypeOp(func=":", args=[op, second], source=second.source)
+    return op
+
+
 def _should_add_const_ref_to_typed_param(param, cx):
   return cx.lookup_class(param.declared_type) is not None or isinstance(param.declared_type,
     ListLiteral) or param.declared_type.name == "string" or (isinstance(param.declared_type,
@@ -945,10 +977,26 @@ def codegen_lambda(node, cx):
             params.append("const auto &" + a.name)
     newcx = cx.enter_scope()
     newcx.in_function_body = True
-    declared_type = None
     type_str = ""
+    invocation_str = ""
     if node.declared_type is not None:
-        type_str = " -> " + codegen_type(node, node.declared_type, cx)
+        if isinstance(node.declared_type, (TypeOp, Call)):
+            if isinstance(node.declared_type, Call):
+                return_type_list = []
+                last_type = node.declared_type
+            elif isinstance(node.declared_type, TypeOp):
+                return_type_list = type_node_to_list_of_types(node.declared_type)
+                last_type = return_type_list.pop()
+
+            if isinstance(last_type, Call) and isinstance(last_type.func, Identifier):
+                return_type_list.append(last_type.func)
+                declared_type = list_to_typed_node(return_type_list)
+                node.declared_type = declared_type
+                type_str = " -> " + codegen_type(node, declared_type, cx)
+                invocation_str = "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
+
+        if type_str is None:
+            type_str = " -> " + codegen_type(node, node.declared_type, cx)
     # if isinstance(node.func, ArrowOp):
     #     # not workable for precedence reasons
     #     if declared_type is not None:
@@ -1001,7 +1049,7 @@ def codegen_lambda(node, cx):
     # lambda[&x=x, y=bar(y)](foo(x,y))  # need to loosen ArrayAccess
 
     return ("[" + capture_list + "](" + ", ".join(params) + ")" + type_str + " {\n" +
-            codegen_block(block, newcx) + newcx.indent_str() + "}")
+            codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)
 
 
 def codegen(expr: Node):
@@ -1205,8 +1253,10 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
-    elif not isinstance(expr_node, (ListLiteral, Identifier, Call, TypeOp)):
+    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp)):
         raise CodeGenError("unexpected typed expression", expr_node)
+    if isinstance(expr_node, Call) and expr_node.func.name != "lambda":
+        raise CodeGenError("unexpected typed call", expr_node)
 
     if isinstance(type_node, TypeOp):
         lhs = type_node.lhs
@@ -1249,7 +1299,7 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
 
-    if not isinstance(type_node, (Identifier, Call, TypeOp, Template, AttributeAccess, ScopeResolution)):
+    if not isinstance(type_node, (Identifier, TypeOp, Template, AttributeAccess, ScopeResolution)):
         raise CodeGenError("unexpected type", type_node)
 
     return codegen_node(type_node, cx)
@@ -1264,8 +1314,7 @@ def codegen_call(node: Call, cx: Scope):
             return codegen_if(node, cx)
         elif func_name == "def":
             raise CodeGenError("nested def not yet implemented")
-        elif func_name == "lambda" or (
-                isinstance(node.func, ArrowOp) and node.lhs.name == "lambda"):
+        elif func_name == "lambda":
             newcx = cx.enter_scope()
             newcx.in_function_param_list = True
             return codegen_lambda(node, newcx)
@@ -1526,14 +1575,18 @@ def codegen_assign(node: Node, cx: Scope):
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
-    if node.declared_type and not isinstance(node, (Assign, Call, ListLiteral)):
-        if not isinstance(node, Identifier):
-            raise CodeGenError("unexpected typed construct", node)
+    if node.declared_type is not None:
+        if not isinstance(node, (ListLiteral, Call)):
+            if not isinstance(node, Identifier):
+                raise CodeGenError("unexpected typed construct", node)
 
-        if not isinstance(node.parent, Template):
-            raise CodeGenError("unexpected context for typed construct", node)
+            if not isinstance(node.parent, Template):
+                raise CodeGenError("unexpected context for typed construct", node)
 
-        return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
+            return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
+        elif isinstance(node, Call) and node.func.name != "lambda":
+            # it's not a typed lambda - error (TODO typed def simple calls as declarations with return type)
+            raise CodeGenError("Unexpected typed call", node)
 
     if isinstance(node, Module):
         modcpp = ""

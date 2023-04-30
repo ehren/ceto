@@ -1,6 +1,13 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_declarations_typed_calls():
+    a = parse(r"""
+def (printf, char:ptr):void
+lambda(x:int,x):int
+    """)
+
+
 def test_for_typed():
     a = parse(r"""
 for (x : const:auto:ref in iter(iterable).moreiter()[idx].iter() and blah + 1:

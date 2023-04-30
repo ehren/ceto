@@ -20,6 +20,60 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_const_lambda_var():
+    # TODO
+    c = compile(r"""
+def (main:
+    l : const:auto = lambda(x: x+1)
+    l2 : const:auto = lambda(x: x*2) : int
+    lmut = lambda(x: x*3)
+    std.cout << l(2) << l2(2)
+    static_assert(std.is_const_v<decltype(l)>)
+    static_assert(not std.is_const_v<decltype(lmut)>)
+)
+    """)
+    assert c == "5"
+
+
+def test_lambda_return_type_immediately_invoked():
+    c = compile(r"""
+def (main:
+    val = lambda(x:
+        x
+    ):int (5)
+    std.cout << val
+    val2 = lambda(x:
+        # "hi".c_str()  # nice silent ub (aside: cout is not a safe interface)
+        c"hi"
+    ):const:char:ptr(5)
+    std.cout << val2
+)
+    """)
+    assert c == "5hi"
+
+
+def test_nomore_types_on_right():
+    # earlier ':' had a lower precedence (this is no longer a typed assign)
+    raises(lambda: compile(r"""
+def (main:
+    # from an earlier test
+    constval = (lambda(x:
+        x
+    ) : int) (6) : auto : const
+)
+        """), "Unexpected typed call")
+    raises(lambda: compile(r"""
+def (main:
+    x = 0 : int
+)
+    """))
+    raises(lambda: compile(r"""
+def (main:
+    (x = 0) : int
+)
+    """))
+
+
 def test_noscope_if():
     c = compile(r"""
 def (main:
@@ -1038,7 +1092,7 @@ class (Foo:
 
 def (main:
     f = Foo(2)
-    l = lambda (g + f.a)  # this needs a capture list for 'f'. we're including 'g' too - debatable if desirable - sooner value capture better but differs unexpectedly from class scope case (can be fixed by adjust/remove of find_defs)
+    l = lambda (g + f.a)  # capture list for 'f' works here but TODO we shouldn't include g including 'g' if the def node is global scope
     std.cout << f.f << f.a << l()
 )
 
@@ -2115,11 +2169,9 @@ def (main:
 
     assert c == "hi\n\n\n"
 
-def test_lambda_void_deduction_and_return_types():
-    return  # needs changes after changing ':' precededence (again)
-    # plus below allows no way for f:const = lambda (...)
-    c = compile(r"""
 
+def test_lambda_void_deduction_and_return_types():
+    c = compile(r"""
 
 def (is_void:
     pass
@@ -2140,9 +2192,9 @@ def (main:
     std.cout << f2(2) << std.endl
     static_assert(std.is_same_v<decltype(f2(2)), int>)
     
-    f3 = (lambda (x:
+    f3 = lambda (x:
         std.cout << x << std.endl
-    ) : void)
+    ) : void
     f3(3)
     static_assert(std.is_same_v<decltype(f3(3)), void>)
     
@@ -2153,36 +2205,11 @@ def (main:
     std.cout << f4(4) << std.endl
     static_assert(std.is_same_v<decltype(f4(4)), int>)
     
+    # still necessary to wrap in parens if immediately invoking?
     val = (lambda(x:
         x
     ) : int) (5)
     std.cout << val << std.endl
-    
-    constval = (lambda(x:
-        x
-    ) : int) (6) : auto : const
-    
-    std.cout << constval << std.endl
-    static_assert(std.is_same_v<decltype(constval), int:const>)
-    
-    # val = (lambda (x:
-    #     x
-    # ) : void)(4)  thankfully the need to specify 'void' in more cases than other types with lambda doesn't mean that extra parenthese are ever necessary (can't assign void to var)
-    
-    # Not doing these
-    # fv = lambda -> void (x:  # 'precedence' of function call too low for this to work w/ grammar as is
-    #     x
-    # )
-    # ff = lambda.int (x:      # same
-    #     x
-    # )
-    # these aren't worth it because parentheses still necessary
-    # ff = (lambda:int) (x:
-    #     x
-    # )
-    # val = (lambda:int) (x:
-    #     x
-    # )(1)
 )
     """)
 
@@ -2193,7 +2220,6 @@ def (main:
 4
 4
 5
-6
     """.strip()
 
 
@@ -3011,7 +3037,7 @@ def (main:
         printf("%d", x)
     )
     
-    for (x:auto:rref in [1, 2, 3]:
+    for ((x:auto:rref) in [1, 2, 3]:
         x = x + 1
         printf("%d", x)
     )
