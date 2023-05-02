@@ -1508,7 +1508,8 @@ def codegen_assign(node: Node, cx: Scope):
         newcx = cx.enter_scope()
         newcx.in_function_param_list = True
         rhs_str = codegen_lambda(lambdaliteral, newcx)
-    elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
+    #elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
+    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
         # handle untyped empty list literal by searching for uses
         rhs_str = "std::vector<" + vds + ">()"
     else:
@@ -1565,9 +1566,9 @@ def codegen_assign(node: Node, cx: Scope):
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
-            assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
+            assign_str = "const std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
         else:
-            assign_str = "auto " + assign_str
+            assign_str = "const auto " + assign_str
 
     return constexpr_specifier + assign_str
 

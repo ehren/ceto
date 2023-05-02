@@ -29,17 +29,22 @@ def (main:
 
 def test_const_lambda_var():
     c = compile(r"""
+# include "blah.ct"
+# include <blah.ct>
+
 def (main:
     l : const:auto = lambda(x, x+1)
     l2 : const:auto = lambda(x, x*2) : int
-    lmut = lambda(x, x*3)
+    l3 = lambda(x, x*3)
+    lmut : auto = lambda(x, x*4)
     std.cout << l(2) << l2(2)
     std.cout << std.is_const_v<decltype(l)>
     std.cout << std.is_const_v<decltype(l2)>
+    std.cout << std.is_const_v<decltype(l3)>
     std.cout << not std.is_const_v<decltype(lmut)>
 )
     """)
-    assert c == "34111"
+    assert c == "341111"
 
 
 def test_lambda_return_type_immediately_invoked():
@@ -131,7 +136,7 @@ class (Node:
     
     # TODO "overridable" / "canoverride" / "yesoverride"? otherwise "final" by default
     def (repr: virtual:
-        r = "generic node with func " + if (self.func: self.func.repr() else: "none") + " (" + std.to_string(self.args.size()) + " args.)\n"
+        r : auto = "generic node with func " + if (self.func: self.func.repr() else: "none") + " (" + std.to_string(self.args.size()) + " args.)\n"
         for (a in self.args:
             r = r + "arg: " + a.repr()
         )
@@ -262,7 +267,7 @@ def (main:
 def test_dont_capture_lambda_args():
     c = compile(r"""
 def (main:
-    x = []  # this should not be captured (that is, make sure the def of 'x' in 'x + y' points to the lambda arg 'x' and not the list 'x')
+    x : auto = []  # this should not be captured (that is, make sure the def of 'x' in 'x + y' points to the lambda arg 'x' and not the list 'x')
     lfunc = lambda (x, y, x + y)
     x.append(1)
     std.cout << lfunc(x[0], x[0])
@@ -277,7 +282,7 @@ def test_new_find_defs_list_problem():
     # see TODO in Scope.find_defs - we should attach scopes to the nodes themselves (build scopes in earlier pass)
     c = compile("""
 def (main:
-    x = []
+    x : auto = []
     zz = [1,2,3]
     x.append(zz[1])
     std.cout << x[0]
@@ -767,8 +772,8 @@ def (main:
     # u : unsigned:int = i # error (narrowing)
     u2 : unsigned:int = 5
     ur : const:unsigned:int:ref = u2
-    um = ur  # um is not const
-    static_assert(not std.is_const_v<decltype(um)>)  # ensure this assumption of the test holds (note idea for enable_const_by_default() as an ast rewriting macro)
+    um = ur  # um now const by default
+    static_assert(std.is_const_v<decltype(um)>)
     
     std.cout << b << b2 << i << u2 << ur << um
 )
@@ -812,14 +817,14 @@ class (Foo:
 def (main:
     f = Foo()
 
-    t = std.thread(lambda(:
+    t : auto = std.thread(lambda(:
         while (f.a < 100000:
             std.cout << f.a << "\n"
         )
         f.go = false
     ))
 
-    t2 = std.thread(lambda(:
+    t2 : auto = std.thread(lambda(:
         while (f.go:
             f.a = f.a + 1   # TODO implement += etc
             f.a.operator("++")()  # alternative
@@ -870,7 +875,7 @@ class (Foo:
 ) 
 
 def (main:
-    f = Foo()
+    f : auto = Foo()
     f = nullptr
     f.method()
 )
@@ -886,7 +891,7 @@ class (Foo:
 ) 
 
 def (main:
-    f = Foo()
+    f : auto = Foo()
     f = nullptr
     f->method()  # BAD c++ compatibility syntax. No autoderef / No autonull check.
 )
@@ -1010,7 +1015,7 @@ def test_ifscopes_defnition_in_test():
     compile(r"""
 
 def (main:
-    if ((y = 1):
+    if ((y : int = 1):
         y = 5
     )
 )
@@ -1021,7 +1026,7 @@ def (main:
 def test_scopes_definition_in_test():
     good_code = r"""
 def (main:
-    CONTROL_STRUCTURE ((y = 0):
+    CONTROL_STRUCTURE ((y : auto = 0):
         y = 5
         std.cout << y
     )
@@ -1030,7 +1035,7 @@ def (main:
 
     bad_code = r"""
 def (main:
-    CONTROL_STRUCTURE ((y = 1):
+    CONTROL_STRUCTURE ((y : auto = 1):
         y = 5
     )
     std.cout << y
@@ -1039,7 +1044,7 @@ def (main:
 
     bad_code2 = r"""
 def (main:
-    CONTROL_STRUCTURE ((y = 1):
+    CONTROL_STRUCTURE ((y : auto = 1):
         pass
     )
     std.cout << y
@@ -1850,13 +1855,13 @@ def (main:
 def test_multiple_assign():
     raises(lambda: compile(r"""
 def (main:
-    x = y = 0  # error in c++ but TODO should error early instead of generating "auto x = auto y = 0"
+    x = y = 0  # error in c++ but eventual TODO should error early instead of generating "const auto x = const auto y = 0"
 )
     """))
 
     c = compile(r"""
 def (main:
-    y = 1
+    y : auto = 1
     x = y = 0
     std.cout << x << y
 )
@@ -1964,13 +1969,15 @@ def test_ptr_not_simple_type_context():
     c = compile(r"""
 def (main:
     x = 0
-    y : int : ptr = &x
-    y2 : int: ptr
+    y : const:int:ptr = &x
+    # TODO const by default (implement mut)
+    y2 : int:ptr  # fails for now
     y2 = &x
     hmm = reinterpret_cast<int:ptr>(1)
     static_cast<void>(y)
+    static_cast<void>(y2)
     static_assert(not std.is_same_v<decltype(nullptr), int:ptr>)
-    printf("%p", hmm)
+    printf("%p", static_cast<void:ptr>(hmm))
 )
     """)
 
@@ -2803,7 +2810,7 @@ def (main:
 def test_py14_map_example():
     c = compile(r"""
 def (map, values, fun:
-    results = []
+    results : auto = []
     for (v in values:
         results.append(fun(v))
     )
@@ -3035,7 +3042,7 @@ def test_for_scope():
 def (main:
     x = 5
     
-    l = [1,2,3]
+    l : auto = [1,2,3]
     for (x:auto:rref in l:
         x = x + 1
     )
@@ -3184,7 +3191,8 @@ def test_for_with_uniq_and_shared():
     c = compile(r"""
 
 class (Uniq:
-    x = 0  # note untyped (hidden decltype inserted)
+    # x = 0  # note untyped (hidden decltype inserted)  # this is now const by default
+    x : int = 0  # TODO this should be too
 
     def (bar:
         self.x = self.x + 1
@@ -3213,7 +3221,9 @@ def (main:
         x = x + 1
     )
     
-    lst = [1,2,3]
+    static_assert(std.is_const_v<decltype(x)>)
+    
+    lst : auto = [1,2,3]
     for (x:auto:rref in lst:
         printf("%d\n", x)
         x = x + 1
@@ -3223,9 +3233,8 @@ def (main:
         x = x + 1
     )
     
-    
-    u = []
-    s = []
+    u : auto = []
+    s : auto = []
     for (x in [1, 2, 3, 4, 5]:
         u.append(Uniq())
         s.append(Shared())
@@ -3237,7 +3246,7 @@ def (main:
         # zz = x # correct error
     )
     
-    n = 0
+    n : int = 0
     for (x in u:
         printf("bar again: %d\n", x.bar())
         # zz = x # correct error
@@ -3254,7 +3263,7 @@ def (main:
     )
     
     # v = [] #fix decltype(i)
-    v = [Shared()]
+    v : auto = [Shared()]
     
     for (i in s:
         i.foo()
@@ -3300,7 +3309,7 @@ def (main:
     
     baz(Foo())
     
-    f = Foo()
+    f : auto = Foo()
     f.bar()
     
     f2 = Foo()
@@ -3310,7 +3319,7 @@ def (main:
     baz(std.move(f2))
     
     # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
-    lst = []
+    lst : auto = []
     lst.append(Foo())
     f = Foo()
     # lst.append(f)  # error
@@ -3328,7 +3337,8 @@ def test_reset_ptr():
     # should be avoided in the normal course of things
     c = compile(r"""
 class (Foo:
-    x = 0
+    # x = 0  # this is now const by default
+    x : int = 0  # TODO this should be too
 
     def (bar:
         printf("bar %d\n", self.x)
@@ -3362,12 +3372,12 @@ def (operator("=="), f: Foo, other: std.nullptr_t:   # "fix" (?) use of overload
 )
 
 def (main:
-    f = Foo()
+    f : auto = Foo()
     f.bar()
     if (f == 5:
         printf("overload == works\n")
     )
-    b = Foo()
+    b : auto = Foo()
     if (f == b:
         printf("same\n")
     else:
@@ -3447,9 +3457,9 @@ class (Foo:
 )
 
 def (main:
-    f = Foo()
+    f : auto = Foo()
     f.foo()
-    f2 = f
+    f2 : auto = f
     f2.foo()
     std.cout << (&f)->use_count() << std.endl
     std.cout << (&f2)->use_count() << std.endl
@@ -3520,12 +3530,11 @@ def (main:
     fp = fopen("file.txt", "w+")
     fprintf(fp, "hello %s", "world\n")
     fclose(fp)
-    fp = fopen("file.txt", "r")
-    fclose(fp)
+    fp2 = fopen("file.txt", "r")
+    fclose(fp2)
     
-    # cs = "file.txt".c_str()
     t = std.ifstream(c"file.txt")
-    buffer = std.stringstream()
+    buffer : auto = std.stringstream()
     buffer << t.rdbuf()
     s = buffer.str()
     std.cout << s << "\n"
@@ -3819,7 +3828,9 @@ def test_correct_shared_ptr():
 class (Foo: # this is the parse prob
     # x = 1
     # y = 2
-    x = 0
+    # x = 0  # this is now const by default
+    x : int = 0   # this should also be const by default (TODO)
+    # x : mut:int = 0   # TODO
 
     # def (init:
     #     printf("init\n")
@@ -3899,13 +3910,14 @@ def (foo, x:
 # )
 
 def (main:
-    x = []
+    x : auto = []
     zz = [1,2,3]
     # yy = [zz[0], foo(zz[0])]
     xx = [[1,2],[2,3]]
-    xxx = []
+    xxx : auto = []
     xxanother = xx
-    xxanother2 = xxanother
+    # xxanother2 : auto = xxanother  # TODO this should work but the type inference naively thinks 'auto' is a valid type for a vector element
+    xxanother2 : [[int]] = xxanother
     xxx.append(xxanother2)
     xxanother2[0] = [7,7,7]
     printf("xxanother2 %d\n", xxanother2[0][0])
@@ -4090,10 +4102,9 @@ def (main:
 
 
 def test_append_to_empty_list_type_deduction():
-    return
-    assert compile("""
+    compile("""
 def (map, values, fun:
-    results = []
+    results : auto = []
     results.append(fun())
 )
     """).strip() == """
