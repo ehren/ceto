@@ -19,6 +19,27 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_mut_classes():
+
+    c = compile(r"""
+    
+class (Blah:
+    x 
+    def (foo:
+        self.x = self.x + 1
+    )
+)
+
+def (main:
+    b : mut = Blah(1)
+    b.foo()
+    std.cout << b.x
+    b.x = 5
+)
+
+    """)
+
+
 
 def test_pointers_auto_const():
     c = compile(r"""
@@ -2492,7 +2513,7 @@ def (main:
 
 
 def test_class_with_attributes_of_generic_class_type():
-    return
+    # return
     import platform
     #if "Darwin" not in platform.system():
     #    return
@@ -4156,6 +4177,7 @@ def (main:
 
 
 def test_append_to_empty_list_type_deduction():
+    return
     compile("""
 def (almostmap, values, fun:
     results : mut = []

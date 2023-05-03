@@ -8,6 +8,9 @@ from collections import defaultdict
 import re
 
 
+mut_by_default = False
+
+
 class CodeGenError(Exception):
     pass
 
@@ -1269,11 +1272,16 @@ def _codegen_compound_class_type(lhs, rhs, cx):
 
     for l, r in ((lhs,rhs), (rhs, lhs)):
         if c := cx.lookup_class(l):
-            if not isinstance(r, Identifier) or r.name != "const":
+            if not isinstance(r, Identifier) or r.name not in ["const", "mut"]:
                 raise CodeGenError("Invalid specifier for class type")
-            if c.is_unique:
-                return "const std::unique_ptr<const " + l.name + ">"
-            return "const std::shared_ptr<const " + l.name + ">"
+            if r.name == "const":
+                if c.is_unique:
+                    return "std::unique_ptr<const " + l.name + ">"
+                return "std::shared_ptr<const " + l.name + ">"
+            else:
+                if c.is_unique:
+                    return "std::unique_ptr<" + l.name + ">"
+                return "std::shared_ptr<" + l.name + ">"
 
 
 def codegen_type(expr_node, type_node, cx, _is_leading=True):
@@ -1369,7 +1377,7 @@ def codegen_call(node: Call, cx: Scope):
             args_str = "(" + args_inner + ")"
 
             # TODO we should re-enable this and leave "call_or_construct" only for "importing" raw but ceto-generated c++ code (would also require sprinkling conditional_t everywhere)
-            if 0:  # and class_def := cx.lookup_class(node.func):
+            if class_def := cx.lookup_class(node.func):
                 class_name = node.func.name
                 class_node = class_def.class_def_node
                 curly_args = "{" + args_inner + "}"
@@ -1384,11 +1392,36 @@ def codegen_call(node: Call, cx: Scope):
                 #          class_def.is_generic_param_index[i]]) + ">"
                 class_name = "decltype(" + class_name + curly_args + ")"
 
+                const_part = "const " if not mut_by_default else ""
+
+                if isinstance(node.parent, Assign) and node.parent.lhs.declared_type is not None:
+                    lhs_type = node.parent.lhs.declared_type
+
+                    if isinstance(lhs_type, Identifier):
+                        if lhs_type.name == "mut":
+                            const_part = ""
+                    elif isinstance(node.lhs.declared_type, TypeOp):
+                        type_list = type_node_to_list_of_types(lhs_type)
+                        if "mut" in [type_list[0].name, type_list[-1].name]:
+                            const_part = ""
+                elif node.declared_type is not None:
+                    lhs_type = node.parent.lhs.declared_type
+
+                    if isinstance(lhs_type, Identifier):
+                        if lhs_type.name == "mut":
+                            const_part = ""
+                    elif isinstance(node.lhs.declared_type, TypeOp):
+                        type_list = type_node_to_list_of_types(lhs_type)
+                        if "mut" in type_list:
+                            const_part = ""
+
                 if isinstance(class_node.declared_type,
                               Identifier) and class_node.declared_type.name == "unique":
-                    func_str = "std::make_unique<" + class_name + ">"
+                    func_str = "std::make_unique<" + const_part + class_name + ">"
                 else:
-                    func_str = "std::make_shared<" + class_name + ">"
+                    func_str = "std::make_shared<" + const_part + class_name + ">"
+
+                return func_str + args_str
             else:
                 pass
 
@@ -1793,7 +1826,7 @@ def codegen_node(node: Node, cx: Scope):
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
                 node is node.parent.lhs) and (
            ptr_name := _shared_ptr_str_for_type(node, cx)):
-            return ptr_name + "<" + name + ">"
+            return ptr_name + "< const " + name + ">"
 
         return name
 
@@ -1937,7 +1970,7 @@ def codegen_node(node: Node, cx: Scope):
         # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
         if ptr_name := _shared_ptr_str_for_type(node.func, cx):
-            return ptr_name + "<" + node.func.name + template_args + ">"
+            return ptr_name + "< const " + node.func.name + template_args + ">"
         else:
             return codegen_node(node.func, cx) + template_args
 
