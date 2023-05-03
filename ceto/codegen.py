@@ -1522,9 +1522,15 @@ def _build_initialization(needs_const: bool, name: str, type_only_str: str, type
     else:
         capture = ""
 
+    # full_init = type_part + " std::as_const(" + init_part + ")"
     full_init = type_part + " " + init_part
     if assert_str:
         full_init += "; " + assert_str
+
+    if not needs_const:
+        return full_init
+    else:
+        return "const " + full_init
 
     if not needs_const and not assert_str:
         return full_init
@@ -1537,7 +1543,14 @@ def _build_initialization(needs_const: bool, name: str, type_only_str: str, type
     # init = "std::remove_reference_t<decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())>" + init_part
     # init = "decltype(ceto::unmove([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }()))" + init_part
     # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
+
+    # this almost works except for the case say "x:const:auto:ref = 0; y:int:ref = x" (not const in user code but want to add const to y:int:ref); can't add const after the fact because the initialization will fail in the lambda
     init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; if constexpr(!std::is_copy_constructible_v<decltype("+ name+")>) { return std::move(" + name + "); } else { return " + name + ";} }())" + init_part
+
+    # all of these are hopeless:
+    # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; if constexpr(!std::is_copy_constructible_v<decltype("+ name+")>) { return std::as_const(std::move(" + name + ")); } else { return std::as_const(" + name + ");} }())" + init_part
+    # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + ("" if needs_const else "") + full_init + "; if constexpr(!std::is_copy_constructible_v<decltype("+ name+")>) { return std::move(const_cast<std::add_const_t<decltype(" + name + ")>>(" + name + ")); } else { return const_cast<std::add_const_t<decltype(" + name + ")>>(" + name + ");} }())" + init_part
+    # init = "decltype(*[" + capture + "]" + "() -> decltype(auto) { " + ("" if needs_const else "") + full_init + "; if constexpr(!std::is_copy_constructible_v<decltype("+ name+")>) { return std::move(const_cast<std::add_const_t<decltype(&" + name + ")>>(&" + name + ")); } else { return const_cast<std::add_const_t<decltype(&" + name + ")>>(&" + name + ");} }())" + init_part
     # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
     # init = "decltype([" + capture + "]" + "(decltype(" + type_only_str + direct_body + ") " + init_part + ") -> decltype(auto) {" + assert_str + "; return std::move(" + name + "); }())" + init_part
 
@@ -1619,11 +1632,19 @@ def codegen_assign(node: Node, cx: Scope):
                 else:
                     for i, t in enumerate(type_list):
                         otheridx = i - 1 if i > 0 else i + 1
-                        if t.name in ["const", "auto"] and type_list[otheridx].name in ["const", "auto"]:
+                        if (t.name in ["const", "auto"] and type_list[otheridx].name in ["const", "auto"]) or (
+                            t.name == "const" and i < len(type_list) - 1 and type_list[i + 1].name == "ref"):
                             # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
+                            # alternately contains "const ref" anywhere
                             # use type verbatim
                             lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                             break
+
+                    if lhs_type_str is None:
+                        if (type_list[0].name == "const" and type_list[-1].name != "ptr") or type_list[-1].name == "const":
+                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+                        elif type_list[-1].name == "ptr":
+                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx) + " const"
 
             needs_const = False
             direct_body = "{" + rhs_str + "}"
@@ -1633,6 +1654,7 @@ def codegen_assign(node: Node, cx: Scope):
                 # lhs_type_str = "std::add_const_t<decltype(" + codegen_type(node.lhs, node.lhs.declared_type, cx) + ">"
                 lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
                 needs_const = True
+                # rhs_str = "std::as_const(" + rhs_str + ")"
 
             decl_str = lhs_type_str + " " + lhs_str
 

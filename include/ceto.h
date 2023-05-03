@@ -288,6 +288,19 @@ template<class T> T& unmove(T&& t) { return t; }
 
 
 
+// https://stackoverflow.com/questions/67128867/check-if-a-type-is-a-template/67129011#67129011
+template<template<class ...> class T>
+constexpr bool is_template() { return true; }
+
+// ADDITIONAL SPECIALIZATION for non-type arguments
+template<template<auto ...> class T>
+constexpr bool is_template() { return true; }
+
+template<class T>
+constexpr bool is_template() { return false; }
+
+
+
 } // namespace ceto
 
 #endif // CETO_H

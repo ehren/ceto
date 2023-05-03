@@ -20,13 +20,36 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_pointers_auto_const():
+    c = compile(r"""
+def (main:
+    x : const : auto = 0
+    y : auto : ptr = &x
+)
+    
+    """)
+
+
 def test_references():
     raises(lambda : compile(r"""
 def (main:
     x : const:auto:ref = 1
-    y : int:ref = x
+    y : mut:int:ref = x
 )
-    """))
+    """))   # error: binding reference of type ‘int&’ to ‘const int’ discards qualifiers
+
+    compile(r"""
+def (main:
+    # x : const:auto:ref = 1
+    # y : int:ref = x  # no mut so const by default
+    # static_assert(std::is_const_v<decltype(x)>)
+    # static_assert(std::is_const_v<decltype(y)>)
+    
+    x:int = 0
+    r2 : int : const : ref = x
+    y : int:ref = x  # no mut so const by default
+)
+    """)
 
     c = compile(r"""
 def (main:
