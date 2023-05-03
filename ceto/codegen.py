@@ -233,9 +233,9 @@ def codegen_for(node, cx):
         # ds = "decltype(" + codegen_node(sub, cx) + ")"
         startstr = codegen_node(start, cx)
         if type_str is None:
-            type_str = f"decltype({startstr})"
+            type_str = f"std::remove_cvref_t<decltype({startstr})>"
         endstr = codegen_node(end, cx)
-        forstr = f"{indt}static_assert(std::is_same_v<decltype({startstr}), decltype({endstr})>);\n"
+        forstr = f"{indt}static_assert(std::is_same_v<std::remove_cvref_t<decltype({startstr})>, std::remove_cvref_t<decltype({endstr})>>);\n"
         forstr += f"{indt}for ({type_str} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
         #     start_str = codegen_node(start, cx)
         #     end_str = codegen_node(end, cx)
@@ -1299,6 +1299,9 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
 
+        if type_node.name == "mut":
+            raise CodeGenError("unexpected placement of 'mut'", expr_node)
+
     if not isinstance(type_node, (Identifier, TypeOp, Call, Template, AttributeAccess, ScopeResolution)):
         raise CodeGenError("unexpected type", type_node)
 
@@ -1484,6 +1487,24 @@ def codegen_call(node: Call, cx: Scope):
             map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
 
+def _build_initialization(needs_const: bool, name: str, type_part: str, init_part: str, cx, assert_str: str = ""):
+    # const decltype([&]() -> decltype(auto) {  std::function func = [] (int x) {return x + 1;}; return func; }()) func = [] (int x) {return x + 1;};
+
+    if cx.in_function_body:
+        capture = "&"
+    else:
+        capture = ""
+
+    full_init = type_part + " " + init_part
+    if assert_str:
+        full_init += "; " + assert_str
+
+    init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return " + name + "; }())" + init_part
+    if needs_const:
+        init = "const " + init
+    return init
+
+
 def codegen_assign(node: Node, cx: Scope):
     if not isinstance(node.lhs, Identifier):
         return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
@@ -1497,7 +1518,7 @@ def codegen_assign(node: Node, cx: Scope):
 
     if node.declared_type is not None and isinstance(node.rhs,
                                                      Call) and node.rhs.func.name == "lambda":
-        # TODO lambda return types need fixes
+        # TODO lambda return types need fixes? fixed now?
         lambdaliteral = node.rhs
         is_lambda_rhs_with_return_type = True
         # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
@@ -1519,18 +1540,66 @@ def codegen_assign(node: Node, cx: Scope):
         lhs_str = node.lhs.name
 
         if node.lhs.declared_type:
-            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+
+            lhs_type_str = None
+
+            # add const if not mut
+
+            if isinstance(node.lhs.declared_type, Identifier):
+                assert node.lhs.declared_type.declared_type is None # TODO just remove declared_type
+                if node.lhs.declared_type.name == "mut":
+                    # mut is the real "auto".
+
+                    if cx.in_class_body:
+                        # TODO repeated logic from below re # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
+                        lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
+                    else:
+                        lhs_type_str = "auto"
+                elif node.lhs.declared_type.name == "auto":
+                    # just "auto" means "const auto"
+                    lhs_type_str = "const auto"
+            elif isinstance(node.lhs.declared_type, TypeOp):
+                type_list = type_node_to_list_of_types(node.lhs.declared_type)
+                if "mut" in [type_list[0].name, type_list[-1].name]:  # east or west mut is fine
+                    if type_list[0].name == "mut":
+                        type_list.pop(0)
+                    else:
+                        type_list.pop()
+                    rebuilt = list_to_typed_node(type_list)
+                    lhs_type_str = codegen_type(node.lhs, rebuilt, cx)
+                    assert len(lhs_type_str) > 0
+                else:
+                    for i, t in enumerate(type_list):
+                        otheridx = i - 1 if i > 0 else i + 1
+                        if t.name in ["const", "auto"] and type_list[otheridx].name in ["const", "auto"]:
+                            # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
+                            # use type verbatim
+                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+                            break
+
+            needs_const = False
+
+            if lhs_type_str is None:
+                # only works in naive cases. e.g. f : std.function = lambda(...) CTAD case fails
+                # lhs_type_str = "std::add_const_t<decltype(" + codegen_type(node.lhs, node.lhs.declared_type, cx) + ">"
+                lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+                needs_const = True
+
             decl_str = lhs_type_str + " " + lhs_str
 
             plain_initialization = decl_str + " = " + rhs_str
 
+            type_part = lhs_type_str
+            init_part_plain = lhs_str + " = " + rhs_str
+
             if isinstance(node.rhs, BracedLiteral):
                 # aka "copy-list-initialization" in this case
-                return constexpr_specifier + plain_initialization
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_plain, cx)
 
             # prefer brace initialization to disable narrowing conversions (in these assignments):
 
             direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+            init_part_direct = lhs_str + " { " + rhs_str + " }"
 
             # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
             # e.g. l2 : std.vector<std.vector<int>> = 1
@@ -1538,8 +1607,9 @@ def codegen_assign(node: Node, cx: Scope):
             # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
 
             if any(find_all(node.lhs.declared_type, test=lambda
-                    n: n.name == "auto")):  # this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
-                return constexpr_specifier + direct_initialization
+                    n: n.name in ["auto", "mut"])):  # TODO remove this comment: this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
+                # return constexpr_specifier + direct_initialization)
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_direct, cx)
 
             # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
             # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
@@ -1550,12 +1620,17 @@ def codegen_assign(node: Node, cx: Scope):
             if isinstance(node.rhs, IntegerLiteral) or (
                     isinstance(node.rhs, Identifier) and node.rhs.name in [
                 "true", "false"]):  # TODO float literals
-                return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+                # return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+
+                assert_part = f"static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_direct, cx, assert_str=assert_part)
 
             # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
             # note that 'plain_initialization' will handle cvref mismatch errors!
-            return f"{constexpr_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+
+            assert_part = f"static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+            return _build_initialization(needs_const, lhs_str, type_part, init_part_plain, cx, assert_str=assert_part)
     else:
         lhs_str = codegen_node(node.lhs, cx)
 
