@@ -21,12 +21,12 @@ def raises(func, exc=None):
 
 
 def test_references():
-    raises(lambda: compile(r"""
+    raises(lambda : compile(r"""
 def (main:
     x : const:auto:ref = 1
     y : int:ref = x
 )
-    """))  #  binding reference of type 'int&' to 'const int' discards qualifiers
+    """))
 
     c = compile(r"""
 def (main:

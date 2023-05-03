@@ -1514,7 +1514,7 @@ def codegen_call(node: Call, cx: Scope):
             map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
 
-def _build_initialization(needs_const: bool, name: str, type_part: str, init_part: str, cx, assert_str: str = ""):
+def _build_initialization(needs_const: bool, name: str, type_only_str: str, type_part: str, direct_body: str, init_part: str, cx, assert_str: str = ""):
     # const decltype([&]() -> decltype(auto) {  std::function func = [] (int x) {return x + 1;}; return func; }()) func = [] (int x) {return x + 1;};
 
     if cx.in_function_body:
@@ -1536,9 +1536,17 @@ def _build_initialization(needs_const: bool, name: str, type_part: str, init_par
     # TODO this must need fixes if the type has 'static' already (and related issues)
     # init = "std::remove_reference_t<decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())>" + init_part
     # init = "decltype(ceto::unmove([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }()))" + init_part
-    init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
+    # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
+    init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; if constexpr(!std::is_copy_constructible_v<decltype("+ name+")>) { return std::move(" + name + "); } else { return " + name + ";} }())" + init_part
+    # init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
+    # init = "decltype([" + capture + "]" + "(decltype(" + type_only_str + direct_body + ") " + init_part + ") -> decltype(auto) {" + assert_str + "; return std::move(" + name + "); }())" + init_part
+
+    # init = "std::conditional_t<"
+
     if needs_const:
         init = "const " + init
+        # return "const " + full_init
+    # return full_init
     return init
 
 
@@ -1605,6 +1613,9 @@ def codegen_assign(node: Node, cx: Scope):
                     rebuilt = list_to_typed_node(type_list)
                     lhs_type_str = codegen_type(node.lhs, rebuilt, cx)
                     assert len(lhs_type_str) > 0
+                # elif type_list[0].name == "const":
+                #     # a bit restrictive but "const" must appear first (otherwise you get double const)
+                #     # :(
                 else:
                     for i, t in enumerate(type_list):
                         otheridx = i - 1 if i > 0 else i + 1
@@ -1615,6 +1626,7 @@ def codegen_assign(node: Node, cx: Scope):
                             break
 
             needs_const = False
+            direct_body = "{" + rhs_str + "}"
 
             if lhs_type_str is None:
                 # only works in naive cases. e.g. f : std.function = lambda(...) CTAD case fails
@@ -1631,7 +1643,7 @@ def codegen_assign(node: Node, cx: Scope):
 
             if isinstance(node.rhs, BracedLiteral):
                 # aka "copy-list-initialization" in this case
-                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_plain, cx)
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, lhs_type_str, type_part, direct_body, init_part_plain, cx)
 
             # prefer brace initialization to disable narrowing conversions (in these assignments):
 
@@ -1646,7 +1658,7 @@ def codegen_assign(node: Node, cx: Scope):
             if any(find_all(node.lhs.declared_type, test=lambda
                     n: n.name in ["auto", "mut"])):  # TODO remove this comment: this will fail when/if we auto insert auto more often (unless handled earlier via node replacement)
                 # return constexpr_specifier + direct_initialization)
-                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_direct, cx)
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, lhs_type_str, type_part, direct_body, init_part_direct, cx)
 
             # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
             # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
@@ -1660,14 +1672,15 @@ def codegen_assign(node: Node, cx: Scope):
                 # return f"{constexpr_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
 
                 assert_part = f"static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
-                return constexpr_specifier + _build_initialization(needs_const, lhs_str, type_part, init_part_direct, cx, assert_str=assert_part)
+                return constexpr_specifier + _build_initialization(needs_const, lhs_str, lhs_type_str, type_part, direct_body, init_part_direct, cx, assert_str=assert_part)
 
             # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
 
             # note that 'plain_initialization' will handle cvref mismatch errors!
 
             assert_part = f"static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
-            return _build_initialization(needs_const, lhs_str, type_part, init_part_plain, cx, assert_str=assert_part)
+            # return _build_initialization(needs_const, lhs_str, lhs_type_str, type_part, init_part_plain, cx, assert_str=assert_part)
+            return _build_initialization(needs_const, lhs_str, lhs_type_str, type_part, direct_body, init_part_plain, cx, assert_str=assert_part)
     else:
         lhs_str = codegen_node(node.lhs, cx)
 
