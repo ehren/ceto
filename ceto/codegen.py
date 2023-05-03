@@ -1533,7 +1533,10 @@ def _build_initialization(needs_const: bool, name: str, type_part: str, init_par
         assert False, "this is a TODO? fixme?"
 
     # the std::move of a static var is to allow this scheme to work with non-movable types
-    init = "std::remove_reference_t<decltype([" + capture + "]" + "() -> decltype(auto) { static " + full_init + "; return std::move(" + name + "); }())>" + init_part
+    # TODO this must need fixes if the type has 'static' already (and related issues)
+    # init = "std::remove_reference_t<decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())>" + init_part
+    # init = "decltype(ceto::unmove([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }()))" + init_part
+    init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return std::move(" + name + "); }())" + init_part
     if needs_const:
         init = "const " + init
     return init

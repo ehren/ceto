@@ -282,6 +282,12 @@ auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
     return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
 }
 
+
+// https://stackoverflow.com/questions/44677825/rvalue-to-lvalue-conversion/67059296#67059296
+template<class T> T& unmove(T&& t) { return t; }
+
+
+
 } // namespace ceto
 
 #endif // CETO_H
