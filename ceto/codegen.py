@@ -1532,7 +1532,8 @@ def _build_initialization(needs_const: bool, name: str, type_part: str, init_par
     if not needs_const and assert_str:
         assert False, "this is a TODO? fixme?"
 
-    init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return " + name + "; }())" + init_part
+    # the std::move of a static var is to allow this scheme to work with non-movable types
+    init = "std::remove_reference_t<decltype([" + capture + "]" + "() -> decltype(auto) { static " + full_init + "; return std::move(" + name + "); }())>" + init_part
     if needs_const:
         init = "const " + init
     return init

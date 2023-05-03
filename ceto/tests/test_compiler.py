@@ -294,10 +294,11 @@ def (main:
 def test_constructors_with_atomic_attributes():
     c = compile(r"""
 class (Foo:
-    a : std.atomic<int> = 0
+    a : std.atomic<int> = 0  # this should work but our 'add const that works with CTAD' doesn't work with non-copyable types oh std::move! 
+    # a : mut:const:std.atomic<int> = 0   # new
 )
 class (Foo2:
-    a : std.atomic<int>
+    a : const:std.atomic<int>  # TODO data members should be const by default
     def (init, p:int:
         self.a = p
     )
@@ -811,7 +812,7 @@ class (Bar:
 class (Foo:
     a : mut:std.atomic<int> = 0
     go : mut:std.atomic<bool> = true
-    go2 : std.atomic<bool> = std.atomic<bool> {true}  # this shouldn't be necessary
+    go2 : std.atomic<bool> = std.atomic<bool> {true}  # this shouldn't be / isn't necessary
 )
 
 def (main:
