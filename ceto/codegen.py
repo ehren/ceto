@@ -1526,6 +1526,12 @@ def _build_initialization(needs_const: bool, name: str, type_part: str, init_par
     if assert_str:
         full_init += "; " + assert_str
 
+    if not needs_const and not assert_str:
+        return full_init
+
+    if not needs_const and assert_str:
+        assert False, "this is a TODO? fixme?"
+
     init = "decltype([" + capture + "]" + "() -> decltype(auto) { " + full_init + "; return " + name + "; }())" + init_part
     if needs_const:
         init = "const " + init
