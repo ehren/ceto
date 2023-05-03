@@ -3917,12 +3917,16 @@ def (main:
     zz = [1,2,3]
     # yy = [zz[0], foo(zz[0])]
     xx = [[1,2],[2,3]]
-    xxx : mut = []
+    xx2 : mut = []
+    xx3 : mut = []
     xxanother = xx
     # xxanother2 : auto = xxanother  # TODO this should work but the type inference naively thinks 'auto' is a valid type for a vector element. TODO this should also be 'mut' now
     xxanother2 : mut:[[int]] = xxanother
-    xxx.append(xxanother2)
+    xxanother3 : mut = xxanother
+    xx2.append(xxanother2)
+    xx3.append(xxanother3)
     xxanother2[0] = [7,7,7]
+    xxanother3[1] = [8,7,6]
     printf("xxanother2 %d\n", xxanother2[0][0])
     printf("xxanother %d\n", xxanother[0][0])
 
@@ -3935,7 +3939,7 @@ def (main:
     huh = takes_func_arg_arg(lfunc2, 14, 15)
 
     printf("yo:
-            %d %d\n", xxx[0][0][0], huh) 
+            %d %d\n", xx3[0][0][0], huh) 
     z = 5
     # (w:int) = z 
     w = z# : int

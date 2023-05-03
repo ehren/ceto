@@ -1139,11 +1139,38 @@ def _decltype_str(node, cx):
     if not defs:
         return True, node.name
 
+    eligible_defs = list(defs)
+
     for def_node, def_context in defs:
         if def_node.declared_type:
-            return False, codegen_type(def_node, def_node.declared_type, cx)
 
-    last_ident, last_context = defs[-1]
+            if def_node.declared_type.name in ["mut", "auto"]:
+                # discard plain mut / auto (it tells us nothing and they aren't valid vector element types)
+                continue
+            elif isinstance(def_node.declared_type, TypeOp):
+
+                type_list = type_node_to_list_of_types(def_node.declared_type)
+
+                if any(t.name == "auto" for t in type_list):
+                    # any use of auto also gives us no type info
+                    continue
+                elif "mut" in [type_list[0].name, type_list[-1].name]:
+                    # discard east or west mut
+                    if type_list[0].name == "mut":
+                        type_list.pop(0)
+                    else:
+                        type_list.pop()
+                    # there should be a real type left
+                    rebuilt = list_to_typed_node(type_list)
+                    return False, codegen_type(def_node, rebuilt, cx)
+            else:
+                return False, codegen_type(def_node, def_node.declared_type, cx)
+        eligible_defs.append((def_node, def_context))
+
+    if not eligible_defs:
+        return True, node.name
+
+    last_ident, last_context = eligible_defs[-1]
 
     if isinstance(last_context, Assign):
         assign = last_context
