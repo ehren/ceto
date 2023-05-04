@@ -200,7 +200,7 @@ def _build_grammar():
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
-    dict_literal = pp.Forward()
+    # dict_literal = pp.Forward()
     braced_literal = pp.Forward()
     function_call = pp.Forward()
     template = pp.Forward()
@@ -221,7 +221,7 @@ def _build_grammar():
         | dblquoted_str
         | list_literal
         | tuple_literal
-        | dict_literal
+        # | dict_literal
         | braced_literal
         | ident
     )
@@ -238,8 +238,12 @@ def _build_grammar():
 
     bel = pp.Suppress('\x07')
 
-    dict_entry = pp.Group(infix_expr + bel + infix_expr)
-    dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
+    # just allow dict literals (codegen unimplemented) as braced_literals with all elements TypeOf ops
+    # can have complex rules to disambiguate dict literal from e.g. braced literal of class constructor calls with 'type' e.g. { Foo() : mut, Bar() : mut }
+    # (note: that direct use of std.unordered_map is possible now)
+
+    # dict_entry = pp.Group(infix_expr + bel + infix_expr)
+    # dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
     braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(make_parse_action_list_literal(BracedLiteral))
 
@@ -251,7 +255,9 @@ def _build_grammar():
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
-    array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
+    # no python slice syntax for arrays planned
+    # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
+    array_access_args = lit_lbrack + infix_expr + lit_rbrack  # TODO could allow 0-args version for array declarations (although no reason not to use std::array - could also make a std::array like built-in using template notation that codegens as a C-style array definition)
 
     braced_args = lit_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrace
 

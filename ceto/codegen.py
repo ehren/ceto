@@ -693,6 +693,9 @@ def type_inorder_traversal(typenode: Node, func):
 def type_node_to_list_of_types(typenode: Node):
     types = []
 
+    if typenode is None:
+        return types
+
     def callback(t):
         types.append(t)
         return True
@@ -709,14 +712,13 @@ def list_to_typed_node(lst):
     if len(lst) == 1:
         return lst[0]
     while lst:
+        second = lst.pop(0)
         if first is None:
-            first = lst.pop(0)
-        else:
+            first = second
             second = lst.pop(0)
-            if op is None:
-                op = TypeOp(func=":", args=[first, second], source=first.source)
-            else:
-                op = TypeOp(func=":", args=[op, second], source=second.source)
+            op = TypeOp(func=":", args=[first, second], source=first.source)
+        else:
+            op = TypeOp(func=":", args=[op, second], source=second.source)
     return op
 
 
@@ -894,16 +896,27 @@ def codegen_def(defnode: Call, cx):
             raise CodeGenError("destructors can't take arguments")
         is_destructor = True
 
-    is_interface_method = isinstance(name_node.declared_type, Call) and name_node.declared_type.func.name == "interface"
-    has_specifier = name_node.declared_type is not None and not is_interface_method  # this might need revising
+    # no support for out of line methods at the moment
     is_method = isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class"
 
-    if is_interface_method and return_type_node is None:
+    specifier_node = name_node.declared_type
+    specifier_types = type_node_to_list_of_types(specifier_node)
+
+    interface_calls = [t for t in specifier_types if isinstance(t, Call) and t.func.name == "interface"]
+    if len(interface_calls) > 1:
+        raise CodeGenError("too many 'interface' specifiers", defnode)
+    elif len(interface_calls) == 1:
+        interface = interface_calls[0]
+        specifier_types.remove(interface)
+    else:
+        interface = None
+
+    if interface and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
-    assert is_method or not is_interface_method
+    assert is_method or not interface
 
     for i, arg in enumerate(args):
-        if is_interface_method:
+        if interface:
             if arg.declared_type is None:
                 raise CodeGenError(
                     "parameter types must be specified for interface methods")
@@ -924,53 +937,47 @@ def codegen_def(defnode: Call, cx):
     specifier = ""
     is_const = is_method and not mut_by_default
 
-    if has_specifier:
-        specifier_node = name_node.declared_type
-
-        type_nodes = type_node_to_list_of_types(specifier_node)
-
-        const_or_mut = [t for t in type_nodes if t.name in ["const", "mut"]]
+    if specifier_types:
+        const_or_mut = [t for t in specifier_types if t.name in ["const", "mut"]]
         if len(const_or_mut) > 1:
             raise CodeGenError("too many 'mut' and 'const' specified", defnode)
 
         if const_or_mut:
             if not is_method:
-                raise CodeGenError("Don't specify 'const' for a non-method")
+                raise CodeGenError("Don't specify const/mut for a non-method", const_or_mut[0])
+            is_const = const_or_mut[0].name == "const"
+            specifier_types.remove(const_or_mut[0])
 
-            if const_or_mut[0].name == "const":
-                is_const = True
-            elif const_or_mut[0].name == "mut":
-                is_const = False
-
-            type_nodes.remove(const_or_mut[0])
-
-        if type_nodes:
-            specifier_node = list_to_typed_node(type_nodes)
+        if specifier_types:
+            specifier_node = list_to_typed_node(specifier_types)
             specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
 
-            if any(t.name == "static" for t in type_nodes):
+            if any(t.name == "static" for t in specifier_types):
+                if const_or_mut:
+                    raise CodeGenError("const/mut makes no sense for a static function", const_or_mut[0])
                 is_const = False
 
             def is_template_test(expr):
                 return isinstance(expr, Template) and expr.func.name == "template"
+
             if list(find_all(specifier_node, test=is_template_test)):
                 if len(typenames) > 0:
-                    raise CodeGenError("Explicit template function with generic params", defnode)
+                    raise CodeGenError("Explicit template function with generic params", specifier_node)
                 template = ""
             # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
             # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
-    elif is_interface_method:
-        # TODO some interface methods will need specifiers
+    if interface:
         assert len(typenames) == 0
         template = ""
         inline = ""
+
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
         inline = ""
 
     if name == "main":
-        if return_type_node or has_specifier:
+        if return_type_node or name_node.declared_type:
             raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
         template = ""
         inline = ""
@@ -978,7 +985,7 @@ def codegen_def(defnode: Call, cx):
             raise CodeGenError("unexpected nested main function", defnode)
         defnode.parent.has_main_function = True
 
-    if return_type_node is not None:
+    if return_type_node:
         # return_type = codegen_type(name_node, name_node.declared_type)
         return_type = codegen_type(defnode, return_type_node, cx)
         if is_destructor:
@@ -1012,7 +1019,7 @@ def codegen_def(defnode: Call, cx):
     else:
         const = " const" if is_const else ""
         funcdef = "{}{}{}auto {}({}){} -> {}".format(template, specifier, inline, name, ", ".join(params), const, return_type)
-        if is_interface_method:
+        if interface:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
     indt = cx.indent_str()
@@ -1257,9 +1264,11 @@ def _decltype_str(node, cx):
 def vector_decltype_str(node, cx):
     rhs_str = None
     found_use = False
+    assert isinstance(node, Assign)
 
     if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
         return decltype_str(node.rhs.args[0], cx)
+
 
     for found_use_node in find_uses(node):
         found_use = True
@@ -1495,11 +1504,6 @@ def codegen_call(node: Call, cx: Scope):
 
             return call_str
     else:
-        # wrong precedence:
-        # if isinstance(operator_node := node.func, Call) and operator_node.func.name == "operator" and len(operator_node.args) == 1 and isinstance(operator_name_node := operator_node.args[0], StringLiteral):
-        #     func_str = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
-        # else:
-        #     func_str = codegen_node(node.func, cx)
 
         # not auto-flattening args is becoming annoying!
         # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
@@ -1512,8 +1516,6 @@ def codegen_call(node: Call, cx: Scope):
         func_str = None
 
         if method_name is not None:
-
-            # assert isinstance(method_name, Identifier)
 
             # modify node.func
             def consume_method_name():
