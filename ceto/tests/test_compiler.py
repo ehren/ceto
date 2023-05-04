@@ -532,14 +532,14 @@ def (main:
     f = Foo(Foo(Foo(Foo(Foo(nullptr)))))
     std.cout << f.f.f.f.f.use_count()
     
-    FooList().l.push_back(f)
+    (FooList() : mut).l.push_back(f)
     FooList().l
     # std.cout << FooList().l[0]  # exception (actually a call to .at())
     std.cout << Foo(Foo(nullptr)).f.use_count()
     std.cout << (Foo(Foo(nullptr)).f).use_count()
     FooList().l.operator("[]")(0)  # UB ! (but should compile)
     
-    fl = FooList()
+    fl : mut = FooList()
     fl.l.push_back(f)
     std.cout << fl.l.operator("[]")(0).use_count()
 )
@@ -883,7 +883,7 @@ class (Foo:
 )
 
 def (main:
-    f = Foo()
+    f : mut = Foo()
 
     t : mut = std.thread(lambda(:
         while (f.a < 100000:
@@ -3264,7 +3264,7 @@ class (Uniq:
     # x = 0  # note untyped (hidden decltype inserted)  # this is now const by default
     x : mut = 0
 
-    def (bar:
+    def (bar: mut:
         self.x = self.x + 1
         printf("in bar %d %p\n", self.x, this)
         return self.x
@@ -3306,7 +3306,7 @@ def (main:
     u : mut = []
     s : mut = []
     for (x in [1, 2, 3, 4, 5]:
-        u.append(Uniq())
+        u.append(Uniq() : mut)
         s.append(Shared())
     )
     
@@ -3333,15 +3333,21 @@ def (main:
     )
     
     # v = [] #fix decltype(i)
-    v : mut = [Shared()]
+    v : mut = [Shared() : mut]
+    v2 : mut = [Shared()]
     
     for (i in s:
         i.foo()
         # n = i
-        v.append(i)
+        # v.append(i)  # error (i is const v contains mut elems)
+        v2.append(i) # v2 is not const, contains const elemens
     )
     
-    s1 = Shared()
+    for (vv2 in v2:
+        vv2.foo()
+    )
+    
+    s1 = Shared() : mut
     
     # for (v in v:  # shadowing...
     for (v1 in v:
@@ -3390,8 +3396,8 @@ def (main:
     
     # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
     lst : mut = []
-    lst.append(Foo())
-    f = Foo()
+    lst.append(Foo() : mut)
+    f = Foo() : mut
     # lst.append(f)  # error
     lst.append(std.move(f))
     
@@ -3410,7 +3416,7 @@ class (Foo:
     # x = 0  # this is now const by default
     x : int = 0  # TODO this should be too
 
-    def (bar:
+    def (bar:mut:
         printf("bar %d\n", self.x)
     )
     
@@ -3418,24 +3424,24 @@ class (Foo:
         printf("dead\n")
     )
     
-    def (operator("=="), other: Foo:
+    def (operator("=="):mut, other: Foo: mut:
         printf("in == method - both foo\n")
         return self.x == other.x
     )
-    def (operator("=="), other:
+    def (operator("=="):mut, other:
         printf("in == method - other not foo\n")
         return other == 5
     )
 )
 
-def (operator("=="), f: Foo, other:
+def (operator("=="), f: Foo:mut, other:
     return f.operator("==")(other)
 )
-def (operator("=="), f: Foo, other: Foo:
-    return f.operator("==")(other)
+def (operator("=="), f: Foo:mut, otherfoo: Foo:mut:
+    return f.operator("==")(otherfoo)
 )
 
-def (operator("=="), f: Foo, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
+def (operator("=="), f: Foo:mut, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
     return not f
     #return f.operator("==")(other)
     #return nullptr == f   # this is no longer possible in c++20 due to the symmetric binary operator reversing scheme (though clang++ on linux seems to accept it)
@@ -3458,12 +3464,10 @@ def (main:
     printf("testing for null...\n")
     if (f == nullptr:
         printf("we're dead\n")
-        # f.bar()  # crashes as expected
     )
     
     if (not f:
         printf("we're dead\n")
-        # f.bar()  # crashes as expected
     )
 )
     """)
@@ -3479,10 +3483,12 @@ dead
 dead
 testing for null...
 we're dead
-we're dead    
+we're dead
     """.strip()
+# we're dead
+# we're dead
 
-#
+    #
 #     """bar 0
 # in oper ==
 # in handleComp - other not foo
@@ -3939,21 +3945,21 @@ def (main:
     # x = 1
     # printf("%d", x)
     Foo().foo()
-    y = Foo()
-    f = y
+    f : mut = Foo()
     f.foo()
     f.x = 55
     f.foo()
+    y = Foo()
     calls_foo(y).foo().foo()
 )
     """)
 
     import re
     deadlines = list(re.findall("dead.*", output))
-    assert len(deadlines) == 2
+    assert len(deadlines) == 3
 
     attrib_accesses = list(re.findall("bar attribute access.*", output))
-    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*8
+    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*2 + ["bar attribute access 0"]*6
 
 
 def test_lottastuff_lambdas_lists():

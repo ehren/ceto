@@ -915,11 +915,14 @@ def codegen_def(defnode: Call, cx):
             elif const_or_mut[0].name == "mut":
                 is_const = False
 
-        type_nodes.remove(const_or_mut[0])
+            type_nodes.remove(const_or_mut[0])
 
         if type_nodes:
             specifier_node = list_to_typed_node(type_nodes)
             specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
+
+            if any(t.name == "static" for t in type_nodes):
+                is_const = False
 
             def is_template_test(expr):
                 return isinstance(expr, Template) and expr.func.name == "template"
@@ -1147,13 +1150,16 @@ def _decltype_str(node, cx):
             # instead of manual tracking like the above,
             # leave the matter of the desired class type up to C++ CTAD:
             args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"
+
+            const = "const " if _is_const_make(call) else ""
+
             class_name = "decltype(" + class_name + args_str + ")"
 
             if isinstance(class_node.declared_type,
                           Identifier) and class_node.declared_type.name == "unique":
-                func_str = "std::unique_ptr<" + class_name + ">"
+                func_str = "std::unique_ptr<" + const + class_name + ">"
             else:
-                func_str = "std::shared_ptr<" + class_name + ">"
+                func_str = "std::shared_ptr<" + const + class_name + ">"
 
             return False, func_str
 
@@ -1420,28 +1426,7 @@ def codegen_call(node: Call, cx: Scope):
                 #          class_def.is_generic_param_index[i]]) + ">"
                 class_name = "decltype(" + class_name + curly_args + ")"
 
-                const_part = "const " if not mut_by_default else ""
-
-                if isinstance(node.parent, Assign) and node.parent.lhs.declared_type is not None:
-                    lhs_type = node.parent.lhs.declared_type
-
-                    if isinstance(lhs_type, Identifier):
-                        if lhs_type.name == "mut":
-                            const_part = ""
-                    elif isinstance(lhs_type, TypeOp):
-                        type_list = type_node_to_list_of_types(lhs_type)
-                        if "mut" in [type_list[0].name, type_list[-1].name]:
-                            const_part = ""
-                elif node.declared_type is not None:
-                    lhs_type = node.parent.lhs.declared_type
-
-                    if isinstance(lhs_type, Identifier):
-                        if lhs_type.name == "mut":
-                            const_part = ""
-                    elif isinstance(node.lhs.declared_type, TypeOp):
-                        type_list = type_node_to_list_of_types(lhs_type)
-                        if "mut" in type_list:
-                            const_part = ""
+                const_part = "const " if _is_const_make(node) else ""
 
                 if isinstance(class_node.declared_type,
                               Identifier) and class_node.declared_type.name == "unique":
@@ -1573,6 +1558,34 @@ def codegen_call(node: Call, cx: Scope):
 
         return func_str + "(" + ", ".join(
             map(lambda a: codegen_node(a, cx), node.args)) + ")"
+
+
+def _is_const_make(node):
+    is_const = not mut_by_default
+
+    if isinstance(node.parent,
+                  Assign) and node.parent.lhs.declared_type is not None:
+        lhs_type = node.parent.lhs.declared_type
+
+        if isinstance(lhs_type, Identifier):
+            if lhs_type.name == "mut":
+                is_const = False
+        elif isinstance(lhs_type, TypeOp):
+            type_list = type_node_to_list_of_types(lhs_type)
+            if "mut" in [type_list[0].name, type_list[-1].name]:
+                is_const = False
+    elif node.declared_type is not None:
+        lhs_type = node.declared_type
+
+        if isinstance(lhs_type, Identifier):
+            if lhs_type.name == "mut":
+                is_const = False
+        elif isinstance(lhs_type, TypeOp):
+            type_list = type_node_to_list_of_types(lhs_type)
+            if "mut" in type_list:
+                is_const = False
+
+    return is_const
 
 
 def _build_initialization(needs_const: bool, name: str, type_only_str: str, type_part: str, direct_body: str, init_part: str, cx, assert_str: str = ""):
@@ -1810,7 +1823,7 @@ def codegen_node(node: Node, cx: Scope):
                 raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
-        elif isinstance(node, Call) and node.func.name != "lambda":
+        elif isinstance(node, Call) and node.func.name != "lambda" and node.declared_type.name != "mut":
             # it's not a typed lambda - error (TODO typed def simple calls as declarations with return type)
             raise CodeGenError("Unexpected typed call", node)
 

@@ -26,7 +26,8 @@ def current_indent(parsing_stack):
 
 def colon_replacement_char(current_state):
     if current_state in [CurlyOpen, SquareOpen]:
-        return BEL
+        # return BEL
+        pass
     return ":"
 
 
