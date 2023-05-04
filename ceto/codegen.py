@@ -640,6 +640,33 @@ def interface_method_declaration_str(defnode: Call, cx):
         raise CodeGenError("must specify return type of interface method")
     return_type = codegen_type(defnode, return_type_node, cx)
 
+    is_const = not mut_by_default
+
+    specifier_node = name_node.declared_type
+
+    type_nodes = type_node_to_list_of_types(specifier_node)
+
+    const_or_mut = [t for t in type_nodes if t.name in ["const", "mut"]]
+    if len(const_or_mut) > 1:
+        raise CodeGenError("too many 'mut' and 'const' specified", defnode)
+
+    if const_or_mut:
+        if const_or_mut[0].name == "const":
+            is_const = True
+        elif const_or_mut[0].name == "mut":
+            is_const = False
+
+        type_nodes.remove(const_or_mut[0])
+
+    const = " const" if is_const else ""
+    specifier = ""
+
+    type_nodes = [t for t in type_nodes if not (isinstance(t, Call) and t.func.name == "interface")]
+
+    if type_nodes:
+        specifier_node = list_to_typed_node(type_nodes)
+        specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
+
     for i, arg in enumerate(args):
         if arg.declared_type is None:
             raise CodeGenError("parameter types must be specified for interface methods")
@@ -649,7 +676,7 @@ def interface_method_declaration_str(defnode: Call, cx):
         assert len(param) > 0
         params.append(param)
 
-    return "virtual {} {}({}) = 0;\n\n".format(return_type, name, ", ".join(params))
+    return "{}virtual {} {}({}){} = 0;\n\n".format(specifier, return_type, name, ", ".join(params), const)
 
 
 def type_inorder_traversal(typenode: Node, func):
