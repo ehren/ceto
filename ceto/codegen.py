@@ -8,7 +8,7 @@ from collections import defaultdict
 import re
 
 
-mut_by_default = False
+mut_by_default = True
 
 
 class CodeGenError(Exception):
@@ -852,6 +852,7 @@ def codegen_def(defnode: Call, cx):
         name = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
 
     if name is None:
+        # no immediate plans to support out of line methods
         raise CodeGenError(f"can't handle name {name_node} in def {defnode}")
 
     params = []
@@ -867,10 +868,12 @@ def codegen_def(defnode: Call, cx):
         is_destructor = True
 
     is_interface_method = isinstance(name_node.declared_type, Call) and name_node.declared_type.func.name == "interface"
-    has_non_trailing_return = name_node.declared_type is not None and not is_interface_method
+    has_specifier = name_node.declared_type is not None and not is_interface_method  # this might need revising
+    is_method = isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class"
 
     if is_interface_method and return_type_node is None:
         raise CodeGenError("must specify return type of interface method")
+    assert is_method or not is_interface_method
 
     for i, arg in enumerate(args):
         if is_interface_method:
@@ -891,20 +894,39 @@ def codegen_def(defnode: Call, cx):
 
     template = ""
     inline = "inline "
-    non_trailing_return = ""
-    if has_non_trailing_return:
-        non_trailing_return_node = name_node.declared_type
-        non_trailing_return = " " + codegen_type(name_node, non_trailing_return_node, cx) + " "
+    specifier = ""
+    is_const = is_method and not mut_by_default
+
+    if has_specifier:
+        specifier_node = name_node.declared_type
+
+        type_nodes = type_node_to_list_of_types(specifier_node)
+
+        const_or_mut = [t for t in type_nodes if t.name in ["const", "mut"]]
+        if len(const_or_mut) > 1:
+            raise CodeGenError("too many 'mut' and 'const' specified", defnode)
+
+        if const_or_mut:
+            if not is_method:
+                raise CodeGenError("Don't specify 'const' for a non-method")
+
+            if const_or_mut[0].name == "const":
+                is_const = True
+            elif const_or_mut[0].name == "mut":
+                is_const = False
+
+        specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
         def is_template_test(expr):
             return isinstance(expr, Template) and expr.func.name == "template"
-        if list(find_all(non_trailing_return_node, test=is_template_test)):
+        if list(find_all(specifier_node, test=is_template_test)):
             if len(typenames) > 0:
                 raise CodeGenError("Explicit template function with generic params", defnode)
             template = ""
         # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
-        # TODO?: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
+        # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
     elif is_interface_method:
+        # TODO some interface methods will need specifiers
         assert len(typenames) == 0
         template = ""
         inline = ""
@@ -913,7 +935,7 @@ def codegen_def(defnode: Call, cx):
         inline = ""
 
     if name == "main":
-        if return_type_node or has_non_trailing_return:
+        if return_type_node or has_specifier:
             raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
         template = ""
         inline = ""
@@ -953,7 +975,8 @@ def codegen_def(defnode: Call, cx):
         # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
         funcdef = "~" + class_name + "()"
     else:
-        funcdef = "{}{}{}auto {}({}) -> {}".format(template, non_trailing_return, inline, name, ", ".join(params), return_type)
+        const = " const" if is_const else ""
+        funcdef = "{}{}{}auto {}({}){} -> {}".format(template, specifier, inline, name, ", ".join(params), const, return_type)
         if is_interface_method:
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
@@ -1400,7 +1423,7 @@ def codegen_call(node: Call, cx: Scope):
                     if isinstance(lhs_type, Identifier):
                         if lhs_type.name == "mut":
                             const_part = ""
-                    elif isinstance(node.lhs.declared_type, TypeOp):
+                    elif isinstance(lhs_type, TypeOp):
                         type_list = type_node_to_list_of_types(lhs_type)
                         if "mut" in [type_list[0].name, type_list[-1].name]:
                             const_part = ""
@@ -1686,7 +1709,7 @@ def codegen_assign(node: Node, cx: Scope):
                 # only works in naive cases. e.g. f : std.function = lambda(...) CTAD case fails
                 # lhs_type_str = "std::add_const_t<decltype(" + codegen_type(node.lhs, node.lhs.declared_type, cx) + ">"
                 lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                needs_const = True
+                needs_const = not mut_by_default
                 # rhs_str = "std::as_const(" + rhs_str + ")"
 
             decl_str = lhs_type_str + " " + lhs_str
@@ -1826,7 +1849,7 @@ def codegen_node(node: Node, cx: Scope):
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
                 node is node.parent.lhs) and (
            ptr_name := _shared_ptr_str_for_type(node, cx)):
-            return ptr_name + "< const " + name + ">"
+            return ptr_name + "<" + ("const " if not mut_by_default else "") + name + ">"
 
         return name
 
@@ -1970,7 +1993,7 @@ def codegen_node(node: Node, cx: Scope):
         # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
         if ptr_name := _shared_ptr_str_for_type(node.func, cx):
-            return ptr_name + "< const " + node.func.name + template_args + ">"
+            return ptr_name + "<" + ("const " if not mut_by_default else "") + node.func.name + template_args + ">"
         else:
             return codegen_node(node.func, cx) + template_args
 
