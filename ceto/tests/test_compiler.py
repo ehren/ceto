@@ -25,7 +25,7 @@ def test_mut_classes():
     
 class (Blah:
     x 
-    def (foo:
+    def (foo:mut:
         self.x = self.x + 1
     )
 )

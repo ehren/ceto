@@ -8,7 +8,7 @@ from collections import defaultdict
 import re
 
 
-mut_by_default = True
+mut_by_default = False
 
 
 class CodeGenError(Exception):
@@ -915,15 +915,20 @@ def codegen_def(defnode: Call, cx):
             elif const_or_mut[0].name == "mut":
                 is_const = False
 
-        specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
-        def is_template_test(expr):
-            return isinstance(expr, Template) and expr.func.name == "template"
-        if list(find_all(specifier_node, test=is_template_test)):
-            if len(typenames) > 0:
-                raise CodeGenError("Explicit template function with generic params", defnode)
-            template = ""
-        # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
-        # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
+        type_nodes.remove(const_or_mut[0])
+
+        if type_nodes:
+            specifier_node = list_to_typed_node(type_nodes)
+            specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
+
+            def is_template_test(expr):
+                return isinstance(expr, Template) and expr.func.name == "template"
+            if list(find_all(specifier_node, test=is_template_test)):
+                if len(typenames) > 0:
+                    raise CodeGenError("Explicit template function with generic params", defnode)
+                template = ""
+            # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
+            # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
     elif is_interface_method:
         # TODO some interface methods will need specifiers
