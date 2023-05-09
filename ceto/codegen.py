@@ -1090,7 +1090,6 @@ def codegen_lambda(node, cx):
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        # this should use Scope
         possible_captures = []
         for i in idents:
             if i.name == "self":
@@ -1658,12 +1657,10 @@ def codegen_assign(node: Node, cx: Scope):
             # add const if not mut
 
             if isinstance(node.lhs.declared_type, Identifier):
-                assert node.lhs.declared_type.declared_type is None # TODO just remove declared_type
                 if node.lhs.declared_type.name == "mut":
                     # mut is the real "auto".
 
                     if cx.in_class_body:
-                        # TODO repeated logic from below re # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
                         lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
                     else:
                         lhs_type_str = "auto"
