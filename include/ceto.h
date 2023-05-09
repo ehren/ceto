@@ -6,7 +6,16 @@
 #include <utility>
 #include <type_traits>
 #include <stdexcept>
+
+#ifndef __clang__
 #include <source_location>
+#define CETO_HAS_SOURCE_LOCATION
+#define CETO_SOURCE_LOC_PARAM , const std::source_location& location = std::source_location::current()
+#define CETO_SOURCE_LOC_ARG location
+#else
+#define CETO_SOURCE_LOC_PARAM
+#define CETO_SOURCE_LOC_ARG
+#endif
 
 namespace ceto {
 
@@ -46,8 +55,11 @@ shared_from(That* that) {
 class null_deref_error : public std::runtime_error
 {
 public:
+    using std::runtime_error::runtime_error;
+};
 
-    static inline std::string build_message(const std::source_location& location) {
+#ifdef CETO_HAS_SOURCE_LOCATION
+    static inline std::string build_null_deref_message(const std::source_location& location) {
         std::string message = "Attempted null deref in attribute access:";
         message += location.file_name();
         message += ":";
@@ -56,9 +68,12 @@ public:
         message += " column " + std::to_string(location.column()) + "\n";
         return message;
     }
+#else
+    static inline std::string build_null_deref_message() {
+        return "Attempted null deref in attribute access";
+    }
+#endif
 
-    using std::runtime_error::runtime_error;
-};
 
 template<typename T>
 T* mad(T & obj) {
@@ -73,9 +88,9 @@ T* mad(T && obj) {
 
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-mad(std::shared_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
+mad(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return obj;   // autoderef
 }
@@ -88,9 +103,9 @@ mad(std::shared_ptr<T>& obj, const std::source_location& location = std::source_
 // autoderef of temporary
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-mad(std::shared_ptr<T>&& obj, const std::source_location& location = std::source_location::current()) {
+mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return std::move(obj);  // autoderef
 }
@@ -101,9 +116,9 @@ mad(std::shared_ptr<T>&& obj, const std::source_location& location = std::source
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
-mad(const std::shared_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
+mad(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return obj;
 }
@@ -111,9 +126,9 @@ mad(const std::shared_ptr<T>& obj, const std::source_location& location = std::s
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
-mad(std::unique_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
+mad(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return obj;
 }
@@ -121,9 +136,9 @@ mad(std::unique_ptr<T>& obj, const std::source_location& location = std::source_
 // autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
-mad(const std::unique_ptr<T>& obj, const std::source_location& location = std::source_location::current()) {
+mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return obj;
 }
@@ -131,9 +146,9 @@ mad(const std::unique_ptr<T>& obj, const std::source_location& location = std::s
 // autoderef of temporary
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>
-mad(std::unique_ptr<T>&& obj, const std::source_location& location = std::source_location::current()) {
+mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(null_deref_error::build_message(location));
+        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return std::move(obj);
 }
