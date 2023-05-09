@@ -552,10 +552,11 @@ def codegen_class(node : Call, cx):
     if base_class_type is not None:
         default_inherits.append("public " + base_class_type)
 
-    if classdef.is_unique:
-        default_inherits += ["ceto::object"]
-    else:
-        default_inherits += ["ceto::shared_object"]
+    if not inherits:
+        if classdef.is_unique:
+            default_inherits += ["ceto::object"]
+        else:
+            default_inherits += ["ceto::shared_object"]
 
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
