@@ -20,19 +20,27 @@ def raises(func, exc=None):
         assert 0
 
 
-def test_list_type_on_left():
+def test_list_type_on_left_or_right():
     c = compile(r"""
 class (Foo:
     a : [int]
     b : [int] = [1,2,3]
+    c = [1,2,3] : int
+    d = [1,2,3]
 )
     
 def (main:
     x:[int] = [1,2,3]
     l1 = [Foo(x)]
+    lm : mut = []
     l2 = [Foo(x)] : Foo
     l3 : [Foo] = [Foo(x)]
-    static_cast<void>([l1,l2,l3])  # silence unused warning
+    for (l in [l1, l2, l3]:
+        # lm.append(l[0].a[2])  # TODO handled poorly/dangerously
+        # lm.append(l3[0].a[2])  # TODO handled poorly
+        lm.append(l1[0].a[2])
+    )
+    std.cout << lm[2]
 )
     """)
 

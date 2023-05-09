@@ -1131,8 +1131,6 @@ def codegen(expr: Node):
 
 def decltype_str(node, cx):
     if isinstance(node, ArrayAccess):
-        if not isinstance(node.func, Identifier):
-            assert False
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
         # for n, c in find_defs(node.func):
@@ -1141,7 +1139,7 @@ def decltype_str(node, cx):
                 if vds := vector_decltype_str(c, cx):
                     return vds
 
-        return "decltype({})::value_type".format(str(node.func))
+        return "std::remove_cvref_t<decltype({})>::value_type".format(codegen_node(node.func, cx))
 
     elif isinstance(node, ListLiteral):
 
