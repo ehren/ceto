@@ -1617,7 +1617,9 @@ def _is_const_make(node):
     return is_const
 
 
-def codegen_assign(node: Node, cx: Scope):
+def codegen_assign(node: Assign, cx: Scope):
+    assert isinstance(node, Assign)
+
     if not isinstance(node.lhs, Identifier):
         return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
 
@@ -1642,7 +1644,7 @@ def codegen_assign(node: Node, cx: Scope):
         newcx.in_function_param_list = True
         rhs_str = codegen_lambda(lambdaliteral, newcx)
     #elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
-    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
+    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and not node.rhs.declared_type and (not node.lhs.declared_type or not isinstance(node.lhs.declared_type, ListLiteral)) and (vds := vector_decltype_str(node, cx)) is not None:  # TODO const/mut specifier for list type on lhs
         # handle untyped empty list literal by searching for uses
         rhs_str = "std::vector<" + vds + ">()"
     else:
@@ -1908,11 +1910,14 @@ def codegen_node(node: Node, cx: Scope):
             return binop_str
 
     elif isinstance(node, ListLiteral):
-
         list_type = node.declared_type
-        # if list_type is None and isinstance(node.parent, Assign):
-        #     list_type = node.parent.declared_type or node.parent.rhs.declared_type or node.parent.lhs.declared_type
-        # lang design change: element type must be on rhs always
+
+        if list_type is None and isinstance(node.parent, Assign) and isinstance(node.parent.lhs.declared_type, ListLiteral):  # TODO const/mut specifier for list literal type on lhs
+
+            if not len(node.parent.lhs.declared_type.args) == 1:
+                raise CodeGenError("unexpected args in list-type", node.parent.lhs.declared_type)
+            list_type = node.parent.lhs.declared_type.args[0]
+
         elements = [codegen_node(e, cx) for e in node.args]
 
         if list_type is not None:

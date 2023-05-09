@@ -19,6 +19,24 @@ def raises(func, exc=None):
     else:
         assert 0
 
+
+def test_list_type_on_left():
+    c = compile(r"""
+class (Foo:
+    a : [int]
+    b : [int] = [1,2,3]
+)
+    
+def (main:
+    x:[int] = [1,2,3]
+    l1 = [Foo(x)]
+    l2 = [Foo(x)] : Foo
+    l3 : [Foo] = [Foo(x)]
+    static_cast<void>([l1,l2,l3])  # silence unused warning
+)
+    """)
+
+
 def test_mut_classes():
 
     c = compile(r"""
@@ -222,9 +240,9 @@ class (Identifier(Node):
     
     def (init, name:
         self.name = name
-        # super.init(nullptr, std.vector<Node> {})  # awkward
-        # super.init(nullptr, {})  # confusing for non c++ programmers + not typesafe
-        super.init(nullptr, [] : Node)  # not that bad?
+        # super.init(nullptr, std.vector<Node> {})  # this works but should't be required
+        # super.init(nullptr, {})  # likewise - also not semantically identical (use of '{' and '}' nearly as dangerous as other c++ compat unsafe features)
+        super.init(nullptr, [] : Node)  # nicer ceto solution
         # super.init(nullptr, [])  # transpiler error. TODO maybe just print "[]" as "{}" as a final fallback? only as a param?
     )
 )
@@ -232,9 +250,11 @@ class (Identifier(Node):
 def (main:
     id = Identifier("a")
     std.cout << id.name
-    id_node : Node = Identifier("a")  # TODO virtual destructor in Node if overridable or any method overridable (but only if Node is :unique)
+    id_node : Node = Identifier("a")  # TODO virtual destructor in Node if overridable or any method overridable (but only if Node is :unique ? clang warns even in shared_ptr case - false positive?)
     std.cout << static_pointer_cast<std.type_identity_t<Identifier>::element_type>(id_node).name  # TODO 'asinstance' (dynamic_pointer_cast)
-    args = [id, id_node] : Node
+    args : [Node] = [id, id_node]
+    args2 = [id, id_node] : Node   # ensure specifying type of list element instead of type of list works too
+    static_cast<void>(args2)  # unused
     node = Node(id, args)
     std.cout << (node.args[0] == nullptr)  # TODO do we have the precedence right here?
     std.cout << "\n" << node.repr()
