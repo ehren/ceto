@@ -1139,7 +1139,7 @@ def decltype_str(node, cx):
                 if vds := vector_decltype_str(c, cx):
                     return vds
 
-        return "std::remove_cvref_t<decltype({})>::value_type".format(codegen_node(node.func, cx))
+        return "std::remove_cvref_t<{}>::value_type".format(decltype_str(node.func, cx))
 
     elif isinstance(node, ListLiteral):
 
@@ -1153,20 +1153,30 @@ def decltype_str(node, cx):
         return code
 
 
+def _decltype_maybe_wrapped_in_declval(node, cx):
+    needs_decltype, code = _decltype_str(node, cx)
+    if not needs_decltype:
+        return "std::declval<" + code + ">()"
+    return code
+
+
 def _decltype_str(node, cx):
 
     if isinstance(node, IntegerLiteral):
         return True, str(node)
     elif isinstance(node, StringLiteral):
-        # return "std::declval(" + str(node) + "sv" + ")"
         return True, "std::string {" + str(node) + "}"
 
     if isinstance(node, BinOp):
         binop = node
-        assert False, "this should be unreachable. TODO: just remove this code"
-        return True, _decltype_str(binop.lhs, cx)[1] + str(binop.func) + _decltype_str(binop.rhs, cx)[1]
+        if isinstance(node, AttributeAccess):
+            # TODO needs fixes for implicit scope resolution
+            return True, "ceto::mad(" + _decltype_maybe_wrapped_in_declval(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+
+        return True, _decltype_maybe_wrapped_in_declval(binop.lhs, cx) + str(binop.func) + _decltype_maybe_wrapped_in_declval(binop.rhs, cx)
+
     elif isinstance(node, UnOp):
-        assert False, "this should be unreachable. TODO: just remove this code"
+        assert False, "this needs fixes"
         return True, "(" + str(node.func) + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
@@ -1181,7 +1191,7 @@ def _decltype_str(node, cx):
 
             # instead of manual tracking like the above,
             # leave the matter of the desired class type up to C++ CTAD:
-            args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"
+            args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"   # this should be _decltype_str instead of codegen_node?
 
             const = "const " if _is_const_make(call) else ""
 
@@ -1199,6 +1209,15 @@ def _decltype_str(node, cx):
             return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
     elif isinstance(node, ListLiteral):
         return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
+    elif isinstance(node, ArrayAccess):
+
+        # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
+        # for n, c in find_defs(node.func):
+        for n, c in node.scope.find_defs(node.func):
+            if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
+                if vds := vector_decltype_str(c, cx):
+                    return False, vds
+        return False, "std::remove_cvref_t<{}>::value_type".format(decltype_str(node.func, cx))
 
     assert isinstance(node, Identifier)
 
@@ -1244,9 +1263,7 @@ def _decltype_str(node, cx):
     if isinstance(last_context, Assign):
         assign = last_context
 
-        _, code = _decltype_str(assign.rhs, cx)
-
-        return True, code
+        return _decltype_str(assign.rhs, cx)
 
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
