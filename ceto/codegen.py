@@ -1868,7 +1868,8 @@ def codegen_node(node: Node, cx: Scope):
                             declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
                         else:
                             declared_type_constexpr = ""
-                        return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { " + ret_body + "; }"
+                        # return if not void (void cast to suppress unused value warning - [[maybe_unused]] doesn't apply to (void) expressions)
+                        return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { static_cast<void>(" + ret_body + "); }"
                     else:
                         return "return " + ret_body
                 else:
