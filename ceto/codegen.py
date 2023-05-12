@@ -1091,21 +1091,22 @@ def codegen_lambda(node, cx):
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        possible_captures = []
+        possible_captures = set()
         for i in idents:
             if i.name == "self":
-                possible_captures.append(i.name)
+                possible_captures.add(i.name)
             #elif d := find_def(i):
             elif d := i.scope.find_def(i):
                 defnode, defcontext = d
                 is_capture = True
-                while is_capture and defnode is not None:
+                while defnode is not None:
                     if defnode is node:
                         # defined in lambda or by lambda params (not a capture)
                         is_capture = False
+                        break
                     defnode = defnode.parent
                 if is_capture:
-                    possible_captures.append(i.name)
+                    possible_captures.add(i.name)
 
         capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
     # elif TODO is nonescaping or immediately invoked:
@@ -1738,12 +1739,10 @@ def codegen_assign(node: Assign, cx: Scope):
             if any(find_all(node.lhs.declared_type, test=lambda n: n.name in ["auto", "mut"])):
                 return const_specifier + direct_initialization
 
-            # FIXME
-            # printing of UnOp is currently parenthesized due to current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
-            # this unfortunately can introduce unexpected use of overparethesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
+            # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
+            # this unfortunately can introduce unexpected use of overparenthesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
             # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
-            # for now with this case, just ensure use of non-overparenthesized version via regex:
-            rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
+            # rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
 
             if isinstance(node.rhs, IntegerLiteral) or (
                     isinstance(node.rhs, Identifier) and node.rhs.name in [
