@@ -723,6 +723,15 @@ def list_to_typed_node(lst):
     return op
 
 
+def strip_mut_or_const(type_node : Node):
+    types = type_node_to_list_of_types(type_node)
+    mc = list(t for t in types if t.name in ["mut", "const"])
+    if len(mc) == 1:
+        types.remove(mc[0])
+        return mc[0], list_to_typed_node(types)
+    return None
+
+
 def _should_add_const_ref_to_typed_param(param, cx):
   return cx.lookup_class(param.declared_type) is not None or isinstance(param.declared_type,
     ListLiteral) or param.declared_type.name == "string" or (isinstance(param.declared_type,
@@ -1279,15 +1288,12 @@ def _decltype_str(node, cx):
 
 def vector_decltype_str(node, cx):
     rhs_str = None
-    found_use = False
     assert isinstance(node, Assign)
 
     if isinstance(node, Assign) and isinstance(node.rhs, ListLiteral) and node.rhs.args:
         return decltype_str(node.rhs.args[0], cx)
 
-
     for found_use_node in find_uses(node):
-        found_use = True
         parent = found_use_node.parent
         while rhs_str is None and not isinstance(parent, Block):
             found_use_context = parent
@@ -1295,22 +1301,14 @@ def vector_decltype_str(node, cx):
             if isinstance(found_use_context, AttributeAccess) and (
                found_use_context.lhs is found_use_node and found_use_context.rhs.name == "append"):
 
-                append_call_node = None
                 if isinstance(found_use_context.parent, Call) and len(found_use_context.parent.args) == 1:
                     append_arg = found_use_context.parent.args[0]
-
                     rhs_str = decltype_str(append_arg, cx)
 
             parent = parent.parent
 
         if rhs_str is not None:
             break
-    if rhs_str is None:
-        if found_use:
-            # raise CodeGenError("list error, dunno what to do with this:", node)
-            print("list error, dunno what to do with this:", node)
-        else:
-            raise CodeGenError("Unused empty list in template codegen", node)
     return rhs_str
 
 
@@ -1927,11 +1925,15 @@ def codegen_node(node: Node, cx: Scope):
     elif isinstance(node, ListLiteral):
         list_type = node.declared_type
 
-        if list_type is None and isinstance(node.parent, Assign) and isinstance(node.parent.lhs.declared_type, ListLiteral):  # TODO const/mut specifier for list literal type on lhs
+        if list_type is None and isinstance(node.parent, Assign) and (list_assign_type := node.parent.lhs.declared_type):
 
-            if not len(node.parent.lhs.declared_type.args) == 1:
-                raise CodeGenError("unexpected args in list-type", node.parent.lhs.declared_type)
-            list_type = node.parent.lhs.declared_type.args[0]
+            if mc := strip_mut_or_const(list_assign_type):
+                _, list_assign_type = mc  # ignore outer mut or const specifier (irrelevant for codegen of rhs of assignment)
+
+            if isinstance(list_assign_type, ListLiteral):
+                if not len(list_assign_type.args) == 1:
+                    raise CodeGenError("unexpected args in list-type", list_assign_type)
+                list_type = list_assign_type.args[0]
 
         elements = [codegen_node(e, cx) for e in node.args]
 

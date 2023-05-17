@@ -571,8 +571,8 @@ class (Foo:
 )
 
 class (FooList:
-    # f : [Foo] = []  # TODO fix
-    l : mut:[Foo] = [] : Foo
+    # l : mut = [] : Foo  # either of these is ok now
+    l : mut:[Foo] = []
 )
     
 def (main:
