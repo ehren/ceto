@@ -156,32 +156,20 @@ def _parse_template(s, l, t):
 
 
 def _make_parse_action_string_literal(clazz):
-    def parse(s, l, t):
+    def parse_action(s, l, t):
         func = str(t[0])
         args = []
         source = s, l
         return clazz(func, args, source)
-    return parse
+    return parse_action
 
 
-def _make_parse_action_list_literal(clazz):
-    def parse(s, l, t):
+def _make_parse_action_list_like(clazz):
+    def parse_action(s, l, t):
         args = t.as_list()
         source = s, l
         return clazz(args, source)
-    return parse
-
-
-def _parse_block(s, l, t):
-    args = t.as_list()
-    source = s, l
-    return Block(args, source)
-
-
-def _parse_module(s, l, t):
-    args = t.as_list()
-    source = s, l
-    return Module(args, source)
+    return parse_action
 
 
 def _build_grammar():
@@ -232,25 +220,25 @@ def _build_grammar():
         (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
         (lparen + pp.Optional(infix_expr) + comma + rparen) |
         (lparen + rparen)
-    ).set_parse_action(_make_parse_action_list_literal(TupleLiteral))
+    ).set_parse_action(_make_parse_action_list_like(TupleLiteral))
 
     list_literal <<= (
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-    ).set_parse_action(_make_parse_action_list_literal(ListLiteral))
+    ).set_parse_action(_make_parse_action_list_like(ListLiteral))
 
     bel = pp.Suppress('\x07')
 
-    # just allow dict literals (codegen unimplemented) as braced_literals with all elements TypeOf ops
+    # just allow dict literals (TODO codegen) as braced_literals with all elements TypeOf ops
     # can have complex rules to disambiguate dict literal from e.g. braced literal of class constructor calls with 'type' e.g. { Foo() : mut, Bar() : mut }
-    # (note: that direct use of std.unordered_map is possible now)
+    # note: direct use of std.unordered_map is possible now: m : std.unordered_map = {{0,1}, {1,2}}  # ctad ftw
 
     # dict_entry = pp.Group(infix_expr + bel + infix_expr)
     # dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
-    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(_make_parse_action_list_literal(BracedLiteral))
+    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(_make_parse_action_list_like(BracedLiteral))
 
     block_line_end = pp.Suppress(";")
-    block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_parse_block)
+    block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Block))
 
     template_disambig_char = pp.Suppress("\x06")
     template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(template_disambig_char)).set_parse_action(_parse_template)
@@ -320,7 +308,7 @@ def _build_grammar():
         ],
     ).set_parse_action(_InfixExpr)
 
-    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(_parse_module)
+    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(_make_parse_action_list_like(Module))
 
     return module
 

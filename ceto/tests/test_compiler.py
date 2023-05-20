@@ -2086,7 +2086,6 @@ def (main:
     x = 0
     xmut : mut = 0
     y : const:int:ptr = &x
-    # TODO const by default (implement mut)
     y2 : int:ptr
     y2 = &xmut
     hmm = reinterpret_cast<int:ptr>(1)

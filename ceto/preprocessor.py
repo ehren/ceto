@@ -17,7 +17,7 @@ SingleQuote = 4
 DoubleQuote = 5
 OpenAngle = 6
 
-expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}"}
+expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}", SingleQuote: "'", DoubleQuote: '"', OpenAngle: '>'}
 
 
 def current_indent(parsing_stack):
@@ -221,6 +221,8 @@ def preprocess(file_object, reparse = False):
             else:
                 rewritten.write(line_to_write)
 
-        parsing_stack.pop()
+        if top := parsing_stack.pop() != Indent:
+            # TODO states as real objects (error should point to the opening)
+            raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
 
     return rewritten, replacements, blocks

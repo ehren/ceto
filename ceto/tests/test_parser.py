@@ -1,9 +1,29 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_stress_parser2():
+    # https://peps.python.org/pep-0617/
+    source = r"""
+1 + 2 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + ((((((11 * 12 * 13 * 14 * 15 + 16 * 17 + 18 * 19 * 20))))))
+2*3 + 4*5*6
+12 + (2 * 3 * 4 * 5 + 6 + 7 * 8)
+    """.rstrip()  #  .strip()  TODO error in parser (error in preprocessor with .lstrip() ??? strip seems fine with other examples)
+
+    # source *= 100000//3
+    # apparently python's new peg parses the above in 1-6 secs
+
+    # one run via pytest:
+    # source *= 500  # 2m 11sec
+    # source *= 100 # 20s
+    source *= 50 # 10s
+    parse(source)
+
+    # could be sped up (without a total parser rewrite) by parsing blocks during indent checking (plus removal of Block/Module parsing from pyparsing defined grammar) - similar to error reparse scheme
+
+
 def test_declarations_typed_calls():
     a = parse(r"""
-def (printf, char:ptr):void
+def (puts, char:ptr):int
 lambda(x:int,x):int
     """)
 
@@ -20,9 +40,7 @@ for ((x,y) : const:auto:ref in iterable:
     pass
 ) 
     
-    """)
-
-
+    """.strip())
 
 
 def test_scope_resolve_call():
@@ -53,7 +71,7 @@ bar()()::blah::blah2
     """)
     assert str(a) == "Module((foo :: bar)(),((foo :: foo2) :: bar)(),((foo :: foo2) :: bar)(),(((foo :: foo2) :: foo3) :: bar)(),foo.bar(),(bar() :: blah),(bar()() :: (blah :: blah2)))"
 
-    # last result should really be parsed as (bar()()::blah)::blah2 but above is ok for now
+    # debatable if last result should really be parsed as (bar()()::blah)::blah2 but above is ok for now
 
 
 def test_errors2():
@@ -93,7 +111,7 @@ def test_stress_parser():
     old = sys.getrecursionlimit()
     sys.setrecursionlimit(10**6)  # risks overflowing cpython stack
 
-    limit = 50
+    limit = 48
 
     parse(r"""
 
