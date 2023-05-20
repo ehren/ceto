@@ -164,7 +164,15 @@ std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
 call_or_construct(Args&&... args) {
     // use braced args to disable narrowing conversions
     using TT = decltype(T{std::forward<Args>(args)...});
+    return std::make_shared<TT>(std::forward<Args>(args)...);
+}
 
+template<typename T, typename... Args>
+std::enable_if_t<std::is_base_of_v<shared_object, std::remove_const_t<T>> && std::is_const_v<T>, std::shared_ptr<T>>
+call_or_construct(Args&&... args) {
+    using tt = std::remove_const_t<T>;
+    // use braced args to disable narrowing conversions
+    using TT = const decltype(tt{std::forward<Args>(args)...});
     return std::make_shared<TT>(std::forward<Args>(args)...);
 }
 
@@ -182,6 +190,14 @@ call_or_construct(Args&&... args) {
     return std::make_unique<TT>(std::forward<Args>(args)...);
 }
 
+template<typename T, typename... Args>
+std::enable_if_t<std::is_base_of_v<object, std::remove_const_t<T>> && std::is_const_v<T> && !std::is_base_of_v<shared_object, std::remove_const_t<T>>, std::unique_ptr<T>>
+call_or_construct(Args&&... args) {
+    using tt = std::remove_const_t<T>;
+    using TT = const decltype(tt{std::forward<Args>(args)...});
+    return std::make_unique<TT>(std::forward<Args>(args)...);
+}
+
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
 call_or_construct() {
@@ -196,7 +212,7 @@ call_or_construct(Args&&... args) {
 }
 
 template <typename T>
-std::enable_if_t<!std::is_base_of_v<object, T> && !std::is_void_v<T>, T>
+std::enable_if_t<!std::is_base_of_v<object, T> /*&& !std::is_void_v<T>*/, T>
 call_or_construct() {
     return T();
 }
@@ -224,12 +240,29 @@ struct is_object_unique_ptr {
     enum { value = false };
 };
 
+//template<typename T>
+//struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
+//   enum { value = true };
+//};
+
 template<typename T>
-struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value
-                                                       && std::is_base_of_v<object, T>>::type>
-{
+// struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
+struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<T, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
    enum { value = true };
 };
+
+template<typename T>
+//T&&
+//auto&&
+const T
+maybe_move(T t) {
+//    if constexpr (is_object_unique_ptr<T>::value) {
+////        return std::move(t);
+//        return std::forward<T>(std::move(t));
+//    }
+//    return std::forward<T>(t);
+    return t;
+}
 
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
@@ -313,7 +346,6 @@ constexpr bool is_template() { return true; }
 
 template<class T>
 constexpr bool is_template() { return false; }
-
 
 
 } // namespace ceto

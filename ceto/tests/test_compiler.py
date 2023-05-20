@@ -1979,6 +1979,8 @@ def (main:
     y : mut = 1
     x = y = 0
     std.cout << x << y
+    y2 = y = x
+    static_assert(std.is_same_v<decltype(y2), const:int>)
 )
     """)
     assert c == "00"
@@ -2178,9 +2180,8 @@ def (func, f : FooConcrete:
 )
 
 def (func, f : FooConcreteUnique:
-    # TODO this "works" but unique managed objects should always be pass by value (also last use automoved)
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-    static_assert(std.is_reference_v<decltype(f)>)
+    static_assert(std.is_const_v<decltype(f)>)
+    static_assert(not std.is_reference_v<decltype(f)>)
     std.cout << "FooConcreteUnique " << f.a << std.endl
 )
 
@@ -2191,6 +2192,12 @@ def (func, f : FooConcreteUnique:
 #     std.cout << "FooConcreteUnique " << f.a << std.endl
 # )
 
+def (byval, f : auto:
+    static_assert(not std.is_reference_v<decltype(f)>)  # when this is the last use, arguably bad insertion of std::move here? maybe it's expected
+    std.cout << "byval " << f.a
+    pass
+)
+
 def (main:
     f = FooGeneric("yo")
     f2 = FooConcrete("hi")
@@ -2198,11 +2205,15 @@ def (main:
     func(f2)
     func(FooGenericUnique("hi"))
     f3 = FooConcreteUnique("hey")
-    f4 = FooConcreteUnique("hello")
-    func(std.move(f3))
-    func(FooConcreteUnique("yo"))
+    f4 : mut = FooConcreteUnique("hello")
     # func2(std.move(f4))
     # func2(FooConcreteUnique("hello"))
+    # func(f3)
+    std.cout << f3.a  # make sure the above call isn't the last use of f3...
+    func(f4)
+    func(FooConcreteUnique("yo"))
+    byval(f4)
+    # byval(f3)  # error call to deleted blah blah (f3 is const)
 )
     """)
 
@@ -3423,34 +3434,46 @@ def (bam, f: Foo:
 
 def (baz, f: Foo:
     f.bar()
-    bam(std.move(f))
+    bam(f)  # last use automoved
 )
 
 def (main:
     Foo().bar()
     
     baz(Foo())
-    
+
     f : mut = Foo()
     f.bar()
-    
-    f2 = Foo()
+
+    f2 : mut = Foo()
     f2.bar()
-    
-    # baz(f2)  # error
-    baz(std.move(f2))
-    
+
+    # baz(std.move(f2))  # this is no longer necessary
+    baz(f2)  # automatic move from last use
+
     # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
     lst : mut = []
     lst.append(Foo() : mut)
     f = Foo() : mut
-    # lst.append(f)  # error
-    lst.append(std.move(f))
-    
+    # lst.append(std.move(f))  # no longer necessary
+    lst.append(f)
+
     lst[0].bar()
     lst[1].bar()
 )
     """)
+
+    assert c == r"""
+bar 5
+bar 5
+bar 5
+bar 5
+bar 5
+bar 5
+bar 5
+bar 5
+bar 5
+    """.strip() + "\n"
 
 
 def test_reset_ptr():

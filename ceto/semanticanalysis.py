@@ -394,7 +394,7 @@ class ClassDefinition:
 
 class InterfaceDefinition(ClassDefinition):
     def __init__(self):
-        pass
+        super().__init__(None, None, None, False)
 
 
 class VariableDefinition:
@@ -465,7 +465,7 @@ class Scope:
 class ScopeVisitor:
 
     def visit_Node(self, node):
-        if not hasattr(node, "scope"):
+        if node.scope is None:
             node.scope = node.parent.scope
         return node
 

@@ -708,10 +708,11 @@ def type_node_to_list_of_types(typenode: Node):
 def list_to_typed_node(lst):
     op = None
     first = None
-    lst = lst.copy()
-    assert lst
+    if not lst:
+        return lst
     if len(lst) == 1:
         return lst[0]
+    lst = lst.copy()
     while lst:
         second = lst.pop(0)
         if first is None:
@@ -733,9 +734,9 @@ def strip_mut_or_const(type_node : Node):
 
 
 def _should_add_const_ref_to_typed_param(param, cx):
-  return cx.lookup_class(param.declared_type) is not None or isinstance(param.declared_type,
-    ListLiteral) or param.declared_type.name == "string" or (isinstance(param.declared_type,
-    (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string")
+    if class_def := cx.lookup_class(param.declared_type):
+        return not class_def.is_unique
+    return isinstance(param.declared_type, ListLiteral) or param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string"
 
 
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
@@ -749,7 +750,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
 
-            automatic_const_part = ""
+            automatic_const_part = " "  # TODO add const here (if not already const)
             automatic_ref_part = ""
 
             if _should_add_const_ref_to_typed_param(arg, cx):
@@ -775,7 +776,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
         if arg.lhs.declared_type is not None:
 
-            automatic_const_part = ""
+            automatic_const_part = " "
             automatic_ref_part = ""
 
             if _should_add_const_ref_to_typed_param(arg.lhs, cx):
@@ -804,14 +805,16 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
         #     pass
         else:
             # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added
-            if isinstance(arg.rhs, Call) and cx.lookup_class(
-                    arg.rhs.func) is not None:
+            if isinstance(arg.rhs, Call) and (class_def := cx.lookup_class(arg.rhs.func)):
                 # it's a known class (object derived). auto add const&
                 # (though std::add_const_t works here, we can be direct)
                 make_shared = codegen_node(arg.rhs, cx)
                 # (we can also be direct with the decltype addition as well though decltype_str works now)
                 # TODO needs tests
-                return "const decltype(" + make_shared + ") &", arg.lhs.name + " = " + make_shared
+                ref_part = ""
+                if not class_def.is_unique:
+                    ref_part = "&"
+                return "const decltype(" + make_shared + ")" + ref_part, arg.lhs.name + " = " + make_shared
             else:
                 # untyped default value
 
@@ -1842,6 +1845,49 @@ def codegen_node(node: Node, cx: Scope):
                 node is node.parent.lhs) and (
            ptr_name := _shared_ptr_str_for_type(node, cx)):
             return ptr_name + "<" + ("const " if not mut_by_default else "") + name + ">"
+
+        ident_ancestor = node.parent
+        prev_ancestor = node
+        is_last_use = True
+        if isinstance(node.parent, (ScopeResolution, AttributeAccess, ArrowOp, Template)):
+            is_last_use = False
+        elif isinstance(node.parent, (BinOp, UnOp)):
+            is_last_use = isinstance(node.parent, Assign)  # maybe a bit strict but e.g. we don't want to transform &x to &(std::move(x))
+        elif isinstance(node.parent, Call) and node.parent.func is node:
+            is_last_use = False
+
+        while is_last_use and ident_ancestor and not creates_new_variable_scope(ident_ancestor):
+            if isinstance(ident_ancestor, Block) and prev_ancestor in ident_ancestor.args:
+                # TODO 'find_uses' in sema should work with Identifier not just Assign too
+                # try:
+                for b in ident_ancestor.args[ident_ancestor.args.index(prev_ancestor):]:
+                    if any(find_all(b, lambda n: (n is not node) and (n.name == name))):
+                        is_last_use = False
+                        break
+                # except ValueError:
+                #     pass
+            if any(n and n is not node and isinstance (n, Node) and name == n.name for n in ident_ancestor.args + [ident_ancestor.func]):
+                is_last_use = False
+                break
+            prev_ancestor = ident_ancestor
+            ident_ancestor = ident_ancestor.parent
+
+        if is_last_use:
+            if node.scope:
+                pass
+
+            if 0 and node.scope and node.scope.find_def(node):
+                # TODO exclude global defs; needs same fixes as prob with auto lambda capture of globals (distinguish local from global defs in sema)
+                # capture = "&" if cx.in_function_body else ""
+                return "std::move(" + name + ")"
+                # this is all problematic (although maybe could look at std::move_if_noexcept impl?). makes more sense to only apply this to transpiler known byval/local unique instances only
+                # return "[" + capture + "] () -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(" + name + ")>::value) { return std::move(" + name + "); } else { return " + name + "; } }()"
+                # return "[" + capture + "] () -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(" + name + ")>::value) { return std::move(" + name + "); } else { return " + name + "; } }()"
+                return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(n)>::value) { return std::forward<decltype(std::move(n))>(std::move(n)); } else { return std::forward<decltype(n)>(n); } }(" + name +")"
+                # return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(std::forward<decltype(n)>(n)); } else { return std::forward<decltype(n)>(n); } }(" + name +")"
+                # return "[] (auto && n) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(n); } else { return n; } }(" + name +")"
+                # return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(n); } else { return n; } }(" + name +")"
+                # return "ceto::maybe_move(" + name + ")"
 
         return name
 
