@@ -143,6 +143,7 @@ def _parse_identifier(s, l, t):
         if not block_holder.parsed_node:
             print("oh noes", sys.stderr)
             sys.exit(-1)
+        block_holder.parsed_node.line_col = block_holder.line_col
         return block_holder.parsed_node
     source = s, l
     return Identifier(name, source)
@@ -327,7 +328,7 @@ replaced_blocks = None
 _quoted_string = pp.QuotedString('"') | pp.QuotedString("'")
 
 
-def _build_elif_kludges_grammar1():
+def _build_elif_kludges_grammar():
     # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
@@ -336,32 +337,25 @@ def _build_elif_kludges_grammar1():
         if pattern is None:
             pattern = p
         pattern |= p
-    pattern = pattern.ignore(_quoted_string)
-    return pattern
 
-
-def _build_elif_kludges_grammar2():
-    patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
-    pattern = None
+    # removing this "," insertion (to make one liners more ergonomic) would require making elif/else sometimes BinOps too...
+    patterns = [pp.Keyword(k) for k in ["elif", "else"]]
     for p in patterns:
         p = p.set_parse_action(lambda t: "," + t[0])
-        if pattern is None:
-            pattern = p
         pattern |= p
 
     pattern = pattern.ignore(_quoted_string)
     return pattern
 
+
 _grammar = _build_grammar()
-_elif_kludges1 = _build_elif_kludges_grammar1()
-_elif_kludges2 = _build_elif_kludges_grammar2()
+_elif_kludges = _build_elif_kludges_grammar()
 
 
 def _parse(source: str):
     t = perf_counter()
 
-    source = _elif_kludges1.transform_string(source)
-    source = _elif_kludges2.transform_string(source)
+    source = _elif_kludges.transform_string(source)
 
     # print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
@@ -373,17 +367,30 @@ def _parse(source: str):
     return res[0]
 
 
+def _add_line_col(e, lineno, colno):
+    if not isinstance(e, Node):
+        return
+    if e.line_col is None:
+        e.line_col = lineno, colno
+    for arg in e.args:
+        _add_line_col(arg, lineno, colno)
+    _add_line_col(e.func, lineno, colno)
+
+
 def _parse_blocks(block_holder):
     for subblock in block_holder.subblocks:
         _parse_blocks(subblock)
     block_args = []
+    lineno, colno = block_holder.line_col
     for line in block_holder.source:
+        lineno += 1
         if not line.strip():
             continue
         expr = _parse(line)
         assert isinstance(expr, Module)
         for a in expr.args:
             block_args.append(a)
+            _add_line_col(a, lineno, colno)
 
     block_holder.parsed_node = Module(block_args, source=None)
 

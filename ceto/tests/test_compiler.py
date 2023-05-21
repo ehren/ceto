@@ -2900,11 +2900,12 @@ def (main, argc:int, argv:char:ptr:ptr:
     # ^ we no longer discard types on non-assignment expressions (now printed as var declarations)
     
     # with '=' lower precedence than ':'
-    if ((x = 5): printf("%d", x), elif: argc == 1: printf("1"), elif: (y = 5): printf("unreachable %d", y), else: (z = 10))
+    z = 0
+    if ((x = 6): printf("%d", x), elif: argc == 1: printf("1"), elif: (y = 5): printf("unreachable %d", y), else: (z = 10))
+    printf("%d", z)
 )
     """)
-
-    assert c == "5"
+    assert c == "610"
 
 
 def test_generic_refs_etc():

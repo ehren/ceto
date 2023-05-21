@@ -1,7 +1,6 @@
 from parser import parse, Module
 from semanticanalysis import semantic_analysis
 from codegen import codegen
-from preprocessor import preprocess
 
 import os
 import subprocess
