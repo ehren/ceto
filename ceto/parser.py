@@ -6,6 +6,8 @@
 import pyparsing as pp
 
 import sys
+from io import StringIO
+
 sys.setrecursionlimit(2**13)
 # pp.ParserElement.enable_left_recursion()
 pp.ParserElement.enable_packrat(2**20)
@@ -137,6 +139,12 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
 
 def _parse_identifier(s, l, t):
     name = str(t[0])
+    if name in replaced_blocks:
+        block_holder = replaced_blocks[name]
+        if not block_holder.parsed_node:
+            print("oh noes", sys.stderr)
+            sys.exit(-1)
+        return block_holder.parsed_node
     source = s, l
     return Identifier(name, source)
 
@@ -170,6 +178,256 @@ def _make_parse_action_list_like(clazz):
         source = s, l
         return clazz(args, source)
     return parse_action
+
+
+
+TAB_WIDTH = 4
+
+BEL = '\x07'
+
+# Tokens
+Indent = 0
+OpenParen = 1
+SquareOpen = 2
+CurlyOpen = 3
+SingleQuote = 4
+DoubleQuote = 5
+OpenAngle = 6
+
+expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}", SingleQuote: "'", DoubleQuote: '"', OpenAngle: '>'}
+
+
+def current_indent(parsing_stack):
+    return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
+
+
+def colon_replacement_char(current_state):
+    if current_state in [CurlyOpen, SquareOpen]:
+        # return BEL
+        pass
+    return ":"
+
+
+class PreprocessorError(Exception):
+    def __init__(self, message, line_number):
+        super().__init__("{}. Line {}.".format(message, line_number))
+
+
+class IndentError(PreprocessorError):
+    pass
+
+
+replaced_blocks = None
+
+
+class BlockHolder:
+    def __init__(self, parent=None, line_col=(0, 0)):
+        self.parent : BlockHolder = parent
+        self.line_col = line_col
+        self.source = ""
+        self.subblocks = []
+        self.parsed_node : Block = None
+
+
+def do_parse(file_object):
+    parsing_stack = [Indent]
+    is_it_a_template_stack = []
+
+    rewritten = StringIO()
+    replacements = {}
+    began_indent = False
+
+    blocks = [ [(0, 0), ""] ]
+
+    current_block = BlockHolder()
+    replacement_blocks = {}
+
+    while parsing_stack:
+
+        for line_number, line in enumerate(file_object, start=1):
+            line = line.rstrip()
+
+            if line == '':
+                blocks[-1][1] += "\n"
+                current_block.source += "\n"
+                continue
+
+            # leading spaces
+            indent = 0
+            for c in line:
+                if c == ' ':
+                    indent += 1
+                else:
+                    break
+
+            line = line[indent:]  # consume spaces
+            curr = current_indent(parsing_stack)
+
+            if parsing_stack[-1] == Indent and line[0] != "#":
+
+                if indent < curr:
+                    # dedent
+                    if began_indent:
+                        raise IndentError("Error in what should be the first indented expression. Expected indent: {}. Got: {}".format(curr, indent), line_number)
+                    diff = curr - indent
+                    if diff % TAB_WIDTH != 0:
+                        raise IndentError("Indentation not a multible of {}".format(TAB_WIDTH), line_number)
+                    while diff > 0:
+                        if parsing_stack[-1] != Indent:
+                            raise IndentError("Too many de-indents!", line_number)
+                        parsing_stack.pop()
+                        current_block.parent.subblocks.append(current_block)
+                        current_block = current_block.parent
+                        diff -= TAB_WIDTH
+
+                elif indent != curr:
+                    raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
+
+            blocks[-1][1] += "\n"
+            blocks[-1][1] += " " * indent
+            current_block.source += "\n"
+            current_block.source += " " * indent
+
+            # non whitespace char handling
+
+            line_to_write = ""
+            comment_to_write = ""
+            ok_to_hide = parsing_stack[-1] == Indent
+            colon_eol = False
+
+            n = -1
+
+            while n < len(line) - 1:
+
+                n += 1
+
+                char = line[n]
+
+                if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
+                    line_to_write += char
+                    blocks[-1][1] += char
+                    current_block.source += char
+                    continue
+
+                if char == BEL:
+                    raise PreprocessorError("no BEL", line_number)
+
+                if char == "#":
+                    if 0:
+                        comment = line[n + 1:]
+                        if 0 and comment:
+                            comment = comment.replace('"', r'\"')
+                            comment_to_write += 'ceto::comment("' + comment + '");'
+                    line = line[:n]
+                    break
+
+                if char != ":":
+                    c = char
+
+                    if not char.isspace():
+                        colon_eol = False
+                else:
+                    c = colon_replacement_char(parsing_stack[-1])
+                    if not char.isspace():
+                        colon_eol = True
+
+                line_to_write += c
+
+                if char == "(":
+                    parsing_stack.append(OpenParen)
+                elif char == "[":
+                    parsing_stack.append(SquareOpen)
+                elif char == "{":
+                    parsing_stack.append(CurlyOpen)
+                elif char in ")]}":
+                    top = parsing_stack.pop()
+                    if top in [OpenParen, SquareOpen, CurlyOpen]:
+                        expected = expected_close[top]
+                        if char != expected:
+                            raise PreprocessorError("Expected {} got {} ".format(expected, char), line_number)
+                    elif top == Indent:
+                        raise PreprocessorError("Expected dedent got " + char, line_number)
+                    else:
+                        raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
+                elif char in '"\'':
+                    if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
+                        parsing_stack.pop()
+                    else:
+                        parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
+                elif char == "<":
+                    if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        # doesn't take parenthesized identifiers into account:
+                        # ident = ""
+                        # for c in reversed(line[:n - 1]):
+                        #     if c.isspace():
+                        #         if ident:
+                        #             break
+                        #     else:
+                        #         ident += c
+                        # if ident.isidentifier():
+                        #    # it's definitely a template
+                        is_it_a_template_stack.append(OpenAngle)
+                elif char == ">":
+                    if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        if len(is_it_a_template_stack) > 0:
+                            assert is_it_a_template_stack[-1] == OpenAngle
+                            is_it_a_template_stack.pop()
+                            for c in line[n + 1:]:
+                                if c.isspace():
+                                    continue
+                                if c in ["(", "[", "{"]:
+                                    line_to_write += "\x06"
+                                    current_block.source += ">\x06"
+                                break
+
+                blocks[-1][1] += char
+                current_block.source += char
+
+            if parsing_stack[-1] == OpenParen and colon_eol:
+                parsing_stack.append(Indent)
+                # block_start
+                line_to_write += BEL
+                began_indent = True
+                ok_to_hide = False
+                # blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
+                blocks.append([(line_number, n), ""])
+                key = f"_ceto_priv_block_{line_number}_{n}"
+                current_block.source += BEL + "\n" + " " * indent + key + ";"
+                current_block = BlockHolder(parent=current_block, line_col=(line_number, n))
+                replacement_blocks[key] = current_block
+            else:
+                began_indent = False
+
+                if parsing_stack[-1] == Indent and line_to_write.strip():
+                    # block_line_end
+                    line_to_write += ";"
+                    while len(is_it_a_template_stack) > 0:
+                        assert is_it_a_template_stack[-1] == OpenAngle
+                        is_it_a_template_stack.pop()
+
+                    blocks[-1][1] += ";"
+                    current_block.source += ";"
+                else:
+                    ok_to_hide = False
+
+            line_to_write += comment_to_write
+
+            if ok_to_hide:
+                d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)
+                rewritten.write(d)
+                replacements[d] = line_to_write
+            else:
+                rewritten.write(line_to_write)
+
+            # current_block.source += line_to_write
+
+        if top := parsing_stack.pop() != Indent:
+            # TODO states as real objects (error should point to the opening)
+            raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
+
+    print(current_block.source)
+    return current_block, replacement_blocks
+
 
 
 def _build_grammar():
@@ -308,7 +566,7 @@ def _build_grammar():
         ],
     ).set_parse_action(_InfixExpr)
 
-    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(_make_parse_action_list_like(Module))
+    module = pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Module))
 
     return module
 
@@ -347,59 +605,80 @@ def _parse(source: str):
     return res[0]
 
 
+def parse_blocks(block_holder):
+    for subblock in block_holder.subblocks:
+        parse_blocks(subblock)
+    try:
+        module = _parse(block_holder.source)
+    except Exception as e:
+        pass
+    block_holder.parsed_node = module
+    # if block_holder.parent is None:
+    #     block_holder.parsed_node = module
+    # else:
+    #     block_holder.p
+
+
 def parse(source: str):
     from textwrap import dedent
 
     sio = io.StringIO(source)
-    preprocessed, _, _ = preprocess(sio, reparse=False)
-    preprocessed = preprocessed.getvalue()
 
-    try:
-        res = _parse(preprocessed)
-    except pp.ParseException as orig:
-        # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
-        # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+    global replaced_blocks
+    block_holder, replaced_blocks = do_parse(sio)
+    parse_blocks(block_holder)
+    res = block_holder.parsed_node
 
-        sio.seek(0)
-        reparse, replacements, subblocks = preprocess(sio, reparse=True)
-        reparse = reparse.getvalue()
-
-        try:
-            _parse(reparse)
-        except pp.ParseException:
-
-            # if a control structure defining a block (aka call with block arg)
-            # is responsible for the error find the first erroring subblock:
-
-            for (lineno, colno), block in subblocks:
-                # dedented = dedent(block)
-
-                try:
-                    # do_parse(dedented)
-                    _parse(block)
-                except pp.ParseException as blockerror:
-                    print("blockerr")
-                    blockerror._ceto_col = blockerror.col# + colno
-                    blockerror._ceto_lineno =   blockerror.lineno -  1
-                    raise blockerror
-
-        # otherwise if a single line (that doesn't begin an indented block) fails to parse:
-
-        for dummy, real in replacements.items():
-            # dedented = dedent(real)
-            try:
-                # do_parse(dedented)
-                _parse(real)
-            except pp.ParseException as lineerror:
-                print("lineerr")
-                dummy = dummy[len('ceto_priv_dummy'):-1]
-                line, col = dummy.split("c")
-                lineerror._ceto_col = int(col) + lineerror.col - 1
-                # lineerror._ceto_col = lineerror.col
-                lineerror._ceto_lineno = int(line)# + lineerror.lineno
-                raise lineerror
-
-        raise orig
+    # sio = io.StringIO(source)
+    # preprocessed, _, _ = preprocess(sio, reparse=False)
+    # preprocessed = preprocessed.getvalue()
+    #
+    # try:
+    #     res = _parse(preprocessed)
+    # except pp.ParseException as orig:
+    #     # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
+    #     # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+    #
+    #     sio.seek(0)
+    #     reparse, replacements, subblocks = preprocess(sio, reparse=True)
+    #     reparse = reparse.getvalue()
+    #
+    #     try:
+    #         _parse(reparse)
+    #     except pp.ParseException:
+    #
+    #         # if a control structure defining a block (aka call with block arg)
+    #         # is responsible for the error find the first erroring subblock:
+    #
+    #         for (lineno, colno), block in subblocks:
+    #             # dedented = dedent(block)
+    #
+    #             try:
+    #                 # do_parse(dedented)
+    #                 _parse(block)
+    #             except pp.ParseException as blockerror:
+    #                 print("blockerr")
+    #                 blockerror._ceto_col = blockerror.col# + colno
+    #                 blockerror._ceto_lineno =   blockerror.lineno -  1
+    #                 raise blockerror
+    #
+    #     # otherwise if a single line (that doesn't begin an indented block) fails to parse:
+    #
+    #     for dummy, real in replacements.items():
+    #         # dedented = dedent(real)
+    #         try:
+    #             # do_parse(dedented)
+    #             _parse(real)
+    #         except pp.ParseException as lineerror:
+    #             print("lineerr")
+    #             dummy = dummy[len('ceto_priv_dummy'):-1]
+    #             line, col = dummy.split("c")
+    #             lineerror._ceto_col = int(col) + lineerror.col - 1
+    #             # lineerror._ceto_col = lineerror.col
+    #             lineerror._ceto_lineno = int(line)# + lineerror.lineno
+    #             raise lineerror
+    #
+    #     raise orig
 
 
     def replacer(op):
@@ -417,6 +696,12 @@ def parse(source: str):
 
         op.args = [replacer(arg) for arg in op.args]
         op.func = replacer(op.func)
+
+        if isinstance(op, Block):
+            if len(op.args) == 1 and isinstance(op.args[0], Module):
+                # FIXME remove 'Module' entirely from pyparsing grammar
+                op.args = op.args[0].args
+
         return op
 
     res = replacer(res)
