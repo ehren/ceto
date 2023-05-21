@@ -256,7 +256,7 @@ def do_parse(file_object):
             if line == '':
                 blocks[-1][1] += "\n"
                 # current_block.source += "\n"
-                current_block.add_source("\n")
+                current_block.add_source("\n", new_line=False)
                 continue
 
             # leading spaces
@@ -294,8 +294,8 @@ def do_parse(file_object):
             blocks[-1][1] += " " * indent
             # current_block.source += "\n"
             # current_block.source += " " * indent
-            current_block.add_source("\n")
-            current_block.add_source(" " * indent)
+            current_block.add_source("\n", new_line=False)
+            current_block.add_source(" " * indent, new_line=False)
 
             # non whitespace char handling
 
@@ -623,9 +623,22 @@ def parse_blocks(block_holder):
     for subblock in block_holder.subblocks:
         parse_blocks(subblock)
     # try:
-    s = "".join(block_holder.source)
-    module = _parse(s)
-    block_holder.parsed_node = module
+    # s = "".join(block_holder.source)
+    block_args = []
+    for line in block_holder.source:
+        if not line.strip():
+            continue
+        expr = _parse(line)
+        assert isinstance(expr, Module)
+        for a in expr.args:
+            block_args.append(a)
+        # if block_holder.parent:
+        #     assert len(expr.args) == 1
+        #     expr = expr.args[0]  # FIXME just remove Module from pyparsing grammar
+        # block_args.append(expr)
+
+    # module = _parse(s)
+    block_holder.parsed_node = Module(block_args, source=None)
     # except Exception as e:
     #     pass
     # if block_holder.parent is None:
