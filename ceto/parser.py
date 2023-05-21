@@ -3,6 +3,8 @@
 #
 # 
 #
+from time import perf_counter
+
 import pyparsing as pp
 
 import sys
@@ -201,13 +203,6 @@ def current_indent(parsing_stack):
     return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
 
 
-def colon_replacement_char(current_state):
-    if current_state in [CurlyOpen, SquareOpen]:
-        # return BEL
-        pass
-    return ":"
-
-
 class PreprocessorError(Exception):
     def __init__(self, message, line_number):
         super().__init__("{}. Line {}.".format(message, line_number))
@@ -238,13 +233,7 @@ class BlockHolder:
 def do_parse(file_object):
     parsing_stack = [Indent]
     is_it_a_template_stack = []
-
-    rewritten = StringIO()
-    replacements = {}
     began_indent = False
-
-    blocks = [ [(0, 0), ""] ]
-
     current_block = BlockHolder()
     replacement_blocks = {}
 
@@ -254,8 +243,6 @@ def do_parse(file_object):
             line = line.rstrip()
 
             if line == '':
-                blocks[-1][1] += "\n"
-                # current_block.source += "\n"
                 current_block.add_source("\n", new_line=False)
                 continue
 
@@ -290,10 +277,6 @@ def do_parse(file_object):
                 elif indent != curr:
                     raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
 
-            blocks[-1][1] += "\n"
-            blocks[-1][1] += " " * indent
-            # current_block.source += "\n"
-            # current_block.source += " " * indent
             current_block.add_source("\n", new_line=False)
             current_block.add_source(" " * indent, new_line=False)
 
@@ -314,8 +297,6 @@ def do_parse(file_object):
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
-                    blocks[-1][1] += char
-                    # current_block.source += char
                     continue
 
                 if char == BEL:
@@ -330,17 +311,10 @@ def do_parse(file_object):
                     line = line[:n]
                     break
 
-                if char != ":":
-                    c = char
+                if not char.isspace():
+                    colon_eol = char == ":"
 
-                    if not char.isspace():
-                        colon_eol = False
-                else:
-                    c = colon_replacement_char(parsing_stack[-1])
-                    if not char.isspace():
-                        colon_eol = True
-
-                line_to_write += c
+                line_to_write += char
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -365,16 +339,6 @@ def do_parse(file_object):
                         parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
                 elif char == "<":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
-                        # doesn't take parenthesized identifiers into account:
-                        # ident = ""
-                        # for c in reversed(line[:n - 1]):
-                        #     if c.isspace():
-                        #         if ident:
-                        #             break
-                        #     else:
-                        #         ident += c
-                        # if ident.isidentifier():
-                        #    # it's definitely a template
                         is_it_a_template_stack.append(OpenAngle)
                 elif char == ">":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
@@ -386,23 +350,15 @@ def do_parse(file_object):
                                     continue
                                 if c in ["(", "[", "{"]:
                                     line_to_write += "\x06"
-                                    # current_block.source += ">\x06"
                                 break
-
-                blocks[-1][1] += char
-                # current_block.source += char
 
             if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
                 # block_start
-                # line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
-                # blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
-                blocks.append([(line_number, n), ""])
                 key = f"_ceto_priv_block_{line_number}_{n}"
                 line_to_write += BEL + "\n" + " " * indent + key + ";"
-                # current_block.source += BEL + "\n" + " " * indent + key + ";"
                 current_block = BlockHolder(parent=current_block, line_col=(line_number, n))
                 replacement_blocks[key] = current_block
             else:
@@ -414,33 +370,19 @@ def do_parse(file_object):
                     while len(is_it_a_template_stack) > 0:
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
-
-                    blocks[-1][1] += ";"
-                    # current_block.source += ";"
                 else:
                     ok_to_hide = False
 
             line_to_write += comment_to_write
 
             b = current_block.parent if began_indent else current_block
-
-            if ok_to_hide:
-                d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)
-                rewritten.write(d)
-                replacements[d] = line_to_write
-                b.add_source(line_to_write)
-            else:
-                rewritten.write(line_to_write)
-                # b.source += line_to_write
-                b.add_source(line_to_write, new_line=False)
+            b.add_source(line_to_write, new_line=ok_to_hide)
 
         if top := parsing_stack.pop() != Indent:
             # TODO states as real objects (error should point to the opening)
             raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
 
-    print(current_block.source)
     return current_block, replacement_blocks
-
 
 
 def _build_grammar():
@@ -653,8 +595,14 @@ def parse(source: str):
     sio = io.StringIO(source)
 
     global replaced_blocks
+    t = perf_counter()
     block_holder, replaced_blocks = do_parse(sio)
+    print(f"preprocess time {perf_counter() - t}")
+
+
+
     parse_blocks(block_holder)
+    print(f"block parse time {perf_counter() - t}")
     res = block_holder.parsed_node
 
     # sio = io.StringIO(source)
