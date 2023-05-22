@@ -142,8 +142,7 @@ def _parse_identifier(s, l, t):
     if name in replaced_blocks:
         block_holder = replaced_blocks[name]
         if not block_holder.parsed_node:
-            print("oh noes", sys.stderr)
-            sys.exit(-1)
+            raise ParserError()
         block_holder.parsed_node.line_col = block_holder.line_col
         return block_holder.parsed_node
     source = s, l
@@ -393,7 +392,7 @@ def _parse_blocks(block_holder):
     futures = []
     results = {}
 
-    if len(block_holder.source) > 24:
+    if False and len(block_holder.source) > 24:
         # process in parallel
 
         with concurrent.futures.ProcessPoolExecutor() as executor:

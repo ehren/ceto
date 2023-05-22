@@ -1,5 +1,6 @@
 TAB_WIDTH = 4
-BEL = '\x07'
+BLOCK_START = '\x07'
+
 
 # Tokens
 
@@ -8,35 +9,44 @@ class Indent:
 
 
 class _NeedsClose:
-    def __init__(self, line_col):
-        self.line_col = line_col
+    def __init__(self, line_number:int, col_number:int):
+        self.line_col = line_number, col_number
 
 
 class OpenParen(_NeedsClose):
-    pass
+    @staticmethod
+    def expected_close():
+        return ")"
 
 
 class SquareOpen(_NeedsClose):
-    pass
+    @staticmethod
+    def expected_close():
+        return "]"
 
 
 class CurlyOpen(_NeedsClose):
-    pass
+    @staticmethod
+    def expected_close():
+        return "}"
 
 
 class SingleQuote(_NeedsClose):
-    pass
+    @staticmethod
+    def expected_close():
+        return "'"
 
 
 class DoubleQuote(_NeedsClose):
-    pass
+    @staticmethod
+    def expected_close():
+        return '"'
 
 
 class OpenAngle(_NeedsClose):
-    pass
-
-
-expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}", SingleQuote: "'", DoubleQuote: '"', OpenAngle: '>'}
+    @staticmethod
+    def expected_close():
+        return ">"
 
 
 def current_indent(parsing_stack):
@@ -69,7 +79,7 @@ class BlockHolder:
 
 
 def build_blocks(file_object):
-    parsing_stack = [Indent(line_number=1, n=0)]
+    parsing_stack = [Indent()]
     is_it_a_template_stack = []
     began_indent = False
     current_block = BlockHolder()
@@ -133,12 +143,13 @@ def build_blocks(file_object):
 
                 char = line[n]
 
-                if (isinstance(parsing_stack[-1], SingleQuote) and char != "'") or (isinstance(parsing_stack[-1], DoubleQuote) and char != '"'):
+                #if (isinstance(parsing_stack[-1], SingleQuote) and char != "'") or (isinstance(parsing_stack[-1], DoubleQuote) and char != '"'):
+                if isinstance(parsing_stack[-1], (SingleQuote, DoubleQuote)) and char != parsing_stack[-1].expected_close():
                     line_to_write += char
                     continue
 
-                if char == BEL:
-                    raise PreprocessorError("no BEL", line_number)
+                if char == BLOCK_START:
+                    raise PreprocessorError("no BLOCK_START", line_number)
 
                 if char == "#":
                     if 0:
@@ -162,24 +173,24 @@ def build_blocks(file_object):
                     parsing_stack.append(CurlyOpen(line_number, n))
                 elif char in ")]}":
                     top = parsing_stack.pop()
-                    if isinstance(top, OpenParen) or isinstance(top, SquareOpen) or isinstance(top, CurlyOpen):
-                        expected = expected_close[top]
+                    if isinstance(top, (OpenParen, SquareOpen, CurlyOpen)):
+                        expected = top.expected_close()
                         if char != expected:
                             raise PreprocessorError("Expected {} got {} ".format(expected, char), line_number)
                     elif isinstance(top, Indent):
                         raise PreprocessorError("Expected dedent got " + char, line_number)
                     else:
-                        raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
+                        raise PreprocessorError("Unexpected state {} for close char {} ".format(top.__class__.__name__, char), line_number)
                 elif char in '"\'':
-                    if isinstance(parsing_stack[-1], SingleQuote) or isinstance(parsing_stack[-1], DoubleQuote):
+                    if isinstance(parsing_stack[-1], (SingleQuote, DoubleQuote)):
                         parsing_stack.pop()
                     else:
                         parsing_stack.append(DoubleQuote(line_number, n) if char == '"' else SingleQuote(line_number, n))
                 elif char == "<":
-                    if not isinstance(parsing_stack[-1], SingleQuote) and not isinstance(parsing_stack[-1], DoubleQuote):
+                    if not isinstance(parsing_stack[-1], (SingleQuote, DoubleQuote)):
                         is_it_a_template_stack.append(OpenAngle(line_number, n))
                 elif char == ">":
-                    if not isinstance(parsing_stack[-1], SingleQuote) and not isinstance(parsing_stack[-1], DoubleQuote):
+                    if not isinstance(parsing_stack[-1], (SingleQuote, DoubleQuote)):
                         if len(is_it_a_template_stack) > 0:
                             assert isinstance(is_it_a_template_stack[-1], OpenAngle)
                             is_it_a_template_stack.pop()
@@ -196,7 +207,7 @@ def build_blocks(file_object):
                 began_indent = True
                 ok_to_hide = False
                 key = f"_ceto_priv_block_{line_number}_{n}"
-                line_to_write += BEL + "\n" + " " * indent + key + ";"
+                line_to_write += BLOCK_START + "\n" + " " * indent + key + ";"
                 current_block = BlockHolder(parent=current_block, line_col=(line_number, n))
                 replacement_blocks[key] = current_block
             else:
@@ -216,9 +227,12 @@ def build_blocks(file_object):
             b = current_block.parent if began_indent else current_block
             b.add_source(line_to_write, same_line=not ok_to_hide, line_col=(line_number, indent))
 
-        if not isinstance(top := parsing_stack.pop(), Indent):
-            # TODO states as real objects (error should point to the opening)
-            # raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
-            raise PreprocessorError(f"expected a closing {expected_close[top]}.", )
+        if isinstance(top := parsing_stack.pop(), (SingleQuote, DoubleQuote)):
+            # we could point to the opening e.g. "(" but the regular parser does a better job pointing to the actual responsible
+            # line. see e.g. test_parser.test_errors2
+            raise PreprocessorError(f"expected a closing {top.expected_close()}.", top.line_col[0])
+
+    while current_block.parent:
+        current_block = current_block.parent
 
     return current_block, replacement_blocks
