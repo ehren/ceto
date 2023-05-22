@@ -1,8 +1,7 @@
 #
 # Based on the pyparsing example parsePythonValue.py
 #
-#
-import concurrent.futures
+# 
 from time import perf_counter
 from io import StringIO
 import sys
@@ -364,7 +363,7 @@ def _parse(source: str):
 
     res = _grammar.parseString(source, parseAll=True)
 
-    print(f"pyparsing time {perf_counter() - t}")
+    print(f"pyparsing parse time {perf_counter() - t}")
     return res[0]
 
 
@@ -378,52 +377,20 @@ def _propagate_line_col(e, line_col):
     _propagate_line_col(e.func, line_col)
 
 
-def thread_parse(line_source, line_col, index):
-    expr = _parse(line_source)
-    assert isinstance(expr, Module)
-    _propagate_line_col(expr, line_col)
-    return expr, index
-
-
 def _parse_blocks(block_holder):
     for subblock in block_holder.subblocks:
         _parse_blocks(subblock)
     block_args = []
-    # lineno, colno = block_holder.line_col
-    futures = []
-    results = {}
-
-    if len(block_holder.source) > 24:
-        # process in parallel
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for index, (line_source, line_col) in enumerate(block_holder.source):
-                if not line_source.strip():
-                    continue
-                futures.append(executor.submit(thread_parse, line_source, line_col, index))
-
-            for future in concurrent.futures.as_completed(futures):
-                expr, index = future.result()
-                results[index] = expr
-
-        # FIXME possible to use .map instead of .as_completed to avoid this?
-        for k in sorted(results.keys()):
-            expr = results[k]
-            assert isinstance(expr, Module)
-            block_args.extend(expr.args)
-    else:
-        # single process faster for a handful of lines
-
-        for line_source, line_col in block_holder.source:
-            if not line_source.strip():
-                continue
-            expr = _parse(line_source)
-            assert isinstance(expr, Module)
-            _propagate_line_col(expr, line_col)
-            block_args.extend(expr.args)
+    lineno, colno = block_holder.line_col
+    for line_source, line_col in block_holder.source:
+        if not line_source.strip():
+            continue
+        expr = _parse(line_source)
+        assert isinstance(expr, Module)
+        _propagate_line_col(expr, line_col)
+        block_args.extend(expr.args)
 
     block_holder.parsed_node = Module(block_args, source=None)
-
 
 
 def parse(source: str):
