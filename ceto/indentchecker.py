@@ -40,7 +40,7 @@ expected_close = {OpenParen: ")", SquareOpen: "]", CurlyOpen: "}", SingleQuote: 
 
 
 def current_indent(parsing_stack):
-    return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
+    return (len([c for c in parsing_stack if isinstance(c, Indent)]) - 1) * TAB_WIDTH
 
 
 class PreprocessorError(Exception):
@@ -69,7 +69,7 @@ class BlockHolder:
 
 
 def build_blocks(file_object):
-    parsing_stack = [Indent]
+    parsing_stack = [Indent(line_number=1, n=0)]
     is_it_a_template_stack = []
     began_indent = False
     current_block = BlockHolder()
@@ -155,14 +155,14 @@ def build_blocks(file_object):
                 line_to_write += char
 
                 if char == "(":
-                    parsing_stack.append(OpenParen)
+                    parsing_stack.append(OpenParen(line_number, n))
                 elif char == "[":
-                    parsing_stack.append(SquareOpen)
+                    parsing_stack.append(SquareOpen(line_number, n))
                 elif char == "{":
-                    parsing_stack.append(CurlyOpen)
+                    parsing_stack.append(CurlyOpen(line_number, n))
                 elif char in ")]}":
                     top = parsing_stack.pop()
-                    if top in [OpenParen, SquareOpen, CurlyOpen]:
+                    if isinstance(top, OpenParen) or isinstance(top, SquareOpen) or isinstance(top, CurlyOpen):
                         expected = expected_close[top]
                         if char != expected:
                             raise PreprocessorError("Expected {} got {} ".format(expected, char), line_number)
@@ -174,14 +174,14 @@ def build_blocks(file_object):
                     if isinstance(parsing_stack[-1], SingleQuote) or isinstance(parsing_stack[-1], DoubleQuote):
                         parsing_stack.pop()
                     else:
-                        parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
+                        parsing_stack.append(DoubleQuote(line_number, n) if char == '"' else SingleQuote(line_number, n))
                 elif char == "<":
                     if not isinstance(parsing_stack[-1], SingleQuote) and not isinstance(parsing_stack[-1], DoubleQuote):
-                        is_it_a_template_stack.append(OpenAngle)
+                        is_it_a_template_stack.append(OpenAngle(line_number, n))
                 elif char == ">":
                     if not isinstance(parsing_stack[-1], SingleQuote) and not isinstance(parsing_stack[-1], DoubleQuote):
                         if len(is_it_a_template_stack) > 0:
-                            assert is_it_a_template_stack[-1] == OpenAngle
+                            assert isinstance(is_it_a_template_stack[-1], OpenAngle)
                             is_it_a_template_stack.pop()
                             for c in line[n + 1:]:
                                 if c.isspace():
@@ -191,7 +191,7 @@ def build_blocks(file_object):
                                 break
 
             if isinstance(parsing_stack[-1], OpenParen) and colon_eol:
-                parsing_stack.append(Indent)
+                parsing_stack.append(Indent())
                 # block_start
                 began_indent = True
                 ok_to_hide = False
@@ -206,7 +206,7 @@ def build_blocks(file_object):
                     # block_line_end
                     line_to_write += ";"
                     while len(is_it_a_template_stack) > 0:
-                        assert is_it_a_template_stack[-1] == OpenAngle
+                        assert isinstance(is_it_a_template_stack[-1], OpenAngle)
                         is_it_a_template_stack.pop()
                 else:
                     ok_to_hide = False
@@ -218,8 +218,7 @@ def build_blocks(file_object):
 
         if not isinstance(top := parsing_stack.pop(), Indent):
             # TODO states as real objects (error should point to the opening)
-            raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
+            # raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
+            raise PreprocessorError(f"expected a closing {expected_close[top]}.", )
 
     return current_block, replacement_blocks
-
-
