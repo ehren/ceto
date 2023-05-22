@@ -77,6 +77,7 @@ bar()()::blah::blah2
 
 def test_errors2():
     parse(r"""
+
 def (main:
     std.cout <<"hi"
     #err(
