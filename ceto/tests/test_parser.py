@@ -17,7 +17,7 @@ def test_stress_parser2():
     # source *= 100 # 20s
     # source *= 50 # 10s
     # source *= 5
-    source *= 100
+    # source *= 1000  # now 53 sec with separate line parsing + process pool
     parse(source)
 
     # could be sped up (without a total parser rewrite) by parsing blocks during indent checking (plus removal of Block/Module parsing from pyparsing defined grammar) - similar to error reparse scheme
