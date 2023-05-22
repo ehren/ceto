@@ -367,14 +367,14 @@ def _parse(source: str):
     return res[0]
 
 
-def _add_line_col(e, lineno, colno):
+def _propagate_line_col(e, line_col):
     if not isinstance(e, Node):
         return
     if e.line_col is None:
-        e.line_col = lineno, colno
+        e.line_col = line_col
     for arg in e.args:
-        _add_line_col(arg, lineno, colno)
-    _add_line_col(e.func, lineno, colno)
+        _propagate_line_col(arg, line_col)
+    _propagate_line_col(e.func, line_col)
 
 
 def _parse_blocks(block_holder):
@@ -382,15 +382,13 @@ def _parse_blocks(block_holder):
         _parse_blocks(subblock)
     block_args = []
     lineno, colno = block_holder.line_col
-    for line in block_holder.source:
-        lineno += 1
-        if not line.strip():
+    for line_source, line_col in block_holder.source:
+        if not line_source.strip():
             continue
-        expr = _parse(line)
+        expr = _parse(line_source)
         assert isinstance(expr, Module)
-        for a in expr.args:
-            block_args.append(a)
-            _add_line_col(a, lineno, colno)
+        _propagate_line_col(expr, line_col)
+        block_args.extend(expr.args)
 
     block_holder.parsed_node = Module(block_args, source=None)
 
