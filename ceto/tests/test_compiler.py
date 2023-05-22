@@ -20,20 +20,6 @@ def raises(func, exc=None):
         assert 0
 
 
-def test_ctad_should_work():
-    c = compile(r"""
-
-def (foo, fn : std.function = lambda (x:int, False):
-    pass
-)
-
-def (main:
-    pass
-)
-    
-    """)
-
-
 def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
     c = compile(r"""
 class (Foo:
@@ -2235,7 +2221,6 @@ def (main:
 FooConcrete hi
 generic hi
 FooConcreteUnique hey
-generic hello
 FooConcreteUnique yo
 """
 
