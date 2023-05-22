@@ -1,5 +1,13 @@
+# based on
+# https://github.com/aakash1104/IndentationChecker Written By: Aakash Prabhu, December 2016 (University of California, Davis)
+
+import sys
+from io import StringIO
+ 
 TAB_WIDTH = 4
+
 BEL = '\x07'
+
 # Tokens
 Indent = 0
 OpenParen = 1
@@ -16,6 +24,13 @@ def current_indent(parsing_stack):
     return (parsing_stack.count(Indent) - 1) * TAB_WIDTH
 
 
+def colon_replacement_char(current_state):
+    if current_state in [CurlyOpen, SquareOpen]:
+        # return BEL
+        pass
+    return ":"
+
+
 class PreprocessorError(Exception):
     def __init__(self, message, line_number):
         super().__init__("{}. Line {}.".format(message, line_number))
@@ -25,27 +40,15 @@ class IndentError(PreprocessorError):
     pass
 
 
-class BlockHolder:
-    def __init__(self, parent=None, line_col=(0, 0)):
-        self.parent : BlockHolder = parent
-        self.line_col = line_col
-        self.source = [""]
-        self.subblocks = []
-        self.parsed_node = None
-
-    def add_source(self, s: str, new_line=True):
-        if not new_line:
-            self.source[-1] += s
-        else:
-            self.source.append(s)
-
-
-def build_blocks(file_object):
+def preprocess(file_object, reparse = False):
     parsing_stack = [Indent]
     is_it_a_template_stack = []
+
+    rewritten = StringIO()
+    replacements = {}
     began_indent = False
-    current_block = BlockHolder()
-    replacement_blocks = {}
+
+    blocks = []
 
     while parsing_stack:
 
@@ -53,7 +56,7 @@ def build_blocks(file_object):
             line = line.rstrip()
 
             if line == '':
-                current_block.add_source("\n", new_line=False)
+                rewritten.write("\n")
                 continue
 
             # leading spaces
@@ -80,21 +83,23 @@ def build_blocks(file_object):
                         if parsing_stack[-1] != Indent:
                             raise IndentError("Too many de-indents!", line_number)
                         parsing_stack.pop()
-                        current_block.parent.subblocks.append(current_block)
-                        current_block = current_block.parent
                         diff -= TAB_WIDTH
 
                 elif indent != curr:
                     raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
 
-            current_block.add_source("\n", new_line=False)
-            current_block.add_source(" " * indent, new_line=False)
+            rewritten.write("\n")
+            rewritten.write(" " * indent)
+
+            if reparse and blocks:
+                blocks[-1][1] += "\n"
+                blocks[-1][1] += " " * indent
 
             # non whitespace char handling
 
             line_to_write = ""
             comment_to_write = ""
-            ok_to_hide = parsing_stack[-1] == Indent
+            ok_to_hide = reparse and parsing_stack[-1] == Indent
             colon_eol = False
 
             n = -1
@@ -107,13 +112,15 @@ def build_blocks(file_object):
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
+                    if reparse and blocks:
+                        blocks[-1][1] += char
                     continue
 
                 if char == BEL:
                     raise PreprocessorError("no BEL", line_number)
 
                 if char == "#":
-                    if 0:
+                    if not reparse:
                         comment = line[n + 1:]
                         if 0 and comment:
                             comment = comment.replace('"', r'\"')
@@ -121,10 +128,17 @@ def build_blocks(file_object):
                     line = line[:n]
                     break
 
-                if not char.isspace():
-                    colon_eol = char == ":"
+                if char != ":":
+                    c = char
 
-                line_to_write += char
+                    if not char.isspace():
+                        colon_eol = False
+                else:
+                    c = colon_replacement_char(parsing_stack[-1])
+                    if not char.isspace():
+                        colon_eol = True
+
+                line_to_write += c
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -149,6 +163,16 @@ def build_blocks(file_object):
                         parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
                 elif char == "<":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
+                        # doesn't take parenthesized identifiers into account:
+                        # ident = ""
+                        # for c in reversed(line[:n - 1]):
+                        #     if c.isspace():
+                        #         if ident:
+                        #             break
+                        #     else:
+                        #         ident += c
+                        # if ident.isidentifier():
+                        #    # it's definitely a template
                         is_it_a_template_stack.append(OpenAngle)
                 elif char == ">":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
@@ -162,15 +186,17 @@ def build_blocks(file_object):
                                     line_to_write += "\x06"
                                 break
 
+                if reparse and blocks:# and parsing_stack[-1] == Indent and char not in '"\'':
+                    blocks[-1][1] += char
+
             if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
                 # block_start
+                line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
-                key = f"_ceto_priv_block_{line_number}_{n}"
-                line_to_write += BEL + "\n" + " " * indent + key + ";"
-                current_block = BlockHolder(parent=current_block, line_col=(line_number, n))
-                replacement_blocks[key] = current_block
+                if reparse:
+                    blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
             else:
                 began_indent = False
 
@@ -180,18 +206,23 @@ def build_blocks(file_object):
                     while len(is_it_a_template_stack) > 0:
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
+
+                    if reparse and blocks:
+                        blocks[-1][1] += ";"
                 else:
                     ok_to_hide = False
 
             line_to_write += comment_to_write
 
-            b = current_block.parent if began_indent else current_block
-            b.add_source(line_to_write, new_line=ok_to_hide)
+            if ok_to_hide:
+                d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)
+                rewritten.write(d)
+                replacements[d] = line_to_write
+            else:
+                rewritten.write(line_to_write)
 
         if top := parsing_stack.pop() != Indent:
             # TODO states as real objects (error should point to the opening)
             raise PreprocessorError(f"EOF: expected a closing {expected_close[top]}", line_number)
 
-    return current_block, replacement_blocks
-
-
+    return rewritten, replacements, blocks
