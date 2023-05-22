@@ -13,10 +13,10 @@ def test_stress_parser2():
     # apparently python's new peg parses the above in 1-6 secs
 
     # one run via pytest:
-    source *= 5000  # 2m 11sec
+    # source *= 500  # 2m 11sec
     # source *= 100 # 20s
     # source *= 50 # 10s
-    # source *= 5
+    source *= 5
     parse(source)
 
     # could be sped up (without a total parser rewrite) by parsing blocks during indent checking (plus removal of Block/Module parsing from pyparsing defined grammar) - similar to error reparse scheme
