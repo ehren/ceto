@@ -29,16 +29,15 @@ class BlockHolder:
     def __init__(self, parent=None, line_col=(0, 0)):
         self.parent : BlockHolder = parent
         self.line_col = line_col
-        self.source = [["", (0, 0)]]
+        self.source = [""]
         self.subblocks = []
         self.parsed_node = None
 
-    def add_source(self, s: str, line_col, same_line=True):
-        assert isinstance(s, str)
-        if same_line:
-            self.source[-1][0] += s
+    def add_source(self, s: str, new_line=True):
+        if not new_line:
+            self.source[-1] += s
         else:
-            self.source.append([s,line_col])
+            self.source.append(s)
 
 
 def build_blocks(file_object):
@@ -54,7 +53,7 @@ def build_blocks(file_object):
             line = line.rstrip()
 
             if line == '':
-                current_block.add_source("\n", line_col=(line_number,0))
+                current_block.add_source("\n", new_line=False)
                 continue
 
             # leading spaces
@@ -88,8 +87,8 @@ def build_blocks(file_object):
                 elif indent != curr:
                     raise IndentError("Indentation error. Expected: {} got: {}".format(curr, indent), line_number)
 
-            # current_block.add_source("\n")
-            current_block.add_source(" " * indent, line_col=(line_number, indent))
+            current_block.add_source("\n", new_line=False)
+            current_block.add_source(" " * indent, new_line=False)
 
             # non whitespace char handling
 
@@ -187,7 +186,7 @@ def build_blocks(file_object):
             line_to_write += comment_to_write
 
             b = current_block.parent if began_indent else current_block
-            b.add_source(line_to_write, same_line=not ok_to_hide, line_col=(line_number, indent))
+            b.add_source(line_to_write, new_line=ok_to_hide)
 
         if top := parsing_stack.pop() != Indent:
             # TODO states as real objects (error should point to the opening)
