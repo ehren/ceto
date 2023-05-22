@@ -11,7 +11,6 @@ class Node:
         self.func : Node = func
         self.args : typing.List[Node] = args
         self.source : typing.Tuple[str, int] = source
-        self.line_col : typing.Optional[typing.Tuple[int, int]] = None
 
     def __repr__(self):
         return "{}({})({!r})".format(self.__class__.__name__,

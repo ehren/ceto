@@ -438,10 +438,10 @@ class Scope:
 
         for d in self.variable_definitions:
             if d.defined_node.name == var_node.name and d.defined_node is not var_node:
-                defined_loc = d.defined_node.line_col
-                var_loc = var_node.line_col
+                _ , defined_loc = d.defined_node.source
+                _ , var_loc = var_node.source
 
-                if defined_loc[0] < var_loc[0] or (defined_loc[0] == var_loc[0] and defined_loc[1] < var_loc[1]):
+                if defined_loc < var_loc:
                     yield d.defined_node, d.defining_node
                     if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                         yield from self.find_defs(d.defining_node.rhs)
