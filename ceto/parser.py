@@ -224,15 +224,9 @@ class BlockHolder:
     def __init__(self, parent=None, line_col=(0, 0)):
         self.parent : BlockHolder = parent
         self.line_col = line_col
-        self.source = [""]
+        self.source = ""
         self.subblocks = []
         self.parsed_node : Block = None
-
-    def add_source(self, s: str, new_line=True):
-        if not new_line:
-            self.source[-1] += s
-        else:
-            self.source.append(s)
 
 
 def do_parse(file_object):
@@ -255,8 +249,7 @@ def do_parse(file_object):
 
             if line == '':
                 blocks[-1][1] += "\n"
-                # current_block.source += "\n"
-                current_block.add_source("\n")
+                current_block.source += "\n"
                 continue
 
             # leading spaces
@@ -292,10 +285,8 @@ def do_parse(file_object):
 
             blocks[-1][1] += "\n"
             blocks[-1][1] += " " * indent
-            # current_block.source += "\n"
-            # current_block.source += " " * indent
-            current_block.add_source("\n")
-            current_block.add_source(" " * indent)
+            current_block.source += "\n"
+            current_block.source += " " * indent
 
             # non whitespace char handling
 
@@ -315,7 +306,7 @@ def do_parse(file_object):
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
                     blocks[-1][1] += char
-                    # current_block.source += char
+                    current_block.source += char
                     continue
 
                 if char == BEL:
@@ -386,23 +377,22 @@ def do_parse(file_object):
                                     continue
                                 if c in ["(", "[", "{"]:
                                     line_to_write += "\x06"
-                                    # current_block.source += ">\x06"
+                                    current_block.source += ">\x06"
                                 break
 
                 blocks[-1][1] += char
-                # current_block.source += char
+                current_block.source += char
 
             if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
                 # block_start
-                # line_to_write += BEL
+                line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
                 # blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
                 blocks.append([(line_number, n), ""])
                 key = f"_ceto_priv_block_{line_number}_{n}"
-                line_to_write += BEL + "\n" + " " * indent + key + ";"
-                # current_block.source += BEL + "\n" + " " * indent + key + ";"
+                current_block.source += BEL + "\n" + " " * indent + key + ";"
                 current_block = BlockHolder(parent=current_block, line_col=(line_number, n))
                 replacement_blocks[key] = current_block
             else:
@@ -416,23 +406,20 @@ def do_parse(file_object):
                         is_it_a_template_stack.pop()
 
                     blocks[-1][1] += ";"
-                    # current_block.source += ";"
+                    current_block.source += ";"
                 else:
                     ok_to_hide = False
 
             line_to_write += comment_to_write
 
-            b = current_block.parent if began_indent else current_block
-
             if ok_to_hide:
                 d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)
                 rewritten.write(d)
                 replacements[d] = line_to_write
-                b.add_source(line_to_write)
             else:
                 rewritten.write(line_to_write)
-                # b.source += line_to_write
-                b.add_source(line_to_write, new_line=False)
+
+            # current_block.source += line_to_write
 
         if top := parsing_stack.pop() != Indent:
             # TODO states as real objects (error should point to the opening)
@@ -579,7 +566,6 @@ def _build_grammar():
         ],
     ).set_parse_action(_InfixExpr)
 
-    # module = pp.OneOrMore(pp.ZeroOrMore(block_line_end) + infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Module))
     module = pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Module))
 
     return module
@@ -622,12 +608,11 @@ def _parse(source: str):
 def parse_blocks(block_holder):
     for subblock in block_holder.subblocks:
         parse_blocks(subblock)
-    # try:
-    s = "".join(block_holder.source)
-    module = _parse(s)
+    try:
+        module = _parse(block_holder.source)
+    except Exception as e:
+        pass
     block_holder.parsed_node = module
-    # except Exception as e:
-    #     pass
     # if block_holder.parent is None:
     #     block_holder.parsed_node = module
     # else:
