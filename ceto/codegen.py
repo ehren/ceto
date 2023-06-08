@@ -1102,13 +1102,12 @@ def codegen_lambda(node, cx):
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
-        possible_captures = set()
+        possible_captures = []
         for i in idents:
             if i.name == "self":
                 possible_captures.add(i.name)
-            #elif d := find_def(i):
             elif d := i.scope.find_def(i):
-                defnode, defcontext = d
+                defnode = d.defined_node
                 is_capture = True
                 while defnode is not None:
                     if defnode is node:
@@ -1117,7 +1116,7 @@ def codegen_lambda(node, cx):
                         break
                     defnode = defnode.parent
                 if is_capture:
-                    possible_captures.add(i.name)
+                    possible_captures.append(i.name)
 
         capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
     # elif TODO is nonescaping or immediately invoked:
@@ -1146,7 +1145,8 @@ def decltype_str(node, cx):
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
         # for n, c in find_defs(node.func):
-        for n, c in node.scope.find_defs(node.func):
+        for d in node.scope.find_defs(node.func):
+            c = d.defining_node
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
                     return vds
@@ -1225,7 +1225,8 @@ def _decltype_str(node, cx):
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
         # for n, c in find_defs(node.func):
-        for n, c in node.scope.find_defs(node.func):
+        for d in node.scope.find_defs(node.func):
+            c = d.defining_node
             if isinstance(c, Assign):# and hasattr(c.rhs, "_element_decltype_str"):
                 if vds := vector_decltype_str(c, cx):
                     return False, vds
@@ -1241,7 +1242,8 @@ def _decltype_str(node, cx):
 
     eligible_defs = list(defs)
 
-    for def_node, def_context in defs:
+    for d in defs:
+        def_node, def_context = d.defined_node, d.defining_node
         if def_node.declared_type:
 
             if def_node.declared_type.name in ["mut", "auto"]:
@@ -1576,8 +1578,8 @@ def codegen_call(node: Call, cx: Scope):
                         #for d in find_defs(node.func):
                         for d in node.scope.find_defs(node.func):
                             # print("found def", d, "when determining if an append is really a push_back")
-                            if isinstance(d[1], Assign) and isinstance(
-                                    d[1].rhs, ListLiteral):
+                            if isinstance(d.defining_node, Assign) and isinstance(
+                                    d.defining_node.rhs, ListLiteral):
                                 is_list = True
                                 break
                     if is_list:
@@ -1875,8 +1877,7 @@ def codegen_node(node: Node, cx: Scope):
             # if node.scope:
             #     pass
 
-            if node.scope and (last_use_def := node.scope.find_def(node)): # and isinstance(last_use_def, (LocalVariableDefinition, ParameterDefinition)):
-                # TODO exclude global defs; needs same fixes as prob with auto lambda capture of globals (distinguish local from global defs in sema)
+            if node.scope and (last_use_def := node.scope.find_def(node)) and isinstance(last_use_def, (LocalVariableDefinition, ParameterDefinition)):
                 # capture = "&" if cx.in_function_body else ""
                 return "std::move(" + name + ")"
                 # this is all problematic (although maybe could look at std::move_if_noexcept impl?). makes more sense to only apply this to transpiler known byval/local unique instances only

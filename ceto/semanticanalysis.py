@@ -480,7 +480,7 @@ class Scope:
                 _ , var_loc = var_node.source
 
                 if defined_loc < var_loc:
-                    yield d.defined_node, d.defining_node
+                    yield d
                     if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                         yield from self.find_defs(d.defining_node.rhs)
 
