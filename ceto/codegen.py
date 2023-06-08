@@ -1105,8 +1105,8 @@ def codegen_lambda(node, cx):
         possible_captures = []
         for i in idents:
             if i.name == "self":
-                possible_captures.add(i.name)
-            elif d := i.scope.find_def(i):
+                possible_captures.append(i.name)
+            elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
                 defnode = d.defined_node
                 is_capture = True
                 while defnode is not None:

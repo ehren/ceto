@@ -1197,9 +1197,9 @@ def (main:
 
 
 def test_lambda_unevaluated_context():
-    import subprocess
-    if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
-        return
+    # import subprocess
+    # if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
+    #     return
 
     # requires c++20
     c = compile(r"""
@@ -1211,21 +1211,25 @@ g:int = 5
 
 class (Foo:
     
-    # our current 'is void lambda return?' and 'is typed aggregate initialization?' checks make the codegen for this typed assignment pretty unreadable and slow to compile
+    # our current 'is void lambda return?' and 'diy non-narrowing init' checks make the codegen for this typed assignment a bit large (it's fine)
     a : int = lambda(5 + g)()
     
     f : std.conditional_t<false, decltype(lambda(x, x + g)), int>
 )
 
+cg = c"it's a global, no need to capture"  # (and you can't because a const:char:ptr is not a shared_ptr<object> or is_arithmetic_v)
+
 def (main:
     f = Foo(2)
-    l = lambda (g + f.a)  # capture list for 'f' works here but TODO we shouldn't include g including 'g' if the def node is global scope
-    std.cout << f.f << f.a << l()
+    l = lambda (g + f.a)  # capture list for 'f' works here, g has a GlobalVariableDefinition so is not captured
+    l2 = lambda (cg)  # ensure we _don't_ capture a global (this ensures this access is an ordinary c++ read of a global rather than an attempted capture that would fail the ceto::default_capture check).
+    std.cout << f.f << f.a << l() << "\n" << l2()
 )
 
     """)
 
-    assert c == "21015"
+    assert c == "21015\n" \
+                "it's a global, no need to capture"
 
 
 def test_requires_bad():
