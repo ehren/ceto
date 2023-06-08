@@ -1,7 +1,10 @@
 import typing
 from typing import Union, Any
 
-from semanticanalysis import  NamedParameter, IfWrapper, SemanticAnalysisError, SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, Scope, ClassDefinition, InterfaceDefinition
+from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
+    SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
+    Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
+    LocalVariableDefinition, ParameterDefinition
 from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -51,10 +54,6 @@ def gensym(prefix=None):
     if prefix is not None:
         pre += prefix
     return pre + str(counter)
-
-
-def creates_new_variable_scope(e: Node) -> bool:
-    return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
 
 
 def codegen_if(ifcall : Call, cx):
@@ -1873,10 +1872,10 @@ def codegen_node(node: Node, cx: Scope):
             ident_ancestor = ident_ancestor.parent
 
         if is_last_use:
-            if node.scope:
-                pass
+            # if node.scope:
+            #     pass
 
-            if 0 and node.scope and node.scope.find_def(node):
+            if node.scope and (last_use_def := node.scope.find_def(node)): # and isinstance(last_use_def, (LocalVariableDefinition, ParameterDefinition)):
                 # TODO exclude global defs; needs same fixes as prob with auto lambda capture of globals (distinguish local from global defs in sema)
                 # capture = "&" if cx.in_function_body else ""
                 return "std::move(" + name + ")"

@@ -404,6 +404,26 @@ class VariableDefinition:
         self.defining_node = defining_node
 
 
+class LocalVariableDefinition(VariableDefinition):
+    pass
+
+
+class GlobalVariableDefinition(VariableDefinition):
+    pass
+
+
+class FieldDefinition(VariableDefinition):
+    pass
+
+
+class ParameterDefinition(VariableDefinition):
+    pass
+
+
+def creates_new_variable_scope(e: Node) -> bool:
+    return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
+
+
 class Scope:
 
     def __init__(self):
@@ -419,6 +439,24 @@ class Scope:
 
     def indent_str(self):
         return "    " * self.indent
+
+    def add_variable_definition(self, defined_node: Identifier, defining_node: Node):
+        assert isinstance(defined_node, Identifier)
+
+        var_class = GlobalVariableDefinition
+        parent = defined_node.parent
+        while parent:
+            if creates_new_variable_scope(parent):
+                if parent.func.name in ["class", "struct"]:
+                    var_class = FieldDefinition
+                elif parent.func.name in ["def", "lambda"]:
+                    var_class = ParameterDefinition
+                else:
+                    var_class = LocalVariableDefinition
+                break
+            parent = parent.parent
+
+        self.variable_definitions.append(var_class(defined_node, defining_node))
 
     def lookup_class(self, class_node) -> typing.Optional[ClassDefinition]:
         if not isinstance(class_node, Identifier):
@@ -462,18 +500,25 @@ class Scope:
         return s
 
 
-class ScopeVisitor:
+def args_have_inner_scope(call : Call):
+    assert isinstance(call, Call)
+    return call.func.name in ["def", "lambda", "class", "struct"]
 
-    def visit_Node(self, node):
+
+class ScopeReplacer:
+    def __init__(self):
+        self._module_scope = None
+
+    def replace_Node(self, node):
         if node.scope is None:
             node.scope = node.parent.scope
         return node
 
-    def visit_Call(self, call):
-        call = self.visit_Node(call)
+    def replace_Call(self, call):
+        call = self.replace_Node(call)
 
         scope = call.scope
-        if call.func.name in ["def", "lambda", "class", "while", "for"]:
+        if args_have_inner_scope(call):
             scope = scope.enter_scope()
 
         for a in call.args:
@@ -482,55 +527,52 @@ class ScopeVisitor:
             if isinstance(a, Block):
                 a.scope = a.scope.enter_scope()
 
-            elif isinstance(a, Identifier) and call.func.name in ["def", "lambda"]:
-                a.scope.variable_definitions.append(
-                    VariableDefinition(defined_node=a,
-                                       defining_node=call))
+            elif isinstance(a, Identifier) and args_have_inner_scope(call):
+                a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
-                a.scope.variable_definitions.append(
-                    VariableDefinition(defined_node=a.lhs,
-                                       defining_node=call))
+                a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
         return call
 
-    def visit_Identifier(self, ident):
-        ident = self.visit_Node(ident)
+    def replace_Identifier(self, ident):
+        ident = self.replace_Node(ident)
         if ident.declared_type:
-            ident.scope.variable_definitions.append(VariableDefinition(defined_node=ident, defining_node=ident))
+            ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
         return ident
 
-    def visit_Assign(self, assign):
-        assign = self.visit_Node(assign)
+    def replace_Assign(self, assign):
+        assign = self.replace_Node(assign)
         if isinstance(assign.lhs, Identifier):
-            assign.scope.variable_definitions.append(VariableDefinition(defined_node=assign.lhs, defining_node=assign))
+            assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
         return assign
 
-    def visit_Module(self, module):
+    def replace_Module(self, module):
         module.scope = Scope()
+        self._module_scope = module.scope
         return module
 
 
-def apply_visitors(module: Module, visitors):
+def apply_replacers(module: Module, visitors):
 
-    def _visit(node):
+    def replace(node):
 
         if not isinstance(node, Node):
             return node
 
         for v in visitors:
-            func_name = "visit_" + node.__class__.__name__
+            func_name = "replace_" + node.__class__.__name__
             if hasattr(v, func_name):
                 node = getattr(v, func_name)(node)
             else:
-                node = v.visit_Node(node)
+                node = v.replace_Node(node)
 
-        node.args = [_visit(a) for a in node.args]
-        node.func = _visit(node.func)
+        node.args = [replace(a) for a in node.args]
+        node.func = replace(node.func)
         return node
 
-    return _visit(module)
+    return replace(module)
 
 
 def semantic_analysis(expr: Module):
@@ -542,7 +584,7 @@ def semantic_analysis(expr: Module):
 
     expr = build_types(expr)
     expr = build_parents(expr)
-    expr = apply_visitors(expr, [ScopeVisitor()])
+    expr = apply_replacers(expr, [ScopeReplacer()])
 
     print("after lowering", expr)
 
