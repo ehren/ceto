@@ -723,13 +723,21 @@ def list_to_typed_node(lst):
     return op
 
 
-def strip_mut_or_const(type_node : Node):
+def extract_mut_or_const(type_node : Node):
+    if type_node is None:
+        return None
     types = type_node_to_list_of_types(type_node)
     mc = list(t for t in types if t.name in ["mut", "const"])
     if len(mc) == 1:
         types.remove(mc[0])
         return mc[0], list_to_typed_node(types)
     return None
+
+
+def strip_mut_or_const(type_node : Node):
+    if mc := extract_mut_or_const(type_node):
+        return mc[1]
+    return type_node
 
 
 def _should_add_const_ref_to_typed_param(param, cx):
@@ -743,6 +751,7 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     if t:
         return " ".join(t)
     return None
+
 
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
@@ -763,7 +772,6 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
             # note precedence change making
             raise SemanticAnalysisError(
                 "unexpected typed expr in defs parameter list", arg)
-            # TODO: list typing needs fix after : precedence change
     elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
         raise SemanticAnalysisError(
             "Overparenthesized assignments in def parameter lists are not treated as named params. To fix, remove the redundant parenthesese from:",
@@ -823,7 +831,6 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
                     automatic_const_part = "const "
                     automatic_ref_part = "& "
 
-                # TODO - used to call _decltype_str here unnecessarilly (can simplify that function more)
                 return automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
         # else:
             #     raise SemanticAnalysisError(
@@ -1786,15 +1793,12 @@ def _is_unique_var(node: Identifier, cx: Scope):
     for defn in node.scope.find_defs(node):
         if isinstance(defn, (LocalVariableDefinition, ParameterDefinition)):
             defining = defn.defining_node
-            declared_type = defining.declared_type
-            if mc := strip_mut_or_const(declared_type):
-                _, declared_type = mc
+            declared_type = strip_mut_or_const(defining.declared_type)
             classdef = cx.lookup_class(declared_type)
             if classdef and classdef.is_unique:
                 return True
-            # TODO deal with mut/const calls here too (and handle them better in general)
-            elif isinstance(defining, Assign) and isinstance(defining.rhs, Call) \
-                 and (classdef := cx.lookup_class(defining.rhs.func)) and classdef.is_unique:
+            elif isinstance(defining, Assign) and isinstance(rhs := strip_mut_or_const(defining.rhs), Call) \
+                 and (classdef := cx.lookup_class(rhs.func)) and classdef.is_unique:
                 return True
 
     return False
@@ -1987,9 +1991,7 @@ def codegen_node(node: Node, cx: Scope):
         list_type = node.declared_type
 
         if list_type is None and isinstance(node.parent, Assign) and (list_assign_type := node.parent.lhs.declared_type):
-
-            if mc := strip_mut_or_const(list_assign_type):
-                _, list_assign_type = mc  # ignore outer mut or const specifier (irrelevant for codegen of rhs of assignment)
+            list_assign_type = strip_mut_or_const(list_assign_type)
 
             if isinstance(list_assign_type, ListLiteral):
                 if not len(list_assign_type.args) == 1:
