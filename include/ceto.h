@@ -233,37 +233,6 @@ call_or_construct(TArgs&&... args) {
 }
 
 
-// preparation for auto-move last use of unique object
-
-template<typename T, typename Enable = void>
-struct is_object_unique_ptr {
-    enum { value = false };
-};
-
-//template<typename T>
-//struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
-//   enum { value = true };
-//};
-
-template<typename T>
-// struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<typename std::remove_cv<T>::type, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
-struct is_object_unique_ptr<T, typename std::enable_if<std::is_same<T, std::unique_ptr<typename T::element_type>>::value && std::is_base_of_v<object, typename T::element_type>>::type> {
-   enum { value = true };
-};
-
-template<typename T>
-//T&&
-//auto&&
-const T
-maybe_move(T t) {
-//    if constexpr (is_object_unique_ptr<T>::value) {
-////        return std::move(t);
-//        return std::forward<T>(std::move(t));
-//    }
-//    return std::forward<T>(t);
-    return t;
-}
-
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>

@@ -1244,6 +1244,7 @@ def _decltype_str(node, cx):
 
     for d in defs:
         def_node, def_context = d.defined_node, d.defining_node
+
         if def_node.declared_type:
 
             if def_node.declared_type.name in ["mut", "auto"]:
@@ -1687,6 +1688,7 @@ def codegen_assign(node: Assign, cx: Scope):
                         lhs_type_str = "auto"
                 elif node.lhs.declared_type.name == "auto":
                     # just "auto" means "const auto"
+                    # TODO this should take mut_by_default (or planned const/mut scopes) into account
                     lhs_type_str = "const auto"
             elif isinstance(node.lhs.declared_type, TypeOp):
                 type_list = type_node_to_list_of_types(node.lhs.declared_type)
@@ -1770,6 +1772,32 @@ def codegen_assign(node: Assign, cx: Scope):
             assign_str = "const auto " + assign_str
 
     return const_specifier + assign_str
+
+
+def _is_unique_var(node: Identifier, cx: Scope):
+    # should be handled in a prior typechecking pass (like most uses of find_defs)
+
+    assert isinstance(node, Identifier)
+
+    if not node.scope:
+        # nodes on rhs of TypeOp currently don't have a scope
+        return False
+
+    for defn in node.scope.find_defs(node):
+        if isinstance(defn, (LocalVariableDefinition, ParameterDefinition)):
+            defining = defn.defining_node
+            declared_type = defining.declared_type
+            if mc := strip_mut_or_const(declared_type):
+                _, declared_type = mc
+            classdef = cx.lookup_class(declared_type)
+            if classdef and classdef.is_unique:
+                return True
+            # TODO deal with mut/const calls here too (and handle them better in general)
+            elif isinstance(defining, Assign) and isinstance(defining.rhs, Call) \
+                 and (classdef := cx.lookup_class(defining.rhs.func)) and classdef.is_unique:
+                return True
+
+    return False
 
 
 def codegen_node(node: Node, cx: Scope):
@@ -1873,21 +1901,8 @@ def codegen_node(node: Node, cx: Scope):
             prev_ancestor = ident_ancestor
             ident_ancestor = ident_ancestor.parent
 
-        if is_last_use:
-            # if node.scope:
-            #     pass
-
-            if node.scope and (last_use_def := node.scope.find_def(node)) and isinstance(last_use_def, (LocalVariableDefinition, ParameterDefinition)):
-                # capture = "&" if cx.in_function_body else ""
-                return "std::move(" + name + ")"
-                # this is all problematic (although maybe could look at std::move_if_noexcept impl?). makes more sense to only apply this to transpiler known byval/local unique instances only
-                # return "[" + capture + "] () -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(" + name + ")>::value) { return std::move(" + name + "); } else { return " + name + "; } }()"
-                # return "[" + capture + "] () -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(" + name + ")>::value) { return std::move(" + name + "); } else { return " + name + "; } }()"
-                return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<decltype(n)>::value) { return std::forward<decltype(std::move(n))>(std::move(n)); } else { return std::forward<decltype(n)>(n); } }(" + name +")"
-                # return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(std::forward<decltype(n)>(n)); } else { return std::forward<decltype(n)>(n); } }(" + name +")"
-                # return "[] (auto && n) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(n); } else { return n; } }(" + name +")"
-                # return "[] (auto && n) -> decltype(auto) { if constexpr (ceto::is_object_unique_ptr<std::remove_cvref_t<decltype(n)>>::value) { return std::move(n); } else { return n; } }(" + name +")"
-                # return "ceto::maybe_move(" + name + ")"
+        if is_last_use and _is_unique_var(node, cx):
+            return "std::move(" + name + ")"
 
         return name
 
