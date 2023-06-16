@@ -1217,7 +1217,7 @@ class (Foo:
     f : std.conditional_t<false, decltype(lambda(x, x + g)), int>
 )
 
-cg = c"it's a global, no need to capture"  # (and you can't because a const:char:ptr is not a shared_ptr<object> or is_arithmetic_v)
+cg = "it's a global, no need to capture"c  # (and you can't because a const:char:ptr is not a shared_ptr<object> or is_arithmetic_v)
 
 def (main:
     f = Foo(2)

@@ -5,7 +5,7 @@ from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition
-from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, CStringLiteral, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
+from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
 import re
@@ -897,7 +897,7 @@ def codegen_def(defnode: Call, cx):
     return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
-        name = "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+        name = "operator" + operator_name_node.string
 
     if name is None:
         # no immediate plans to support out of line methods
@@ -1181,10 +1181,8 @@ def _decltype_maybe_wrapped_in_declval(node, cx):
 
 def _decltype_str(node, cx):
 
-    if isinstance(node, IntegerLiteral):
-        return True, str(node)
-    elif isinstance(node, StringLiteral):
-        return True, "std::string {" + str(node) + "}"
+    if isinstance(node, (IntegerLiteral, StringLiteral)):
+        return True, codegen_node(node, cx)
 
     if isinstance(node, BinOp):
         binop = node
@@ -1345,7 +1343,7 @@ def _shared_ptr_str_for_type(type_node, cx):
 
 
 def _codegen_extern_C(lhs, rhs):
-    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.func == "C":
+    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.string == "C":
         return 'extern "C"'
     return None
 
@@ -1466,7 +1464,7 @@ def codegen_call(node: Call, cx: Scope):
                 raise CodeGenError("range args not supported:", node)
         elif func_name == "operator" and len(node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
-            return "operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+            return "operator" + operator_name_node.string
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)
@@ -1562,8 +1560,7 @@ def codegen_call(node: Call, cx: Scope):
                     node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
                 consume_method_name()
-                return "ceto::mad(" + codegen_node(node.func,
-                                                   cx) + ")->operator" + operator_name_node.func  # TODO fix wonky non-node funcs and args, put raw string somewhere else
+                return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.string
 
             elif not isinstance(method_name.parent,
                                 (ScopeResolution, ArrowOp)):
@@ -2030,8 +2027,6 @@ def codegen_node(node: Node, cx: Scope):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)
             raise CodeGenError("Use round parentheses for class constructor call", node)
         return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
-    elif isinstance(node, CStringLiteral):
-        return str(node)
     elif isinstance(node, UnOp):
         opername = node.func
         if opername == ":":
@@ -2046,8 +2041,15 @@ def codegen_node(node: Node, cx: Scope):
         return codegen_node(node.args[0], cx) + opername
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
-            # bad idea?: look at the uses of vars defined by string literals, they're const char* if they flow to C lib
-            return str(node)  # const char * !
+            return node.escaped()  # const char * !  TODO: stop doing this (fix testsuite)
+        ffixes = [f.name for f in [node.prefix, node.suffix] if f]
+        if "c" in ffixes:
+            if len(ffixes) != 1:
+                raise CodeGenError("no other prefixes/suffixes allowed for c string", node)
+            return node.escaped()
+        elif ffixes:
+            # let c++ handle e.g. "blah blah"s verbatim
+            return str(node)
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"

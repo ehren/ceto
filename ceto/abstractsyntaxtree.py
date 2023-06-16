@@ -98,20 +98,29 @@ class Identifier(Node):
 class StringLiteral(Node):
 
     def __repr__(self):
-        escaped = self.func.replace("\n", r"\n")
-        return '"' + escaped + '"'
+        escaped = self.escaped()
+        if self.prefix:
+            escaped = self.prefix.name + escaped
+        if self.suffix:
+            escaped += self.suffix.name
+        return escaped
 
+    def escaped(self):
+        escaped = self.string.replace("\n", r"\n")
+        escaped = '"' + escaped + '"'
+        return escaped
 
-class CStringLiteral(StringLiteral):
-    pass
+    def __init__(self, string, prefix, suffix, source):
+        self.string = string
+        self.prefix = prefix
+        self.suffix = suffix
+        super().__init__(None, [], source)
 
 
 class IntegerLiteral(Node):
     def __init__(self, integer, source):
-        func = None
-        args = []
         self.integer = integer
-        super().__init__(None, args, source)
+        super().__init__(None, [], source)
 
     def __repr__(self):
         return str(self.integer)

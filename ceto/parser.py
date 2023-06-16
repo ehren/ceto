@@ -17,8 +17,7 @@ from preprocessor import preprocess
 from abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
-    Block, Module, StringLiteral, CStringLiteral, RedundantParens, Assign, \
-    Template
+    Block, Module, StringLiteral, RedundantParens, Assign, Template
 
 
 class ParserError(Exception):
@@ -155,13 +154,22 @@ def _parse_template(s, l, t):
     return Template(func, args, source)
 
 
-def _make_parse_action_string_literal(clazz):
-    def parse_action(s, l, t):
-        func = str(t[0])
-        args = []
-        source = s, l
-        return clazz(func, args, source)
-    return parse_action
+def _parse_string_literal(s, loc, tokens):
+    source = s, loc
+    prefix = None
+    suffix = None
+
+    if len(tokens) == 3:
+        prefix, string, suffix = tokens
+    elif len(tokens) == 2:
+        prefix, string = tokens
+        if not isinstance(string, str):
+            string, suffix = prefix, string
+            prefix = None
+    else:
+        assert len(tokens) == 1
+        string = tokens[0]
+    return StringLiteral(string, prefix, suffix, source)
 
 
 def _make_parse_action_list_like(clazz):
@@ -198,15 +206,13 @@ def _build_grammar():
     infix_expr = pp.Forward()
     ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(_parse_identifier)
 
-    quoted_str = pp.QuotedString("'", multiline=True, esc_char="\\").set_parse_action(_make_parse_action_string_literal(StringLiteral))
-    dblquoted_str = pp.QuotedString('"', multiline=True, esc_char="\\").set_parse_action(_make_parse_action_string_literal(StringLiteral))
-    cdblquoted_str = pp.Suppress(pp.Keyword("c")) + pp.QuotedString('"', multiline=True).set_parse_action(_make_parse_action_string_literal(CStringLiteral))
+    quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
+    dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
 
     atom = (
         template
         | real
         | integer
-        | cdblquoted_str
         | quoted_str
         | dblquoted_str
         | list_literal
