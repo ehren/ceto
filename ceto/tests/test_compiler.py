@@ -20,6 +20,22 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_plain_const():
+    c = compile(r"""
+    
+class (Foo:
+    c: const = 1
+)
+    
+def (main:
+    c: const = 2
+    std.cout << c << Foo().c
+)
+    """)
+
+    assert c == "21"
+
+
 def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
     c = compile(r"""
 class (Foo:
@@ -141,7 +157,7 @@ def (main:
 
 def test_const_lambda_var():
     c = compile(r"""
-# include "blah.ct"
+# include"blah.ct"
 # include <blah.ct>
 
 def (main:
@@ -1020,7 +1036,7 @@ def test_const_ptr():
 
 class (Foo:
     a : int
-    def (method:
+    def (method: mut:
         pass
     )
 )
@@ -1033,7 +1049,9 @@ def (main:  #
     fc : const:Foo = Foo(1)
     # fc.method()  # error method not const
     # f : const = Foo(1)  # error from c++ (const alone not valid)
-    f : const:auto = Foo(1)  # const ptr to non-const
+    f : const:auto = Foo(1) : mut  # const shared_ptr to non-const actual Foo
+    # f = nullptr  # error
+    static_assert(std.is_const_v<decltype(f)>)
     f.method()
     calls_method(f)
     # calls_method(fc)  # error method not const
@@ -1166,14 +1184,14 @@ def (main:
 )
 """
 
-    comp = lambda c: compile(c.replace("CONTROL_STRUCTURE", cs))
+    comp = lambda code, control_structure: compile(code.replace("CONTROL_STRUCTURE", control_structure))
 
     for cs in ["while", "if"]:
-        g = comp(good_code)
+        g = comp(good_code, cs)
         assert g == ""
 
         for b in [bad_code, bad_code2]:
-            raises(lambda: comp(b))
+            raises(lambda: comp(b, cs))
 
 
 def test_scopes_definition_in_test_simple():
@@ -2067,7 +2085,7 @@ def (main:
     # for (i in range(u):  # TODO probably should fix
     z : unsigned:int = 0  # workaround
     for (i in range(z, u):
-        static_assert(std.is_same_v<decltype(i), int:unsigned>)   # apparently "int unsigned" is actually valid
+        static_assert(std.is_same_v<decltype(i), int:unsigned>)
         static_assert(std.is_same_v<decltype(i), unsigned:int>)
         std.cout << i
     )
@@ -2184,7 +2202,7 @@ def (func, f : FooConcrete:
 )
 
 def (func, f : FooConcreteUnique:
-    # static_assert(std.is_const_v<decltype(f)>)  # TODO this and all params should still be const (at least in const by default mode...)
+    # static_assert(std.is_const_v<decltype(f)>)  # TODO this and all params should still be const (at least in const by default mode...). 
     static_assert(not std.is_reference_v<decltype(f)>)
     std.cout << "FooConcreteUnique " << f.a << std.endl
 )
@@ -2197,7 +2215,7 @@ def (func, f : FooConcreteUnique:
 # )
 
 def (byval, f : auto:
-    static_assert(not std.is_reference_v<decltype(f)>)  # when this is the last use, arguably bad insertion of std::move here? maybe it's expected
+    static_assert(not std.is_reference_v<decltype(f)>)  # when this is the last use, arguably bad insertion of std::move here? maybe it's expected (comment no longer relevant: we no longer apply std::move willy nilly to the last use of all vars, just those known to be :unique local/funcparm ceto class instances)
     std.cout << "byval " << f.a << "\n"
 )
 
@@ -2924,7 +2942,7 @@ def (main:
     # p4 : const:ptr:int = &x #  const * int p4 = (&x);  error expected unqualifief id
     
     
-    # want to support
+    # These are all bad ideas (we don't / no plans to support these 'conveniences')  (ptr and ref will eventually
     # w1 : ref = x # really auto:ref
     # w2 : const:ref = x # const:auto:ref
     # w3 : ptr = &x # auto:ptr
@@ -3175,7 +3193,7 @@ def (main:
     x = 5
     
     l : mut = [1,2,3]
-    for (x:auto:rref in l:
+    for (x:auto:rref in l:  # note the context sensitivity disguised by a post parse fixup (ordinarily ':' has a lower precedence than 'in')
         x = x + 1
     )
     

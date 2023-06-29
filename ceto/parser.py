@@ -210,16 +210,16 @@ def _build_grammar():
     dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
 
     atom = (
-        template
+        dblquoted_str
+        | quoted_str
+        | template
+        | ident
         | real
         | integer
-        | quoted_str
-        | dblquoted_str
         | list_literal
         | tuple_literal
         # | dict_literal
         | braced_literal
-        | ident
     )
 
     tuple_literal <<= (

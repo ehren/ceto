@@ -1615,7 +1615,21 @@ def codegen_call(node: Call, cx: Scope):
 def _is_const_make(node):
     is_const = not mut_by_default
 
-    if isinstance(node.parent,
+    if node.declared_type is not None:
+        lhs_type = node.declared_type
+
+        if isinstance(lhs_type, Identifier):
+            if lhs_type.name == "mut":
+                is_const = False
+            elif lhs_type.name == "const":
+                is_const = True
+        elif isinstance(lhs_type, TypeOp):
+            type_list = type_node_to_list_of_types(lhs_type)
+            if "mut" in type_list:
+                is_const = False
+            elif "const" in type_list:
+                is_const = True
+    elif isinstance(node.parent,
                   Assign) and node.parent.lhs.declared_type is not None:
         lhs_type = node.parent.lhs.declared_type
 
@@ -1625,16 +1639,6 @@ def _is_const_make(node):
         elif isinstance(lhs_type, TypeOp):
             type_list = type_node_to_list_of_types(lhs_type)
             if "mut" in [type_list[0].name, type_list[-1].name]:
-                is_const = False
-    elif node.declared_type is not None:
-        lhs_type = node.declared_type
-
-        if isinstance(lhs_type, Identifier):
-            if lhs_type.name == "mut":
-                is_const = False
-        elif isinstance(lhs_type, TypeOp):
-            type_list = type_node_to_list_of_types(lhs_type)
-            if "mut" in type_list:
                 is_const = False
 
     return is_const
@@ -1683,13 +1687,16 @@ def codegen_assign(node: Assign, cx: Scope):
             # add const if not mut
 
             if isinstance(node.lhs.declared_type, Identifier):
-                if node.lhs.declared_type.name == "mut":
+                if node.lhs.declared_type.name in ["mut", "const"]:
                     # mut is the real "auto".
 
                     if cx.in_class_body:
                         lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
                     else:
                         lhs_type_str = "auto"
+
+                    if node.lhs.declared_type.name == "const":
+                        lhs_type_str = "const " + lhs_type_str
                 elif node.lhs.declared_type.name == "auto":
                     # just "auto" means "const auto"
                     # TODO this should take mut_by_default (or planned const/mut scopes) into account
