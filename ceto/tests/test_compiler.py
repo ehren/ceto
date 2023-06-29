@@ -20,6 +20,17 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_u8_string_prefix():
+    c = compile(r"""
+def (main:
+    u : std.u8string = u8"😐"c
+    s = std.string(u.begin(), u.end())  # oof
+    std.cout << s
+)
+    """)
+    assert c == "😐"
+
+
 def test_plain_const():
     c = compile(r"""
     

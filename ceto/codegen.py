@@ -1424,6 +1424,8 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
             return "&"
         elif type_node.name == "rref":
             return "&&"
+        elif type_node.name == "string" and not isinstance(type_node.parent, (AttributeAccess, ScopeResolution)):
+            return "std::string"
 
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
@@ -1869,8 +1871,6 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("Use of 'ptr' outside type context is an error", node)
         elif name == "ref":
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
-        elif name == "string":
-            return "std::string"
         # elif name == "None":  # just use 'nullptr' (fine even in pure python syntax)
         #     return "nullptr"
         elif name == "dotdotdot":
@@ -2050,13 +2050,25 @@ def codegen_node(node: Node, cx: Scope):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:
             return node.escaped()  # const char * !  TODO: stop doing this (fix testsuite)
         ffixes = [f.name for f in [node.prefix, node.suffix] if f]
-        if "c" in ffixes:
-            if len(ffixes) != 1:
-                raise CodeGenError("no other prefixes/suffixes allowed for c string", node)
-            return node.escaped()
-        elif ffixes:
-            # let c++ handle e.g. "blah blah"s verbatim
-            return str(node)
+        if "c" in ffixes and "s" in ffixes:
+            raise CodeGenError("string literal cannot be both c-string and std::string", node)
+        if "c" in ffixes or "s" in ffixes:
+            if node.prefix and node.prefix.name in ["c", "s"]:
+                str_prefix = node.prefix
+                node.prefix = None
+                code = str(node)
+                node.prefix = str_prefix
+                if node.suffix.name == "s":
+                    return "std::string {" + code + "}"
+            elif node.suffix and node.suffix.name in ["c", "s"]:
+                str_suffix = node.suffix
+                node.suffix = None
+                code = str(node)
+                node.suffix = str_suffix
+                if node.suffix.name == "s":
+                    return "std::string {" + code + "}"
+                else:
+                    return code
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
