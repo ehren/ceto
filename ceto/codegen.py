@@ -29,6 +29,7 @@ cpp_preamble = r"""
 #include <cassert>
 #include <compare> // for <=>
 #include <thread>
+#include <optional>
 
 //#include <concepts>
 //#include <ranges>
@@ -892,8 +893,13 @@ def codegen_def(defnode: Call, cx):
     name_node = defnode.args[0]
     name = name_node.name
     args = defnode.args[1:]
-    block = args.pop()
-    assert isinstance(block, Block)
+    if args and isinstance(args[-1], Block):
+        block = args.pop()
+        is_declaration = False
+    else:
+        block = None
+        is_declaration = True
+
     return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
@@ -991,6 +997,9 @@ def codegen_def(defnode: Call, cx):
         template = ""
         inline = ""
 
+    if is_declaration:
+        inline = ""
+
     if typenames:
         template = "template <{0}>\n".format(", ".join(typenames))
         inline = ""
@@ -1014,15 +1023,16 @@ def codegen_def(defnode: Call, cx):
     else:
         return_type = "auto"
         found_return = False
-        for b in block.args:
-            for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
-                found_return = True
-                if is_void_return(ret):
-                    # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
-                    # return_type = 'std::shared_ptr<object>'
-                    # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
-                    return_type = "void"
-                    break
+        if block:
+            for b in block.args:
+                for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
+                    found_return = True
+                    if is_void_return(ret):
+                        # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
+                        # return_type = 'std::shared_ptr<object>'
+                        # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
+                        return_type = "void"
+                        break
 
         if not found_return:
             # return_type = 'std::shared_ptr<object>'
@@ -1042,8 +1052,26 @@ def codegen_def(defnode: Call, cx):
             funcdef += " override" # maybe later: use final if method not 'overridable'
 
     indt = cx.indent_str()
-    block_str = codegen_function_body(defnode, block, cx)
 
+    if is_declaration:
+        if typenames:
+            raise CodeGenError("no untyped declarations", defnode)
+
+        if not is_method and not isinstance(defnode.parent, Assign):
+            raise CodeGenError("forward declarations not currently supported", defnode)
+
+        rhs = defnode.parent.rhs
+
+        if name == "init" and rhs.name in ["default", "delete"]:
+            # return class_name + "() = " + defnode.parent.rhs.name
+            raise CodeGenError("TODO decide best way to express = default/delete", defnode)
+        elif isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
+            # pure virtual function (codegen_assign handles the "= 0" part)
+            return indt + funcdef
+        else:
+            raise CodeGenError("bad assignment to function declaration", defnode)
+
+    block_str = codegen_function_body(defnode, block, cx)
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 
 
@@ -1424,8 +1452,6 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
             return "&"
         elif type_node.name == "rref":
             return "&&"
-        elif type_node.name == "string" and not isinstance(type_node.parent, (AttributeAccess, ScopeResolution)):
-            return "std::string"
 
         if type_node.name in ["new", "goto"]:
             raise CodeGenError("nice try", type_node)
@@ -1447,7 +1473,7 @@ def codegen_call(node: Call, cx: Scope):
         if func_name == "if":
             return codegen_if(node, cx)
         elif func_name == "def":
-            raise CodeGenError("nested def not yet implemented")
+            return codegen_def(node, cx)
         elif func_name == "lambda":
             newcx = cx.enter_scope()
             newcx.in_function_param_list = True
@@ -1776,6 +1802,7 @@ def codegen_assign(node: Assign, cx: Scope):
     assign_str = " ".join([lhs_str, node.func, rhs_str])
 
     # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+    # NOTE 'already_declared' is kludge only for 'noscope' ifs
     if not hasattr(node, "already_declared") and node.scope.find_def(node.lhs) is None:
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
@@ -1871,10 +1898,12 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("Use of 'ptr' outside type context is an error", node)
         elif name == "ref":
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
-        # elif name == "None":  # just use 'nullptr' (fine even in pure python syntax)
-        #     return "nullptr"
+        elif name == "None":
+            return "nullptr"
         elif name == "dotdotdot":
             return "..."
+        elif name == "string" and not isinstance(node.parent, (AttributeAccess, ScopeResolution)):
+            return "std::string"
         # elif name == "object":
         #     return "std::shared_ptr<object>"
 

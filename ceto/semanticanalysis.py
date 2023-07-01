@@ -176,8 +176,8 @@ def one_liner_expander(parsed):
         if isinstance(op, Call):
             if isinstance(op.func, Identifier):
                 if op.func.name == "def":
-                    if len(op.args) < 2:
-                        raise SemanticAnalysisError("not enough def args")
+                    if len(op.args) == 0:
+                        raise SemanticAnalysisError("empty def")
                     # if not isinstance(op.args[0], Identifier):
                     #     raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
                 elif op.func.name == "lambda":
