@@ -387,6 +387,8 @@ class ClassDefinition:
         self.class_def_node = class_def_node
         self.is_generic_param_index = is_generic_param_index
         self.is_unique = is_unique
+        self.is_concrete = False
+        self.is_pure_virtual = False
 
     def has_generic_params(self):
         return True in self.is_generic_param_index.values()

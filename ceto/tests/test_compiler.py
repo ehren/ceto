@@ -26,7 +26,8 @@ class (Node:
     func : Node
     args : [Node]
 
-    def (repr: virtual) = 0
+    def (repr: virtual) = 0  # TODO declarations should require a return type (treated as void currently)
+    # def (repr: virtual) : string = 0  # TODO: codegen.CodeGenError: ('Unexpected typed call', def(repr))
     
     def (name: virtual:
         return None
@@ -43,7 +44,7 @@ class (Identifier(Node):
 
     def (repr:
         return self._name
-    ) #: decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type?
+    ) : decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type?
 
     def (name: virtual:
         return self._name

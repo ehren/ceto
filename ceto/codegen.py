@@ -400,6 +400,7 @@ def codegen_class(node : Call, cx):
             raise CodeGenError("Unexpected expression in class body", b)
 
     base_class_type : str = inherits.name if inherits is not None else None
+    classdef.is_concrete = not classdef.is_generic_param_index
 
     if constructor_node is not None:
         constructor_args = constructor_node.args[1:-1]
@@ -506,9 +507,13 @@ def codegen_class(node : Call, cx):
 
             super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
 
-            # here CTAD takes care of the real type of the base class (in case the base class is a template)
-            # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
-            base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
+            inherits_dfn = cx.lookup_class(inherits)
+
+            if not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual:
+                # here CTAD takes care of the real type of the base class (in case the base class is a template)
+                # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
+                base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
+
             super_init_str = base_class_type + " (" + ", ".join(super_init_args) + ")"
             initializer_list_items.insert(0, super_init_str)  # TODO we should preserve the user defined order
 
@@ -888,6 +893,22 @@ def codegen_function_body(defnode : Call, block, cx):
     return block_str
 
 
+def class_name_node_from_inline_method(defcallnode : Call):
+    assert isinstance(defcallnode, Call)
+
+    parentblock = defcallnode.parent
+    if isinstance(parentblock, Assign):  # e.g. = 0 pure virtual function
+        parentblock = parentblock.parent
+    if isinstance(parentblock, Block) and isinstance(parentblock.parent, Call) and parentblock.parent.func.name == "class":
+        classname = parentblock.parent.args[0]
+        if isinstance(classname, Call):
+            # inheritance
+            classname = classname.func
+        assert isinstance(classname, Identifier)
+        return classname
+    return None
+
+
 def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -912,17 +933,19 @@ def codegen_def(defnode: Call, cx):
     params = []
     typenames = []
 
-    is_destructor = False
-    if name == "destruct" and isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class":
-        class_identifier = defnode.parent.parent.args[0]
-        assert isinstance(class_identifier, Identifier)
-        class_name = class_identifier.name
-        if args:
-            raise CodeGenError("destructors can't take arguments")
-        is_destructor = True
-
     # no support for out of line methods at the moment
-    is_method = isinstance(defnode.parent, Block) and isinstance(defnode.parent.parent, Call) and defnode.parent.parent.func.name == "class"
+    class_identifier = class_name_node_from_inline_method(defnode)
+    is_method = class_identifier is not None
+    if is_method:
+        class_name = class_identifier.name
+    else:
+        class_name = None
+
+    is_destructor = False
+    if is_method and name == "destruct":
+        if args:
+            raise CodeGenError("destructors can't take arguments", defnode)
+        is_destructor = True
 
     specifier_node = name_node.declared_type
     specifier_types = type_node_to_list_of_types(specifier_node)
@@ -1066,6 +1089,12 @@ def codegen_def(defnode: Call, cx):
             # return class_name + "() = " + defnode.parent.rhs.name
             raise CodeGenError("TODO decide best way to express = default/delete", defnode)
         elif isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
+
+            classdef = cx.lookup_class(class_identifier)
+            assert classdef
+
+            classdef.is_pure_virtual = True
+
             # pure virtual function (codegen_assign handles the "= 0" part)
             return indt + funcdef
         else:
@@ -1590,8 +1619,11 @@ def codegen_call(node: Call, cx: Scope):
                 consume_method_name()
                 return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.string
 
-            elif not isinstance(method_name.parent,
+            elif method_name.parent and not isinstance(method_name.parent,
                                 (ScopeResolution, ArrowOp)):
+                # method_name.parent is None for a method call inside a decltype in a return type
+                # TODO we maybe still have to handle cases where method_name.parent is None. silly example: x : decltype([].append(1)[0])
+
                 consume_method_name()
 
                 if method_name.name == "unsafe_at" and len(node.args) == 1:
