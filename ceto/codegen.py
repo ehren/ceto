@@ -379,15 +379,17 @@ def codegen_class(node : Call, cx):
                 #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
                 # else:
                 field_type = b.declared_type
-                decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
+                # decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
+                field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
+                decl = field_type_const_part + field_type_str + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
             else:
                 t = gensym("C")
                 typenames.append(t)
                 field_types[b.name] = t
-                decl = t + " " + b.name
+                decl = "const " if not mut_by_default else "" + t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = True
             uninitialized_attributes.append(b)
@@ -1708,6 +1710,66 @@ def _is_const_make(node):
     return is_const
 
 
+def codegen_variable_declaration_type(node: Identifier, cx: Scope):
+    assert isinstance(node, Identifier)
+    assert node.declared_type
+
+    lhs_type_str = None
+
+    const_specifier = ""
+    if not cx.in_function_body and not cx.in_class_body:
+        # add constexpr to all global defns
+        constexpr_specifier = "constexpr "
+
+    if isinstance(node.declared_type, Identifier):
+        # this should really be handled by codegen_assign
+        if node.declared_type.name == "auto":
+            # just "auto" means "const auto"
+            # TODO this should take mut_by_default (or planned const/mut scopes) into account
+            lhs_type_str = "const auto"
+    elif isinstance(node.declared_type, TypeOp):
+        type_list = type_node_to_list_of_types(node.declared_type)
+        if "mut" in [type_list[0].name,
+                     type_list[-1].name]:  # east or west mut is fine
+            if type_list[0].name == "mut":
+                type_list.pop(0)
+            else:
+                type_list.pop()
+            rebuilt = list_to_typed_node(type_list)
+            lhs_type_str = codegen_type(node, rebuilt, cx)
+            assert len(lhs_type_str) > 0
+        else:
+            for i, t in enumerate(type_list):
+                otheridx = i - 1 if i > 0 else i + 1
+                if (t.name in ["const", "auto"] and type_list[otheridx].name in [
+                    "const", "auto"]) or (
+                        t.name == "const" and i < len(type_list) - 1 and type_list[
+                    i + 1].name == "ref"):
+                    # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
+                    # alternately contains "const ref" anywhere
+                    # use type verbatim
+                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
+                                                cx)
+                    break
+
+            if lhs_type_str is None:
+                if (type_list[0].name == "const" and type_list[
+                    -1].name != "ptr") or type_list[-1].name == "const":
+                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
+                                                cx)
+                elif type_list[-1].name == "ptr":
+                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
+                                                cx) + " const"
+
+    if lhs_type_str is None:
+        lhs_type_str = codegen_type(node, node.declared_type, cx)
+        needs_const = not mut_by_default
+        if needs_const and not const_specifier:
+            const_specifier = "const "
+
+    return const_specifier, lhs_type_str
+
+
 def codegen_assign(node: Assign, cx: Scope):
     assert isinstance(node, Assign)
 
@@ -1719,7 +1781,7 @@ def codegen_assign(node: Assign, cx: Scope):
     const_specifier = ""
     if not cx.in_function_body and not cx.in_class_body:
         # add constexpr to all global defns
-        const_specifier = "constexpr "
+        constexpr_specifier = "constexpr "
 
     if node.declared_type is not None and isinstance(node.rhs,
                                                      Call) and node.rhs.func.name == "lambda":
@@ -1746,57 +1808,17 @@ def codegen_assign(node: Assign, cx: Scope):
 
         if node.lhs.declared_type:
 
-            lhs_type_str = None
-
             # add const if not mut
 
-            if isinstance(node.lhs.declared_type, Identifier):
-                if node.lhs.declared_type.name in ["mut", "const"]:
-                    # mut is the real "auto".
+            if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
+                # mut is the real "auto".
 
-                    if cx.in_class_body:
-                        lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
-                    else:
-                        lhs_type_str = "auto"
-
-                    if node.lhs.declared_type.name == "const":
-                        lhs_type_str = "const " + lhs_type_str
-                elif node.lhs.declared_type.name == "auto":
-                    # just "auto" means "const auto"
-                    # TODO this should take mut_by_default (or planned const/mut scopes) into account
-                    lhs_type_str = "const auto"
-            elif isinstance(node.lhs.declared_type, TypeOp):
-                type_list = type_node_to_list_of_types(node.lhs.declared_type)
-                if "mut" in [type_list[0].name, type_list[-1].name]:  # east or west mut is fine
-                    if type_list[0].name == "mut":
-                        type_list.pop(0)
-                    else:
-                        type_list.pop()
-                    rebuilt = list_to_typed_node(type_list)
-                    lhs_type_str = codegen_type(node.lhs, rebuilt, cx)
-                    assert len(lhs_type_str) > 0
+                if cx.in_class_body:
+                    lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
                 else:
-                    for i, t in enumerate(type_list):
-                        otheridx = i - 1 if i > 0 else i + 1
-                        if (t.name in ["const", "auto"] and type_list[otheridx].name in ["const", "auto"]) or (
-                            t.name == "const" and i < len(type_list) - 1 and type_list[i + 1].name == "ref"):
-                            # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
-                            # alternately contains "const ref" anywhere
-                            # use type verbatim
-                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                            break
-
-                    if lhs_type_str is None:
-                        if (type_list[0].name == "const" and type_list[-1].name != "ptr") or type_list[-1].name == "const":
-                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                        elif type_list[-1].name == "ptr":
-                            lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx) + " const"
-
-            if lhs_type_str is None:
-                lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                needs_const = not mut_by_default
-                if needs_const and not const_specifier:
-                    const_specifier = "const "
+                    lhs_type_str = "auto"
+            else:
+                const_specifier, lhs_type_str = codegen_variable_declaration_type(node.lhs, cx)
 
             decl_str = lhs_type_str + " " + lhs_str
 
