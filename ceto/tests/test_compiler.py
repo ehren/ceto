@@ -44,11 +44,11 @@ class (Identifier(Node):
 
     def (repr:
         return self._name
-    ) : decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type?
+    ) : decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type
 
     def (name: virtual:
         return self._name
-    ) : std.optional<string>
+    ) : decltype(std.declval<Node>().name())  # this is surely better (note that Node printed as shared_ptr<const(?) Node> here)
 )
 
 def (main:
@@ -665,20 +665,19 @@ def (main:
     assert c == "2223"
 
 
-def test_none():
-    # use of 'None' like python is up to you (might revise this but should be implemented by prepending ceto code rather than logic in the transpiler proper)
+def test_diy_none():
     c = compile(r"""
 
 # all definitions at global scope constexpr by default:
-None = nullptr
-None2:auto = nullptr  # even ones with an explicit 'type'
+None2 = nullptr
+None3:auto = nullptr  # even ones with an explicit 'type'
 
 def (main:
-    std.cout << None << None2
+    std.cout << None2 << None3
     
-    static_assert(std.is_const_v<decltype(None)>)
     static_assert(std.is_const_v<decltype(None2)>)
-    static_assert(std.is_same_v<decltype(None), const:std.nullptr_t>)
+    static_assert(std.is_const_v<decltype(None3)>)
+    static_assert(std.is_same_v<decltype(None2), const:std.nullptr_t>)
 )
     """)
 

@@ -2122,8 +2122,10 @@ def codegen_node(node: Node, cx: Scope):
                 node.prefix = None
                 code = str(node)
                 node.prefix = str_prefix
-                if node.suffix.name == "s":
+                if node.prefix.name == "s":
                     return "std::string {" + code + "}"
+                else:
+                    return code
             elif node.suffix and node.suffix.name in ["c", "s"]:
                 str_suffix = node.suffix
                 node.suffix = None
