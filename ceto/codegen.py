@@ -1078,7 +1078,7 @@ def codegen_def(defnode: Call, cx):
 
     if is_declaration:
         if typenames:
-            raise CodeGenError("no untyped declarations", defnode)
+            raise CodeGenError("no declarations with untyped/generic params", defnode)
 
         if not is_method and not isinstance(defnode.parent, Assign):
             raise CodeGenError("forward declarations not currently supported", defnode)
@@ -1088,7 +1088,11 @@ def codegen_def(defnode: Call, cx):
         if name == "init" and rhs.name in ["default", "delete"]:
             # return class_name + "() = " + defnode.parent.rhs.name
             raise CodeGenError("TODO decide best way to express = default/delete", defnode)
-        elif isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
+
+        if return_type_node is None:
+            raise CodeGenError("declarations must specify a return type", defnode)
+
+        if isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
 
             classdef = cx.lookup_class(class_identifier)
             assert classdef
@@ -1898,8 +1902,7 @@ def codegen_node(node: Node, cx: Scope):
                 raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
-        elif isinstance(node, Call) and node.func.name != "lambda" and node.declared_type.name != "mut":
-            # it's not a typed lambda - error (TODO typed def simple calls as declarations with return type)
+        elif isinstance(node, Call) and node.func.name not in ["lambda", "def"] and node.declared_type.name not in ["const", "mut"]:
             raise CodeGenError("Unexpected typed call", node)
 
     if isinstance(node, Module):

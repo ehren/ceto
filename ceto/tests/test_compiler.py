@@ -26,8 +26,8 @@ class (Node:
     func : Node
     args : [Node]
 
-    def (repr: virtual) = 0  # TODO declarations should require a return type (treated as void currently)
-    # def (repr: virtual) : string = 0  # TODO: codegen.CodeGenError: ('Unexpected typed call', def(repr))
+    # def (repr: virtual) = 0  # error declarations must specify a return type
+    def (repr: virtual) : string = 0
     
     def (name: virtual:
         return None
@@ -55,9 +55,10 @@ def (main:
     id = Identifier("a")
     std.cout << id.name().value()
 )
-
     
     """)
+
+    assert c == "a"
 
 
 
