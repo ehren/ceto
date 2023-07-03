@@ -369,7 +369,18 @@ def codegen_class(node : Call, cx):
                 funcx.in_function_param_list = True
                 cpp += codegen_def(b, funcx)
         elif isinstance(b, Identifier):
-            if b.declared_type is not None:
+            if b.declared_type is None or b.declared_type.name in ["mut", "const"]:
+                # generic case
+                t = gensym("C")
+                typenames.append(t)
+                field_types[b.name] = t
+                decl_const_part = ""
+                if (b.declared_type is None and not mut_by_default) or (b.declared_type and b.declared_type.name == "const"):
+                    decl_const_part = "const "
+                decl = decl_const_part + t + " " + b.name
+                cpp += inner_indt + decl + ";\n\n"
+                classdef.is_generic_param_index[block_index] = True
+            else:
                 # idea to "flatten out" the generic params is too crazy (and supporting the same behaviour in function defs means losing auto function arg deduction (more spamming decltype would maybe fix)
                 # dependent_class = cx.lookup_class(b.declared_type)
                 # if dependent_class is not None and dependent_class.num_generic_params > 0:
@@ -385,13 +396,7 @@ def codegen_class(node : Call, cx):
                 decl = field_type_const_part + field_type_str + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
-            else:
-                t = gensym("C")
-                typenames.append(t)
-                field_types[b.name] = t
-                decl = "const " if not mut_by_default else "" + t + " " + b.name
-                cpp += inner_indt + decl + ";\n\n"
-                classdef.is_generic_param_index[block_index] = True
+
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
@@ -1315,8 +1320,8 @@ def _decltype_str(node, cx):
 
         if def_node.declared_type:
 
-            if def_node.declared_type.name in ["mut", "auto"]:
-                # discard plain mut / auto (it tells us nothing and they aren't valid vector element types)
+            if def_node.declared_type.name in ["mut", "const", "auto"]:
+                # plain mut/const/auto provides no element type info
                 continue
             elif isinstance(def_node.declared_type, TypeOp):
 
@@ -1388,8 +1393,6 @@ def vector_decltype_str(node, cx):
 def _shared_ptr_str_for_type(type_node, cx):
     if not isinstance(type_node, Identifier):
         return None
-
-    name = type_node.name
 
     if classdef := cx.lookup_class(type_node):
         if isinstance(classdef, InterfaceDefinition):
@@ -1748,17 +1751,16 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
                     # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
                     # alternately contains "const ref" anywhere
                     # use type verbatim
-                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
-                                                cx)
+                    lhs_type_str = codegen_type(node, node.declared_type, cx)
                     break
 
             if lhs_type_str is None:
                 if (type_list[0].name == "const" and type_list[
                     -1].name != "ptr") or type_list[-1].name == "const":
-                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
+                    lhs_type_str = codegen_type(node, node.declared_type,
                                                 cx)
                 elif type_list[-1].name == "ptr":
-                    lhs_type_str = codegen_type(node, node.lhs.declared_type,
+                    lhs_type_str = codegen_type(node, node.declared_type,
                                                 cx) + " const"
 
     if lhs_type_str is None:

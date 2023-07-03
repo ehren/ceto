@@ -139,7 +139,7 @@ def test_mut_classes():
     c = compile(r"""
     
 class (Blah:
-    x 
+    x : mut 
     def (foo:mut:
         self.x = self.x + 1
     )
