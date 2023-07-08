@@ -2140,6 +2140,11 @@ def codegen_node(node: Node, cx: Scope):
         ffixes = [f.name for f in [node.prefix, node.suffix] if f]
         if "c" in ffixes and "s" in ffixes:
             raise CodeGenError("string literal cannot be both c-string and std::string", node)
+        if node.prefix and node.prefix.name == "cpp":
+            if node.suffix:
+                raise CodeGenError("no suffixes for cpp-string", node)
+            # unsafe embedded c++
+            return node.string
         if "c" in ffixes or "s" in ffixes:
             if node.prefix and node.prefix.name in ["c", "s"]:
                 str_prefix = node.prefix

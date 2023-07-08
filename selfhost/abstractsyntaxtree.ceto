@@ -1,0 +1,53 @@
+cpp'
+#include <pybind11/pybind11.h>
+'
+
+class (Node:
+    func : Node
+    args : [Node]
+    #parent : Node:weak
+
+    def (repr: virtual) : string = 0
+
+    def (name: virtual:
+        return ""
+    ) : string
+)
+
+class (Identifier(Node):
+    _name : string
+
+    def (init, name:
+        self._name = name
+        super.init(None, [] : Node)
+    )
+
+    def (repr:
+        return self._name
+    ) : string
+
+    def (name:
+        return self._name
+    ) : string
+)
+
+def (printid, id : Identifier:
+    std.cout << id.name() << "\n"
+)
+
+cpp'
+namespace py = pybind11;
+
+PYBIND11_MODULE(abstractsyntaxtree, m) {
+    py::class_<Node, std::shared_ptr<Node>> node(m, "Node");
+    node.def("repr", &Node::repr);
+    node.def("name", &Node::name);
+
+    py::class_<Identifier, std::shared_ptr<Identifier>>(m, "Identifier", node)
+        .def(py::init<const std::string &>())
+        .def("repr", &Identifier::repr)
+        .def("name", &Identifier::name);
+
+    m.def("printid", &printid, "A function that prints an id");
+}
+'
