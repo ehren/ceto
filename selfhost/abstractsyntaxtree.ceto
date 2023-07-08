@@ -39,23 +39,52 @@ def (printid, id : Identifier:
 
 cpp'
 namespace py = pybind11;
-
 PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
-
 PYBIND11_MODULE(abstractsyntaxtree, m) {
-    py::bind_vector<std::vector<std::shared_ptr<Node>>>(m, "vector_node");
 
-    py::class_<Node, std::shared_ptr<Node>> node(m, "Node");
-    node.def("repr", &Node::repr)
-        .def("name", &Node::name)
-        .def_readwrite("func", &Node::func)
-        .def_readwrite("args", &Node::args);
+    // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
 
-    py::class_<Identifier, std::shared_ptr<Identifier>>(m, "Identifier", node)
-        .def(py::init<const std::string &>())
-        .def("repr", &Identifier::repr)
-        .def("name", &Identifier::name);
-
-    m.def("printid", &printid, "A function that prints an id");
-}
+    //py::bind_vector<std::vector<std::shared_ptr<Node>>>(m, "vector_node");
+    //
+    //py::class_<Node, std::shared_ptr<Node>> node(m, "Node");
+    //node.def("repr", &Node::repr)
+    //    .def("name", &Node::name)
+    //    .def_readwrite("func", &Node::func)
+    //    .def_readwrite("args", &Node::args);
+    //
+    //py::class_<Identifier, std::shared_ptr<Identifier>>(m, "Identifier", node)
+    //    .def(py::init<const std::string &>())
+    //    .def("repr", &Identifier::repr)
+    //    .def("name", &Identifier::name);
+    //
+    //m.def("printid", &printid, "A function that prints an id");
+//}
 '
+
+# More or less equivalent to the above commented c++:
+
+# trick transpiler into local variable context (TODO add 'localscope' blocks then ban non-constexpr global lambdas entirely)
+lambda(m: auto:rref:  # TODO when lambda params const by default (still a TODO), should this be mut:auto:rref? (even though const:auto:rref makes no sense)
+
+    #py::bind_vector<[Node:mut]>(m, c"vector_node")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
+    py::bind_vector<std.vector<Node:mut>>(m, c"vector_node")
+
+    # TODO Node::class
+    node : mut = py::class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node")
+    node.def(c"repr", &Node.repr).def(
+        c"name", &Node.name).def_readwrite(
+        c"func", &Node.func).def_readwrite(
+        c"args", &Node.args)
+
+    py::class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
+        py::init<const:string:ref>()).def(
+        c"repr", &Identifier.repr).def(
+        c"name", &Identifier.name)
+
+    m.def(c"printid", &printid, c"A function that prints an id")
+
+    return
+)(m)
+
+cpp"}"  # end PYBIND11MODULE
+
