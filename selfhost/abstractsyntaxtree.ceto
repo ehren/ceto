@@ -1,4 +1,5 @@
 cpp'
+#include <map>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -33,13 +34,98 @@ class (Identifier(Node):
     ) : string
 )
 
-def (printid, id : Identifier:
-    std.cout << id.name() << "\n"
+
+#no:
+#defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:
+#)
+# this might work:
+#defmacro (x: std.function = lambda(b), x: Identifier, b:  # b is generic so instance of WildCard. x is a WildCard with stored_type == Integer
+#    # should allow either/mix of these
+#    return Assign([TypeOp([x, Call(Identifier("decltype"), [b.parent])]), b.parent])
+#    return quote(unquote(x) : std.function(decltype(lambda(unquote(b)))) = lambda(unquote(b)))
+#)
+#
+# 'pattern' is unnecessary:
+#defmacro (pattern(x: std.function, t) = pattern(lambda(b), l), x: Identifier, b: Node:
+#defmacro (x: std.function = pattern(lambda(Wild(b)), l), x: Identifier, l: Call:
+#    return quote(unquote(
+#)
+#
+#
+
+# see a macro
+# defmacro_node = ...
+# compile macro_impl in dll
+# MacroDefinition(pattern=defmacro_node.args[0], action=macro_impl)
+#
+#def matches(x, y) -> :
+#    if x == y == nullptr:
+#        return true, None
+#     if isinstance(y, WildCard):
+#        if not y.stored_typeid or y.stored_typeid() == typeid(x)
+#            return true, {y : x}
+#        else:
+#            return false, None
+#    if typeid(x) != typeid(y):    # ugly
+#        return false, None
+#    if y._is_wildcard:  # ugly (especially in combination with typdid)
+#        return true # or the match? {y : x}
+#    if len(x.args) != len(y.args):
+#        return false, None
+#    if len(x.args) == 0 and x.func == None:
+#        return x.repr() == y.repr(), None  # ugly
+#    submatches = {}
+#    for i in range(len(x.args)):
+#        m = matches(x[i], y[i])
+#         if not m:
+#           return false, None
+#         submatches.extend(m)
+#     m = matches(x.func, y.func):
+#     if not m:
+#        return false, None
+#    submatches.extend(m)
+#    return true, submatches
+#
+#
+#       
+#
+# expansion:
+# have a node
+# for pattern, action in macro_definitions:
+#     if match_dict := matches(node, pattern):
+#         node = macro_trampoline(action, match_dict)
+#         #node = action(match_dict)
+#
+# def (macro_action1, match_dict:
+#    x = match_dict["x"]
+#    y = match_dict["y"]
+#
+#    return ...
+# )
+#
+# def (macro_trampoline, action_ptr, match_dict:
+#     return *action_ptr(match_dict)
+#)
+
+def (example_macro_body_workaround_no_fptr_syntax_yet, matches: std.map<string, Node:mut>:
+    return None
+) : Node:mut
+
+# this should probably take an index into an already dlsymed table of fptrs
+def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
+    # writing a wrapper type for pybind11 around the correct function pointer would be better (fine for now)
+    f = reinterpret_cast<decltype(&example_macro_body_workaround_no_fptr_syntax_yet)>(fptr)
+    #f2 = reinterpret_cast<decltype(+lambda(matches:std.map<string, Node:mut>, None): Node:mut)>(fptr)   # TODO post-parse hacks for typed lambda only work for immediately invoked lambda aka Call node (not needed for assign case due to lower precedence =). debatable if needs fix for this case?: codegen.CodeGenError: ('unexpected typed construct', UnOp(+)([lambda(matches,Block((return : None)))]))
+    #f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
+    # ^ TODO lambda inside decltype and on rhs of TypeOp (so no attached Scope currently...) results in capture bug with the param somehow ending up in capture list (maybe param not used also part of bug). TODO TypeOp rhs nodes still need an attached scope
+    #static_assert(std.is_same_v<decltype(f), decltype(f2)>)
+    return (*f)(matches)
 )
 
 cpp'
 namespace py = pybind11;
 PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
+PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<Node>>);
 PYBIND11_MODULE(abstractsyntaxtree, m) {
 
     // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
@@ -66,8 +152,9 @@ PYBIND11_MODULE(abstractsyntaxtree, m) {
 # trick transpiler into local variable context (TODO add 'localscope' blocks then ban non-constexpr global lambdas entirely)
 lambda(m: auto:rref:  # TODO when lambda params const by default (still a TODO), should this be mut:auto:rref? (even though const:auto:rref makes no sense)
 
-    #py::bind_vector<[Node:mut]>(m, c"vector_node")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
-    py::bind_vector<std.vector<Node:mut>>(m, c"vector_node")
+    #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
+    py::bind_vector<std.vector<Node:mut>>(m, c"VectorNode")
+    py::bind_map<std.map<std.string, Node:mut>>(m, c"MapStringNode") #, py::module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
 
     # TODO Node::class
     node : mut = py::class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node")
@@ -81,7 +168,8 @@ lambda(m: auto:rref:  # TODO when lambda params const by default (still a TODO),
         c"repr", &Identifier.repr).def(
         c"name", &Identifier.name)
 
-    m.def(c"printid", &printid, c"A function that prints an id")
+    #m.def(c"printid", &printid, c"A function that prints an id")
+    m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
 
     return
 )(m)
