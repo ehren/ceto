@@ -1143,14 +1143,26 @@ def codegen_lambda(node, cx):
                 return_type_list = type_node_to_list_of_types(node.declared_type)
                 last_type = return_type_list.pop()
 
-            if isinstance(last_type, Call) and isinstance(last_type.func, Identifier):
-                return_type_list.append(last_type.func)
+            if isinstance(last_type, Call):
+                while isinstance(last_type.func, Call):#  and not last_type.func.func.name == "decltype":
+                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
+                    last_type = last_type.func
+
+                if (isinstance(last_type.func, Identifier) and last_type.func.name != "decltype"):
+                    # this is the case e.g. l = lambda(x:int, 0):int(0)
+                    # decltype check avoids the case: l2 = lambda (x: int, 0):decltype(0)  # not an immediately invoked lambda
+                    # but note that this is immediately invoked: l3 = lambda(x:int, 0):decltype(1)(2)
+                    return_type_list.append(last_type.func)
+                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
+                elif isinstance(last_type, Call) and last_type.func.name == "decltype":
+                    return_type_list.append(last_type)
+
+                assert return_type_list
                 declared_type = list_to_typed_node(return_type_list)
                 node.declared_type = declared_type
                 type_str = " -> " + codegen_type(node, declared_type, cx)
-                invocation_str = "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
 
-        if type_str is None:
+        if not type_str:
             type_str = " -> " + codegen_type(node, node.declared_type, cx)
     # if isinstance(node.func, ArrowOp):
     #     # not workable for precedence reasons
@@ -1582,6 +1594,10 @@ def codegen_call(node: Call, cx: Scope):
                     node.parent.lhs is not node):
                 if func_str == "decltype":
                     cx.in_decltype = True
+                    if args_str.startswith("((") and args_str.endswith("))"):
+                        # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
+                        # strip the outside ones (fine for now)
+                        return func_str + args_str[1:-1]
                 return simple_call_str
 
             dt_str = "decltype(" + simple_call_str + ")"

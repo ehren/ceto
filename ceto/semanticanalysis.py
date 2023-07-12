@@ -85,6 +85,9 @@ def build_parents(node: Node):
         if isinstance(node.func, Node):
             node.func.parent = node
             node.func = visitor(node.func)
+        if node.declared_type:
+            node.declared_type.parent = node
+            node.declared_type = visitor(node.declared_type)
         return node
     return visitor(node)
 
@@ -526,17 +529,21 @@ class ScopeReplacer:
         for a in call.args:
             a.scope = scope
 
-            if isinstance(a, Block):
-                a.scope = a.scope.enter_scope()
-
-            elif isinstance(a, Identifier) and args_have_inner_scope(call):
+            if isinstance(a, Identifier) and args_have_inner_scope(call):
                 a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
+            elif isinstance(a, TypeOp) and args_have_inner_scope(call):
+                assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
+                a.scope.add_variable_definition(defined_node=a, defining_node=call)
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
         return call
+
+    def replace_Block(self, block):
+        block.scope = block.scope.enter_scope()
+        return block
 
     def replace_Identifier(self, ident):
         ident = self.replace_Node(ident)
