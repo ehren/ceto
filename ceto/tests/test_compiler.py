@@ -52,6 +52,8 @@ def (main:
     r = (lambda(x:int, x+1):int(0)) + (lambda(x: int, x+2):int(1))
     r2 = lambda(x:int, x+1)(0) + lambda(x: int, x+2)(1)
     std.cout << r << r2
+    
+    
 )
     
     """)
@@ -61,6 +63,12 @@ def (main:
 
 def test_ast_pure_virtual():
     c = compile(r"""
+
+cpp'
+#include <map>
+'
+
+    
 class (Node:
     func : Node
     args : [Node]
@@ -90,9 +98,17 @@ class (Identifier(Node):
     ) : decltype(std.declval<Node>().name())  # this is surely better (note that Node printed as shared_ptr<const(?) Node> here)
 )
 
+def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
+    # test case from selfhost (complicated scope and TypeOp vs .declared type lambda capture bug)
+    f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
+    return (*f2)(matches)
+)
+
 def (main:
     id = Identifier("a")
     std.cout << id.name().value()
+    
+    # f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(0)  
 )
     
     """)
@@ -1068,11 +1084,17 @@ def test_std_function():
     # if "clang version 11.0.0" in subprocess.getoutput("clang -v"):
     #     return
 
-    compile(r"""
+    c = compile(r"""
 
 # another problem with half flattened TypeOp (inside decltype x:int is a TypeOf not an Identifier with .declared_type):
-# def (foo, f : decltype(std.function(lambda(x:int, 0))) = lambda(x:int, 0):
-#     return f()
+# (now works)
+def (foo, f : decltype(std.function(lambda(x:int, 0))) = lambda(x:int, 0):
+    return f(3)
+)
+
+# still a problem
+# def (foo2, f : decltype(std.function(lambda(x:int, 0):int)) = lambda(x:int, 0):int:
+#     return f(3)
 # )
     
 def (main:
@@ -1083,9 +1105,15 @@ def (main:
     
     f : std.function = l
     v = [f]
-    std.cout << v[0](5)
+    std.cout << v[0](5) << "\n"
+    std.cout << foo() << "\n"
+    std.cout << foo(l)
 )
     """)
+
+    assert c == r"""hi55
+0
+hi35"""
 
 
 def test_no_null_autoderef():

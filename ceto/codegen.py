@@ -1125,7 +1125,16 @@ def codegen_lambda(node, cx):
         if not isinstance(a, Identifier):
             if isinstance(a, Assign):
                 raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
-            raise CodeGenError("Unexpected lambda argument", a)
+            if isinstance(a, TypeOp):
+                # lambda inside decltype on rhs of an outer type case (result of unfortunate choice in sema to not fully flatten TypeOp and only  partially convert to a .declared_type)
+                realtype = a.rhs
+                a = a.lhs
+                a.declared_type = realtype
+                if not isinstance(a, Identifier):
+                    raise CodeGenError("Unexpected lambda argument for lambda found inside decltype", a)
+            else:
+                raise CodeGenError("Unexpected lambda argument", a)
+
         if typed_param := codegen_typed_def_param(a, cx):
             params.append(typed_param)
         else:

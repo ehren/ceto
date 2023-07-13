@@ -529,21 +529,25 @@ class ScopeReplacer:
         for a in call.args:
             a.scope = scope
 
+            if isinstance(a, Block):
+                a.scope = a.scope.enter_scope()
+
             if isinstance(a, Identifier) and args_have_inner_scope(call):
                 a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
             elif isinstance(a, TypeOp) and args_have_inner_scope(call):
+                # lambda inside a decltype itself a .declared_type case
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
-                a.scope.add_variable_definition(defined_node=a, defining_node=call)
+                a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
         return call
 
-    def replace_Block(self, block):
-        block.scope = block.scope.enter_scope()
-        return block
+    # def replace_Block(self, block):
+    #     block.scope = block.scope.enter_scope()
+    #     return block
 
     def replace_Identifier(self, ident):
         ident = self.replace_Node(ident)
@@ -579,6 +583,7 @@ def apply_replacers(module: Module, visitors):
 
         node.args = [replace(a) for a in node.args]
         node.func = replace(node.func)
+        node.declared_type = replace(node.declared_type)
         return node
 
     return replace(module)
