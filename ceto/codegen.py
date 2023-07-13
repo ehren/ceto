@@ -1126,6 +1126,9 @@ def codegen_lambda(node, cx):
             if isinstance(a, Assign):
                 raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
             if isinstance(a, TypeOp):
+                assert 0
+                # below should no longer be necessary:
+
                 # lambda inside decltype on rhs of an outer type case (result of unfortunate choice in sema to not fully flatten TypeOp and only  partially convert to a .declared_type)
                 realtype = a.rhs
                 a = a.lhs
@@ -1203,7 +1206,7 @@ def codegen_lambda(node, cx):
             if i.name == "self":
                 possible_captures.append(i.name)
             elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
-                defnode = d.defined_node
+                defnode = d.defining_node
                 is_capture = True
                 while defnode is not None:
                     if defnode is node:
@@ -1905,6 +1908,7 @@ def _is_unique_var(node: Identifier, cx: Scope):
     assert isinstance(node, Identifier)
 
     if not node.scope:
+        assert 0
         # nodes on rhs of TypeOp currently don't have a scope
         return False
 
@@ -1948,7 +1952,7 @@ def codegen_node(node: Node, cx: Scope):
                 if made_easy_lambda_args_mistake:
                     raise CodeGenError("do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] in ", parent)
 
-                raise CodeGenError("unexpected context for typed construct", node)
+                # raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
         elif isinstance(node, Call) and node.func.name not in ["lambda", "def"] and node.declared_type.name not in ["const", "mut"]:
@@ -2076,6 +2080,7 @@ def codegen_node(node: Node, cx: Scope):
                                                          cx.lookup_class(node.lhs)):
                     return node.lhs.name + "::" + codegen_node(node.rhs, cx)
 
+            if isinstance(node, (AttributeAccess, ScopeResolution, ArrowOp)):
                 separator = ""
 
             elif is_comment(node):
@@ -2096,7 +2101,7 @@ def codegen_node(node: Node, cx: Scope):
                         funcstr = "||"
                     binop_str = separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
 
-            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
+            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess, TypeOp)):
                 # guard against precedence mismatch (e.g. extra parenthesese
                 # not strictly preserved in the ast)
                 # untested / maybe-buggy
