@@ -1456,16 +1456,21 @@ def _codegen_compound_class_type(lhs, rhs, cx):
 
     for l, r in ((lhs,rhs), (rhs, lhs)):
         if c := cx.lookup_class(l):
-            if not isinstance(r, Identifier) or r.name not in ["const", "mut"]:
+            if not isinstance(r, Identifier) or r.name not in ["const", "mut", "weak"]:
                 raise CodeGenError("Invalid specifier for class type")
             if r.name == "const":
                 if c.is_unique:
                     return "std::unique_ptr<const " + l.name + ">"
                 return "std::shared_ptr<const " + l.name + ">"
-            else:
+            elif r.name == "mut":
                 if c.is_unique:
                     return "std::unique_ptr<" + l.name + ">"
                 return "std::shared_ptr<" + l.name + ">"
+            else:
+                assert r.name == "weak"
+                if c.is_unique:
+                    raise CodeGenError("no weak specifier for unique-class", l)
+                return "std::weak_ptr"
 
 
 def codegen_type(expr_node, type_node, cx, _is_leading=True):

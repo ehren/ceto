@@ -70,8 +70,8 @@ def runtest(s, compile_cpp=True):
                 command = "clang++ " + filename + " -std=c++20 -Wall -Wconversion -Wno-parentheses && echo 'done compile'"
         else:
             command = filename + " -std=c++20 -Wall -pedantic-errors -Wno-parentheses -lpthread -I../include/ && echo 'done compile'"
-            # command = "g++ " + command
-            command = "clang++ " + command
+            command = "g++ " + command
+            # command = "clang++ " + command
 
 
         t1 = perf_counter()
