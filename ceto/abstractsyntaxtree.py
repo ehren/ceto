@@ -6,7 +6,6 @@ class Node:
     def __init__(self, func, args, source):
         self.name : str = None
         self.parent : Node = None
-        self.declared_type : Node = None
         self.scope = None
         self.func : Node = func
         self.args : typing.List[Node] = args

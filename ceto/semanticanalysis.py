@@ -4,7 +4,8 @@ from collections import defaultdict
 from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp
 import sys
 
-def isa_or_wrapped(node, NodeClass):
+
+def is_or_is_typed(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
 
 
@@ -85,9 +86,6 @@ def build_parents(node: Node):
         if isinstance(node.func, Node):
             node.func.parent = node
             node.func = visitor(node.func)
-        if node.declared_type:
-            node.declared_type.parent = node
-            node.declared_type = visitor(node.declared_type)
         return node
     return visitor(node)
 
@@ -223,7 +221,7 @@ def assign_to_named_parameter(expr):
                         rebuilt.append(arg)
                 elif isinstance(arg, Assign):
                     rebuilt.append(NamedParameter(func=arg.func, args=arg.args, source=arg.source))
-                elif isinstance(arg, RedundantParens) and isa_or_wrapped(arg.args[0], Assign):
+                elif isinstance(arg, RedundantParens) #and is_or_is_typed(arg.args[0], Assign):  # this should never happen now that 'typed assigns are banned following higher precedence ':'). TODO remove all comments here after 'remove .declared type' refactor
                     rebuilt.append(arg.args[0])
                 else:
                     rebuilt.append(arg)
@@ -341,32 +339,6 @@ def _find_uses(node, search_node):
         for a in search_node.args:
             yield from find_nodes(assign.lhs, a)
         yield from find_nodes(assign.lhs, search_node.func)
-
-
-def build_types(node: Node):
-
-    def visitor(node, in_type):
-        if not isinstance(node, Node):
-            return node
-
-        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp) and not in_type: #and (not isinstance(node.parent, TypeOp) or node is node.parent.lhs):
-            lhs, rhs = node.args
-            node = visitor(lhs, in_type=True)
-            # parent = node.parent.parent
-            node = lhs
-            # lhs.parent = parent
-            # rhs.parent = parent
-            # node.declared_type = rhs  # leaving open possibility this is still a TypeOp
-            node.declared_type = visitor(rhs, in_type=True)
-        if isinstance(node, Call) and node.func.name == "decltype":
-            in_type = False
-
-        node.args = [visitor(arg, in_type) for arg in node.args]
-        node.func = visitor(node.func, in_type)
-        node.declared_type = visitor(node.declared_type, in_type=in_type)
-        return node
-
-    return visitor(node, in_type=False)
 
 
 class ClassDefinition:
@@ -525,8 +497,8 @@ class ScopeReplacer:
                 # note that default parameters handled as generic Assign
             elif isinstance(a, TypeOp) and args_have_inner_scope(call):
                 # lambda inside a decltype itself a .declared_type case
-                assert 0
-                assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
+                # assert 0
+                # assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=a)
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
@@ -538,16 +510,27 @@ class ScopeReplacer:
     #     block.scope = block.scope.enter_scope()
     #     return block
 
-    def replace_Identifier(self, ident):
-        ident = self.replace_Node(ident)
-        if ident.declared_type:
-            ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
-        return ident
+    # def replace_Identifier(self, ident):
+    #     ident = self.replace_Node(ident)
+    #     if ident.declared_type:
+    #         ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
+    #     return ident
+
+    def replace_TypeOp(self, typeop):
+        typeop = self.replace_Node(typeop)
+
+        if not isinstance(typeop, SyntaxTypeOp) and isinstance(typeop.lhs, Identifier) and isinstance(typeop.parent, Call):
+            typeop.scope.add_variable_definition(defined_node=typeop.lhs, defining_node=typeop)
+
+        return typeop
 
     def replace_Assign(self, assign):
         assign = self.replace_Node(assign)
         if isinstance(assign.lhs, Identifier):
             assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
+        elif isinstance(assign.lhs, TypeOp) and isinstance(assign.lhs.lhs, Identifier):
+            assign.scope.add_variable_definition(defined_node=assign.lhs.lhs,
+                                                 defining_node=assign)
         return assign
 
     def replace_Module(self, module):
@@ -572,7 +555,7 @@ def apply_replacers(module: Module, visitors):
 
         node.args = [replace(a) for a in node.args]
         node.func = replace(node.func)
-        node.declared_type = replace(node.declared_type)
+        # node.declared_type = replace(node.declared_type)
         return node
 
     return replace(module)
@@ -586,7 +569,7 @@ def semantic_analysis(expr: Module):
     expr = warn_and_remove_redundant_parens(expr)
 
     expr = build_parents(expr)
-    expr = build_types(expr)
+    # expr = build_types(expr)
     expr = apply_replacers(expr, [ScopeReplacer()])
 
     print("after lowering", expr)
