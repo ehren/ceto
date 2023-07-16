@@ -1086,16 +1086,16 @@ def test_std_function():
 
     c = compile(r"""
 
-# another problem with half flattened TypeOp (inside decltype x:int is a TypeOf not an Identifier with .declared_type):
+# another problem with half flattened TypeOp (previously, inside decltype, x:int is a TypeOf not an Identifier with .declared_type):
 # (now works)
 def (foo, f : decltype(std.function(lambda(x:int, 0))) = lambda(x:int, 0):
     return f(3)
 )
 
-# still a problem
-# def (foo2, f : decltype(std.function(lambda(x:int, 0):int)) = lambda(x:int, 0):int:
-#     return f(3)
-# )
+# this required the logic in build_types that recurses over any nested TypeOp on rhs of operator ':' (newly added as of the commit that added this comment)
+def (foo2, f : decltype(std.function(lambda(x:int, 0):int)) = lambda(x:int, 0):int:
+    return f(3)
+)
     
 def (main:
     l = lambda(x:int:
@@ -1107,11 +1107,15 @@ def (main:
     v = [f]
     std.cout << v[0](5) << "\n"
     std.cout << foo() << "\n"
-    std.cout << foo(l)
+    std.cout << foo(l) << "\n"
+    std.cout << foo2() << "\n"
+    std.cout << foo2(l)
 )
     """)
 
     assert c == r"""hi55
+0
+hi35
 0
 hi35"""
 
@@ -1379,7 +1383,8 @@ def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
     return x + y
 ) : T
     """)
-    raises(f, "unexpected type")
+    # raises(f, "unexpected type")
+    raises(f, "unexpected context for typed construct")
 
 
 def test_requires():

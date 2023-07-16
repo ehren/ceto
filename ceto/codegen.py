@@ -4,7 +4,8 @@ from typing import Union, Any
 from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
-    LocalVariableDefinition, ParameterDefinition
+    LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
+    list_to_typed_node
 from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -690,50 +691,6 @@ def interface_method_declaration_str(defnode: Call, cx):
         params.append(param)
 
     return "{}virtual {} {}({}){} = 0;\n\n".format(specifier, return_type, name, ", ".join(params), const)
-
-
-def type_inorder_traversal(typenode: Node, func):
-    if isinstance(typenode, TypeOp):
-        if not type_inorder_traversal(typenode.lhs, func):
-            return False
-        if not type_inorder_traversal(typenode.rhs, func):
-            return False
-        return True
-    else:
-        return func(typenode)
-
-
-def type_node_to_list_of_types(typenode: Node):
-    types = []
-
-    if typenode is None:
-        return types
-
-    def callback(t):
-        types.append(t)
-        return True
-
-    type_inorder_traversal(typenode, callback)
-    return types
-
-
-def list_to_typed_node(lst):
-    op = None
-    first = None
-    if not lst:
-        return lst
-    if len(lst) == 1:
-        return lst[0]
-    lst = lst.copy()
-    while lst:
-        second = lst.pop(0)
-        if first is None:
-            first = second
-            second = lst.pop(0)
-            op = TypeOp(func=":", args=[first, second], source=first.source)
-        else:
-            op = TypeOp(func=":", args=[op, second], source=second.source)
-    return op
 
 
 def extract_mut_or_const(type_node : Node):

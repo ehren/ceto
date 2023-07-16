@@ -92,6 +92,50 @@ def build_parents(node: Node):
     return visitor(node)
 
 
+def type_inorder_traversal(typenode: Node, func):
+    if isinstance(typenode, TypeOp):
+        if not type_inorder_traversal(typenode.lhs, func):
+            return False
+        if not type_inorder_traversal(typenode.rhs, func):
+            return False
+        return True
+    else:
+        return func(typenode)
+
+
+def type_node_to_list_of_types(typenode: Node):
+    types = []
+
+    if typenode is None:
+        return types
+
+    def callback(t):
+        types.append(t)
+        return True
+
+    type_inorder_traversal(typenode, callback)
+    return types
+
+
+def list_to_typed_node(lst):
+    op = None
+    first = None
+    if not lst:
+        return lst
+    if len(lst) == 1:
+        return lst[0]
+    lst = lst.copy()
+    while lst:
+        second = lst.pop(0)
+        if first is None:
+            first = second
+            second = lst.pop(0)
+            op = TypeOp(func=":", args=[first, second], source=first.source)
+        else:
+            op = TypeOp(func=":", args=[op, second], source=second.source)
+    return op
+
+
 def build_types(node: Node):
 
     def visitor(node):
@@ -104,6 +148,18 @@ def build_types(node: Node):
             node = lhs
             node.declared_type = rhs  # leaving open possibility this is still a TypeOp
             # node.declared_type = visitor(rhs)
+
+            types = type_node_to_list_of_types(rhs)
+            rebuilt = []
+            for t in types:
+                # TODO see if this fixed any outstanding issues with nested templates on rhs of operator ':'. Need more testcases but note problems with 'typename assigns' e.g. in def(foo:template<typename:t = typename:blahblah> etc
+                t = build_types(t)
+                rebuilt.append(t)
+
+            if rebuilt:
+                r = list_to_typed_node(rebuilt)
+                assert r
+                node.declared_type = r
 
         node.args = [visitor(arg) for arg in node.args]
         node.func = visitor(node.func)
@@ -363,26 +419,6 @@ def _find_uses(node, search_node):
         yield from find_nodes(assign.lhs, search_node.func)
 
 
-def build_types(node: Node):
-
-    def visitor(node):
-        if not isinstance(node, Node):
-            return node
-
-        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
-            lhs, rhs = node.args
-            # node = visitor(lhs)
-            node = lhs
-            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
-            # node.declared_type = visitor(rhs)
-
-        node.args = [visitor(arg) for arg in node.args]
-        node.func = visitor(node.func)
-        return node
-
-    return visitor(node)
-
-
 class ClassDefinition:
 
     def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique):
@@ -537,6 +573,7 @@ class ScopeReplacer:
                 # note that default parameters handled as generic Assign
             elif isinstance(a, TypeOp) and args_have_inner_scope(call):
                 # lambda inside a decltype itself a .declared_type case
+                assert 0, "should be unreachable"
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
