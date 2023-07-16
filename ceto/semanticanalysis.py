@@ -92,6 +92,26 @@ def build_parents(node: Node):
     return visitor(node)
 
 
+def build_types(node: Node):
+
+    def visitor(node):
+        if not isinstance(node, Node):
+            return node
+
+        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
+            lhs, rhs = node.args
+            # node = visitor(lhs)
+            node = lhs
+            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
+            # node.declared_type = visitor(rhs)
+
+        node.args = [visitor(arg) for arg in node.args]
+        node.func = visitor(node.func)
+        return node
+
+    return visitor(node)
+
+
 def one_liner_expander(parsed):
 
     def ifreplacer(ifop):
@@ -345,28 +365,22 @@ def _find_uses(node, search_node):
 
 def build_types(node: Node):
 
-    def visitor(node, in_type):
+    def visitor(node):
         if not isinstance(node, Node):
             return node
 
-        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp) and not in_type: #and (not isinstance(node.parent, TypeOp) or node is node.parent.lhs):
+        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
             lhs, rhs = node.args
-            node = visitor(lhs, in_type=True)
-            # parent = node.parent.parent
+            # node = visitor(lhs)
             node = lhs
-            # lhs.parent = parent
-            # rhs.parent = parent
-            # node.declared_type = rhs  # leaving open possibility this is still a TypeOp
-            node.declared_type = visitor(rhs, in_type=True)
-        if isinstance(node, Call) and node.func.name == "decltype":
-            in_type = False
+            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
+            # node.declared_type = visitor(rhs)
 
-        node.args = [visitor(arg, in_type) for arg in node.args]
-        node.func = visitor(node.func, in_type)
-        node.declared_type = visitor(node.declared_type, in_type=in_type)
+        node.args = [visitor(arg) for arg in node.args]
+        node.func = visitor(node.func)
         return node
 
-    return visitor(node, in_type=False)
+    return visitor(node)
 
 
 class ClassDefinition:
@@ -501,10 +515,8 @@ class ScopeReplacer:
         self._module_scope = None
 
     def replace_Node(self, node):
-        parent = node.parent
-        while node.scope is None:
-            node.scope = parent.scope
-            parent = parent.parent
+        if node.scope is None:
+            node.scope = node.parent.scope
         return node
 
     def replace_Call(self, call):
@@ -525,9 +537,8 @@ class ScopeReplacer:
                 # note that default parameters handled as generic Assign
             elif isinstance(a, TypeOp) and args_have_inner_scope(call):
                 # lambda inside a decltype itself a .declared_type case
-                assert 0
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
-                a.scope.add_variable_definition(defined_node=a.lhs, defining_node=a)
+                a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
             elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
@@ -585,8 +596,8 @@ def semantic_analysis(expr: Module):
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
-    expr = build_parents(expr)
     expr = build_types(expr)
+    expr = build_parents(expr)
     expr = apply_replacers(expr, [ScopeReplacer()])
 
     print("after lowering", expr)
