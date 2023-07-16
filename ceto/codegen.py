@@ -4,7 +4,7 @@ from typing import Union, Any
 from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
-    LocalVariableDefinition, ParameterDefinition, is_or_is_typed
+    LocalVariableDefinition, ParameterDefinition
 from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -57,7 +57,7 @@ def gensym(prefix=None):
     return pre + str(counter)
 
 
-def codegen_if(ifcall : Call, outer_type, cx):
+def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if" 
 
@@ -597,6 +597,7 @@ def codegen_while(whilecall, cx):
 
 def codegen_block(block: Block, cx):
     assert isinstance(block, Block)
+    assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
     indent_str = cx.indent_str()
 
@@ -620,18 +621,15 @@ def codegen_block(block: Block, cx):
                 cpp += codegen_while(b, cx)
                 continue
 
-        if isinstance(b, TypeOp):
-            assert 0
-
-        # if b.declared_type is not None:
-        #     # typed declaration
-        #     # TODO be more strict here (but allowing non-identifier declarations allows e.g. "std.cout : using" and "boost::somesuch : using")
-        #     declared_type = b.declared_type
-        #     cpp += codegen_type(b, b.declared_type, cx)
-        #     b.declared_type = None
-        #     cpp += " " + codegen_node(b, cx) + ";\n"
-        #     b.declared_type = declared_type
-        #     continue
+        if b.declared_type is not None:
+            # typed declaration
+            # TODO be more strict here (but allowing non-identifier declarations allows e.g. "std.cout : using" and "boost::somesuch : using")
+            declared_type = b.declared_type
+            cpp += codegen_type(b, b.declared_type, cx)
+            b.declared_type = None
+            cpp += " " + codegen_node(b, cx) + ";\n"
+            b.declared_type = declared_type
+            continue
 
         cpp += indent_str + codegen_node(b, cx)
         if not is_comment(b):
@@ -918,14 +916,7 @@ def class_name_node_from_inline_method(defcallnode : Call):
     return None
 
 
-def codegen_def(defnode, cx):
-    if isinstance(defnode, TypeOp):
-        return_types = type_node_to_list_of_types(defnode)
-        defnode = return_types.pop(0)
-        return_type_node = list_to_typed_node(return_types)
-    else:
-        return_type_node = None
-
+def codegen_def(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
     name = name_node.name
@@ -936,6 +927,8 @@ def codegen_def(defnode, cx):
     else:
         block = None
         is_declaration = True
+
+    return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
         name = "operator" + operator_name_node.string
@@ -1240,7 +1233,7 @@ def codegen_lambda(node, cx):
 def codegen(expr: Node):
     assert isinstance(expr, Module)
     cx = Scope()
-    s = codegen_block(expr, cx)
+    s = codegen_node(expr, cx)
     s = cpp_preamble + s
     print(s)
     return s
@@ -1941,8 +1934,7 @@ def _is_unique_var(node: Identifier, cx: Scope):
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
-    if isinstance(node, TypeOp):
-        assert 0
+    if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):
             if not isinstance(node, Identifier):
                 raise CodeGenError("unexpected typed construct", node)
@@ -1971,7 +1963,23 @@ def codegen_node(node: Node, cx: Scope):
         elif isinstance(node, Call) and node.func.name not in ["lambda", "def"] and node.declared_type.name not in ["const", "mut"]:
             raise CodeGenError("Unexpected typed call", node)
 
-    if isinstance(node, Call):
+    if isinstance(node, Module):
+        modcpp = ""
+        for modarg in node.args:
+            if isinstance(modarg, Call):
+                if modarg.func.name == "def":
+                    funcx = cx.enter_scope()
+                    funcx.in_function_param_list = True
+                    defcode = codegen_def(modarg, funcx)
+                    modcpp += defcode
+                    continue
+                elif modarg.func.name == "class":
+                    classcode = codegen_class(modarg, cx)
+                    modcpp += classcode
+                    continue
+            modcpp += codegen_node(modarg, cx) + ";\n"  # untested # TODO: pass at global scope
+        return modcpp
+    elif isinstance(node, Call):
         return codegen_call(node, cx)
 
     elif isinstance(node, IntegerLiteral):
