@@ -44,16 +44,14 @@ def (main:
     static_assert(std.is_same_v<decltype(&blah), decltype(+lambda(x:int, return x))>)
     static_assert(std.is_same_v<decltype(&blah), decltype(+(lambda(x:int, return x):int))>)
     static_assert(std.is_same_v<decltype(&blah), decltype(+l0)>)
-    static_assert(std.is_same_v<int, decltype(+l)>)
+    static_assert(std.is_same_v<const:int, decltype(l)>)
     static_assert(std.is_same_v<decltype(&blah), decltype(+l2)>)
-    static_assert(std.is_same_v<int, decltype(+l3)>)
+    static_assert(std.is_same_v<const:int, decltype(l3)>)
     
     # r = lambda(x:int, x+1):int(0) + lambda(x: int, x+2):int(1)  # must be overparenthesized (changing precedence of ':' below '+' for this case will botch one-liner if)
     r = (lambda(x:int, x+1):int(0)) + (lambda(x: int, x+2):int(1))
     r2 = lambda(x:int, x+1)(0) + lambda(x: int, x+2)(1)
     std.cout << r << r2
-    
-    
 )
     
     """)

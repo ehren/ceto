@@ -138,34 +138,33 @@ def list_to_typed_node(lst):
 
 def build_types(node: Node):
 
-    def visitor(node):
-        if not isinstance(node, Node):
-            return node
-
-        if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
-            lhs, rhs = node.args
-            # node = visitor(lhs)
-            node = lhs
-            node.declared_type = rhs  # leaving open possibility this is still a TypeOp
-            # node.declared_type = visitor(rhs)
-
-            types = type_node_to_list_of_types(rhs)
-            rebuilt = []
-            for t in types:
-                # TODO see if this fixed any outstanding issues with nested templates on rhs of operator ':'. Need more testcases but note problems with 'typename assigns' e.g. in def(foo:template<typename:t = typename:blahblah> etc
-                t = build_types(t)
-                rebuilt.append(t)
-
-            if rebuilt:
-                r = list_to_typed_node(rebuilt)
-                assert r
-                node.declared_type = r
-
-        node.args = [visitor(arg) for arg in node.args]
-        node.func = visitor(node.func)
+    if not isinstance(node, Node):
         return node
 
-    return visitor(node)
+    if isinstance(node, TypeOp) and not isinstance(node, SyntaxTypeOp):
+        lhs, rhs = node.args
+        # node = build_types(lhs)
+        node = lhs
+        node.declared_type = rhs  # leaving open possibility this is still a TypeOp
+        # node.declared_type = build_types(rhs)
+
+        types = type_node_to_list_of_types(rhs)
+        rebuilt = []
+        for t in types:
+            # we still have cases e.g. lambda with args inside a decltype on rhs of ':' that should build a .declared_type
+
+            # TODO see if this fixed any outstanding issues with nested templates on rhs of operator ':'. Need more testcases but note problems with 'typename assigns' e.g. in def(foo:template<typename:t = typename:blahblah> etc
+            t = build_types(t)
+            rebuilt.append(t)
+
+        if rebuilt:
+            r = list_to_typed_node(rebuilt)
+            assert r
+            node.declared_type = r
+
+    node.args = [build_types(arg) for arg in node.args]
+    node.func = build_types(node.func)
+    return node
 
 
 def one_liner_expander(parsed):
