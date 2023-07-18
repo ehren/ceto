@@ -735,18 +735,38 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
 
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
+    should_add_outer_const = not mut_by_default
+
+    # TODO should handle plain 'mut'/'const' param (generic case)
+
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
 
+            types = type_node_to_list_of_types(arg.declared_type)
+            if any(t.name == "mut" for t in types):
+                should_add_outer_const = False
+                types = [t for t in types if not t.name == "mut"]
+                arg.declared_type = list_to_typed_node(types)
+            elif any(t.name == "const" for t in types):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const)
+                should_add_outer_const = False
+
             automatic_const_part = " "  # TODO add const here (if not already const)
+            if should_add_outer_const:
+                if (class_def := cx.lookup_class(arg.declared_type)) and class_def.is_unique:
+                    # don't add const to unique managed param (it will impede automatic std::move from last use)
+                    pass
+                else:
+                    automatic_const_part = "const "
+
             automatic_ref_part = ""
 
             if _should_add_const_ref_to_typed_param(arg, cx):
                 automatic_const_part = "const "
                 automatic_ref_part = "&"
 
-                # treat e.g. external C++ types verbatim
-            return automatic_const_part + codegen_type(arg, arg.declared_type, cx) + automatic_ref_part, " " + arg.name
+            # treat e.g. external C++ types verbatim (except for adding 'const'
+            type_part = automatic_const_part + codegen_type(arg, arg.declared_type, cx) + automatic_ref_part
+            return type_part, " " + arg.name
         else:
             # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
             # note precedence change making
@@ -763,6 +783,14 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
         if arg.lhs.declared_type is not None:
 
+            types = type_node_to_list_of_types(arg.lhs.declared_type)
+            if any(t.name == "mut" for t in types):
+                should_add_outer_const = False
+                types = [t for t in types if not t.name == "mut"]
+                arg.lhs.declared_type = list_to_typed_node(types)
+            elif any(t.name == "const" for t in types):  # TODO this needs to follow same logic as local vars (we need to but are not currently adding const to a non-const pointer to const (that's not declared as 'mut'))
+                should_add_outer_const = False
+
             automatic_const_part = " "
             automatic_ref_part = ""
 
@@ -770,7 +798,17 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
                 automatic_const_part = "const "
                 automatic_ref_part = "&"
 
-            return automatic_const_part + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + automatic_ref_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+            if should_add_outer_const:
+
+                if (class_def := cx.lookup_class(arg.lhs.declared_type)) and class_def.is_unique:
+                    # don't add const to unique managed param (it will impede automatic std::move from last use)
+                    pass
+                else:
+                    automatic_const_part = "const "
+
+            type_part = automatic_const_part + codegen_type(arg.lhs, arg.lhs.declared_type, cx) + automatic_ref_part
+
+            return type_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
 
         elif isinstance(arg.rhs, ListLiteral):
             if not arg.rhs.args:
@@ -811,7 +849,12 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
                     automatic_const_part = "const "
                     automatic_ref_part = "& "
 
-                return automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
+                if should_add_outer_const:
+                    automatic_const_part = "const "
+
+                type_part = automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part
+
+                return type_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
         # else:
             #     raise SemanticAnalysisError(
             #         "Non identifier left hand side in def arg", arg)

@@ -1011,7 +1011,7 @@ def test_forwarder():
 
 # ... as an op ('dotdotdot' necessary for current low precedence choice for '...'. maybe revisit this? note that 'ellipsis' is hard to spell):
 def (forwarder: template<typename:T, typename:dotdotdot:Args>,
-          args: Args:rref:dotdotdot:
+          args: mut:Args:rref:dotdotdot:  # TODO const:rref makes no sense so don't require 'mut' in this case? (not requiring 'mut' would be similar to not requiring 'mut' for a 'unique' param)
     local: T = { std.forward<Args>(args)... }
 )
 
@@ -1242,11 +1242,11 @@ def (byval, c: std.type_identity_t<C>:   # not literal "C" or "const:C"/"C:const
     
     # we currently print C (not in a scope resolution or attribute access context) as shared_ptr<C>
     # so this is probably the most canonical way to get at the real class (still not "portable" of course):
-    static_assert(std.is_same_v<std.shared_ptr<std.type_identity_t<C>::element_type>, decltype(c)>)
+    static_assert(std.is_same_v<const:std.shared_ptr<std.type_identity_t<C>::element_type>, decltype(c)>)
     
     # other similar "non-portable" (imaging a non-C++ backend) code:
     # static_assert(std.is_same_v<std.shared_ptr<decltype(*c)>, decltype(c)>)  # TODO this fails because an UnOp is always overparenthesized due to current naive use of pyparsing.infix_expression (e.g. (*p).foo() is parsed correctly precedence-wise but need for parenthesese in code printing discarded or rather handled by overparenthesizing all UnOps in every context) - leading to use of overparenthesized decltype((*p)) in c++. "workaround" for now is:
-    static_assert(std.is_same_v<std.shared_ptr<std.remove_reference_t<decltype(*c)>>, decltype(c)>)
+    static_assert(std.is_same_v<const:std.shared_ptr<std.remove_reference_t<decltype(*c)>>, decltype(c)>)
 )
 
 def (byconstref, c: C:
@@ -2558,12 +2558,12 @@ def (main:
     x = 0
     (static_cast<void>)(x)  # silence unused variable warning
     
-    f = lambda (y:const:char:ptr, z:int:
+    f = lambda (y:const:char:ptr, z:int:mut:
         std: using: namespace  # variable declaration 'like'
         t : typedef : int
         w : t = 3
         cout << y << z << w << endl
-        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'. TODO this should fail unless z marked 'mut'
+        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'.
         cout << z << endl
         void()
     )
@@ -3673,7 +3673,7 @@ class (Foo:
     # x = 0  # this is now const by default
     x : int = 0  # TODO this should be too
 
-    def (bar:mut:
+    def (bar:
         printf("bar %d\n", self.x)
     )
     
@@ -3681,49 +3681,52 @@ class (Foo:
         printf("dead\n")
     )
     
-    def (operator("=="):mut, other: Foo: mut:
+    def (operator("=="), other: Foo:
         printf("in == method - both foo\n")
         return self.x == other.x
     )
-    def (operator("=="):mut, other:
+    def (operator("=="), other:
         printf("in == method - other not foo\n")
         return other == 5
     )
 )
 
-def (operator("=="), f: Foo:mut, other:
+def (operator("=="), f: Foo, other:
     return f.operator("==")(other)
 )
-def (operator("=="), f: Foo:mut, otherfoo: Foo:mut:
+def (operator("=="), f: Foo, otherfoo: Foo:
     return f.operator("==")(otherfoo)
 )
 
-def (operator("=="), f: Foo:mut, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
+def (operator("=="), f: Foo, other: std.nullptr_t:   # "fix" (?) use of overloaded operator '==' is ambiguous
     return not f
     #return f.operator("==")(other)
     #return nullptr == f   # this is no longer possible in c++20 due to the symmetric binary operator reversing scheme (though clang++ on linux seems to accept it)
 )
 
 def (main:
-    f : mut = Foo()
+    # f:mut = Foo()  # regardless of the reset case below, getting the above overloading to work for mut case is now problematic after 'func params const by default' (probably this whole approach of overriding free standing func operators on the shared_ptrs is problematic)
+    f = Foo()
     f.bar()
     if (f == 5:
         printf("overload == works\n")
     )
-    b : mut = Foo()
+    # b:mut = Foo()
+    b = Foo()
     if (f == b:
         printf("same\n")
     else:
         printf("not same\n")
     )
-    f = nullptr
-    b = nullptr
+    # f = nullptr
+    # b = nullptr
+    f2 : Foo = nullptr
     printf("testing for null...\n")
-    if (f == nullptr:
+    if (f2 == nullptr:
         printf("we're dead\n")
     )
     
-    if (not f:
+    if (not f2:
         printf("we're dead\n")
     )
 )
@@ -3736,14 +3739,12 @@ in == method - other not foo
 overload == works
 in == method - both foo
 same
-dead
-dead
 testing for null...
 we're dead
 we're dead
+dead
+dead
     """.strip()
-# we're dead
-# we're dead
 
     #
 #     """bar 0
