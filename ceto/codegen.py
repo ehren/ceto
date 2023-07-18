@@ -154,7 +154,7 @@ def codegen_if(ifcall : Call, cx):
             capture = ""
         cpp = "[" + capture + "]() {" + cpp + "}()"
 
-    return cpp
+    return cpp + "\n"
 
 
 def codegen_for(node, cx):
@@ -624,12 +624,22 @@ def codegen_block(block: Block, cx):
 
         if b.declared_type is not None:
             # typed declaration
-            # TODO be more strict here (but allowing non-identifier declarations allows e.g. "std.cout : using" and "boost::somesuch : using")
-            declared_type = b.declared_type
-            cpp += codegen_type(b, b.declared_type, cx)
-            b.declared_type = None
-            cpp += " " + codegen_node(b, cx) + ";\n"
-            b.declared_type = declared_type
+
+            types = type_node_to_list_of_types(b.declared_type)
+            if any(t.name in ["typedef", "using"] for t in types):
+                # TODO more error checking here
+                # we might just want to ban 'using' altogether (dangerous in combination with _ceto_ defined classes (not structs)
+                declared_type = b.declared_type
+                cpp += codegen_type(b, b.declared_type, cx)
+                b.declared_type = None
+                cpp += " " + codegen_node(b, cx) + ";\n"
+                b.declared_type = declared_type
+                continue
+
+            field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
+            decl = field_type_const_part + field_type_str + " " + b.name
+            cpp += " " + decl + ";\n"
+
             continue
 
         cpp += indent_str + codegen_node(b, cx)
@@ -1701,7 +1711,8 @@ def _is_const_make(node):
 
 
 def codegen_variable_declaration_type(node: Identifier, cx: Scope):
-    assert isinstance(node, Identifier)
+    if not isinstance(node, Identifier):
+        raise CodeGenError("Unexpected typed expression", node)
     assert node.declared_type
 
     lhs_type_str = None

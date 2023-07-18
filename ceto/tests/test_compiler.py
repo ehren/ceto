@@ -208,6 +208,31 @@ def (main:
     """)
 
 
+def test_pointers_auto_const_uninitialized():
+    # https://cppsenioreas.wordpress.com/2023/07/17/lconst-pconst/
+    c = compile(r"""
+
+def (main:
+    val : mut:int
+    val_east : int:mut
+    a : int:ptr = &val  # a is const (not what it's pointing to); this is fine (roughly the behavior as if we had applied add_const_t to everything)
+    a2 : int:ptr = &val_east
+    *a = 5
+    *a2 = 5
+    # a = nullptr   # error
+    # a2 = nullptr  # error
+)
+        """)
+
+    raises(lambda:compile(r"""
+    
+def (main:
+    val : mut:int
+    a : int:ptr = &val  # a is const (not what it's pointing to)
+    a = nullptr  # error
+)
+    """))
+
 
 def test_pointers_auto_const():
     c = compile(r"""
@@ -217,6 +242,7 @@ def (main:
 )
     
     """)
+
 
 
 def test_references():
@@ -1094,6 +1120,11 @@ def (foo, f : decltype(std.function(lambda(x:int, 0))) = lambda(x:int, 0):
 def (foo2, f : decltype(std.function(lambda(x:int, 0):int)) = lambda(x:int, 0):int:
     return f(3)
 )
+
+def (foo3, f : std.add_const_t<decltype(std.function(lambda(x:int, 0):int))> = lambda(x:int, 0):int:
+    static_assert(std.is_const_v<decltype(f)>)
+    return f(3)
+)
     
 def (main:
     l = lambda(x:int:
@@ -1107,11 +1138,15 @@ def (main:
     std.cout << foo() << "\n"
     std.cout << foo(l) << "\n"
     std.cout << foo2() << "\n"
-    std.cout << foo2(l)
+    std.cout << foo2(l) << "\n"
+    std.cout << foo3() << "\n"
+    std.cout << foo3(l)
 )
     """)
 
     assert c == r"""hi55
+0
+hi35
 0
 hi35
 0
@@ -1642,6 +1677,7 @@ class (Foo:
 )
 
         """)
+    # raises(f, "Unexpected typed expression")
     raises(f, "Unexpected expression in class body")
 
     def f2():
@@ -1651,7 +1687,8 @@ def (main:
 )
     
     """)
-    raises(f2, "unexpected typed expression")
+    # raises(f2, "Unexpected expression in class body")
+    raises(f2, "Unexpected typed expression")
 
     c = compile(r"""
 
@@ -2152,8 +2189,10 @@ def (main:
         std.cout << "ok"
     )
     
-    a : std.array<int, 3>
+    a : mut:std.array<int, 3>   # mut because a const uninitialized declaration will be a C++ error
     static_cast<void>(a)
+    a2 : std.array<int, 3>:mut
+    static_cast<void>(a2)
 
     if (((std.array)<int, 25>())[5]:
         pass 
@@ -2233,11 +2272,14 @@ def (main:
     x = 0
     xmut : mut = 0
     y : const:int:ptr = &x
-    y2 : int:ptr
+    y2 : int:ptr:mut
     y2 = &xmut
+    y3 : mut:int:ptr
+    y3 = &xmut
     hmm = reinterpret_cast<int:ptr>(1)
     static_cast<void>(y)
     static_cast<void>(y2)
+    static_cast<void>(y3)
     static_assert(not std.is_same_v<decltype(nullptr), int:ptr>)
     printf("%p", static_cast<void:ptr>(hmm))
 )
@@ -2512,7 +2554,7 @@ def (main:
 def test_typed_identifiers_as_cpp_variable_declarations():
     c = compile(r"""
 def (main:
-    x:int
+    x:int:mut
     x = 0
     (static_cast<void>)(x)  # silence unused variable warning
     
@@ -2521,7 +2563,7 @@ def (main:
         t : typedef : int
         w : t = 3
         cout << y << z << w << endl
-        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'
+        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'. TODO this should fail unless z marked 'mut'
         cout << z << endl
         void()
     )
