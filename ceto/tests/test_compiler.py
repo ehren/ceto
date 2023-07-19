@@ -89,7 +89,7 @@ class (Identifier(Node):
 
     def (repr:
         return self._name
-    ) : decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type
+    ) : decltype(static_cast<Node>(None).repr())  # TODO this should be automatic if repr has 'override' specifier and no return type (though static_cast instead of static_pointer_cast is pretty sketchy)
 
     def (name: virtual:
         return self._name
@@ -2774,8 +2774,8 @@ class (Foo:
 ) 
 
 class (Bar:
-    a
-    b
+    a : mut  # TODO something broke with the change to "const by default". 'mut' should not be required for a/b here
+    b : mut
     # f : Foo  # probably need to forget about this # indeed we have
     f : Foo<decltype(a), decltype(b), decltype(b)>
 )

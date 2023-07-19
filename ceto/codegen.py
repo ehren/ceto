@@ -506,7 +506,7 @@ def codegen_class(node : Call, cx):
                     # forward the type of the constructor arg to the base class constructor call
                     # TODO we could be smarter about not adding const ref to the types in the below map in the first place (that is make _codegen_typed_def_param_as_tuple return the non const ref unadorned type too)
                     super_init_fake_args.append("std::declval<std::remove_cvref_t<" + init_param_type_from_name[arg.name] +  ">>()")
-                elif is_self_field_access(arg):  # this would fail compile in c++ too
+                elif is_self_field_access(arg):  # this would fail in C++
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
                     # this is silly:
@@ -1572,7 +1572,6 @@ def codegen_call(node: Call, cx: Scope):
             args_inner = ", ".join(arg_strs)
             args_str = "(" + args_inner + ")"
 
-            # TODO we should re-enable this and leave "call_or_construct" only for "importing" raw but ceto-generated c++ code (would also require sprinkling conditional_t everywhere)
             if class_def := cx.lookup_class(node.func):
                 class_name = node.func.name
                 class_node = class_def.class_def_node
@@ -1597,8 +1596,6 @@ def codegen_call(node: Call, cx: Scope):
                     func_str = "std::make_shared<" + const_part + class_name + ">"
 
                 return func_str + args_str
-            else:
-                pass
 
             if isinstance(node.func, Identifier):
                 func_str = node.func.name
@@ -1621,8 +1618,13 @@ def codegen_call(node: Call, cx: Scope):
                     if args_str.startswith("((") and args_str.endswith("))"):
                         # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
                         # strip the outside ones (fine for now)
+                        # NOTE: this will break if the overparenthization in codegen is removed
                         return func_str + args_str[1:-1]
                 return simple_call_str
+
+            return simple_call_str
+
+            # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
 
             dt_str = "decltype(" + simple_call_str + ")"
 
