@@ -58,20 +58,17 @@ def runtest(s, compile_cpp=True):
         # filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
         filename = os.path.join(build_dir, "testsuitegenerated.cpp")
 
-        with open(filename, "w") as file:
-            file.write(code)
-        import platform
-        if "Darwin" in platform.system():
-            # need to upgrade
-            import pwd
-            if pwd.getpwuid(os.getuid())[0] == "ehren":
-                command = "clang++ " + filename + " -std=c++2a -Wall -Wconversion -Wno-parentheses && echo 'done compile'"
-            else:
-                command = "clang++ " + filename + " -std=c++20 -Wall -Wconversion -Wno-parentheses && echo 'done compile'"
-        else:
-            command = filename + " -std=c++20 -Wall -pedantic-errors -Wno-parentheses -lpthread -I../include/ && echo 'done compile'"
-            command = "g++ " + command
-            # command = "clang++ " + command
+        with open(filename, "w") as f:
+            f.write(code)
+
+        #import platform
+        #import pwd
+        #if pwd.getpwuid(os.getuid())[0] == "ehren" and "Darwin" in platform.system(): 
+        #    command = 
+
+        command = filename + f" -std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/ "
+        command = "g++ " + command
+        # command = "clang++ " + command
 
 
         t1 = perf_counter()
@@ -155,7 +152,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     CXX = "c++"
-    CXXFLAGS = "-std=c++20 -Wall -Wconversion -Wno-parentheses"
+    CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/"
     if "CXX" in os.environ:
         CXX = os.environ["CXX"]
     if "CXXFLAGS" in os.environ:

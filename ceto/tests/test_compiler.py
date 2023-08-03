@@ -98,15 +98,16 @@ class (Identifier(Node):
 
 def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
     # test case from selfhost (complicated scope and TypeOp vs .declared type lambda capture bug)
-    f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
-    return (*f2)(matches)
+    # f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
+    # return (*f2)(matches)
+    pass
 )
 
 def (main:
     id = Identifier("a")
     std.cout << id.name().value()
     
-    # f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(0)  
+    f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(0)  
 )
     
     """)
