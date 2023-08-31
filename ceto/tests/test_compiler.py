@@ -20,6 +20,110 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_class_data_members_pointer_to_const_by_default_with_explicit_class_types():
+
+    preamble = r"""
+class (Foo:
+    a : int  # it's important Foo is not a template (in order to use as an ordinary type below)
+    def (mutmethod: mut:
+        self.a = self.a + 1
+        return self.a
+    )
+    def (constmethod:
+        return "i'm const by default"
+    )
+)
+
+class (HolderMut:
+    f : Foo:mut
+)
+
+class (HolderConst:
+    f : Foo  # shared_ptr<const Foo> by default
+)
+    """
+
+    goodcode = r"""
+def (main:
+    f = Foo(1)
+    h = HolderConst(f)
+    std.cout << h.f.constmethod()
+    
+    fm : mut = Foo(2)
+    hm = HolderMut(fm)
+    std.cout << hm.f.mutmethod()
+    
+    hc = HolderConst(fm)  # ok conversion
+    std.cout << hc.f.constmethod()
+)
+    """
+
+    c = compile(preamble + goodcode)
+    assert c == "i'm const by default3i'm const by default"
+
+    badcode1 = r"""
+def (main:
+    f = Foo(1)
+    h = HolderMut(f)
+)
+    """
+
+    raises(lambda: compile(preamble + badcode1))
+
+    badcode2 = r"""
+def (main:
+    f : mut = Foo(1)
+    f.mutmethod()       # ok of course
+    h = HolderConst(f)  # ok (conversion)
+    h.f.mutmethod()     # not ok (f is shared_ptr<const Foo>)
+)
+    """
+
+    raises(lambda: compile(preamble + badcode2))
+
+
+def test_class_data_members_pointer_to_const_by_default():
+    preamble = r"""
+class (Foo:
+    a
+    def (mutmethod: mut:
+        self.a = self.a + 1
+        return self.a
+    )
+    def (constmethod:
+        return "i'm const by default"
+    )
+)
+
+class (Holder:
+    f
+)
+    """
+
+    goodcode = r"""
+def (main:
+    f = Foo(1)
+    h = Holder(f)
+    std.cout << h.f.constmethod()
+    
+    f2 : mut = Foo(2)
+    h2 = Holder(f2)
+    std.cout << h2.f.mutmethod()
+)
+    """
+
+    assert compile(preamble + goodcode) == "i'm const by default3"
+
+    badcode = r"""
+def (main:
+    f = Foo(1)
+    h = Holder(f)
+    std.cout << h.f.mutmethod()
+)
+    """
+    raises(lambda:compile(preamble + badcode))
+
+
 def test_lambda_function_pointer_coercion():
     c = compile(r"""
 def (blah, x: int:
