@@ -193,7 +193,7 @@ def test_mut_classes():
     c = compile(r"""
     
 class (Blah:
-    x : mut 
+    x #: mut  # error unexpected placement of 'mut' (good error: const data members by default or otherwise are bad - prevents move optimizations + other wacky issues)
     def (foo:mut:
         self.x = self.x + 1
     )
@@ -204,9 +204,23 @@ def (main:
     b.foo()
     std.cout << b.x
     b.x = 5
+    std.cout << b.x
 )
 
     """)
+
+    assert c == "25"
+
+    raises(lambda: compile(r"""
+class (Blah:
+    x
+)
+
+def (main:
+    b = Blah(1)  # const by default
+    b.x = 5      # error
+)
+    """))
 
 
 def test_pointers_auto_const_uninitialized():
@@ -2775,8 +2789,8 @@ class (Foo:
 ) 
 
 class (Bar:
-    a : mut  # TODO something broke with the change to "const by default". 'mut' should not be required for a/b here
-    b : mut
+    a
+    b
     # f : Foo  # probably need to forget about this # indeed we have
     f : Foo<decltype(a), decltype(b), decltype(b)>
 )

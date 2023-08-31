@@ -1,6 +1,23 @@
 from parser import parse, TupleLiteral, Module
 
 
+def test_compound_comparison():
+    source = r"""
+1+1    
+#myFunc < (double > (42, another_param))  # fails in parser due to bad template-disambig-char (acceptable)
+myFunc<anotherFunc<blah>(42)>(43)
+x : foo<bar>(42) : int + "fine"
+myFunc<probably_a_type<blah>>42  # ((myFunc < probably_a_type) < (blah >> 42)))
+myFunc<blah>>42  # (myFunc < (blah >> 42)))
+value = 1 + number_of_bits<number >> 1>::value  # value = (1 + (number_of_bits<(number >> 1)> :: value))  # https://stackoverflow.com/questions/31447039/valid-c03-template-code-wont-compile-in-c11 
+value = 1 + number_of_bits<(number >> 1)>::value  #   (value = (1 + (number_of_bits<RedundantParens(RedundantParens)([(number >> 1)])> :: value)
+
+    
+    """
+    p = parse(source)
+    print(p)
+
+
 def test_stress_parser2():
     # https://peps.python.org/pep-0617/
     source = r"""

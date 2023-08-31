@@ -370,14 +370,15 @@ def codegen_class(node : Call, cx):
                 funcx.in_function_param_list = True
                 cpp += codegen_def(b, funcx)
         elif isinstance(b, Identifier):
-            if b.declared_type is None or b.declared_type.name in ["mut", "const"]:
+            if b.declared_type is None:  # or b.declared_type.name in ["mut", "const"]:  # BAD: don't make it easy/convenient to declare const data members
                 # generic case
                 t = gensym("C")
                 typenames.append(t)
                 field_types[b.name] = t
                 decl_const_part = ""
-                if (b.declared_type is None and not mut_by_default) or (b.declared_type and b.declared_type.name == "const"):
-                    decl_const_part = "const "
+                # BAD: don't promote const data members (remove this commented code)
+                # if (b.declared_type is None and not mut_by_default) or (b.declared_type and b.declared_type.name == "const"):
+                #     decl_const_part = "const "
                 decl = decl_const_part + t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = True
@@ -391,10 +392,10 @@ def codegen_class(node : Call, cx):
                 #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
                 # else:
                 field_type = b.declared_type
-                # decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
+                decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
-                field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
-                decl = field_type_const_part + field_type_str + " " + b.name
+                # field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)  # BAD / remove this: const data members are bad
+                # decl = field_type_const_part + field_type_str + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
 
@@ -1112,7 +1113,8 @@ def codegen_def(defnode: Call, cx):
         if isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
 
             classdef = cx.lookup_class(class_identifier)
-            assert classdef
+            if not classdef:
+                raise CodeGenError("expected a class in '= 0' declaration", class_identifier)
 
             classdef.is_pure_virtual = True
 
