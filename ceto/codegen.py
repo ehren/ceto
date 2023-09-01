@@ -344,22 +344,13 @@ def codegen_class(node : Call, cx):
                 if isinstance(method_type, Call) and method_type.func.name == "interface" and len(method_type.args) == 1:
                     interface_type = method_type.args[0]
                     if methodname.name in ["init", "destruct"]:
-                        raise CodeGenError("init or destruct cannot be defined as interface methods", b)
+                        raise CodeGenError("init or destruct can't defined as interface methods", b)
 
                     if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
                         defined_interfaces[interface_type.name].append(b)
 
                     cx.interfaces[interface_type.name].append(b)
                     local_interfaces.add(interface_type.name)
-                else:
-                    # def method_type_visitor(type_node):
-                    #     if type_node.name in ["static", "const"]:
-                    #         return type_node
-                    #
-                    # type_inorder_traversal(method_type, method_type_visitor)
-
-                    # TODO const method signatures
-                    pass # let codegen_def handle (works for 'static')
 
             if methodname.name == "init":
                 if constructor_node is not None:
@@ -408,7 +399,7 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
-    base_class_type : str = inherits.name if inherits is not None else None
+    base_class_type : typing.Optional[str] = inherits.name if inherits is not None else None
     classdef.is_concrete = not classdef.is_generic_param_index
 
     if constructor_node is not None:
@@ -443,7 +434,7 @@ def codegen_class(node : Call, cx):
                                  len(initializerlist_assignments) + int(super_init_call is not None):]
 
         if any(find_all(constructor_block, is_super_init)):
-            raise CodeGenError("A call to super.init must occur in the 'initializer list' (that is, any statements before super.init must be of the form self.field = param")
+            raise CodeGenError("A call to super.init must occur in the 'initializer list' (that is, any statements before super.init must be of the form self.field = val")
 
         init_params = []
         init_param_type_from_name = {}
