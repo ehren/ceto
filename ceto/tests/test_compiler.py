@@ -234,18 +234,21 @@ def (main:
 
 def test_plain_const():
     c = compile(r"""
-    
+g : const = 5  # codegen writes this as constexpr const g = 5 (TODO confirm this with a test)
+def (main:
+    c: const = 2
+    static_assert(std.is_const_v<decltype(c)>)
+    static_assert(std.is_const_v<decltype(g)>)
+    std.cout << c << g
+)
+    """)
+    assert c == "25"
+
+    raises(lambda: compile(r"""
 class (Foo:
     c: const = 1
 )
-    
-def (main:
-    c: const = 2
-    std.cout << c << Foo().c
-)
-    """)
-
-    assert c == "21"
+    """), exc="const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use c = whatever (with no const \"type\" specified)")
 
 
 def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
@@ -676,11 +679,11 @@ def (main:
 def test_constructors_with_atomic_attributes():
     c = compile(r"""
 class (Foo:
-    a : std.atomic<int> = 0  # this should work but our 'add const that works with CTAD' doesn't work with non-copyable types oh std::move! 
-    # a : mut:const:std.atomic<int> = 0   # new
+    a : std.atomic<int> = 0  # this is a test of our 'diy no narrowing conversion initialization' at class scope
 )
+
 class (Foo2:
-    a : const:std.atomic<int>  # TODO data members should be const by default
+    a : const:std.atomic<int>  # const data members are problematic but we allow it if you specify the full type (though e.g. a : const = 0 is an error)
     def (init, p:int:
         self.a = p
     )
@@ -689,9 +692,10 @@ class (Foo2:
 def (main:
     f = Foo()
     f2 = Foo2(1)
+    static_assert(not std.is_const_v<decltype(f.a)>)
+    static_assert(std.is_const_v<decltype(f2.a)>)
 )
-
-        """)
+    """)
 
 
 def test_init_with_generic_params():
@@ -839,8 +843,7 @@ class (Foo:
 )
 
 class (FooList:
-    # l : mut = [] : Foo  # either of these is ok now
-    l : mut:[Foo] = []
+    l : [Foo] = []
 )
     
 def (main:
@@ -1191,8 +1194,8 @@ class (Bar:
 )
     
 class (Foo:
-    a : mut:std.atomic<int> = 0
-    go : mut:std.atomic<bool> = true
+    a : std.atomic<int> = 0
+    go : std.atomic<bool> = true
     go2 : std.atomic<bool> = std.atomic<bool> {true}  # this shouldn't be / isn't necessary
 )
 
@@ -3625,8 +3628,7 @@ def test_for_with_uniq_and_shared():
     c = compile(r"""
 
 class (Uniq:
-    # x = 0  # note untyped (hidden decltype inserted)  # this is now const by default
-    x : mut = 0
+    x = 0
 
     def (bar: mut:
         self.x = self.x + 1
@@ -3640,7 +3642,7 @@ class (Uniq:
 ): unique
 
 class (Shared:
-    x:mut = 0
+    x = 0
 
     def (foo:
         printf("foo\n")
@@ -4281,10 +4283,7 @@ def test_correct_shared_ptr():
 class (Foo: # this is the parse prob
     # x = 1
     # y = 2
-    # x = 0  # this is now const by default
-    # x : int = 0   # this is now const by default
-    # x : mut:int = 0  # this works but no need for type
-    x : mut = 0
+    x = 0
 
     # def (init:
     #     printf("init\n")

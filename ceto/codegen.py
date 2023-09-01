@@ -1756,9 +1756,6 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
     lhs_type_str = None
 
     const_specifier = ""
-    if not cx.in_function_body and not cx.in_class_body:
-        # add constexpr to all global defns
-        constexpr_specifier = "constexpr "
 
     if isinstance(node.declared_type, Identifier):
         # this should really be handled by codegen_assign
@@ -1820,6 +1817,8 @@ def codegen_assign(node: Assign, cx: Scope):
     if not cx.in_function_body and not cx.in_class_body:
         # add constexpr to all global defns
         constexpr_specifier = "constexpr "
+    else:
+        constexpr_specifier = ""
 
     if node.declared_type is not None and isinstance(node.rhs,
                                                      Call) and node.rhs.func.name == "lambda":
@@ -1849,16 +1848,22 @@ def codegen_assign(node: Assign, cx: Scope):
             # add const if not mut
 
             if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
-                # mut is the real "auto".
-
                 if cx.in_class_body:
-                    lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"
+                    # lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"  # this would work but see error message
+                    raise CodeGenError(f"const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use {node.lhs.name} = whatever (with no {node.lhs.declared_type.name} \"type\" specified)")
                 else:
-                    lhs_type_str = "auto"
+                    lhs_type_str = "const auto" if node.lhs.declared_type.name == "const" else "auto"
             else:
-                const_specifier, lhs_type_str = codegen_variable_declaration_type(node.lhs, cx)
+                if cx.in_class_body:
+                    # don't call 'codegen_variable_declaration_type' which adds 'const' (TODO rethink previous refactors with codegen_assign called by codegen_class). See comments elsewhere re const data members in C++.
+                    lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+                    const_specifier = ""
+                else:
+                    const_specifier, lhs_type_str = codegen_variable_declaration_type(node.lhs, cx)
 
             decl_str = lhs_type_str + " " + lhs_str
+
+            const_specifier = constexpr_specifier + const_specifier
 
             plain_initialization = decl_str + " = " + rhs_str
 
@@ -1903,9 +1908,11 @@ def codegen_assign(node: Assign, cx: Scope):
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
-            assign_str = "const std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
+            assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
         else:
             assign_str = "const auto " + assign_str
+
+    const_specifier = constexpr_specifier + const_specifier
 
     return const_specifier + assign_str
 
