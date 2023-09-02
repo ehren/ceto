@@ -2088,10 +2088,11 @@ def codegen_node(node: Node, cx: Scope):
 
             separator = " "
 
-            if isinstance(node, AttributeAccess) and not isinstance(node, (ScopeResolution, ArrowOp)):
+            if isinstance(node, AttributeAccess):
+                if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO we must have a bug where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
+                    return node.lhs.name + "::" + codegen_node(node.rhs, cx)
 
                 if isinstance(node.lhs, (Identifier, AttributeAccess)):
-                    #if node.lhs.name == "std" or cx.lookup_class(node.lhs):  # no need for class/namespace lookup here (printing '.' as '::' now the default)
 
                     # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
 

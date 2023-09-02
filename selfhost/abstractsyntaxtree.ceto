@@ -7,7 +7,7 @@ cpp'
 
 class (Node:
     func : Node : mut
-    args : [Node : mut] : mut
+    args : [Node : mut]
     #parent : Node:weak
 
     def (repr: virtual) : string = 0
@@ -116,9 +116,9 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
     # writing a wrapper type for pybind11 around the correct function pointer would be better (fine for now)
     f = reinterpret_cast<decltype(&example_macro_body_workaround_no_fptr_syntax_yet)>(fptr)
     #f2 = reinterpret_cast<decltype(+lambda(matches:std.map<string, Node:mut>, None): Node:mut)>(fptr)   # TODO post-parse hacks for typed lambda only work for immediately invoked lambda aka Call node (not needed for assign case due to lower precedence =). debatable if needs fix for this case?: codegen.CodeGenError: ('unexpected typed construct', UnOp(+)([lambda(matches,Block((return : None)))]))
-    f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
+    #f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node:mut>, None): Node:mut))>(fptr)  # extra parenthese due to + : precedence (this should work)
     # ^ TODO lambda inside decltype and on rhs of TypeOp (so no attached Scope currently...) results in capture bug with the param somehow ending up in capture list (maybe param not used also part of bug). TODO TypeOp rhs nodes still need an attached scope
-    static_assert(std.is_same_v<decltype(f), decltype(f2)>)
+    #static_assert(std.is_same_v<decltype(f), decltype(f2)>)
     return (*f)(matches)
 )
 
@@ -150,7 +150,7 @@ PYBIND11_MODULE(abstractsyntaxtree, m) {
 # More or less equivalent to the above commented c++:
 
 # trick transpiler into local variable context (TODO add 'localscope' blocks then ban non-constexpr global lambdas entirely)
-lambda(m: auto:rref:  # TODO when lambda params const by default (still a TODO), should this be mut:auto:rref? (even though const:auto:rref makes no sense)
+lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default (hence need for 'mut'). However, const auto&& pretty much makes no sense so maybe anything with 'rref' should be an exception to const by default logic
 
     #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
     py::bind_vector<std.vector<Node:mut>>(m, c"VectorNode")
