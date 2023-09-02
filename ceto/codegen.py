@@ -1532,6 +1532,49 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
     return codegen_node(type_node, cx)
 
 
+def codegen_attribute_access(node: AttributeAccess, cx: Scope):
+    assert isinstance(node, AttributeAccess)
+
+    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO we must have a bug where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
+        return node.lhs.name + "::" + codegen_node(node.rhs, cx)
+
+    if isinstance(node.lhs, (Identifier, AttributeAccess)):
+        # implicit scope resolution:
+
+        # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
+
+        # e.g. std.q.r.s should print as std::q::r::s
+        # HOWEVER std.q.r().s should print as std::q::r().s  where the last '.' is a maybe autoderef
+
+        leading = node
+        scope_resolution_list = []
+
+        while isinstance(leading, AttributeAccess):
+            scope_resolution_list.insert(0, leading.rhs)
+            leading = leading.lhs
+
+        if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
+
+            # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
+            scope_resolution_code = leading.name
+            while scope_resolution_list:
+                if isinstance(scope_resolution_list[0], Identifier):
+                    item = scope_resolution_list.pop()
+                    scope_resolution_code += "::" + item.name
+                else:
+                    break
+
+            if not scope_resolution_list:
+                return scope_resolution_code
+            else:
+                remaining = list_to_attribute_access_node(scope_resolution_list)
+                assert remaining is not None
+                return scope_resolution_code + "::" + codegen_node(remaining, cx)
+
+    # maybe autoderef
+    return "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+
+
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
 
@@ -1642,7 +1685,7 @@ def codegen_call(node: Call, cx: Scope):
 
         if method_name is not None:
 
-            # modify node.func
+            # modify node.func (this is bad mutation and a source of future bugs)
             def consume_method_name():
                 method_parent = method_name.parent
                 assert method_parent.rhs is method_name
@@ -1671,8 +1714,7 @@ def codegen_call(node: Call, cx: Scope):
                 consume_method_name()
 
                 if method_name.name == "unsafe_at" and len(node.args) == 1:
-                    return codegen_node(node.func, cx) + "[" + codegen_node(
-                        node.args[0], cx) + "]"
+                    return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
 
                 if method_name.name == "append" and len(node.args) == 1:
                     # perhaps controversial rewriting of append to push_back
@@ -1694,20 +1736,15 @@ def codegen_call(node: Call, cx: Scope):
                     if is_list:
                         append_str = "push_back"
 
-                    func_str = "ceto::mad(" + codegen_node(node.func,
-                                                           cx) + ")->" + append_str
+                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
                 else:
 
                     # TODO fix AttributeAccess logic repeated here
-                    if isinstance(node.func, Identifier) and (
-                            node.func.name == "std" or cx.lookup_class(
-                        node.func)):
-                        func_str = node.func.name + "::" + codegen_node(
-                            method_name, cx)
+
+                    if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
+                        func_str = node.func.name + "::" + codegen_node(method_name, cx)
                     else:
-                        func_str = "ceto::mad(" + codegen_node(node.func,
-                                                               cx) + ")->" + codegen_node(
-                            method_name, cx)
+                        func_str = "ceto::mad(" + codegen_node( node.func, cx) + ")->" + codegen_node( method_name, cx)
 
         if func_str is None:
             func_str = codegen_node(node.func, cx)
@@ -2084,47 +2121,8 @@ def codegen_node(node: Node, cx: Scope):
             return codegen_assign(node, cx)
 
         else:
-            binop_str = None
-
-            separator = " "
-
             if isinstance(node, AttributeAccess):
-                if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO we must have a bug where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
-                    return node.lhs.name + "::" + codegen_node(node.rhs, cx)
-
-                if isinstance(node.lhs, (Identifier, AttributeAccess)):
-
-                    # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
-
-                    # e.g. std.q.r.s should print as std::q::r::s
-                    # HOWEVER std.q.r().s should print as std::q::r().s  where the last '.' is a maybe autoderef
-
-                    leading = node
-                    scope_resolution_list = []
-
-                    while isinstance(leading, AttributeAccess):
-                        scope_resolution_list.insert(0, leading.rhs)
-                        leading = leading.lhs
-
-                    if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
-
-                        # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
-                        scope_resolution_code = leading.name
-                        while scope_resolution_list:
-                            if isinstance(scope_resolution_list[0], Identifier):
-                                item = scope_resolution_list.pop()
-                                scope_resolution_code += "::" + item.name
-                            else:
-                                break
-
-                        if not scope_resolution_list:
-                            return scope_resolution_code
-                        else:
-                            remaining = list_to_attribute_access_node(scope_resolution_list)
-                            assert remaining is not None
-                            return scope_resolution_code + "::" + codegen_node(remaining, cx)
-
-                separator = ""
+                return codegen_attribute_access(node, cx)
 
             elif is_comment(node):
                 # probably needs to go near method handling logic now that precedence issue fixed (TODO re-enable comment stashing)
@@ -2132,17 +2130,13 @@ def codegen_node(node: Node, cx: Scope):
                     raise CodeGenError("unexpected ceto::comment ", node)
                 return "//" + node.rhs.args[0].func.replace("\n", "\\n") + "\n"
 
-            if binop_str is None:
+            funcstr = node.func  # fix ast: should be Ident
+            if node.func == "and":  # don't use the weird C operators tho tempting
+                funcstr = "&&"
+            elif node.func == "or":
+                funcstr = "||"
 
-                if isinstance(node, AttributeAccess):
-                    binop_str = "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
-                else:
-                    funcstr = node.func  # fix ast: should be Ident
-                    if node.func == "and":  # don't use the weird C operators tho tempting
-                        funcstr = "&&"
-                    elif node.func == "or":
-                        funcstr = "||"
-                    binop_str = separator.join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
+            binop_str = " ".join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
 
             if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
                 # guard against precedence mismatch (e.g. extra parenthesese
