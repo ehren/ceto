@@ -1,7 +1,7 @@
 import typing
 from collections import defaultdict
 
-from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp
+from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess
 import sys
 
 def isa_or_wrapped(node, NodeClass):
@@ -133,6 +133,26 @@ def list_to_typed_node(lst):
             op = TypeOp(func=":", args=[first, second], source=first.source)
         else:
             op = TypeOp(func=":", args=[op, second], source=second.source)
+    return op
+
+
+def list_to_attribute_access_node(lst):
+    # TODO refactor copied code from above (even better: flatten bin-op args post-parse!)
+    op = None
+    first = None
+    if not lst:
+        return lst
+    if len(lst) == 1:
+        return lst[0]
+    lst = lst.copy()
+    while lst:
+        second = lst.pop(0)
+        if first is None:
+            first = second
+            second = lst.pop(0)
+            op = AttributeAccess(func=".", args=[first, second], source=first.source)
+        else:
+            op = AttributeAccess(func=".", args=[op, second], source=second.source)
     return op
 
 

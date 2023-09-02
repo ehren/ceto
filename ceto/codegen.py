@@ -5,7 +5,7 @@ from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
-    list_to_typed_node
+    list_to_typed_node, list_to_attribute_access_node
 from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -2090,9 +2090,38 @@ def codegen_node(node: Node, cx: Scope):
 
             if isinstance(node, AttributeAccess) and not isinstance(node, (ScopeResolution, ArrowOp)):
 
-                if isinstance(node.lhs, Identifier) and (node.lhs.name == "std" or
-                                                         cx.lookup_class(node.lhs)):
-                    return node.lhs.name + "::" + codegen_node(node.rhs, cx)
+                if isinstance(node.lhs, (Identifier, AttributeAccess)):
+                    #if node.lhs.name == "std" or cx.lookup_class(node.lhs):  # no need for class/namespace lookup here (printing '.' as '::' now the default)
+
+                    # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
+
+                    # e.g. std.q.r.s should print as std::q::r::s
+                    # HOWEVER std.q.r().s should print as std::q::r().s  where the last '.' is a maybe autoderef
+
+                    leading = node
+                    scope_resolution_list = []
+
+                    while isinstance(leading, AttributeAccess):
+                        scope_resolution_list.insert(0, leading.rhs)
+                        leading = leading.lhs
+
+                    if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
+
+                        # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
+                        scope_resolution_code = leading.name
+                        while scope_resolution_list:
+                            if isinstance(scope_resolution_list[0], Identifier):
+                                item = scope_resolution_list.pop()
+                                scope_resolution_code += "::" + item.name
+                            else:
+                                break
+
+                        if not scope_resolution_list:
+                            return scope_resolution_code
+                        else:
+                            remaining = list_to_attribute_access_node(scope_resolution_list)
+                            assert remaining is not None
+                            return scope_resolution_code + "::" + codegen_node(remaining, cx)
 
                 separator = ""
 
@@ -2104,7 +2133,7 @@ def codegen_node(node: Node, cx: Scope):
 
             if binop_str is None:
 
-                if isinstance(node, AttributeAccess) and not isinstance(node, ScopeResolution):
+                if isinstance(node, AttributeAccess):
                     binop_str = "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
                 else:
                     funcstr = node.func  # fix ast: should be Ident
