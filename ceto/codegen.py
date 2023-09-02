@@ -1739,12 +1739,9 @@ def codegen_call(node: Call, cx: Scope):
                     func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
                 else:
 
-                    # TODO fix AttributeAccess logic repeated here
-
-                    if isinstance(node.func, Identifier) and (node.func.name == "std" or cx.lookup_class(node.func)):
-                        func_str = node.func.name + "::" + codegen_node(method_name, cx)
-                    else:
-                        func_str = "ceto::mad(" + codegen_node( node.func, cx) + ")->" + codegen_node( method_name, cx)
+                    # TODO don't do the silly mutation above in the first place!
+                    new_attr_access = AttributeAccess(func=".", args=[node.func, method_name], source=None)
+                    func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
             func_str = codegen_node(node.func, cx)

@@ -153,18 +153,18 @@ PYBIND11_MODULE(abstractsyntaxtree, m) {
 lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default (hence need for 'mut'). However, const auto&& pretty much makes no sense so maybe anything with 'rref' should be an exception to const by default logic
 
     #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
-    py::bind_vector<std.vector<Node:mut>>(m, c"VectorNode")
-    py::bind_map<std.map<std.string, Node:mut>>(m, c"MapStringNode") #, py::module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
+    py.bind_vector<std.vector<Node:mut>>(m, c"VectorNode")
+    py.bind_map<std.map<std.string, Node:mut>>(m, c"MapStringNode") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
 
     # TODO Node::class
-    node : mut = py::class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node")
+    node : mut = py.class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node")
     node.def(c"repr", &Node.repr).def(
         c"name", &Node.name).def_readwrite(
         c"func", &Node.func).def_readwrite(
         c"args", &Node.args)
 
-    py::class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
-        py::init<const:string:ref>()).def(
+    py.class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
+        py.init<const:string:ref>()).def(
         c"repr", &Identifier.repr).def(
         c"name", &Identifier.name)
 
