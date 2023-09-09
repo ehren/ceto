@@ -3,18 +3,26 @@ cpp'
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
+
+namespace py = pybind11;
 '
 
 class (Node:
-    func : Node : mut
-    args : [Node : mut]
-    #parent : Node:weak
+    func : Node:mut
+    args : [Node:mut]
 
-    def (repr: virtual) : string = 0
+    parent : py.object = py.none()  # TODO implement weak (not sure if this will leak when a cycle is created in python code)
+    declared_type : Node:mut = None
+    scope : py.object = py.none()
+    source : py.object = py.none()
+
+    def (repr: virtual:
+        return "generic node"
+    ) : std.string
 
     def (name: virtual:
-        return ""
-    ) : string
+        return None
+    ) : std.optional<std.string>
 )
 
 class (Identifier(Node):
@@ -27,11 +35,11 @@ class (Identifier(Node):
 
     def (repr:
         return self._name
-    ) : string
+    ) : std.string
 
     def (name:
         return self._name
-    ) : string
+    ) : std.optional<std.string>
 )
 
 
@@ -123,7 +131,6 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
 )
 
 cpp'
-namespace py = pybind11;
 PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
 PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<Node>>);
 PYBIND11_MODULE(abstractsyntaxtree, m) {
@@ -157,15 +164,19 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     py.bind_map<std.map<std.string, Node:mut>>(m, c"MapStringNode") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
 
     # TODO Node::class
-    node : mut = py.class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node")
-    node.def(c"repr", &Node.repr).def(
-        c"name", &Node.name).def_readwrite(
+    node : mut = py.class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node").def_readwrite(
         c"func", &Node.func).def_readwrite(
-        c"args", &Node.args)
+        c"args", &Node.args).def_readwrite(
+        c"parent", &Node.parent).def_readwrite(
+        c"declared_type", &Node.declared_type).def_readwrite(
+        c"scope", &Node.scope).def_readwrite(
+        c"source", &Node.source).def(
+        c"__repr__", &Node.repr).def(
+        c"name", &Node.name)
 
     py.class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref>()).def(
-        c"repr", &Identifier.repr).def(
+        c"__repr__", &Identifier.repr).def(
         c"name", &Identifier.name)
 
     #m.def(c"printid", &printid, c"A function that prints an id")
