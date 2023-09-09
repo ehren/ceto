@@ -1,3 +1,5 @@
+# vim: syntax=python
+
 cpp'
 #include <map>
 #include <typeinfo>
@@ -7,6 +9,7 @@ cpp'
 
 namespace py = pybind11;
 '
+
 
 class (Node:
     func : Node:mut

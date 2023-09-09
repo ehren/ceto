@@ -194,6 +194,11 @@ def _build_grammar():
         pp.Literal, "()[]{}"
     )
 
+    not_op = pp.Keyword("not")
+    and_op = pp.Keyword("and")
+    or_op = pp.Keyword("or")
+    reserved_words = not_op | and_op | or_op
+
     integer = pp.Regex(r"[+-]?\d+").setName("integer").set_parse_action(_parse_integer_literal)
     real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
     tuple_literal = pp.Forward()
@@ -204,7 +209,7 @@ def _build_grammar():
     template = pp.Forward()
     scope_resolution = pp.Forward()
     infix_expr = pp.Forward()
-    ident = pp.Word(pp.alphas + "_", pp.alphanums + "_").set_parse_action(_parse_identifier)
+    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).set_parse_action(_parse_identifier)
 
     quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
     dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
@@ -275,7 +280,6 @@ def _build_grammar():
     multop = pp.oneOf("* / %")
     plusop = pp.oneOf("+ -")
     colon = pp.Literal(":")
-    not_op = pp.Keyword("not")
     star_op = pp.Literal("*")
     amp_op = pp.Literal("&")
     ellipsis_op = pp.Literal("...")

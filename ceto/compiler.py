@@ -120,6 +120,7 @@ if __name__ == "__main__":
     # -m / -c to mimic python
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
     ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
+    ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file", action="store_true")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
     cmdargs = ap.parse_args()
@@ -140,8 +141,20 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     ext = ".h"
-    if module.has_main_function:
+    if module.has_main_function or cmdargs.implementation:
         ext = ".cpp"
+
+    if cmdargs.filename:
+        if cmdargs.filename.endswith("cth"):
+            ext = ".h"
+            if module.has_main_function:
+                print("don't put 'main' function in a header", sys.stderr)
+                sys.exit(-1)
+            if cmdargs.implementation:
+                print("-i/--implementation incompatible with .cth (header) extension", sys.stderr)
+                sys.exit(-1)
+        elif cmdargs.filename.endswith("ctp"):
+            ext = ".cpp"
 
     cppfilename = basename + ext
 
