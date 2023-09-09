@@ -607,13 +607,13 @@ class ScopeReplacer:
 
     def replace_Identifier(self, ident):
         ident = self.replace_Node(ident)
-        if ident.declared_type:
+        if ident.declared_type and not ident.declared_type.name in ["using", "namespace", "typedef"]:
             ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
         return ident
 
     def replace_Assign(self, assign):
         assign = self.replace_Node(assign)
-        if isinstance(assign.lhs, Identifier):
+        if isinstance(assign.lhs, Identifier) and not (assign.lhs.declared_type and assign.lhs.declared_type.name in ["using", "namespace"]):
             assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
         return assign
 

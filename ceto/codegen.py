@@ -1879,6 +1879,9 @@ def codegen_assign(node: Assign, cx: Scope):
 
         if node.lhs.declared_type:
 
+            if node.lhs.declared_type.name in ["using", "namespace"]:
+                return node.lhs.declared_type.name + " " + lhs_str + " = " + rhs_str
+
             # add const if not mut
 
             if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
