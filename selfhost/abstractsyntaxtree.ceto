@@ -17,7 +17,16 @@ class (Node:
     source : py.object = py.none()
 
     def (repr: virtual:
-        return "generic node"
+        selph : py.object = py::cast(this)
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+
+        args_str : mut = "["
+        for (a in self.args:
+            args_str = args_str + a.repr() + ", "  # TODO +=
+        )
+        args_str = args_str + "]"
+
+        return classname + "(" + self.func.repr() + ")(" + args_str + ")"
     ) : std.string
 
     def (name: virtual:
