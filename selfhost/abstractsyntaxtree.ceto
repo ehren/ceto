@@ -1,5 +1,6 @@
 cpp'
 #include <map>
+#include <typeinfo>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -17,8 +18,9 @@ class (Node:
     source : py.object = py.none()
 
     def (repr: virtual:
-        selph : py.object = py::cast(this)
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        # selph : py.object = py.cast(this)
+        # classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))  # cool but unnecessary
+        classname : std.string = typeid(*this).name()
 
         args_str : mut = "["
         for (a in self.args:
