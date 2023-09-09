@@ -1211,9 +1211,10 @@ def (main:
 
     t2 : mut = std.thread(lambda(:
         while (f.go:
-            f.a = f.a + 1   # TODO implement += etc
+            f.a = f.a + 1   # took us a while to implement += etc
             f.a.operator("++")()  # alternative
             f.a.operator("++")(1) 
+            f.a += 1  # += now implemented
         )
     ))
 

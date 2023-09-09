@@ -27,9 +27,9 @@ class (Node:
 
         args_str : mut = "["
         for (a in self.args:
-            args_str = args_str + a.repr() + ", "  # TODO +=
+            args_str += a.repr() + ", "
         )
-        args_str = args_str + "]"
+        args_str += "]"
 
         return classname + "(" + self.func.repr() + ")(" + args_str + ")"
     ) : std.string

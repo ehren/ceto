@@ -283,6 +283,17 @@ def _build_grammar():
     star_op = pp.Literal("*")
     amp_op = pp.Literal("&")
     ellipsis_op = pp.Literal("...")
+    assign_op = pp.Literal("=")
+    plus_assign_op = pp.Literal("+=")
+    minus_assign_op = pp.Literal("-=")
+    times_assign_op = pp.Literal("*=")
+    div_assign_op = pp.Literal("/=")
+    mod_assign_op = pp.Literal("%=")
+    lshift_assign_op = pp.Literal("<<=")
+    rshift_assign_op = pp.Literal(">>=")
+    bitwise_and_assign_op = pp.Literal("&=")
+    bitwise_or_assign_op = pp.Literal("|=")
+    bitwise_xor_assign_op = pp.Literal("^=")
 
     _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
     _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
@@ -309,10 +320,10 @@ def _build_grammar():
             (amp_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("^"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("|"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (pp.Keyword("and"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (pp.Keyword("or"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (and_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (or_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
-            ("=", 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
+            (assign_op | plus_assign_op | minus_assign_op | times_assign_op | div_assign_op | mod_assign_op | lshift_assign_op | rshift_assign_op | bitwise_and_assign_op | bitwise_or_assign_op | bitwise_xor_assign_op, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
             (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
             (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
         ],
