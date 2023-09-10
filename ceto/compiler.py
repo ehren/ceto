@@ -120,7 +120,8 @@ if __name__ == "__main__":
     # -m / -c to mimic python
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
     ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
-    ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file", action="store_true")
+    ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file even if filename does not end in .ctp", action="store_true")
+    ap.add_argument("--no-pragma-once", help="Do not automatically add a '#pragma once' include guard to a header", action="store_true")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
     cmdargs = ap.parse_args()
@@ -157,6 +158,9 @@ if __name__ == "__main__":
             ext = ".cpp"
 
     cppfilename = basename + ext
+
+    if ext == ".h" and not cmdargs.no_pragma_once:
+        code = "#pragma once\n" + code + "\n#end\n"
 
     with open(cppfilename, "w") as output:
         output.write(code)

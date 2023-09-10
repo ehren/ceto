@@ -14,11 +14,18 @@ py: namespace = pybind11
 class (Node:
     func : Node:mut
     args : [Node:mut]
+    source : py.tuple  # typing.Tuple[str, int]
+
+    # TODO BUG: func is treated as a Node rather that a Node:mut when the untyped constructor param's type is inferred from the data member type above ie it's a const shared_ptr<const Node> rather than a const shared_ptr<Node>. Bug not present with an autosynthesized constructor so we'll stay with that for now
+#    def (init, func, args, source = py.tuple{}:
+#        self.func = func
+#        self.args = args
+#        self.source = source
+#    )
 
     parent : py.object = py.none()  # TODO implement weak (not sure if this will leak when a cycle is created in python code)
     declared_type : Node:mut = None
     scope : py.object = py.none()
-    source : py.object = py.none()
 
     def (repr: virtual:
         # selph : py.object = py.cast(this)
@@ -43,9 +50,9 @@ class (Node:
 class (Identifier(Node):
     _name : string
 
-    def (init, name:
+    def (init, name, source: py.tuple:
         self._name = name
-        super.init(None, [] : Node : mut)
+        super.init(None, [] : Node : mut, source)
     )
 
     def (repr:
@@ -190,9 +197,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"name", &Node.name)
 
     py.class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
-        py.init<const:string:ref>()).def(
-        c"__repr__", &Identifier.repr).def(
-        c"name", &Identifier.name)
+        py.init<const:string:ref, py.tuple>())
 
     #m.def(c"printid", &printid, c"A function that prints an id")
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
