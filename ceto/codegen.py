@@ -725,6 +725,46 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     return None
 
 
+def _safely_strip_non_class_non_plain_mut(node : Node, cx):
+    assert isinstance(node, Node)
+    assert node.declared_type is not None
+    types = type_node_to_list_of_types(node.declared_type)
+
+    if len(types) <= 1:
+        # don't strip 'mut' alone
+        return False
+
+    muts_only = [t for t in types if t.name == "mut"]
+
+    num_muts = len(muts_only)
+    if num_muts > 1:
+        raise CodeGenError("too many 'mut' specifiers", node)
+
+    if num_muts == 0:
+        return False
+
+    mut = muts_only[0]
+    mut_index = types.index(mut)
+
+    to_left_of_mut = None
+    to_right_of_mut = None
+
+    if mut_index > 0:
+        to_left_of_mut = types[mut_index - 1]
+
+    if mut_index < len(types) - 1:
+        to_right_of_mut = types[mut_index + 1]
+
+    if any(t for t in [to_left_of_mut, to_right_of_mut] if t and cx.lookup_class(t)):
+        # don't strip 'mut' if adjacent to a class type
+        return False
+
+    types.remove(mut)
+    node.declared_type = list_to_typed_node(types)
+
+    return True
+
+
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
     should_add_outer_const = not mut_by_default
@@ -734,12 +774,8 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
 
-            types = type_node_to_list_of_types(arg.declared_type)
-            if any(t.name == "mut" for t in types):
-                should_add_outer_const = False
-                types = [t for t in types if not t.name == "mut"]
-                arg.declared_type = list_to_typed_node(types)
-            elif any(t.name == "const" for t in types):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const)
+            if _safely_strip_non_class_non_plain_mut(arg, cx) or \
+                    any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
                 should_add_outer_const = False
 
             automatic_const_part = " "  # TODO add const here (if not already const)
@@ -775,12 +811,8 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
         if arg.lhs.declared_type is not None:
 
-            types = type_node_to_list_of_types(arg.lhs.declared_type)
-            if any(t.name == "mut" for t in types):
-                should_add_outer_const = False
-                types = [t for t in types if not t.name == "mut"]
-                arg.lhs.declared_type = list_to_typed_node(types)
-            elif any(t.name == "const" for t in types):  # TODO this needs to follow same logic as local vars (we need to but are not currently adding const to a non-const pointer to const (that's not declared as 'mut'))
+            if _safely_strip_non_class_non_plain_mut(arg.lhs, cx) or \
+                    any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
                 should_add_outer_const = False
 
             automatic_const_part = " "
