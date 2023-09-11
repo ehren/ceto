@@ -1,6 +1,7 @@
 # Available at setup time due to pyproject.toml
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
+from glob import glob
 import os
 
 __version__ = "0.1"
@@ -41,6 +42,10 @@ setup(
     description="General purpose programming language transpiled to C++",
     long_description="Parens/call expression language transpiled to c++20. \"Python\" with 2 parentheses moved or inserted (with extra C++ syntax). Codegen based on https://github.com/lukasmartinelli/py14 with additions e.g. implicit make_shared/unique, checked autoderef via '.', swiftish lambda capture, implicit move from last use of unique, const by default, extra CTAD!",
     ext_modules=ext_modules,
+    #package_data={'ceto': ['../include/']},
+    data_files = [
+        ('include', glob('include/*'))
+    ],
     extras_require={"test": "pytest"},
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
