@@ -361,7 +361,10 @@ def codegen_class(node : Call, cx):
                 funcx.in_function_param_list = True
                 cpp += codegen_def(b, funcx)
         elif isinstance(b, Identifier):
-            if b.declared_type is None:  # or b.declared_type.name in ["mut", "const"]:  # BAD: don't make it easy/convenient to declare const data members
+
+            if b.name == "pass":
+                continue
+            elif b.declared_type is None:  # or b.declared_type.name in ["mut", "const"]:  # BAD: don't make it easy/convenient to declare const data members
                 # generic case
                 t = gensym("C")
                 typenames.append(t)

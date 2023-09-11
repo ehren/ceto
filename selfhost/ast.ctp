@@ -10,18 +10,16 @@ cpp'
 
 py: namespace = pybind11
 
-
 class (Node:
     func : Node:mut
     args : [Node:mut]
     source : py.tuple  # typing.Tuple[str, int]
 
-    # TODO BUG: func is treated as a Node rather that a Node:mut when the untyped constructor param's type is inferred from the data member type above ie it's a const shared_ptr<const Node> rather than a const shared_ptr<Node>. Bug not present with an autosynthesized constructor so we'll stay with that for now
-#    def (init, func, args, source = py.tuple{}:
-#        self.func = func
-#        self.args = args
-#        self.source = source
-#    )
+    def (init, func, args, source = py.tuple{}:
+        self.func = func
+        self.args = args
+        self.source = source
+    )
 
     parent : py.object = py.none()  # TODO implement weak (not sure if this will leak when a cycle is created in python code)
     declared_type : Node:mut = None
@@ -46,6 +44,55 @@ class (Node:
     ) : std.optional<std.string>
 )
 
+class (UnOp(Node):
+    pass
+)
+
+class (LeftAssociativeUnOp(Node):
+    pass
+)
+
+class (BinOp(Node):
+
+    def (lhs:
+        return self.args[0]
+    )
+
+    def (rhs:
+        return self.args[1]
+    )
+
+    def (repr:
+        return self.lhs().repr() + self.func.repr() + self.rhs().repr()
+    ) : std.string
+)
+
+class (TypeOp(BinOp):
+    pass
+)
+
+class (SyntaxTypeOp(TypeOp):
+    pass
+)
+
+class (AttributeAccess(BinOp):
+
+    def (repr:
+        return self.lhs().repr() + "." + self.rhs().repr()
+    ) : std.string
+)
+
+class (ArrowOp(BinOp):
+    pass
+)
+
+class (ScopeResolution(BinOp):
+    pass
+)
+
+class (Assign(BinOp):
+    pass
+)
 
 class (Identifier(Node):
     _name : string
