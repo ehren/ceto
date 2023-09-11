@@ -1,7 +1,6 @@
-from parser import parse, Module
-from semanticanalysis import semantic_analysis
-from codegen import codegen
-from preprocessor import preprocess
+from .parser import parse, Module
+from .semanticanalysis import semantic_analysis
+from .codegen import codegen
 
 import os
 import subprocess
@@ -114,8 +113,7 @@ def report_error(e : ParseException, source : str):
     print(" " * (col) + "^", file=sys.stderr)
 
 
-if __name__ == "__main__":
-
+def main():
     ap = argparse.ArgumentParser()
     # -m / -c to mimic python
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
@@ -190,3 +188,7 @@ if __name__ == "__main__":
 
     print(" ".join(args))
     subprocess.Popen(args)
+
+
+if __name__ == "__main__":
+    main()

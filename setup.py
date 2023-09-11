@@ -3,7 +3,7 @@ from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 import os
 
-__version__ = "0.0.1"
+__version__ = "0.1"
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -21,26 +21,27 @@ else:
     os.environ['CPPFLAGS'] = "-I./include"
 
 ext_modules = [
-    Pybind11Extension("abstractsyntaxtree",
+    Pybind11Extension("ceto._abstractsyntaxtree",
         ["selfhost/ast.cpp"],
-        # Example: passing in the version to the compiled code
-        define_macros = [('VERSION_INFO', __version__)],
+        #define_macros = [('VERSION_INFO', __version__)],
 		cxx_std=20
         ),
 ]
 
 setup(
     name="ceto",
+    packages = ["ceto"],
+    entry_points = {
+        'console_scripts': ['ceto=ceto.compiler:main'],
+    },
     version=__version__,
     author="Ehren Metcalfe",
     author_email="ehren.m@gmail.com",
     url="https://github.com/ehren/ceto",
-    description="A test project using pybind11",
-    long_description="",
+    description="General purpose programming language transpiled to C++",
+    long_description="Parens/call expression language transpiled to c++20. \"Python\" with 2 parentheses moved or inserted (with extra C++ syntax). Codegen based on https://github.com/lukasmartinelli/py14 with additions e.g. implicit make_shared/unique, checked autoderef via '.', swiftish lambda capture, implicit move from last use of unique, const by default, extra CTAD!",
     ext_modules=ext_modules,
     extras_require={"test": "pytest"},
-    # Currently, build_ext only provides an optional "highest supported C++
-    # level" feature, but in the future it may provide more features.
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
     python_requires=">=3.8",

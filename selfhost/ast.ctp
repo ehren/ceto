@@ -202,7 +202,7 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
 cpp'
 PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
 PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<Node>>);
-PYBIND11_MODULE(abstractsyntaxtree, m) {
+PYBIND11_MODULE(_abstractsyntaxtree, m) {
 
     // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
 

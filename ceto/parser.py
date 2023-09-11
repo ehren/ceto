@@ -12,9 +12,8 @@ pp.ParserElement.enable_packrat(2**20)
 
 import io
 
-from preprocessor import preprocess
-
-from abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
+from .preprocessor import preprocess
+from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
     Block, Module, StringLiteral, RedundantParens, Assign, Template

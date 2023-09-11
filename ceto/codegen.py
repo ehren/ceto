@@ -1,12 +1,12 @@
 import typing
 from typing import Union, Any
 
-from semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
+from .semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, \
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node
-from abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
 import re
