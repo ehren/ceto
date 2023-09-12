@@ -54,7 +54,7 @@ struct Node : ceto::shared_object {
             return nullptr;
         }
 
-    explicit Node(const std::shared_ptr<Node>  func, const std::vector<std::shared_ptr<Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {
+    explicit Node(const std::shared_ptr<Node>&  func, const std::vector<std::shared_ptr<Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {
     }
 
     Node() = delete;

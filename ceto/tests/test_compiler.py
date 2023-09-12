@@ -32,7 +32,8 @@ class (Node:
          args:
         self.func = func
         self.args = args
-        static_assert(std.is_const_v<decltype(func)>)
+        static_assert(std.is_reference_v<decltype(func)>)
+        static_assert(std.is_const_v<std.remove_reference_t<decltype(func)>>)
         static_assert(not std.is_const_v<decltype(self.func)>)
     )
 )
