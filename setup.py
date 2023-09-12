@@ -16,10 +16,10 @@ __version__ = "0.1"
 #   reproducible builds (https://github.com/pybind/python_example/pull/53)
 
 
-if 'CPPFLAGS' in os.environ:
-    os.environ['CPPFLAGS'] += "-I./include"
-else:
-    os.environ['CPPFLAGS'] = "-I./include"
+#if 'CPPFLAGS' in os.environ:
+#    os.environ['CPPFLAGS'] += "-I./include"
+#else:
+#    os.environ['CPPFLAGS'] = "-I./include"
 
 ext_modules = [
     Pybind11Extension("ceto._abstractsyntaxtree",

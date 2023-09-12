@@ -1,4 +1,4 @@
-from parser import parse, TupleLiteral, Module
+from ceto.parser import parse, TupleLiteral, Module
 
 
 def test_compound_comparison():

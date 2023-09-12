@@ -728,14 +728,14 @@ def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
     return None
 
 
-def _safely_strip_non_class_non_plain_mut(node : Node, cx):
+def _strip_non_class_non_plain_mut_type(node : Node, cx):
     assert isinstance(node, Node)
     assert node.declared_type is not None
     types = type_node_to_list_of_types(node.declared_type)
 
     if len(types) <= 1:
         # don't strip 'mut' alone
-        return False
+        return None
 
     muts_only = [t for t in types if t.name == "mut"]
 
@@ -744,7 +744,7 @@ def _safely_strip_non_class_non_plain_mut(node : Node, cx):
         raise CodeGenError("too many 'mut' specifiers", node)
 
     if num_muts == 0:
-        return False
+        return None
 
     mut = muts_only[0]
     mut_index = types.index(mut)
@@ -760,12 +760,21 @@ def _safely_strip_non_class_non_plain_mut(node : Node, cx):
 
     if any(t for t in [to_left_of_mut, to_right_of_mut] if t and cx.lookup_class(t)):
         # don't strip 'mut' if adjacent to a class type
-        return False
+        return None
 
     types.remove(mut)
-    node.declared_type = list_to_typed_node(types)
+    return list_to_typed_node(types)
 
-    return True
+
+def _mutate_strip_non_class_non_plain_mut(node : Node, cx):
+    assert isinstance(node, Node)
+    assert node.declared_type is not None
+
+    if stripped := _strip_non_class_non_plain_mut_type(node, cx):
+        node.declared_type = stripped
+        return True
+
+    return False
 
 
 def _codegen_typed_def_param_as_tuple(arg, cx):
@@ -777,7 +786,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
 
-            if _safely_strip_non_class_non_plain_mut(arg, cx) or \
+            if _mutate_strip_non_class_non_plain_mut(arg, cx) or \
                     any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
                 should_add_outer_const = False
 
@@ -814,7 +823,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
         if arg.lhs.declared_type is not None:
 
-            if _safely_strip_non_class_non_plain_mut(arg.lhs, cx) or \
+            if _mutate_strip_non_class_non_plain_mut(arg.lhs, cx) or \
                     any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
                 should_add_outer_const = False
 
@@ -1952,7 +1961,8 @@ def codegen_assign(node: Assign, cx: Scope):
             # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
             # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
 
-            if any(find_all(node.lhs.declared_type, test=lambda n: n.name in ["auto", "mut"])):
+            if node.lhs.declared_type.name == "mut" or any(t for t in type_node_to_list_of_types(node.lhs.declared_type) if t.name == "auto"):  # or _strip_non_class_non_plain_mut_type(node.lhs, cx):
+                # no need to assert non-narrowing if lhs type codegen has 'auto'
                 return const_specifier + direct_initialization
 
             # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
