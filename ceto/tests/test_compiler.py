@@ -28,7 +28,7 @@ class (Node:
     args : [Node:mut]
 
     def (init,
-         func,  # this was incorrectly codegening as const shared_ptr<const Node> rather than const shared_ptr<Node>
+         func,  # this was incorrectly codegening as const shared_ptr<const Node>& rather than const shared_ptr<Node>&
          args:
         self.func = func
         self.args = args

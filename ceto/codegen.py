@@ -720,7 +720,7 @@ def _should_add_const_ref_to_typed_param(param, cx):
     type_node = strip_mut_or_const(param.declared_type)
     if class_def := cx.lookup_class(type_node):
         return not class_def.is_unique
-    return isinstance(type_node, ListLiteral) or type_node.name == "string" or isinstance(type_node, (AttributeAccess, ScopeResolution)) and type_node.lhs.name == "std" and type_node.rhs.name == "string"
+    return isinstance(param.declared_type, ListLiteral) or param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string"
 
 
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
