@@ -28,15 +28,15 @@
 namespace py = pybind11;
 struct Node : ceto::shared_object {
 
-    std::shared_ptr<Node> func;
+    std::shared_ptr<const Node> func;
 
-    std::vector<std::shared_ptr<Node>> args;
+    std::vector<std::shared_ptr<const Node>> args;
 
     py::tuple source;
 
     py::object parent = py::none(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::none()), std::remove_cvref_t<decltype(parent)>>);
 
-    std::shared_ptr<Node> declared_type = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(declared_type)>>);
+    std::shared_ptr<const Node> declared_type = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(declared_type)>>);
 
     py::object scope = py::none(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::none()), std::remove_cvref_t<decltype(scope)>>);
 
@@ -54,7 +54,7 @@ struct Node : ceto::shared_object {
             return nullptr;
         }
 
-    explicit Node(const std::shared_ptr<Node>&  func, const std::vector<std::shared_ptr<Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {
+    explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {
     }
 
     Node() = delete;
@@ -113,7 +113,7 @@ struct Assign : public BinOp {
 
 };
 
-struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<Node>>{}, std::declval<std::remove_cvref_t<const py::tuple>>())) {
+struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) {
 
     std::string _name;
 
@@ -125,25 +125,25 @@ struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<No
             return (this -> _name);
         }
 
-    explicit Identifier(const std::string&  name, const py::tuple  source) : decltype(Node(nullptr, std::vector<std::shared_ptr<Node>>{}, std::declval<std::remove_cvref_t<const py::tuple>>())) (nullptr, std::vector<std::shared_ptr<Node>>{}, source), _name(name) {
+    explicit Identifier(const std::string&  name, const decltype(py::tuple{}) source = py::tuple{}) : decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), _name(name) {
     }
 
     Identifier() = delete;
 
 };
 
-    inline auto example_macro_body_workaround_no_fptr_syntax_yet(const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
+    inline auto example_macro_body_workaround_no_fptr_syntax_yet(const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
         return nullptr;
     }
 
-    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<Node>>  matches) -> auto {
+    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<const Node>>  matches) -> auto {
         const auto f = reinterpret_cast<decltype(&example_macro_body_workaround_no_fptr_syntax_yet)>(fptr);
         return (*f)(matches);
     }
 
 
-PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
-PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<Node>>);
+PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<const Node>>);
+PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<const Node>>);
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 
     // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
@@ -165,8 +165,8 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 //}
 ;
 []( auto &&  m) {
-        py::bind_vector<std::vector<std::shared_ptr<Node>>>(m, "VectorNode");
-        py::bind_map<std::map<std::string,std::shared_ptr<Node>>>(m, "MapStringNode");
+        py::bind_vector<std::vector<std::shared_ptr<const Node>>>(m, "VectorNode");
+        py::bind_map<std::map<std::string,std::shared_ptr<const Node>>>(m, "MapStringNode");
         auto node { ceto::mad(ceto::mad(ceto::mad(ceto::mad(ceto::mad(ceto::mad(ceto::mad(ceto::mad(py::class_<std::type_identity_t<std::shared_ptr<Node>> :: element_type,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("parent", (&Node::parent)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("name", (&Node::name)) } ;
         ceto::mad(py::class_<std::type_identity_t<std::shared_ptr<Identifier>> :: element_type,std::shared_ptr<Identifier>>(m, "Identifier", node))->def(py::init<const std::string &,py::tuple>());
         ceto::mad(m)->def("macro_trampoline", (&macro_trampoline), "macro trampoline");

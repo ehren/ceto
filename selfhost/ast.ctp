@@ -11,8 +11,8 @@ cpp'
 py: namespace = pybind11
 
 class (Node:
-    func : Node:mut
-    args : [Node:mut]
+    func : Node
+    args : [Node]
     source : py.tuple  # typing.Tuple[str, int]
 
     def (init, func, args, source = py.tuple{}:
@@ -22,7 +22,7 @@ class (Node:
     )
 
     parent : py.object = py.none()  # TODO implement weak (not sure if this will leak when a cycle is created in python code)
-    declared_type : Node:mut = None
+    declared_type : Node = None
     scope : py.object = py.none()
 
     def (repr: virtual:
@@ -97,9 +97,9 @@ class (Assign(BinOp):
 class (Identifier(Node):
     _name : string
 
-    def (init, name, source: py.tuple:
+    def (init, name, source = py.tuple{}:
         self._name = name
-        super.init(None, [] : Node : mut, source)
+        super.init(None, [] : Node, source)
     )
 
     def (repr:
@@ -184,12 +184,12 @@ class (Identifier(Node):
 #     return *action_ptr(match_dict)
 #)
 
-def (example_macro_body_workaround_no_fptr_syntax_yet, matches: std.map<string, Node:mut>:
+def (example_macro_body_workaround_no_fptr_syntax_yet, matches: std.map<string, Node>:
     return None
-) : Node:mut
+) : Node
 
 # this should probably take an index into an already dlsymed table of fptrs
-def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
+def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
     # writing a wrapper type for pybind11 around the correct function pointer would be better (fine for now)
     f = reinterpret_cast<decltype(&example_macro_body_workaround_no_fptr_syntax_yet)>(fptr)
     #f2 = reinterpret_cast<decltype(+lambda(matches:std.map<string, Node:mut>, None): Node:mut)>(fptr)   # TODO post-parse hacks for typed lambda only work for immediately invoked lambda aka Call node (not needed for assign case due to lower precedence =). debatable if needs fix for this case?: codegen.CodeGenError: ('unexpected typed construct', UnOp(+)([lambda(matches,Block((return : None)))]))
@@ -200,8 +200,8 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node:mut>:
 )
 
 cpp'
-PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Node>>);
-PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<Node>>);
+PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<const Node>>);
+PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<const Node>>);
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 
     // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
@@ -229,10 +229,11 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default (hence need for 'mut'). However, const auto&& pretty much makes no sense so maybe anything with 'rref' should be an exception to const by default logic
 
     #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
-    py.bind_vector<std.vector<Node:mut>>(m, c"VectorNode")
-    py.bind_map<std.map<std.string, Node:mut>>(m, c"MapStringNode") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
+    py.bind_vector<std.vector<Node>>(m, c"VectorNode")
+    py.bind_map<std.map<std.string, Node>>(m, c"MapStringNode") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
 
     # TODO Node::class
+    # Node:mut even though we're using (const) Node elsewhere because https://github.com/pybind/pybind11/issues/131 (though declaring a custom holder type seems no longer necessary)
     node : mut = py.class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node").def_readwrite(
         c"func", &Node.func).def_readwrite(
         c"args", &Node.args).def_readwrite(

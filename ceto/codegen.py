@@ -718,6 +718,7 @@ def strip_mut_or_const(type_node : Node):
 def _should_add_const_ref_to_typed_param(param, cx):
     assert param.declared_type is not None
     type_node = strip_mut_or_const(param.declared_type)
+    # note that mut:Foo (or Foo:mut), that is shared_ptr<Foo>, should still be passed by const ref
     if class_def := cx.lookup_class(type_node):
         return not class_def.is_unique
     return isinstance(param.declared_type, ListLiteral) or param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string"
