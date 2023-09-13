@@ -11,6 +11,16 @@ cpp'
 
 py: namespace = pybind11
 
+
+def (join, v, to_string, sep="":
+    if (v.empty():
+        return ""
+    )
+    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
+        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
+)
+
+
 class (Node:
     func : Node
     args : [Node]
@@ -30,14 +40,8 @@ class (Node:
         # selph : py.object = py.cast(this)
         # classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))  # cool but unnecessary
         classname : std.string = typeid(*this).name()
-
-        args_str : mut = "["
-        for (a in self.args:
-            args_str += a.repr() + ", "
-        )
-        args_str += "]"
-
-        return classname + "(" + self.func.repr() + ")(" + args_str + ")"
+        csv = join(self.args, lambda(a, a.repr()), ", ")
+        return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
 
     def (name: virtual:
@@ -64,7 +68,7 @@ class (BinOp(Node):
     )
 
     def (repr:
-        return self.lhs().repr() + self.func.repr() + self.rhs().repr()
+        return join([self.lhs(), self.func, self.rhs()], lambda(a, a.repr()), " ")
     ) : std.string
 )
 
@@ -112,16 +116,6 @@ class (Identifier(Node):
     ) : std.optional<std.string>
 )
 
-
-def (join, v, to_string, sep="":
-    if (v.empty():
-        return ""
-    )
-    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
-        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
-)
-
-
 class (Call(Node):
     def (repr:
         csv = join(self.args, lambda (a, a.repr()), ", ")
@@ -129,6 +123,39 @@ class (Call(Node):
     ) : std.string
 )
 
+class (ArrayAccess(Node):
+    def (repr:
+        csv = join(self.args, lambda (a, a.repr()), ", ")
+        return self.func.repr() + "[" + csv + "]"
+    ) : std.string
+)
+
+class (BracedCall(Node):
+    def (repr:
+        csv = join(self.args, lambda (a, a.repr()), ", ")
+        return self.func.repr() + "{" + csv + "}"
+    ) : std.string
+)
+
+class (Template(Node):
+    def (repr:
+        csv = join(self.args, lambda (a, a.repr()), ", ")
+        return self.func.repr() + "<" + csv + ">"
+    ) : std.string
+)
+
+class (IntegerLiteral(Node):
+    integer : py.object
+
+    def (init, integer, source = py.tuple{}:
+        self.integer = integer
+        super.init(None, [] : Node, source)
+    )
+
+    def (repr:
+        return std.string(py.str(self.integer))
+    ) : std.string
+)
 
 #no:
 #defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:

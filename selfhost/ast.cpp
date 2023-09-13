@@ -27,6 +27,16 @@
 #include <pybind11/stl_bind.h>
 ;
 namespace py = pybind11;
+    template <typename T1, typename T2>
+auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
+if (ceto::mad(v)->empty()) {
+            return std::string {""};
+        }
+        return std::accumulate(ceto::mad(v)->cbegin() + 1, ceto::mad(v)->cend(), to_string(ceto::maybe_bounds_check_access(v,0)), [&to_string, &sep](const auto &a, const auto &el) {
+                if constexpr (!std::is_void_v<decltype(((a + sep) + to_string(el)))>) { return ((a + sep) + to_string(el)); } else { static_cast<void>(((a + sep) + to_string(el))); };
+                });
+    }
+
 struct Node : ceto::shared_object {
 
     std::shared_ptr<const Node> func;
@@ -43,12 +53,10 @@ struct Node : ceto::shared_object {
 
          virtual inline auto repr() const -> std::string {
             const std::string classname = ceto::mad(typeid((*this)))->name(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::mad(typeid((*this)))->name()), std::remove_cvref_t<decltype(classname)>>);
-            auto args_str { std::string {"["} } ;
-            for(const auto& a : (this -> args)) {
-                args_str += (ceto::mad(a)->repr() + std::string {", "});
-            }
-            args_str += std::string {"]"};
-            return (((((classname + std::string {"("}) + ceto::mad(this -> func)->repr()) + std::string {")("}) + args_str) + std::string {")"});
+            const auto csv = join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mad(a)->repr())>) { return ceto::mad(a)->repr(); } else { static_cast<void>(ceto::mad(a)->repr()); };
+                    }, std::string {", "});
+            return (((((classname + std::string {"("}) + ceto::mad(this -> func)->repr()) + std::string {")(["}) + csv) + std::string {"])"});
         }
 
          virtual inline auto name() const -> std::optional<std::string> {
@@ -81,7 +89,9 @@ struct BinOp : public Node {
         }
 
         inline auto repr() const -> std::string {
-            return ((ceto::mad(this -> lhs())->repr() + ceto::mad(this -> func)->repr()) + ceto::mad(this -> rhs())->repr());
+            return join(std::vector {{this -> lhs(), this -> func, this -> rhs()}}, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mad(a)->repr())>) { return ceto::mad(a)->repr(); } else { static_cast<void>(ceto::mad(a)->repr()); };
+                    }, std::string {" "});
         }
 
 };
@@ -133,16 +143,6 @@ struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<co
 
 };
 
-    template <typename T1, typename T2>
-auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
-if (ceto::mad(v)->empty()) {
-            return std::string {""};
-        }
-        return std::accumulate(ceto::mad(v)->cbegin() + 1, ceto::mad(v)->cend(), to_string(ceto::maybe_bounds_check_access(v,0)), [&to_string, &sep](const auto &a, const auto &el) {
-                if constexpr (!std::is_void_v<decltype(((a + sep) + to_string(el)))>) { return ((a + sep) + to_string(el)); } else { static_cast<void>(((a + sep) + to_string(el))); };
-                });
-    }
-
 struct Call : public Node {
 
         inline auto repr() const -> std::string {
@@ -151,6 +151,54 @@ struct Call : public Node {
                     }, std::string {", "});
             return (((ceto::mad(this -> func)->repr() + std::string {"("}) + csv) + std::string {")"});
         }
+
+};
+
+struct ArrayAccess : public Node {
+
+        inline auto repr() const -> std::string {
+            const auto csv = join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mad(a)->repr())>) { return ceto::mad(a)->repr(); } else { static_cast<void>(ceto::mad(a)->repr()); };
+                    }, std::string {", "});
+            return (((ceto::mad(this -> func)->repr() + std::string {"["}) + csv) + std::string {"]"});
+        }
+
+};
+
+struct BracedCall : public Node {
+
+        inline auto repr() const -> std::string {
+            const auto csv = join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mad(a)->repr())>) { return ceto::mad(a)->repr(); } else { static_cast<void>(ceto::mad(a)->repr()); };
+                    }, std::string {", "});
+            return (((ceto::mad(this -> func)->repr() + std::string {"{"}) + csv) + std::string {"}"});
+        }
+
+};
+
+struct Template : public Node {
+
+        inline auto repr() const -> std::string {
+            const auto csv = join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mad(a)->repr())>) { return ceto::mad(a)->repr(); } else { static_cast<void>(ceto::mad(a)->repr()); };
+                    }, std::string {", "});
+            return (((ceto::mad(this -> func)->repr() + std::string {"<"}) + csv) + std::string {">"});
+        }
+
+};
+
+struct IntegerLiteral : public decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) {
+
+    py::object integer;
+
+        inline auto repr() const -> std::string {
+            return std::string(py::str(this -> integer));
+        }
+
+    explicit IntegerLiteral(const py::object  integer, const decltype(py::tuple{}) source = py::tuple{}) : decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), integer(integer) {
+    }
+
+    IntegerLiteral() = delete;
 
 };
 
