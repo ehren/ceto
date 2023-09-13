@@ -1,6 +1,24 @@
 from ceto.parser import parse, TupleLiteral, Module
 
 
+
+def test_less_or_equals():
+    source = r"""
+x <= y    
+x <<= y
+x >= y
+x >>= y
+x > y >>= y
+x < y >>= z
+x >= y > z
+x > y >= z
+x < y <= z
+x <= y < z
+    """
+    p = parse(source)
+    assert str(p) == "Module((x <= y),(x <<= y),(x >= y),(x >>= y),((x > y) >>= y),((x < y) >>= z),((x >= y) > z),((x > y) >= z),((x < y) <= z),((x <= y) < z))"
+
+
 def test_compound_comparison():
     source = r"""
 1+1    

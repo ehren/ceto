@@ -1632,7 +1632,7 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
         scope_resolution_list = []
 
         while isinstance(leading, AttributeAccess):
-            scope_resolution_list.insert(0, leading.rhs)
+            scope_resolution_list.append(leading.rhs)
             leading = leading.lhs
 
         if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):

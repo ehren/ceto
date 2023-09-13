@@ -66,8 +66,8 @@ def runtest(s, compile_cpp=True):
         #    command = 
 
         command = filename + f" -std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/ "
-        command = "g++ " + command
-        # command = "clang++ " + command
+        #command = "g++ " + command
+        command = "clang++ " + command
 
 
         t1 = perf_counter()

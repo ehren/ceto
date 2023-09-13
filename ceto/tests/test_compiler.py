@@ -46,6 +46,72 @@ def (main:
     assert c == "1, 2, 3, 4, 5blah0"
 
 
+def test_attempt_use_after_free2():
+
+    # (no plans to address - be careful with globals and threading!)
+    c = compile(r"""
+cpp'
+#include <chrono>
+'
+
+class (Foo:
+    x : int = 1
+
+    def (long_running_method: mut:
+        while (x <= 5:
+            std.cout << "in Foo: " << self.x << "\n"
+            std.this_thread.sleep_for(std.chrono.seconds(1))
+            self.x += 1
+        )
+    )
+
+    def (destruct:
+        std.cout << "Foo destruct\n"
+    )
+)
+
+class (Holder:
+    f : Foo:mut = None
+    
+    def (getter:
+        return f
+    )
+)
+
+def (main:
+    g = Holder() : mut
+    f = Foo() : mut
+    g.f = f
+    
+    t: mut = std.thread(lambda(:
+        # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) but there's still technically a race condition
+        g.f.long_running_method()  # this is a definite use after free
+    ))
+    
+    std.this_thread.sleep_for(std.chrono.seconds(3))
+    g.f = None
+    
+    std.cout << "is dead: " << (g.f == nullptr) << "\n"
+    
+    t.join()
+    
+    std.cout << "ub has occured\n"
+)
+    """)
+
+    # output not deterministic but should be stable
+    assert c.strip() == r"""
+in Foo: 1
+in Foo: 2
+in Foo: 3
+Foo destruct
+is dead: 1
+in Foo: 4
+in Foo: 5
+ub has occured
+    """.strip()
+
+
 def test_alias1():
     # this should be fine too
     c = compile(r"""

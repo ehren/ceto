@@ -294,7 +294,7 @@ def _build_grammar():
     bitwise_or_assign_op = pp.Literal("|=")
     bitwise_xor_assign_op = pp.Literal("^=")
 
-    _compar_atoms = list(map(pp.Literal, ["<", "<=",  ">",  ">=", "!=", "=="]))
+    _compar_atoms = list(map(pp.Literal, ["<=",">=", "<" , ">", "!=", "=="]))
     _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
     comparisons = _compar_atoms.pop()
     for c in _compar_atoms:
