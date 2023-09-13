@@ -5,7 +5,7 @@ from .semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, 
     SyntaxTypeOp, find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
-    list_to_typed_node, list_to_attribute_access_node
+    list_to_typed_node, list_to_attribute_access_node, is_call_lambda
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
 
 from collections import defaultdict
@@ -1232,7 +1232,42 @@ def codegen_lambda(node, cx):
     #     node.declared_type = declared_type  # put type in normal position
     #     node.func = node.func.lhs  # func is now 'lambda' keyword
 
-    if cx.parent.in_function_body:
+    if isinstance(node.func, ArrayAccess):
+        # explicit capture list
+
+        def codegen_capture_list_item(a):
+
+            def codegen_capture_list_address_op(u : UnOp):
+                if isinstance(u, UnOp) and u.func == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
+                    # codegen would add parenthese to UnOp arg here:
+                    return "&" + codegen_node(u.args[0], cx)
+                return None
+
+            if isinstance(a, Assign):
+                if ref_capture := codegen_capture_list_address_op(a.lhs):
+                    lhs = ref_capture
+                elif isinstance(a.lhs, Identifier) and not a.lhs.declared_type:
+                    lhs = codegen_node(a.lhs, cx)
+                else:
+                    raise CodeGenError("Unexpected lhs in capture list assign", a)
+                return lhs + " = " + codegen_node(a.rhs, cx)
+            else:
+                if ref_capture := codegen_capture_list_address_op(a):
+                    return ref_capture
+                if isinstance(a, UnOp) and a.func == "*" and a.args[0].name == "this":
+                    return "*" + codegen_node(a.args[0])
+                if not isinstance(a, Identifier) or a.declared_type:
+                    raise CodeGenError("Unexpected capture list item", a)
+                if a.name == "ref":
+                    # special case non-type usage of ref
+                    return "&"
+                elif a.name == "val":
+                    return "="
+                return codegen_node(a, cx)
+
+        capture_list = [codegen_capture_list_item(a) for a in node.func.args]
+
+    elif cx.parent.in_function_body:
 
         def is_capture(n):
             if not isinstance(n, Identifier):
@@ -1264,7 +1299,7 @@ def codegen_lambda(node, cx):
                 if is_capture:
                     possible_captures.append(i.name)
 
-        capture_list = ",".join([i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures])
+        capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
     # elif TODO is nonescaping or immediately invoked:
     #    capture_list = "&"
     else:
@@ -1273,7 +1308,7 @@ def codegen_lambda(node, cx):
     # lambda[ref](foo(x))
     # lambda[&x=x, y=bar(y)](foo(x,y))  # need to loosen ArrayAccess
 
-    return ("[" + capture_list + "](" + ", ".join(params) + ")" + type_str + " {\n" +
+    return ("[" + ", ".join(capture_list) + "](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)
 
 
@@ -1625,16 +1660,17 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
 
+    if is_call_lambda(node):
+        newcx = cx.enter_scope()
+        newcx.in_function_param_list = True
+        return codegen_lambda(node, newcx)
+
     if isinstance(node.func, Identifier):
         func_name = node.func.name
         if func_name == "if":
             return codegen_if(node, cx)
         elif func_name == "def":
             return codegen_def(node, cx)
-        elif func_name == "lambda":
-            newcx = cx.enter_scope()
-            newcx.in_function_param_list = True
-            return codegen_lambda(node, newcx)
         elif func_name == "range":
             if len(node.args) == 1:
                 return "std::views::iota(0, " + codegen_node(node.args[0],
@@ -1719,6 +1755,7 @@ def codegen_call(node: Call, cx: Scope):
 
             return call_str
     else:
+        # probably a method:
 
         # not auto-flattening args is becoming annoying!
         # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)

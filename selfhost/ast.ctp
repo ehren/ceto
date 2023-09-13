@@ -3,6 +3,7 @@
 cpp'
 #include <map>
 #include <typeinfo>
+#include <numeric>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -109,6 +110,23 @@ class (Identifier(Node):
     def (name:
         return self._name
     ) : std.optional<std.string>
+)
+
+
+def (join, v, to_string, sep="":
+    if (v.empty():
+        return ""
+    )
+    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
+        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
+)
+
+
+class (Call(Node):
+    def (repr:
+        csv = join(self.args, lambda (a, a.repr()), ", ")
+        return self.func.repr() + "(" + csv + ")"
+    ) : std.string
 )
 
 

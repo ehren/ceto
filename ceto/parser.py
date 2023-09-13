@@ -255,9 +255,9 @@ def _build_grammar():
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
-    # no python slice syntax for arrays planned
+    # no python slice syntax - but can be faked with TypeOp
     # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
-    array_access_args = lit_lbrack + infix_expr + lit_rbrack  # TODO could allow 0-args version for array declarations (although no reason not to use std::array - could also make a std::array like built-in using template notation that codegens as a C-style array definition)
+    array_access_args = lit_lbrack + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrack
 
     braced_args = lit_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrace
 

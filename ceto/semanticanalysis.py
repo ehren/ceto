@@ -2,7 +2,7 @@ import typing
 from collections import defaultdict
 import sys
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -157,6 +157,11 @@ def list_to_attribute_access_node(lst):
     return op
 
 
+def is_call_lambda(node: Call):
+    assert isinstance(node, Call)
+    return node.func.name == "lambda" or (isinstance(node.func, ArrayAccess) and node.func.func.name == "lambda")
+
+
 def build_types(node: Node):
 
     if not isinstance(node, Node):
@@ -253,49 +258,48 @@ def one_liner_expander(parsed):
             op = SyntaxTypeOp(func=":", args=[Identifier("return", op.source)] + op.args, source=op.source)
 
         if isinstance(op, Call):
-            if isinstance(op.func, Identifier):
-                if op.func.name == "def":
-                    if len(op.args) == 0:
-                        raise SemanticAnalysisError("empty def")
-                    # if not isinstance(op.args[0], Identifier):
-                    #     raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
-                elif op.func.name == "lambda":
-                    if not op.args:
-                        raise SemanticAnalysisError("not enough lambda args")
-                elif op.func.name == "if":
-                    while True:
-                        new = ifreplacer(op)
-                        if new is not op:
-                            op = new
-                        else:
-                            break
-                # if op.func.name in ["def", "lambda"]:  # no def one liners
-                if op.func.name == "lambda":
-                    if not isinstance(op.args[-1], Block):
-                        # last arg becomes one-element block
-                        op = Call(func=op.func, args=op.args[0:-1] + [Block(args=[op.args[-1]])], source=op.source)
-                    if op.func.name == "lambda":
-                        block = op.args[-1]
-                        last_statement = block.args[-1]
-                        if is_return(last_statement):
-                            pass
-                        elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class"]:
-                            synthetic_return = Identifier("return", None)
-                            block.args += [synthetic_return]
-                        else:
-                            synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", None), last_statement], source=None)
-                            if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
-                                synthetic_return.synthetic_lambda_return_lambda = op
-                            block.args = block.args[0:-1] + [synthetic_return]
-                    # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
-                        # if op.func.name == "lambda":
-                            # last 'statement' becomes return
-                            # block.args = block.args[0:-1] + [SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
+            if op.func.name == "def":
+                if len(op.args) == 0:
+                    raise SemanticAnalysisError("empty def")
+                # if not isinstance(op.args[0], Identifier):
+                #     raise SemanticAnalysisError("bad def args (first arg must be an identifier)")
+            elif is_call_lambda(op):
+                if not op.args:
+                    raise SemanticAnalysisError("not enough lambda args")
+            elif op.func.name == "if":
+                while True:
+                    new = ifreplacer(op)
+                    if new is not op:
+                        op = new
+                    else:
+                        break
+            # if op.func.name in ["def", "lambda"]:  # no def one liners
+            if is_call_lambda(op):
+                if not isinstance(op.args[-1], Block):
+                    # last arg becomes one-element block
+                    op = Call(func=op.func, args=op.args[0:-1] + [Block(args=[op.args[-1]])], source=op.source)
+                if is_call_lambda(op):
+                    block = op.args[-1]
+                    last_statement = block.args[-1]
+                    if is_return(last_statement):
+                        pass
+                    elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class"]:
+                        synthetic_return = Identifier("return", None)
+                        block.args += [synthetic_return]
+                    else:
+                        synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", None), last_statement], source=None)
+                        if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
+                            synthetic_return.synthetic_lambda_return_lambda = op
+                        block.args = block.args[0:-1] + [synthetic_return]
+                # if is_return(last_statement):  # Note: this 'is_return' call needs to handle UnOp return (others do not)
+                    # if op.func.name == "lambda":
+                        # last 'statement' becomes return
+                        # block.args = block.args[0:-1] + [SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), last_statement])]
 
-                        # else:
-                            # We'd like implicit return None like python - but perhaps return 'default value for type' allows more pythonic c++ code
-                            # pass # so wait for code generation to 'return {}'
-                            # block.args.append(SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
+                    # else:
+                        # We'd like implicit return None like python - but perhaps return 'default value for type' allows more pythonic c++ code
+                        # pass # so wait for code generation to 'return {}'
+                        # block.args.append(SyntaxTypeOp(func=":", args=[RebuiltIdentifer("return"), RebuiltIdentifer("None")]))
 
         op.args = [visitor(arg) for arg in op.args]
         op.func = visitor(op.func)
