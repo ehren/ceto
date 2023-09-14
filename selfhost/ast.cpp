@@ -202,6 +202,15 @@ struct IntegerLiteral : public decltype(Node(nullptr, std::vector<std::shared_pt
 
 };
 
+    inline auto string_replace(const std::string&  str, const std::string&  from, const std::string&  to) -> auto {
+        size_t start_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(start_pos)>);
+        auto res { str } ;
+while (start_pos = ceto::mad(res)->find(from, start_pos) != std::string::npos) {            ceto::mad(res)->replace(start_pos, ceto::mad(from)->length(), to);
+            start_pos += ceto::mad(to)->length();
+        }
+        return res;
+    }
+
     inline auto example_macro_body_workaround_no_fptr_syntax_yet(const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
         return nullptr;
     }

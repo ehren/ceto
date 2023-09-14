@@ -157,6 +157,55 @@ class (IntegerLiteral(Node):
     ) : std.string
 )
 
+
+# https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/24315631#24315631
+#std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
+#    size_t start_pos = 0;
+#    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+#        str.replace(start_pos, from.length(), to);
+#        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+#    }
+#    return str;
+#}
+
+
+def (string_replace, str : string, from : string, to : string:
+    start_pos: mut:size_t = 0
+    res : mut = str  # string passed by const ref by default
+    while ((start_pos = res.find(from, start_pos)) != std.string.npos:  # TODO just 'string.npos' (or string::npos) should be possible if you can write just 'string' (to codegen std::string)
+        res.replace(start_pos, from.length(), to)
+        start_pos += to.length()  # // Handles case where 'to' is a substring of 'from'
+    )
+    return res
+)
+
+
+#class (StringLiteral(Node):
+#    string : std.string  # this is weird
+#
+#    def (repr:
+#        escaped = self.escaped()
+#        if self.prefix:
+#            escaped = self.prefix.name + escaped
+#        if self.suffix:
+#            escaped += self.suffix.name
+#        return escaped
+#    )
+#
+#    def escaped(self):
+#        escaped = self.string.replace("\n", r"\n")
+#        escaped = '"' + escaped + '"'
+#        return escaped
+#    )
+#
+#    def __init__(self, string, prefix, suffix, source):
+#        self.string = string
+#        self.prefix = prefix
+#        self.suffix = suffix
+#        super().__init__(None, [], source)
+#    )
+#)
+
 #no:
 #defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:
 #)
