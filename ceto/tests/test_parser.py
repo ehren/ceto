@@ -1,6 +1,19 @@
 from ceto.parser import parse, TupleLiteral, Module
 
 
+def test_one_liner_if_mut_parse():
+    source = r"""
+if (Foo():mut:
+    std.cout << "5"
+)    
+if ((Foo():mut):
+    std.cout << "5"
+)    
+if (Foo():mut: std.cout << "5" )    
+if ((Foo():mut): std.cout << "5" )   
+    """
+    print(parse(source))
+
 
 def test_less_or_equals():
     source = r"""
