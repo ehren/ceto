@@ -1,7 +1,9 @@
-import os
-
 from ceto.compiler import runtest
 from ceto.parser import parse
+
+import sys
+
+import pytest
 
 
 def compile(s):
@@ -1105,12 +1107,20 @@ def (main:
 
 def test_non_indexable_thing():
     compile(r"""
+cpp'
+#include <array>
+'
+    
 def (main:
     1+std.array<int, 27>()[5]
 )
         """)
 
     raises(lambda: compile(r"""
+cpp'
+#include <array>
+'
+    
 def (main:
     (1+std.array<int, 27>())[5]
 )
@@ -1908,6 +1918,11 @@ def (main:
 
 def test_braced_call():
     c = compile(r"""
+    
+cpp'
+#include <array>
+'
+    
 def (main:
     a = std.array<int, 3> {1,2,3}
     a3 : std.array<int, 3> = {1,2,3}
@@ -1948,6 +1963,10 @@ def (main:
 
     def f():
         compile(r"""
+cpp'
+#include <array>
+'
+        
 def (main:
     a2 = std.array<int, 3> (1,2,3)  # not supported by std::array
 )
@@ -2062,6 +2081,10 @@ def (main:
 
 def test_curly_brace():
     c = compile(r"""
+
+cpp'
+#include <array>
+'
 
 def (main:
     l : std.vector<std.vector<int>> = {{1}, {1,2,3}}
@@ -2513,6 +2536,9 @@ def (main:
 
 def test_compound_comparison():
     c = compile(r"""
+cpp'
+#include <array>
+'
 
 def (main:
     # this is now regarded as a template by the preprocessor but not the parser
@@ -4166,6 +4192,7 @@ foo
     """.strip()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="problems with native stack overflow / recursionlimit failing windows ci")
 def test_stress_parser():
     # at least clang hangs on this before we do
     # limit = 50

@@ -46,47 +46,47 @@ def compile(s) -> (str, Module):
 def runtest(s, compile_cpp=True):
     code, _ = compile(s)
 
-    # print("code:\n", code)
     output = None
 
     if compile_cpp:
         build_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "build")
         if not os.path.exists(build_dir):
             os.makedirs(build_dir)
-        # filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
-        # filename = safe_unique_filename("generatedcode", ".cpp", basepath=build_dir)
         filename = os.path.join(build_dir, "testsuitegenerated.cpp")
 
         with open(filename, "w") as f:
             f.write(code)
 
-        #import platform
-        #import pwd
-        #if pwd.getpwuid(os.getuid())[0] == "ehren" and "Darwin" in platform.system(): 
-        #    command = 
+        if "CXX" in os.environ:
+            CXX = os.environ["CXX"]
+        else:
+            CXX = "c++"
 
-        command = filename + f" -std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/ "
-        # command = "g++ " + command
-        # command = "clang++ " + command
-        command = "c++ " + command
+        if CXX == "cl":
+            CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc /I{os.path.join(os.path.dirname(__file__))}/../include/"
+            exe_name = "testsuitegenerated.exe"
+        else:
+            CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/"
+            exe_name = "./a.out"
 
+        command = f"{CXX} {filename} {CXXFLAGS}"
+
+        print(command)
 
         t1 = perf_counter()
         p = subprocess.Popen(command, shell=True)
 
-        # sio = io.StringIO(s)
-        # t = perf_counter()
-        # preprocess(sio).getvalue()  # still have to run the 'pre'processor due to insufficient indent checking in current grammar
-        # print("indent checking time", perf_counter() - t)
-
         output, error = p.communicate()
         print("c++ compiling time", perf_counter() - t1)
 
-        output = subprocess.check_output('./a.out').decode("utf-8")#, shell=True)
+        output = subprocess.check_output(exe_name).decode("utf-8")#, shell=True)
         print(output)
 
         os.remove(os.path.join(".", filename))
-        os.remove('./a.out')
+        os.remove(exe_name)
+
+        if CXX == "cl":
+            output = output.replace("\r\n", "\n")
 
     return output
 

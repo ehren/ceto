@@ -6,13 +6,13 @@
 import sys
 import pyparsing as pp
 
-# pp.ParserElement.enable_left_recursion()
-if sys.platform == "win32":
-    pp.ParserElement.enable_packrat(2**20)
-    sys.setrecursionlimit(1000)
-else:
-    sys.setrecursionlimit(2**13)  # TODO we should leave this up to the user (but avoiding a python interpreter stack overflow just result in an annoying hang)
-    pp.ParserElement.enable_packrat(2**20)
+# pp.ParserElement.enable_left_recursion()  # this works but packrat is faster
+
+if sys.platform != "win32":
+    # see below for windows thread stack limit change
+    sys.setrecursionlimit(2**13)  # TODO we should leave this up to the user (but avoiding a python interpreter stack overflow just results in an annoying hang)
+
+pp.ParserElement.enable_packrat(2**20)
 
 import io
 
@@ -448,3 +448,23 @@ def parse(source: str):
     print("final parse:", res)
 
     return res
+
+
+if sys.platform == "win32":
+    parse_orig = parse
+    def parse(*args):
+        result = None
+
+        def doit(args):
+            nonlocal result
+            result = parse_orig(args)
+
+        import threading
+        sys.setrecursionlimit(5000)
+        threading.stack_size(2**22)
+        thread = threading.Thread(target=doit, args=args)
+        thread.start()
+        thread.join()
+
+        return result
+
