@@ -53,8 +53,6 @@ shared_from(That* that) {
 }
 
 
-// mad = maybe allow deref
-
 class null_deref_error : public std::runtime_error
 {
 public:
@@ -78,43 +76,49 @@ public:
 #endif
 
 
+// mad = maybe allow deref
+
+// Based on answer of user Nawaz at https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or?noredirect=1&lq=1
+// but with raw pointer autoderef removed and smart pointer (to ceto created classes) autoderef added.
+
+// no autoderef
 template<typename T>
 T* mad(T & obj) {
-    return std::addressof(obj);  // no autoderef:
+    return std::addressof(obj);
 }
 
 // e.g. string temporaries
+// no autoderef
 template<typename T>
 T* mad(T && obj) {
-    return std::addressof(obj);   // no autoderef
+    return std::addressof(obj);
 }
 
+// autoderef
 template<typename T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
 mad(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
-    return obj;   // autoderef
+    return obj;
 }
 // autoderef:
 //template<typename T>
 //std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
 //mad(std::shared_ptr<T> obj) { return obj; }
+// no need for a pass by value / return by value case it would seem
 
 
 // autoderef of temporary
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
+std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>  // could return std::shared_ptr<T>& here and remove the std::move
 mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
-    return std::move(obj);  // autoderef
+    return std::move(obj);
 }
-//template<typename T>
-//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
-//mad(std::shared_ptr<T>&& obj) { return obj; }  // autoderef
 
 // autoderef
 template<typename T>
@@ -148,19 +152,18 @@ mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef of temporary
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>
+std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>  // could return std::unique_ptr<T>& here and remove the std::move
 mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return std::move(obj);
 }
-//template<typename T>
-//std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
-//mad(std::unique_ptr<T>&& obj) { return obj; }
 
 
-// automatic make_shared insertion
+// Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
+// (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
+// TODO consider re-enabling in certain contexts: would allow decltype(x)(1, 2) to result in a make_shared when x is a shared_ptr<shared_object> (this will fail in most cases now but may succeed undesirably in a few others e.g. decltype(x)() is an empty shared_ptr under naive class lookup when some might expect make_shared<decltype(*x)>()  (default constructor call)
 
 template<typename T, typename... Args>
 std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
@@ -301,24 +304,6 @@ auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
 {
     return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
 }
-
-
-// https://stackoverflow.com/questions/44677825/rvalue-to-lvalue-conversion/67059296#67059296
-template<class T> T& unmove(T&& t) { return t; }
-
-
-
-// https://stackoverflow.com/questions/67128867/check-if-a-type-is-a-template/67129011#67129011
-template<template<class ...> class T>
-constexpr bool is_template() { return true; }
-
-// ADDITIONAL SPECIALIZATION for non-type arguments
-template<template<auto ...> class T>
-constexpr bool is_template() { return true; }
-
-template<class T>
-constexpr bool is_template() { return false; }
-
 
 } // namespace ceto
 
