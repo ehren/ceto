@@ -83,7 +83,7 @@ def (main:
 
 def test_attempt_use_after_free2():
 
-    # (no plans to address - be careful with globals and threading!)
+    # no plans to address - be careful with multithreaded code!
     c = compile(r"""
 cpp'
 #include <chrono>
@@ -115,8 +115,7 @@ class (Holder:
 
 def (main:
     g = Holder() : mut
-    f = Foo() : mut
-    g.f = f
+    g.f = Foo() : mut
     
     t: mut = std.thread(lambda(:
         # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) but there's still technically a race condition
@@ -125,8 +124,6 @@ def (main:
     
     std.this_thread.sleep_for(std.chrono.seconds(3))
     g.f = None
-    
-    std.cout << "is dead: " << (g.f == nullptr) << "\n"
     
     t.join()
     
@@ -140,7 +137,6 @@ in Foo: 1
 in Foo: 2
 in Foo: 3
 Foo destruct
-is dead: 1
 in Foo: 4
 in Foo: 5
 ub has occured
