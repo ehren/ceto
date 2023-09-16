@@ -25,8 +25,8 @@ ext_modules = [
     Pybind11Extension("ceto._abstractsyntaxtree",
         ["selfhost/ast.cpp"],
         #define_macros = [('VERSION_INFO', __version__)],
-		cxx_std=20
-        ),
+        cxx_std=20
+    ),
 ]
 
 setup(
@@ -47,7 +47,10 @@ setup(
         ('include', glob('include/*'))
     ],
     extras_require={"test": "pytest"},
-    cmdclass={"build_ext": build_ext},
+    install_requires=[
+        'pyparsing',
+    ],
+    #cmdclass={"build_ext": build_ext},
     zip_safe=False,
     python_requires=">=3.8",
 )

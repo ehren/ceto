@@ -3,12 +3,16 @@
 #
 # 
 #
+import sys
 import pyparsing as pp
 
-import sys
-sys.setrecursionlimit(2**13)
 # pp.ParserElement.enable_left_recursion()
-pp.ParserElement.enable_packrat(2**20)
+if sys.platform == "win32":
+    pp.ParserElement.enable_packrat(2**20)
+    sys.setrecursionlimit(1000)
+else:
+    sys.setrecursionlimit(2**13)  # TODO we should leave this up to the user (but avoiding a python interpreter stack overflow just result in an annoying hang)
+    pp.ParserElement.enable_packrat(2**20)
 
 import io
 
