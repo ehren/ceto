@@ -124,7 +124,7 @@ struct Assign : public BinOp {
 
 };
 
-struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) {
+struct Identifier : public std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
     std::string _name;
 
@@ -136,7 +136,7 @@ struct Identifier : public decltype(Node(nullptr, std::vector<std::shared_ptr<co
             return (this -> _name);
         }
 
-    explicit Identifier(const std::string&  name, const decltype(py::tuple{}) source = py::tuple{}) : decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), _name(name) {
+    explicit Identifier(const std::string&  name, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), _name(name) {
     }
 
     Identifier() = delete;
@@ -187,7 +187,7 @@ struct Template : public Node {
 
 };
 
-struct IntegerLiteral : public decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) {
+struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
     py::object integer;
 
@@ -195,7 +195,7 @@ struct IntegerLiteral : public decltype(Node(nullptr, std::vector<std::shared_pt
             return std::string(py::str(this -> integer));
         }
 
-    explicit IntegerLiteral(const py::object  integer, const decltype(py::tuple{}) source = py::tuple{}) : decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>())) (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), integer(integer) {
+    explicit IntegerLiteral(const py::object  integer, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), integer(integer) {
     }
 
     IntegerLiteral() = delete;

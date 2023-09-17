@@ -1,4 +1,3 @@
-import os
 import typing
 from typing import Union, Any
 
@@ -517,9 +516,8 @@ def codegen_class(node : Call, cx):
                 # here CTAD takes care of the real type of the base class (in case the base class is a template)
                 # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
                 base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
-                if os.environ.get("CXX", "").lower() in ["cl", "cl.exe"]:
-                    # TODO more robust check for msvc
-                    base_class_type = "std::type_identity_t<" + base_class_type + ">"
+                # this is only necessary for msvc (see above link) but it's fine on other platforms:
+                base_class_type = "std::type_identity_t<" + base_class_type + ">"
 
             super_init_str = base_class_type + " (" + ", ".join(super_init_args) + ")"
             initializer_list_items.insert(0, super_init_str)  # TODO we should preserve the user defined order
