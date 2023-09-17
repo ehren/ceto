@@ -4,7 +4,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-__version__ = "0.1"
+__version__ = "0.1.1"
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -25,7 +25,8 @@ ext_modules = [
     Pybind11Extension("ceto._abstractsyntaxtree",
         ["selfhost/ast.cpp"],
         #define_macros = [('VERSION_INFO', __version__)],
-        cxx_std=20
+        cxx_std=20,
+        include_dirs=["include"]
     ),
 ]
 
@@ -42,10 +43,6 @@ setup(
     description="General purpose programming language transpiled to C++",
     long_description="Parens/call expression language transpiled to c++20. \"Python\" with 2 parentheses moved or inserted (with extra C++ syntax). Codegen based on https://github.com/lukasmartinelli/py14 with additions e.g. implicit make_shared/unique, checked autoderef via '.', swiftish lambda capture, implicit move from last use of unique, const by default, extra CTAD!",
     ext_modules=ext_modules,
-    #package_data={'ceto': ['../include/']},
-    data_files = [
-        ('include', glob('include/*'))
-    ],
     extras_require={"test": "pytest"},
     install_requires=[
         'pyparsing',
