@@ -1621,7 +1621,13 @@ def codegen_type(expr_node, type_node, cx, _is_leading=True):
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
     assert isinstance(node, AttributeAccess)
 
-    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO we must have a bug where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
+    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):
+        if node.rhs.name == "class":
+            # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
+            # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes
+            return node.lhs.name
+
+        # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
         return node.lhs.name + "::" + codegen_node(node.rhs, cx)
 
     if isinstance(node.lhs, (Identifier, AttributeAccess)):

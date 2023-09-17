@@ -323,12 +323,11 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default (hence need for 'mut'). However, const auto&& pretty much makes no sense so maybe anything with 'rref' should be an exception to const by default logic
 
     #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
-    py.bind_vector<std.vector<Node>>(m, c"VectorNode")
-    py.bind_map<std.map<std.string, Node>>(m, c"MapStringNode") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
+    py.bind_vector<std.vector<Node>>(m, c"NodeVector")
+    py.bind_map<std.map<std.string, Node>>(m, c"StringNodeMap") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
 
-    # TODO Node::class
-    # Node:mut even though we're using (const) Node elsewhere because https://github.com/pybind/pybind11/issues/131 (though declaring a custom holder type seems no longer necessary)
-    node : mut = py.class_<std.type_identity_t<Node:mut>::element_type, Node:mut>(m, c"Node").def_readwrite(
+    # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
+    node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
         c"func", &Node.func).def_readwrite(
         c"args", &Node.args).def_readwrite(
         c"parent", &Node.parent).def_readwrite(
@@ -338,7 +337,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"__repr__", &Node.repr).def(
         c"name", &Node.name)
 
-    py.class_<std.type_identity_t<Identifier:mut>::element_type, Identifier:mut>(m, c"Identifier", node).def(
+    py.class_<Identifier.class, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref, py.tuple>())
 
     #m.def(c"printid", &printid, c"A function that prints an id")

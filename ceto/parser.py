@@ -8,10 +8,6 @@ import pyparsing as pp
 
 # pp.ParserElement.enable_left_recursion()  # this works but packrat is faster
 
-if sys.platform != "win32":
-    # see below for windows thread stack limit change
-    sys.setrecursionlimit(2**13)  # TODO we should leave this up to the user (but avoiding a python interpreter stack overflow just results in an annoying hang)
-
 pp.ParserElement.enable_packrat(2**20)
 
 import io
@@ -450,7 +446,9 @@ def parse(source: str):
     return res
 
 
-if sys.platform == "win32":
+if sys.platform != "win32":
+    sys.setrecursionlimit(2**13)  # TODO we should leave this up to the user (this will overflow the python interpreter but that's better than an annoying hang in pyparsing)
+else:
     _parse_orig = parse
 
     def parse(*args):
