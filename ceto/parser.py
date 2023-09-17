@@ -451,13 +451,19 @@ def parse(source: str):
 
 
 if sys.platform == "win32":
-    parse_orig = parse
+    _parse_orig = parse
+
     def parse(*args):
         result = None
+        exc = None
 
         def doit(args):
             nonlocal result
-            result = parse_orig(args)
+            nonlocal exc
+            try:
+                result = _parse_orig(args)
+            except BaseException as e:
+                exc = e
 
         import threading
         sys.setrecursionlimit(5000)
@@ -466,5 +472,7 @@ if sys.platform == "win32":
         thread.start()
         thread.join()
 
-        return result
+        if exc is not None:
+            raise exc
 
+        return result
