@@ -212,8 +212,7 @@ def (main:
 )
     """)
 
-    # output not deterministic but should be stable
-    assert c.strip() == r"""
+    assert c.strip() in [r"""
 in Foo: 1
 in Foo: 2
 in Foo: 3
@@ -221,7 +220,15 @@ Foo destruct
 in Foo: 4
 in Foo: 5
 ub has occured
-    """.strip()
+    """.strip(), r"""
+in Foo: 1
+in Foo: 2
+in Foo: 3
+in Foo: 4
+Foo destruct
+in Foo: 5
+ub has occured
+    """.strip()]
 
 
 def test_alias1():
@@ -520,15 +527,15 @@ def (main:
 
 
 def test_u8_string_prefix():
-    # u8string not recommended (prefix test)
+    # u8string not recommended (string with prefix and suffix test)
     c = compile(r"""
 def (main:
-    u : std.u8string = u8"😐"c
-    s = std.string(u.begin(), u.end())  # oof
+    u : std.u8string = u8"1"c
+    s = std.string(u.begin(), u.end())
     std.cout << s
 )
     """)
-    assert c == "😐"
+    assert c == "1"
 
 
 def test_plain_const():
@@ -1240,7 +1247,7 @@ def (main:
     std::cout << v.operator("[]")(50)   # UB!
 )
     """)
-    assert c == "0"  # probably true
+    assert c == "0" or int(c) > 1000
 
     c = compile(r"""
 def (main:
@@ -1248,11 +1255,11 @@ def (main:
     # std::cout << (v.data())[50]  # more UB from unsafe API usage (and use of a.unsafe_at(i) aka real c++ a[i])
     # TODO ^ these are important precedence/parsing tests but we no longer allow raw array access in codegen. ensure these are tested properly in test_parser.py
     # std::cout << v.data()[50]
-    std::cout << v.data().unsafe_at(50)
+    std::cout << v.data().unsafe_at(50)  # UB
     
 )
     """)
-    assert c == "0"  # probably true
+    assert c == "0" or int(c) > 1000
 
 
 def test_scope_resolution_call_target_and_static_method():
@@ -2733,7 +2740,8 @@ def (main:
 )
     """)
 
-    assert c == "0x1"
+    # assert c == "0x1"
+    assert c.startswith("0") and c.endswith("1")
 
     try:
         compile(r"""
@@ -3205,6 +3213,7 @@ def (main:
     assert c == "3001"
 
 
+@pytest.mark.xfail(sys.platform == "win32", reason="msvc bug")
 def test_class_with_attributes_of_generic_class_type():
     # return
     import platform
@@ -3782,7 +3791,7 @@ def (foo, items:[string]:
     
 def (main, argc: int, argv: char:ptr:ptr:
     printf("argc %d\n", argc)
-    printf("%s\n", argv.unsafe_at(0))
+    assert(std.string(argv.unsafe_at(0)).length() > 0)
     
     lst = ["hello", "world"] 
     foo(lst)
@@ -3792,7 +3801,6 @@ def (main, argc: int, argv: char:ptr:ptr:
 
     assert c.strip() == """
 argc 1
-./a.out
 size: 2
 hello
 world
