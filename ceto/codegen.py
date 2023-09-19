@@ -1891,7 +1891,23 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
             lhs_type_str = "const auto"
     elif isinstance(node.declared_type, TypeOp):
         type_list = type_node_to_list_of_types(node.declared_type)
-        if "mut" in [type_list[0].name,
+
+        classes = [t for t in type_list if cx.lookup_class(t)]
+
+        mut_or_const = [t for t in type_list if t.name in ["mut", "const"]]
+
+        if len(classes) > 1:
+            raise CodeGenError("too many classes specified", node)
+
+        if classes and len(mut_or_const) > 1:
+            raise CodeGenError("too many mut/const specified for class type", node)
+        if classes and mut_or_const:
+            lhs_type_str = codegen_type(node, node.declared_type, cx)
+
+            if mut_or_const[0].name == "const":
+                lhs_type_str = "const " + lhs_type_str
+
+        elif "mut" in [type_list[0].name,
                      type_list[-1].name]:  # east or west mut is fine
             if type_list[0].name == "mut":
                 type_list.pop(0)
@@ -1928,7 +1944,7 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
     if lhs_type_str is None:
         lhs_type_str = codegen_type(node, node.declared_type, cx)
         needs_const = not mut_by_default
-        if needs_const and not const_specifier and not lhs_type_str.startswith("const"):
+        if needs_const and not const_specifier:
             const_specifier = "const "
 
     return const_specifier, lhs_type_str

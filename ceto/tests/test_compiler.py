@@ -29,15 +29,12 @@ class (Foo:
     pass
 )
 
-
-
 def (main:
     f = Foo()
     static_assert(std.is_same_v<decltype(f), const:std.shared_ptr<const:Foo.class>>)
 
     f1 : mut:Foo = Foo()
-    # static_assert(std.is_same_v<decltype(f1), std.shared_ptr<Foo.class>>)  # TODO this 
-    static_assert(std.is_same_v<decltype(f1), std.shared_ptr<const:Foo.class>>)  # rather than this
+    static_assert(std.is_same_v<decltype(f1), std.shared_ptr<Foo.class>>)
 
     f2 : mut = Foo()
     static_assert(std.is_same_v<decltype(f2), std.shared_ptr<Foo.class>>)
@@ -65,18 +62,44 @@ def (main:
 
     f10 : const:Foo = Foo() : const
     static_assert(std.is_same_v<decltype(f10), const:std.shared_ptr<const:Foo.class>>)
-
-    f_bad_1 : Foo:mut:const = Foo():mut  # should be a transpiler error? 
-    static_assert(std.is_same_v<decltype(f_bad_1), const:std.shared_ptr<Foo.class>>)
-    f_bad_2 : Foo:const:mut = Foo()  # same
-    static_assert(std.is_same_v<decltype(f_bad_2), std.shared_ptr<const:Foo.class>>)
-    f_bad_3 : const:Foo:mut = Foo()  # TODO definitely should be an error
-    static_assert(std.is_same_v<decltype(f_bad_3), std.shared_ptr<const:Foo.class>>)
-    f_bad_4 : mut:Foo:const = Foo()  # same
-    static_assert(std.is_same_v<decltype(f_bad_4), std.shared_ptr<const:Foo.class>>)
 )
     """)
 
+    raises(lambda: (compile(r"""
+class (Foo:
+    pass
+)
+def (main:
+    f_bad_1 : Foo:mut:const = Foo():mut
+)
+    """)), exc="too many mut/const specified for class type")
+
+    raises(lambda: (compile(r"""
+class (Foo:
+    pass
+)
+def (main:
+    f_bad_2 : Foo:const:mut = Foo()
+)
+    """)), exc="too many mut/const specified for class type")
+
+    raises(lambda: (compile(r"""
+class (Foo:
+    pass
+)
+def (main:
+    f_bad_3 : const:Foo:mut = Foo()
+)
+    """)), exc="too many mut/const specified for class type")
+
+    raises(lambda: (compile(r"""
+class (Foo:
+    pass
+)
+def (main:
+    f_bad_4 : mut:Foo:const = Foo()
+)
+    """)), exc="too many mut/const specified for class type")
 
 
 def test_one_liner_if_mut():
