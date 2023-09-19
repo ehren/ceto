@@ -4,7 +4,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
