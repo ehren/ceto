@@ -29,41 +29,43 @@ class (Foo:
     pass
 )
 
+
+
 def (main:
     f = Foo()
     static_assert(std.is_same_v<decltype(f), const:std.shared_ptr<const:Foo.class>>)
-    
+
     f1 : mut:Foo = Foo()
     # static_assert(std.is_same_v<decltype(f1), std.shared_ptr<Foo.class>>)  # TODO this 
     static_assert(std.is_same_v<decltype(f1), std.shared_ptr<const:Foo.class>>)  # rather than this
-    
+
     f2 : mut = Foo()
     static_assert(std.is_same_v<decltype(f2), std.shared_ptr<Foo.class>>)
-    
+
     f3 : mut = Foo() : const
     static_assert(std.is_same_v<decltype(f3), std.shared_ptr<const:Foo.class>>)
-    
+
     f4 = Foo() : mut
     static_assert(std.is_same_v<decltype(f4), const:std.shared_ptr<Foo.class>>)
-    
+
     f5 : const = Foo() : const
     static_assert(std.is_same_v<decltype(f5), const:std.shared_ptr<const:Foo.class>>)
-    
+
     f6 : const = Foo()
     static_assert(std.is_same_v<decltype(f6), const:std.shared_ptr<const:Foo.class>>)
-    
+
     f7 : const = Foo() : mut
     static_assert(std.is_same_v<decltype(f7), const:std.shared_ptr<Foo.class>>)
-    
-    f8 : const:Foo = Foo() : mut  
-    static_assert(std.is_same_v<decltype(f8), std.shared_ptr<const:Foo.class>>)  # TODO wrong - should be const:shared_ptr
-    
+
+    f8 : const:Foo = Foo() : mut  # conversion
+    static_assert(std.is_same_v<decltype(f8), const:std.shared_ptr<const:Foo.class>>)
+
     f9 : const:Foo = Foo()
-    static_assert(std.is_same_v<decltype(f9), std.shared_ptr<const:Foo.class>>)  # same
-    
+    static_assert(std.is_same_v<decltype(f9), const:std.shared_ptr<const:Foo.class>>)
+
     f10 : const:Foo = Foo() : const
-    static_assert(std.is_same_v<decltype(f10), std.shared_ptr<const:Foo.class>>) # same!
-    
+    static_assert(std.is_same_v<decltype(f10), const:std.shared_ptr<const:Foo.class>>)
+
     f_bad_1 : Foo:mut:const = Foo():mut  # should be a transpiler error? 
     static_assert(std.is_same_v<decltype(f_bad_1), const:std.shared_ptr<Foo.class>>)
     f_bad_2 : Foo:const:mut = Foo()  # same
