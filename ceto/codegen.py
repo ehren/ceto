@@ -1930,12 +1930,11 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
                     break
 
             if lhs_type_str is None:
-                # if (type_list[0].name == "const" and type_list[
-                #     -1].name != "ptr") or type_list[-1].name == "const":
-                #     lhs_type_str = codegen_type(node, node.declared_type,
-                #                                 cx)
-                #elif:
-                if type_list[-1].name == "ptr":
+                if (type_list[0].name == "const" and type_list[
+                    -1].name != "ptr") or type_list[-1].name == "const":
+                    lhs_type_str = codegen_type(node, node.declared_type,
+                                                cx)
+                elif type_list[-1].name == "ptr":
                     lhs_type_str = codegen_type(node, node.declared_type,
                                                 cx) + " const"
                 # else:
