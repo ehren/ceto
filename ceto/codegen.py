@@ -1662,7 +1662,12 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
                 return scope_resolution_code + "::" + codegen_node(remaining, cx)
 
     # maybe autoderef
-    return "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+
+    if node.rhs.name == "value":
+        # don't autoderef an optional if we're calling .value() on it (TODO the other std::optional methods)
+        return "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+
+    return "ceto::mado(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
 
 
 def codegen_call(node: Call, cx: Scope):
@@ -2152,7 +2157,7 @@ def codegen_node(node: Node, cx: Scope):
             return "nullptr"
         elif name == "dotdotdot":
             return "..."
-        elif name == "string" and not isinstance(node.parent, (AttributeAccess, ScopeResolution)):
+        elif name == "string" and not isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)):
             return "std::string"
         # elif name == "object":
         #     return "std::shared_ptr<object>"
@@ -2229,7 +2234,11 @@ def codegen_node(node: Node, cx: Scope):
                 return codegen_type(node, node, cx)
 
         elif isinstance(node, Assign):
-            return codegen_assign(node, cx)
+            assign_code = codegen_assign(node, cx)
+            if isinstance(node.parent, (BinOp, UnOp)) \
+                    and not isinstance(node.parent, SyntaxTypeOp):  # avoid overparensing an assign in one-liner if condition
+                assign_code = "(" + assign_code + ")"
+            return assign_code
 
         else:
             if isinstance(node, AttributeAccess):

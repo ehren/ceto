@@ -107,6 +107,7 @@ class StringLiteral(Node):
 
     def escaped(self):
         escaped = self.string.replace("\n", r"\n")
+        escaped = escaped.replace('"', r'\"')
         escaped = '"' + escaped + '"'
         return escaped
 

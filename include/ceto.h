@@ -161,6 +161,35 @@ mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 }
 
 
+// mado = maybe allow deref - optionals too!
+
+// autoderef of std::optional (and maybe a double autoderef if it's an optional of a class...)
+template<typename T>
+decltype(auto)
+mado(std::optional<T>& obj) {
+//    return mad(std::forward<T>(obj).value());
+    return mad(obj.value());
+}
+
+template<typename T>
+decltype(auto)
+mado(std::optional<T>&& obj) {
+    return mad(obj.value());
+}
+
+template<typename T>
+decltype(auto)
+mado(T&& obj) {
+    return mad(obj);
+}
+
+template<typename T>
+decltype(auto)
+mado(T& obj) {
+    return mad(obj);
+}
+
+
 // Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
 // TODO consider re-enabling in certain contexts: would allow decltype(x)(1, 2) to result in a make_shared when x is a shared_ptr<shared_object> (this will fail in most cases now but may succeed undesirably in a few others e.g. decltype(x)() is an empty shared_ptr under naive class lookup when some might expect make_shared<decltype(*x)>()  (default constructor call)

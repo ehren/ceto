@@ -22,6 +22,16 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_string_escapes():
+    c = compile(r"""
+
+def (main:
+    std.cout << "\""
+)
+    
+    """)
+
+
 def test_more_mut_const_declarations_with_class_asserts():
     c = compile(r"""
     
@@ -3215,13 +3225,8 @@ def (main:
 
 @pytest.mark.xfail(sys.platform == "win32", reason="msvc bug")
 def test_class_with_attributes_of_generic_class_type():
-    # return
-    import platform
-    #if "Darwin" not in platform.system():
-    #    return
-    #return g++ 11.3 some debian unstable: missing deduction guide. works in 12+ and 11.3 godbolt version
-    #msvc 19 /std:c++20 or latest
-    #<source>(53): error C2641: cannot deduce template arguments for 'Bar'
+    # g++ 11.3 some debian unstable: missing deduction guide. works in 12+ and 11.3 godbolt version
+    # msvc 19 /std:c++20 or latest: <source>(53): error C2641: cannot deduce template arguments for 'Bar'
 
     c = compile(r"""
 class (Foo:

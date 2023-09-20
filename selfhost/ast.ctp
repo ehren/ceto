@@ -169,42 +169,46 @@ class (IntegerLiteral(Node):
 #}
 
 
-def (string_replace, str : string, from : string, to : string:
+def (string_replace, str : mut:auto, from : string, to : string:  # TODO mut:string should be 'std::string' passed by value
     start_pos: mut:size_t = 0
-    res : mut = str  # string passed by const ref by default
-    while ((start_pos = res.find(from, start_pos)) != std.string.npos:  # TODO just 'string.npos' (or string::npos) should be possible if you can write just 'string' (to codegen std::string)
-        res.replace(start_pos, from.length(), to)
+    while ((start_pos = str.find(from, start_pos)) != std.string.npos:  # TODO just 'string.npos' (or string::npos) should be possible if you can write just 'string' (to codegen std::string)
+        str.replace(start_pos, from.length(), to)
         start_pos += to.length()  # // Handles case where 'to' is a substring of 'from'
     )
-    return res
+    return str
 )
 
 
-#class (StringLiteral(Node):
-#    string : std.string  # this is weird
-#
-#    def (repr:
-#        escaped = self.escaped()
-#        if self.prefix:
-#            escaped = self.prefix.name + escaped
-#        if self.suffix:
-#            escaped += self.suffix.name
-#        return escaped
-#    )
-#
-#    def escaped(self):
-#        escaped = self.string.replace("\n", r"\n")
-#        escaped = '"' + escaped + '"'
-#        return escaped
-#    )
-#
-#    def __init__(self, string, prefix, suffix, source):
-#        self.string = string
-#        self.prefix = prefix
-#        self.suffix = suffix
-#        super().__init__(None, [], source)
-#    )
-#)
+class (StringLiteral(Node):
+    str : string
+    prefix : Identifier
+    suffix : Identifier
+
+    def (init, str, prefix, suffix, source = py.tuple{}:
+        self.str = str
+        self.prefix = prefix
+        self.suffix = suffix
+        super.init(None, [] : Node, source)
+    )
+
+    def (escaped:
+        s : mut = string_replace(self.str, "\n", "\\n")
+        s = string_replace(s, '"', '\"')
+        s = '"' + s + '"'
+        return s
+    )
+
+    def (repr:
+        s : mut = self.escaped()
+        if (self.prefix:
+            s = self.prefix.name().value() + s
+        )
+        if (self.suffix:
+            s += self.suffix.name().value()
+        )
+        return s
+    ) : string
+)
 
 #no:
 #defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:

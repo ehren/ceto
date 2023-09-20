@@ -156,7 +156,7 @@ def preprocess(file_object, reparse = False):
                         raise PreprocessorError("Expected dedent got " + char, line_number)
                     else:
                         raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
-                elif char in '"\'':
+                elif char in '"\'' and not (n > 0 and line[n - 1] == '\\'):
                     if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
                         parsing_stack.pop()
                     else:
