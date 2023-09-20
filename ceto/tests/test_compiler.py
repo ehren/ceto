@@ -21,15 +21,33 @@ def raises(func, exc=None):
     else:
         assert 0
 
+def test_autoderef_optional():
+    c = compile(r"""
+    
+def (main:
+    x : std.optional<std.string> = "blah"
+    xm : mut:std.optional<std.string> = "blah"
+    static_assert(std.is_same_v<decltype(x), const:std.optional<std.string>>)
+    static_assert(std.is_same_v<decltype(xm), std.optional<std.string>>)
+    std.cout << x.size() << x.value().size() << x.value() << x.c_str() << x.value().c_str()
+    std.cout << xm.size() << xm.value().size() << xm.value() << xm.c_str() << xm.value().c_str()
+)
+    
+    """)
+
+    assert c == "44blahblahblah44blahblahblah"
+
 
 def test_string_escapes():
     c = compile(r"""
 
 def (main:
     std.cout << "\""
+    std.cout << '"'
 )
-    
     """)
+
+    assert c == '""'
 
 
 def test_more_mut_const_declarations_with_class_asserts():
@@ -1257,7 +1275,7 @@ def (main:
     std::cout << v.operator("[]")(50)   # UB!
 )
     """)
-    assert c == "0" or int(c) > 1000
+    int(c)
 
     c = compile(r"""
 def (main:
@@ -1269,7 +1287,7 @@ def (main:
     
 )
     """)
-    assert c == "0" or int(c) > 1000
+    int(c)
 
 
 def test_scope_resolution_call_target_and_static_method():

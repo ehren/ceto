@@ -163,29 +163,38 @@ mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 
 // mado = maybe allow deref - optionals too!
 
-// autoderef of std::optional (and maybe a double autoderef if it's an optional of a class...)
+// autoderef of std::optional (and maybe a double autoderef if it's an optional of a class (should be discouraged))
 template<typename T>
 decltype(auto)
 mado(std::optional<T>& obj) {
-//    return mad(std::forward<T>(obj).value());
     return mad(obj.value());
 }
 
+// autoderef optional
+template<typename T>
+decltype(auto)
+mado(const std::optional<T>& obj) {
+    return mad(obj.value());
+}
+
+// autoderef optional
 template<typename T>
 decltype(auto)
 mado(std::optional<T>&& obj) {
     return mad(obj.value());
 }
 
-template<typename T>
-decltype(auto)
-mado(T&& obj) {
-    return mad(obj);
-}
-
+// no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
 decltype(auto)
 mado(T& obj) {
+    return mad(obj);
+}
+
+// no autoderef of optional - maybe still autoderef smart pointer
+template<typename T>
+decltype(auto)
+mado(T&& obj) {
     return mad(obj);
 }
 
