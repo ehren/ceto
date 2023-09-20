@@ -60,7 +60,7 @@ struct Node : ceto::shared_object {
         }
 
          virtual inline auto name() const -> std::optional<std::string> {
-            return nullptr;
+            return std::nullopt;
         }
 
     explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {

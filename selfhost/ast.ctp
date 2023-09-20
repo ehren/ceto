@@ -45,7 +45,7 @@ class (Node:
     ) : std.string
 
     def (name: virtual:
-        return None
+        return std.nullopt
     ) : std.optional<std.string>
 )
 

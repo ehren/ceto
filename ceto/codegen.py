@@ -1663,8 +1663,8 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
 
     # maybe autoderef
 
-    if node.rhs.name == "value":
-        # don't autoderef an optional if we're calling .value() on it (TODO the other std::optional methods)
+    if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
+        # don't autoderef an optional if we're calling a method of std::optional on it
         return "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
 
     return "ceto::mado(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
