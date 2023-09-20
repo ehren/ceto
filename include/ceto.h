@@ -187,13 +187,6 @@ mado(std::optional<T>&& obj) {
 // no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
 decltype(auto)
-mado(T& obj) {
-    return mad(obj);
-}
-
-// no autoderef of optional - maybe still autoderef smart pointer
-template<typename T>
-decltype(auto)
 mado(T&& obj) {
     return mad(obj);
 }
