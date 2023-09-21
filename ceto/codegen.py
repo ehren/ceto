@@ -1577,11 +1577,16 @@ def codegen_type(expr_node, type_node, cx):
                 flattened.append(t)
                 # occurs due to type nodes in expressions inside a declaration with 'decltype'
                 flattened.append(t.declared_type)
+                if isinstance(t.declared_type, TypeOp) or t.declared_type.declared_type:
+                    changes = True
                 t.declared_type = None  # this shouldn't be necessary / might not be
-                changes = True
             elif isinstance(type_node, TypeOp):
-                flattened.extend(type_node_to_list_of_types(type_node))
-                changes = True
+                sublist = type_node_to_list_of_types(type_node)
+                flattened.extend(sublist)
+                for s in sublist:
+                    if s.declared_type:
+                        changes = True
+                        break
             else:
                 flattened.append(t)
 
@@ -1593,7 +1598,7 @@ def codegen_type(expr_node, type_node, cx):
 
     if types[0].name in ["ptr", "ref", "rref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
-
+    #
     type_code = []
     i = 0
     while i < len(types):
