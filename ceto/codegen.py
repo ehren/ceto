@@ -167,6 +167,8 @@ def codegen_for(node, cx):
     type_str = None
 
     if not isinstance(arg, BinOp) and isinstance(arg, Identifier) and arg.declared_type is not None:
+        # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
+
         # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
         # - does not work so well for:
         # for (x: const:int in it:
@@ -186,12 +188,10 @@ def codegen_for(node, cx):
 
         arg.declared_type = None  # this sort of thing is unfortunate (TODO remove .declared_type)
         instmt.args[0] = arg
-        # TODO we should rebuild a TypeOp instead of copying the logic of codegen_type
-        first_type = codegen_type(arg, itertypes.pop(0), cx)
-        type_str = first_type + " ".join(codegen_type(arg, t, cx, _is_leading=False) for t in itertypes)
+
+        type_str = codegen_type(arg, list_to_typed_node(itertypes), cx)
     else:
         instmt = node.args[0]
-
 
     if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
         raise CodeGenError("unexpected 1st argument to for", node)
@@ -1428,7 +1428,7 @@ def _decltype_str(node, cx):
 
         if def_node.declared_type:
 
-            if def_node.declared_type.name in ["mut", "const", "auto"]:
+            if def_node.declared_type.name in ["mut", "const", "auto", "weak", "shared", "unique"]:
                 # plain mut/const/auto provides no element type info
                 continue
             elif isinstance(def_node.declared_type, TypeOp):
@@ -1540,7 +1540,7 @@ def _codegen_compound_class_type(lhs, rhs, cx):
 
     for l, r in ((lhs,rhs), (rhs, lhs)):
         if c := cx.lookup_class(l):
-            if not isinstance(r, Identifier) or r.name not in ["const", "mut", "weak"]:
+            if not isinstance(r, Identifier) or r.name not in ["const", "mut", "weak", "shared", "unique"]:
                 raise CodeGenError("Invalid specifier for class type")
             if r.name == "const":
                 if c.is_unique:
@@ -1557,7 +1557,83 @@ def _codegen_compound_class_type(lhs, rhs, cx):
                 return "std::weak_ptr"
 
 
-def codegen_type(expr_node, type_node, cx, _is_leading=True):
+def codegen_type(expr_node, type_node, cx):
+
+    if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
+        pass
+    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp)):
+        raise CodeGenError("unexpected typed expression", expr_node)
+    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
+        raise CodeGenError("unexpected typed call", expr_node)
+
+    types = [type_node]
+    changes = False
+
+    while True:
+        flattened = []
+
+        for t in types:
+            if t.declared_type is not None:
+                flattened.append(t)
+                # occurs due to type nodes in expressions inside a declaration with 'decltype'
+                flattened.extend(type_node_to_list_of_types(t.declared_type))
+                t.declared_type = None  # this shouldn't be necessary / might not be
+                changes = True
+            elif isinstance(type_node, TypeOp):
+                flattened.extend(type_node_to_list_of_types(type_node))
+                changes = True
+            else:
+                flattened.append(t)
+
+        types = flattened
+        assert types
+        if not changes:
+            break
+        changes = False
+
+    if types[0].name in ["ptr", "ref", "rref"]:
+        raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
+
+    type_code = []
+    i = 0
+    while i < len(types):
+        t = types[i]
+
+        if i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
+            type_code.append(extern_c)
+            i += 2
+            continue
+        elif i < len(types) - 1 and (s := _codegen_compound_class_type(types[i], types[i + 1], cx)):
+            type_code.append(s)
+            i += 2
+            continue
+        elif isinstance(t, ListLiteral):
+            if len(t.args) != 1:
+                raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
+            code = "std::vector<" + codegen_type(expr_node, t.args[0], cx) + ">"
+        elif t.name == "ptr":
+            code = "*"
+        elif t.name == "ref":
+            code = "&"
+        elif t.name == "rref":
+            code = "&&"
+        elif t.name == "mut":
+            raise CodeGenError("unexpected placement of 'mut'", expr_node)
+        elif t.name in ["new", "goto"]:
+            raise CodeGenError("nice try", t)
+        elif not isinstance(t, (Identifier, Call, Template, AttributeAccess, ScopeResolution)):
+            raise CodeGenError("unexpected type", t)
+        else:
+            code = codegen_node(t, cx)
+
+        type_code.append(code)
+        i += 1
+
+    assert len(type_code) > 0
+    return " ".join(type_code)
+
+
+def codegen_type_old(expr_node, type_node, cx, _is_leading=True):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
