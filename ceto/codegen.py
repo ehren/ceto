@@ -1567,29 +1567,29 @@ def codegen_type(expr_node, type_node, cx):
         raise CodeGenError("unexpected typed call", expr_node)
 
     types = [type_node]
-    changes = False
+    # changes = False
+    #
+    # while True:
+    flattened = []
 
-    while True:
-        flattened = []
+    for t in types:
+        if t.declared_type is not None:
+            flattened.append(t)
+            # occurs due to type nodes in expressions inside a declaration with 'decltype'
+            flattened.extend(type_node_to_list_of_types(t.declared_type))
+            t.declared_type = None  # this shouldn't be necessary / might not be
+            # changes = True
+        elif isinstance(type_node, TypeOp):
+            flattened.extend(type_node_to_list_of_types(type_node))
+            # changes = True
+        else:
+            flattened.append(t)
 
-        for t in types:
-            if t.declared_type is not None:
-                flattened.append(t)
-                # occurs due to type nodes in expressions inside a declaration with 'decltype'
-                flattened.extend(type_node_to_list_of_types(t.declared_type))
-                t.declared_type = None  # this shouldn't be necessary / might not be
-                changes = True
-            elif isinstance(type_node, TypeOp):
-                flattened.extend(type_node_to_list_of_types(type_node))
-                changes = True
-            else:
-                flattened.append(t)
-
-        types = flattened
-        assert types
-        if not changes:
-            break
-        changes = False
+    types = flattened
+    assert types
+        # if not changes:
+        #     break
+        # changes = False
 
     if types[0].name in ["ptr", "ref", "rref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)

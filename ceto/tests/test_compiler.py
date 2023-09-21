@@ -59,6 +59,7 @@ def test_more_mut_const_declarations_with_class_asserts():
 class (Foo:
     pass
 )
+# f1 : mut:Foo = Foo()
 
 def (main:
     f = Foo()
