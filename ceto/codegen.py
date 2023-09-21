@@ -1568,18 +1568,19 @@ def codegen_type(expr_node, type_node, cx):
 
     types = [type_node]
     changes = False
+    exclude = set()
 
     while True:
         flattened = []
 
         for t in types:
-            if t.declared_type is not None:
+            if t.declared_type is not None and not t.declared_type in exclude:
                 flattened.append(t)
                 # occurs due to type nodes in expressions inside a declaration with 'decltype'
                 flattened.append(t.declared_type)
                 if isinstance(t.declared_type, TypeOp) or t.declared_type.declared_type:
                     changes = True
-                t.declared_type = None  # this shouldn't be necessary / might not be
+                exclude.add(t.declared_type)
             elif isinstance(type_node, TypeOp):
                 sublist = type_node_to_list_of_types(type_node)
                 flattened.extend(sublist)
@@ -1629,7 +1630,13 @@ def codegen_type(expr_node, type_node, cx):
         elif not isinstance(t, (Identifier, Call, Template, AttributeAccess, ScopeResolution)):
             raise CodeGenError("unexpected type", t)
         else:
-            code = codegen_node(t, cx)
+            if t.declared_type:
+                temp = t.declared_type
+                t.declared_type = None
+                code = codegen_node(t, cx)
+                t.declared_type = temp
+            else:
+                code = codegen_node(t, cx)
 
         type_code.append(code)
         i += 1
