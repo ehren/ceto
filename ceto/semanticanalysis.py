@@ -100,6 +100,16 @@ def type_inorder_traversal(typenode: Node, func):
         if not type_inorder_traversal(typenode.rhs, func):
             return False
         return True
+    elif typenode.declared_type is not None:
+        temp = typenode.declared_type
+        typenode.declared_type = None
+        if not type_inorder_traversal(typenode, func):
+            typenode.declared_type = temp
+            return False
+        typenode.declared_type = temp
+        if not type_inorder_traversal(typenode.declared_type, func):
+            return False
+        return True
     else:
         return func(typenode)
 

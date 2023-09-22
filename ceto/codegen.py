@@ -1566,36 +1566,7 @@ def codegen_type(expr_node, type_node, cx):
     if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
         raise CodeGenError("unexpected typed call", expr_node)
 
-    types = [type_node]
-    changes = False
-    exclude = set()
-
-    while True:
-        flattened = []
-
-        for t in types:
-            if t.declared_type is not None and not t.declared_type in exclude:
-                flattened.append(t)
-                # occurs due to type nodes in expressions inside a declaration with 'decltype'
-                flattened.append(t.declared_type)
-                if isinstance(t.declared_type, TypeOp) or t.declared_type.declared_type:
-                    changes = True
-                exclude.add(t.declared_type)
-            elif isinstance(type_node, TypeOp):
-                sublist = type_node_to_list_of_types(type_node)
-                flattened.extend(sublist)
-                for s in sublist:
-                    if s.declared_type:
-                        changes = True
-                        break
-            else:
-                flattened.append(t)
-
-        types = flattened
-        assert types
-        if not changes:
-            break
-        changes = False
+    types = type_node_to_list_of_types(type_node)
 
     if types[0].name in ["ptr", "ref", "rref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
@@ -1604,6 +1575,8 @@ def codegen_type(expr_node, type_node, cx):
     i = 0
     while i < len(types):
         t = types[i]
+
+        assert not isinstance(t, TypeOp)
 
         if i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
             type_code.append(extern_c)
