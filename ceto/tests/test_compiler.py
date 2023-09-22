@@ -22,6 +22,18 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_floating_point():
+    c = compile(r"""
+    
+def (main:
+    x = 10.0
+    y = 10.00lf  # TODO ignored by codegen
+    z = 100ULL   # same
+)
+    
+    """)
+
+
 def test_mut_typed_list():
     c = compile(r"""
     

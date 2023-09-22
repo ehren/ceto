@@ -127,6 +127,15 @@ class IntegerLiteral(Node):
         return str(self.integer)
 
 
+class FloatLiteral(Node):
+    def __init__(self, float_string : str, source):
+        self.float_string = float_string
+        super().__init__(None, [], source)
+
+    def __repr__(self):
+        return self.float_string
+
+
 class _ListLike(Node):
     def __init__(self, args, source):
         super().__init__(func=None, args=args, source=source)

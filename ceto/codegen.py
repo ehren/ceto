@@ -6,7 +6,7 @@ from .semanticanalysis import NamedParameter, IfWrapper, SemanticAnalysisError, 
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral
 
 from collections import defaultdict
 import re
@@ -1359,7 +1359,7 @@ def _decltype_maybe_wrapped_in_declval(node, cx):
 
 def _decltype_str(node, cx):
 
-    if isinstance(node, (IntegerLiteral, StringLiteral)):
+    if isinstance(node, (IntegerLiteral, FloatLiteral, StringLiteral)):
         return True, codegen_node(node, cx)
 
     if isinstance(node, BinOp):
@@ -2104,9 +2104,9 @@ def codegen_assign(node: Assign, cx: Scope):
             # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
             # rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
 
-            if isinstance(node.rhs, IntegerLiteral) or (
+            if isinstance(node.rhs, (IntegerLiteral, FloatLiteral)) or (
                     isinstance(node.rhs, Identifier) and node.rhs.name in [
-                "true", "false"]):  # TODO float literals
+                "true", "false"]):
                 return f"{const_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
 
             # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
@@ -2208,7 +2208,9 @@ def codegen_node(node: Node, cx: Scope):
         return codegen_call(node, cx)
 
     elif isinstance(node, IntegerLiteral):
-        return str(node)
+        return str(node.integer)
+    elif isinstance(node, FloatLiteral):
+        return node.float_string
     elif isinstance(node, Identifier):
         name = node.name
 

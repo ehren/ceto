@@ -15,7 +15,7 @@ import io
 from .preprocessor import preprocess
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
-    BracedCall, IntegerLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
+    BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
     Block, Module, StringLiteral, RedundantParens, Assign, Template
 
 
@@ -145,6 +145,12 @@ def _parse_integer_literal(s, l, t):
     return IntegerLiteral(integer, source)
 
 
+def _parse_float_literal(s, l, t):
+    float_str = str(t[0])
+    source = s, l
+    return FloatLiteral(float_str, source)
+
+
 def _parse_template(s, l, t):
     lst = t.as_list()
     func = lst[0]
@@ -181,8 +187,6 @@ def _make_parse_action_list_like(clazz):
 
 def _build_grammar():
 
-    cvtReal = lambda toks: float(toks[0])
-
     # define punctuation as suppressed literals
     lparen, rparen, lbrack, rbrack, lbrace, rbrace, comma = map(
         pp.Suppress, "()[]{},"
@@ -197,9 +201,10 @@ def _build_grammar():
     and_op = pp.Keyword("and")
     or_op = pp.Keyword("or")
     reserved_words = not_op | and_op | or_op
+    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).set_parse_action(_parse_identifier)
 
-    integer = pp.Regex(r"[+-]?\d+").setName("integer").set_parse_action(_parse_integer_literal)
-    real = pp.Regex(r"[+-]?\d+\.\d*([Ee][+-]?\d+)?").setName("real").set_parse_action(cvtReal)
+    integer_literal = (pp.Regex(r"\d+") + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_integer_literal)
+    float_literal = (pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_float_literal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
     # dict_literal = pp.Forward()
@@ -208,18 +213,17 @@ def _build_grammar():
     template = pp.Forward()
     scope_resolution = pp.Forward()
     infix_expr = pp.Forward()
-    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).set_parse_action(_parse_identifier)
 
     quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
     dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
 
+    # TODO rename this
     atom = (
         dblquoted_str
         | quoted_str
-        | template
-        | ident
-        | real
-        | integer
+        # | ident
+        | float_literal
+        | integer_literal
         | list_literal
         | tuple_literal
         # | dict_literal
@@ -268,12 +272,12 @@ def _build_grammar():
     scopeop = pp.Literal("::")
     dotop_or_arrowop = dotop|arrowop
 
-    scope_resolution <<= pp.infix_notation(atom|(lparen + infix_expr + rparen), [
-            (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+    scope_resolution <<= pp.infix_notation(template|ident|(lparen + infix_expr + rparen), [
+        (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+        (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
 
-    maybe_scope_resolved_call_like <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(_parse_maybe_scope_resolved_call_like)
+    maybe_scope_resolved_call_like <<= ((atom|scope_resolution) + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(_parse_maybe_scope_resolved_call_like)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -304,7 +308,7 @@ def _build_grammar():
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
-        maybe_scope_resolved_call_like|scope_resolution,
+        maybe_scope_resolved_call_like|atom|scope_resolution,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),
