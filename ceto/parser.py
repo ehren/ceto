@@ -218,12 +218,11 @@ def _build_grammar():
     dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
 
     # TODO rename this
-    atom = (
+    non_numeric_atom = (
         dblquoted_str
         | quoted_str
-        # | ident
-        | float_literal
-        | integer_literal
+        | template
+        | ident
         | list_literal
         | tuple_literal
         # | dict_literal
@@ -272,12 +271,12 @@ def _build_grammar():
     scopeop = pp.Literal("::")
     dotop_or_arrowop = dotop|arrowop
 
-    scope_resolution <<= pp.infix_notation(template|ident|(lparen + infix_expr + rparen), [
+    scope_resolution <<= pp.infix_notation(non_numeric_atom|(lparen + infix_expr + rparen), [
         (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
         (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
 
-    maybe_scope_resolved_call_like <<= ((atom|scope_resolution) + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(_parse_maybe_scope_resolved_call_like)
+    maybe_scope_resolved_call_like <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(_parse_maybe_scope_resolved_call_like)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -308,7 +307,7 @@ def _build_grammar():
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
     infix_expr <<= pp.infix_notation(
-        maybe_scope_resolved_call_like|atom|scope_resolution,
+        maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),
