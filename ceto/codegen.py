@@ -785,6 +785,7 @@ def _mutate_strip_non_class_non_plain_mut(node : Node, cx):
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
     should_add_outer_const = not mut_by_default
+    stripped_mut = False
 
     # TODO should handle plain 'mut'/'const' param (generic case)
 
@@ -794,6 +795,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
             if _mutate_strip_non_class_non_plain_mut(arg, cx) or \
                     any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
                 should_add_outer_const = False
+                stripped_mut = True
 
             automatic_const_part = " "  # TODO add const here (if not already const)
             if should_add_outer_const:
@@ -805,7 +807,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
             automatic_ref_part = ""
 
-            if _should_add_const_ref_to_typed_param(arg, cx):
+            if not stripped_mut and _should_add_const_ref_to_typed_param(arg, cx):
                 automatic_const_part = "const "
                 automatic_ref_part = "&"
 
@@ -1561,7 +1563,7 @@ def codegen_type(expr_node, type_node, cx):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
-    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp)):
+    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp, AttributeAccess)):
         raise CodeGenError("unexpected typed expression", expr_node)
     if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
         raise CodeGenError("unexpected typed call", expr_node)
@@ -2159,27 +2161,27 @@ def codegen_node(node: Node, cx: Scope):
 
     if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):
-            if not isinstance(node, Identifier):
-                raise CodeGenError("unexpected typed construct", node)
 
-            if not isinstance(node.parent, Template):
-                made_easy_lambda_args_mistake = False
-                parent = node.parent
-                while parent:
-                    if isinstance(parent, Call):
-                        if parent.func.name == "lambda":
-                            made_easy_lambda_args_mistake = True
-                            break
-                        elif parent.func.name in ["def", "class"]:
+            if isinstance(node, Identifier):
+
+                if not isinstance(node.parent, Template):
+                    made_easy_lambda_args_mistake = False
+                    parent = node.parent
+                    while parent:
+                        if isinstance(parent, Call):
+                            if parent.func.name == "lambda":
+                                made_easy_lambda_args_mistake = True
+                                break
+                            elif parent.func.name in ["def", "class"]:
+                                made_easy_lambda_args_mistake = False
+                                break
+                        elif isinstance(parent, Block) and len(parent.args) != 1:
                             made_easy_lambda_args_mistake = False
                             break
-                    elif isinstance(parent, Block) and len(parent.args) != 1:
-                        made_easy_lambda_args_mistake = False
-                        break
-                    parent = parent.parent
-                if made_easy_lambda_args_mistake:
-                    raise CodeGenError("do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] in ", parent)
-
+                        parent = parent.parent
+                    if made_easy_lambda_args_mistake:
+                        raise CodeGenError("do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] in ", parent)
+            elif not isinstance(node, AttributeAccess):
                 raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
