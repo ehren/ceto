@@ -83,14 +83,7 @@ public:
 
 // no autoderef
 template<typename T>
-T* mad(T & obj) {
-    return std::addressof(obj);
-}
-
-// e.g. string temporaries
-// no autoderef
-template<typename T>
-T* mad(T && obj) {
+auto mad(T&& obj) {
     return std::addressof(obj);
 }
 

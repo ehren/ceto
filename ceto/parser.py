@@ -217,7 +217,6 @@ def _build_grammar():
     quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
     dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
 
-    # TODO rename this
     non_numeric_atom = (
         dblquoted_str
         | quoted_str
