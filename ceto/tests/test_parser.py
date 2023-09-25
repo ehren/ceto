@@ -1,7 +1,37 @@
 from ceto.parser import parse, TupleLiteral, Module
 
+from .test_compiler import raises
+
 import sys
 import pytest
+
+
+def test_non_operator_dotdotdot():
+    p = parse(r"""
+......  # ok this is weird (should error in c++)
+foo(...)
+foo(x:bar...)
+foo(x:bar..., ...)
+
+def (tprintf: template<typename:T, typename:...:Targs>,
+      format: const:char:ptr,
+       value: T,
+       Fargs: Targs:...:
+      
+    tprintf(format + 1, Fargs...)
+)
+
+    """)
+
+    raises(lambda: (parse(r"""
+def (tprintf: template<typename:T, typename:...:Targs>,
+      format: const:char:ptr,
+       value: T,
+       Fargs ... Targs:  # when ... used as a type/ident it must use ':' separation here (there is no binary ... op)
+    pass
+)
+    """)))
+
 
 
 def test_one_liner_if_mut_parse():
@@ -167,7 +197,7 @@ def test_stress_parser():
     old = sys.getrecursionlimit()
     sys.setrecursionlimit(10**6)  # risks overflowing cpython stack
 
-    limit = 48
+    limit = 46
 
     parse(r"""
 

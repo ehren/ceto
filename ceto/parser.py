@@ -305,8 +305,10 @@ def _build_grammar():
     def andanderror(*t):
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
+    ellipses_ident = pp.Literal("...").set_parse_action(_parse_identifier)
+
     infix_expr <<= pp.infix_notation(
-        maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal,
+        maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal|ellipses_ident,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),

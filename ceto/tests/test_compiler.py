@@ -1505,7 +1505,7 @@ def test_more_dotdotdot():
 
 # no explicit template class support yet
 
-def (count: template<typename:dotdotdot:Types>:
+def (count: template<typename:...:Types>:
     return (sizeof...)(Types)   # note extra parethese to "call" non-atom
 )
 
@@ -1551,10 +1551,10 @@ def (tprintf, format: const:char:ptr: # base function
     std.cout << format
 )
     
-def (tprintf: template<typename:T, typename:dotdotdot:Targs>,  # recursive variadic function
+def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic function
       format: const:char:ptr, 
        value: T, 
-       Fargs: Targs:dotdotdot:
+       Fargs: Targs:...:
       
     while (*format != c"".unsafe_at(0):  # TODO maybe char"%" for char literal
         if (*format == c"%".unsafe_at(0):
@@ -1587,16 +1587,8 @@ def test_forwarder():
 #     // ...
 # }
 
-# with ... as an identifier (not so great)
-# def (forwarder: template<typename:T, typename:...:Args>,
-#           args: Args:rref:... :
-#     # local: T = { std.forward<Args>(args):... }  # abuse of type declaration syntax and doesn't work anyway
-#     pass
-# )
-
-# ... as an op ('dotdotdot' necessary for current low precedence choice for '...'. maybe revisit this? note that 'ellipsis' is hard to spell):
-def (forwarder: template<typename:T, typename:dotdotdot:Args>,
-          args: mut:Args:rref:dotdotdot:  # TODO const:rref makes no sense so don't require 'mut' in this case? (not requiring 'mut' would be similar to not requiring 'mut' for a 'unique' param)
+def (forwarder: template<typename:T, typename:...:Args>,
+          args: mut:Args:rref:...:  # TODO const:rref makes no sense so don't require 'mut' in this case? (not requiring 'mut' would be similar to not requiring 'mut' for a 'unique' param)
     local: T = { std.forward<Args>(args)... }
 )
 

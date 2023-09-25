@@ -2286,7 +2286,7 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
         elif name == "None":
             return "nullptr"
-        elif name == "dotdotdot":
+        elif name == "...":
             return "..."
         elif name == "string" and not isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)):
             return "std::string"
