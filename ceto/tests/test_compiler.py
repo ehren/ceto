@@ -199,6 +199,18 @@ def (main:
 
     f10 : const:Foo = Foo() : const
     static_assert(std.is_same_v<decltype(f10), const:std.shared_ptr<const:Foo.class>>)
+    
+    f11 : Foo:weak = f
+    static_assert(std.is_same_v<decltype(f11), const:std.weak_ptr<const:Foo.class>>)
+    
+    f12 : mut:Foo:weak = f1
+    static_assert(std.is_same_v<decltype(f12), std.weak_ptr<Foo.class>>)
+    
+    f13 : mut:weak:Foo = f1
+    static_assert(std.is_same_v<decltype(f13), std.weak_ptr<Foo.class>>)
+    
+    f14 : const:weak:Foo = f1
+    static_assert(std.is_same_v<decltype(f14), const:std.weak_ptr<const:Foo.class>>)
 )
     """)
 

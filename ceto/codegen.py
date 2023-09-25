@@ -1524,7 +1524,62 @@ def _codegen_extern_C(lhs, rhs):
     return None
 
 
-def _codegen_compound_class_type(lhs, rhs, cx):
+def _indices_if_all_elements_form_contiguous_sublist(sublist, lst : typing.List):
+    list_set = set(lst)
+    subset = set(sublist)
+    if subset <= list_set:
+        indices = sorted([lst.index(s) for s in subset])
+        if indices == list(range(indices[0], len(indices))):
+            return indices
+    return None
+
+
+def _codegen_compound_class_type(types, cx):
+    # note that for better or worse, the calling code of codegen_type should
+    # take care to add an outer const where necessary
+    class_types = [(t, c) for (t, c) in [(t, cx.lookup_class(t)) for t in types] if c is not None]
+    if len(class_types) == 0:
+        return None
+    class_type, class_def = class_types[0]
+    class_name = class_type.name
+    if len(class_types) > 1:
+        raise CodeGenError("too many class types in type", class_type)
+    typenames = [t.name for t in types]
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["shared", "mut", class_name], typenames):
+        return "std::shared_ptr<" + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["shared", "const", class_name], typenames):
+        return "std::shared_ptr<const " + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["unique", "mut", class_name], typenames):
+        return "std::unique_ptr< " + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["unique", "const", class_name], typenames):
+        return "std::unique_ptr<const " + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", "mut", class_name], typenames):
+        return "std::weak_ptr<" + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", "const", class_name], typenames):
+        return "std::weak_ptr<const " + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", class_name], typenames):
+        if mut_by_default:
+            return "std::weak_ptr<" + class_name + ">", indices
+        return "std::weak_ptr<const " + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["mut", class_name], typenames):
+        if class_def.is_unique:
+            return "std::unique_ptr<" + class_name + ">", indices
+        return "std::shared_ptr<" + class_name + ">", indices
+    if indices := _indices_if_all_elements_form_contiguous_sublist(["const", class_name], typenames):
+        if class_def.is_unique:
+            return "std::unique_ptr<const " + class_name + ">", indices
+        return "std::shared_ptr<const " + class_name + ">", indices
+    if mut_by_default:
+        if class_def.is_unique:
+            return "std::unique_ptr<" + class_name + ">", [types.index(class_type)]
+        return "std::shared_ptr<" + class_name + ">", [types.index(class_type)]
+    else:
+        if class_def.is_unique:
+            return "std::unique_ptr<const " + class_name + ">", [types.index(class_type)]
+        return "std::shared_ptr<const " + class_name + ">", [types.index(class_type)]
+
+
+def _codegen_compound_class_type_old(lhs, rhs, cx):
     # these should all create:
     # c = C() : const  # auto c = make_shared<const decltype(C())> ();
     # east/west:
@@ -1572,22 +1627,33 @@ def codegen_type(expr_node, type_node, cx):
 
     if types[0].name in ["ptr", "ref", "rref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
-    #
+
     type_code = []
+
+    if result := _codegen_compound_class_type(types, cx):
+        ptr_code, indices = result
+        types[indices[0]] = ptr_code  # save for below
+        del indices[0]
+        if indices:
+            # remove the rest
+            types = types[0:indices[0]] + types[indices[-1] + 1:]
+
     i = 0
     while i < len(types):
         t = types[i]
 
         assert not isinstance(t, TypeOp)
 
-        if i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
+        if isinstance(t, str):  # already computed above
+            code = t
+        elif i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
             type_code.append(extern_c)
             i += 2
             continue
-        elif i < len(types) - 1 and (s := _codegen_compound_class_type(types[i], types[i + 1], cx)):
-            type_code.append(s)
-            i += 2
-            continue
+        # elif i < len(types) - 1 and (s := _codegen_compound_class_type_old(types[i], types[i + 1], cx)):
+        #     type_code.append(s)
+        #     i += 2
+        #     continue
         elif isinstance(t, ListLiteral):
             if len(t.args) != 1:
                 raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
