@@ -271,7 +271,7 @@ def _build_grammar():
     dotop_or_arrowop = dotop|arrowop
 
     scope_resolution <<= pp.infix_notation(non_numeric_atom|(lparen + infix_expr + rparen), [
-        (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+    (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
         (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
 

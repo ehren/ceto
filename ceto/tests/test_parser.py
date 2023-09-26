@@ -6,7 +6,20 @@ import sys
 import pytest
 
 
-def test_non_operator_dotdotdot():
+def test_parse_pointer_to_member():
+    # would be easy to add to grammar but can be accomplished with cpp strings or a #define in an external header
+    for line in r"""
+(ATestpm.*pmfn)()    # Access the member function (https://learn.microsoft.com/en-us/cpp/cpp/pointer-to-member-operators-dot-star-and-star?view=msvc-170). fails
+(pTestpm->*pmfn)()   # in c++: Parentheses required since * binds less tightly than the function call.
+
+ATestpm.*pmd = 1  # Access the member data
+pTestpm->*pmd = 2""".splitlines():
+        raises(lambda: parse(line))
+
+    parse(r"""(ATestpm.(*pmfn))()  # succeeds although dubious. fails in c++""")
+
+
+def test_parse_dotdotdot():
     p = parse(r"""
 ......  # ok this is weird (should error in c++)
 foo(...)
@@ -31,7 +44,6 @@ def (tprintf: template<typename:T, typename:...:Targs>,
     pass
 )
     """)))
-
 
 
 def test_one_liner_if_mut_parse():
@@ -67,7 +79,6 @@ x <= y < z
 
 def test_compound_comparison():
     source = r"""
-1+1    
 #myFunc < (double > (42, another_param))  # fails in parser due to bad template-disambig-char (acceptable)
 myFunc<anotherFunc<blah>(42)>(43)
 x : foo<bar>(42) : int + "fine"

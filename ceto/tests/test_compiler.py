@@ -22,6 +22,60 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_pointer_to_member():
+    c = compile(r"""
+cpp'
+#define MFPTR_DOT(a, b) (a.*b)
+#define MFPTR_ARROW(a, b) (a->*b)
+'
+    
+# https://learn.microsoft.com/en-us/cpp/cpp/pointer-to-member-operators-dot-star-and-star?view=msvc-170
+class (Testpm:
+    num : int
+    def (func1:
+        std.cout << "func1"    
+    )
+)
+
+pmfn = &Testpm.func1
+pmd = &Testpm.num
+
+def (main:
+    ATestpm = *Testpm(5)
+    p_Testpm = &ATestpm
+    
+    ATestpm_mut : mut = *Testpm(5)
+    p_Testpm_mut : mut = &ATestpm_mut
+    
+    # (ATestpm.*pmfn)()    # fails to parse
+    # (pTestpm->*pmfn)()   # in c++: Parentheses required since * binds less tightly than the function call. (fails to parse)
+
+    # ATestpm.*pmd = 1  # fails to parse
+    # pTestpm->*pmd = 2 # fails to parse
+    
+    # (ATestpm.(*pmfn))()  # parsing succeeds but fails in c++ (note autoderef here too)
+    # : error: invalid use of unary ‘*’ on pointer to member
+    #          ceto::mado(ATestpm)->(*pmfn)();
+    
+    # (p_Testpm->(*pmfn))()  # likewise fails in c++
+    # error: invalid use of unary ‘*’ on pointer to member
+    #    43 |         p_Testpm -> (*pmfn)();
+    
+    MFPTR_DOT(ATestpm, pmfn)()
+    MFPTR_ARROW(p_Testpm, pmfn)()
+    
+    # MFPTR_DOT(ATestpm, pmd) = 1  # error assignment to read only location
+    MFPTR_DOT(ATestpm_mut, pmd) = 1
+    MFPTR_ARROW(p_Testpm_mut, pmd) = 2
+    
+    std.cout << MFPTR_DOT(ATestpm, pmd) << MFPTR_ARROW(p_Testpm, pmd)
+    std.cout << MFPTR_DOT(ATestpm_mut, pmd) << MFPTR_ARROW(p_Testpm_mut, pmd)
+)
+    """)
+
+    assert c == "func1func15522"
+
+
 def test_floating_point():
     c = compile(r"""
     
