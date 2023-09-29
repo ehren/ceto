@@ -402,11 +402,11 @@ def (main:
     g.f = Foo() : mut
     
     t: mut = std.thread(lambda(:
-        # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) but there's still technically a race condition
+        # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) although still a race condition plus UB due to no atomics
         g.f.long_running_method()  # this is a definite use after free
     ))
     
-    std.this_thread.sleep_for(std.chrono.seconds(3))
+    std.this_thread.sleep_for(std.chrono.milliseconds(2500))
     g.f = None
     
     t.join()
@@ -415,7 +415,7 @@ def (main:
 )
     """)
 
-    assert c.strip() in [r"""
+    assert c.strip() == r"""
 in Foo: 1
 in Foo: 2
 in Foo: 3
@@ -423,15 +423,7 @@ Foo destruct
 in Foo: 4
 in Foo: 5
 ub has occured
-    """.strip(), r"""
-in Foo: 1
-in Foo: 2
-in Foo: 3
-in Foo: 4
-Foo destruct
-in Foo: 5
-ub has occured
-    """.strip()]
+    """.strip()
 
 
 def test_alias1():
