@@ -226,7 +226,17 @@ class (StringLiteral(Node):
 #    return quote(unquote(
 #)
 #
-#
+
+#defmacro (x: std.function = lambda(b...), x : Identifier, b:  # b is generic but it's using in a ... expression so it's a vector of WildCard. x is a WildInteger or maybe just WildCard with stored_type == Integer
+#    return quote(unquote(x) : std.function(decltype(lambda(unquote(b)))) = lambda(unquote(b)))  # should unquote auto unpack a vector of Nodes?
+#    return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))  # maybe unpack is clearer or at least easier to implement
+#    return quote(unquote(x) : std.function(decltype(lambda(unquote(b...)))) = lambda(unquote(b...)))  # more clever if a bit more confusing and C++y
+#)
+# ^ although this would preclude a macro that modifies ... expressions? alternative:
+#defmacro (x: std.function = lambda(b), x : Identifier, b:  # b is generic but it's fed to 'unpack' so it's a vector of WildCard. x is a WildInteger or maybe just WildCard with stored_type == Integer
+#    return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
+#)
+
 
 # see a macro
 # defmacro_node = ...
