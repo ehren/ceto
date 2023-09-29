@@ -202,12 +202,17 @@ struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, std::
 
 };
 
-    inline auto string_replace( auto  str, const std::string&  from, const std::string&  to) -> auto {
-        size_t start_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(start_pos)>);
-while ((start_pos = ceto::mado(str)->find(from, start_pos)) != std::string::npos) {            ceto::mado(str)->replace(start_pos, ceto::mado(from)->length(), to);
-            start_pos += ceto::mado(to)->length();
+    inline auto string_replace(const std::string&  source, const std::string&  from, const std::string&  to) -> auto {
+        auto new_string { std::string() } ;
+        ceto::mado(new_string)->reserve(ceto::mado(source)->length());
+        std::string::size_type last_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(last_pos)>);
+        std::string::size_type find_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(find_pos)>);
+while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos))) {            ceto::mado(new_string)->append(source, last_pos, find_pos - last_pos);
+            new_string += to;
+            last_pos = (find_pos + ceto::mado(from)->length());
         }
-        return str;
+        ceto::mado(new_string)->append(source, last_pos, ceto::mado(source)->length() - last_pos);
+        return new_string;
     }
 
 struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {

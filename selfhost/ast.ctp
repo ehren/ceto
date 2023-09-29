@@ -158,24 +158,24 @@ class (IntegerLiteral(Node):
 )
 
 
-# https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/24315631#24315631
-#std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
-#    size_t start_pos = 0;
-#    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
-#        str.replace(start_pos, from.length(), to);
-#        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
-#    }
-#    return str;
-#}
+# User Ingmar
+# https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/29752943#29752943
+def (string_replace, source: string, from: string, to: string:
+    new_string : mut = std.string()
+    new_string.reserve(source.length())  # avoids a few memory allocations
 
+    last_pos : mut:std.string.size_type = 0  # TODO just string.size_type should also generate std::string::size_type
+    find_pos : mut:std.string.size_type = 0
 
-def (string_replace, str : mut:auto, from : string, to : string:  # TODO mut:string should be 'std::string' passed by value
-    start_pos: mut:size_t = 0
-    while ((start_pos = str.find(from, start_pos)) != std.string.npos:  # TODO just 'string.npos' (or string::npos) should be possible if you can write just 'string' (to codegen std::string)
-        str.replace(start_pos, from.length(), to)
-        start_pos += to.length()  # // Handles case where 'to' is a substring of 'from'
+    while (std.string.npos != (find_pos = source.find(from, last_pos)):
+        new_string.append(source, last_pos, find_pos - last_pos)
+        new_string += to
+        last_pos = find_pos + from.length()
     )
-    return str
+
+    new_string.append(source, last_pos, source.length() - last_pos)  # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – tav
+
+    return new_string
 )
 
 
