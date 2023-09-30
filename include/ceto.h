@@ -89,23 +89,18 @@ auto mad(T&& obj) {
 
 // autoderef
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>&>
+std::shared_ptr<T>&
 mad(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
     return obj;
 }
-// autoderef:
-//template<typename T>
-//std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-//mad(std::shared_ptr<T> obj) { return obj; }
-// no need for a pass by value / return by value case it would seem
 
 
 // autoderef of temporary
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>  // could return std::shared_ptr<T>& here and remove the std::move
+std::shared_ptr<T>  // alternately, could return std::shared_ptr<T>& here and remove the std::move
 mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
@@ -115,7 +110,7 @@ mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>&>
+const std::shared_ptr<T>&
 mad(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
@@ -125,7 +120,7 @@ mad(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>&>
+std::unique_ptr<T>&
 mad(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
@@ -135,7 +130,7 @@ mad(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, const std::unique_ptr<T>&>
+const std::unique_ptr<T>&
 mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
@@ -145,7 +140,7 @@ mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef of temporary
 template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T>, std::unique_ptr<T>>  // could return std::unique_ptr<T>& here and remove the std::move
+std::unique_ptr<T>  // alternately, could return std::unique_ptr<T>& here and remove the std::move
 mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
@@ -266,14 +261,14 @@ call_or_construct(TArgs&&... args) {
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
 std::enable_if_t<std::is_base_of_v<object, T>, std::shared_ptr<T>>
-constexpr default_capture(std::shared_ptr<T> t) noexcept
+constexpr default_capture(std::shared_ptr<T> t)
 {
     return t;
 }
 
 template <class T>
 std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, T>
-constexpr default_capture(T t) noexcept
+constexpr default_capture(T t)
 {
     return t;
 }
