@@ -257,28 +257,10 @@ if (this -> suffix) {
         return (*f)(matches);
     }
 
-
 PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<const Node>>);
-PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<const Node>>);
+PYBIND11_MAKE_OPAQUE(std::map<std::string,std::shared_ptr<const Node>>);
+
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
-
-    // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
-
-    //py::bind_vector<std::vector<std::shared_ptr<Node>>>(m, "vector_node");
-    //
-    //py::class_<Node, std::shared_ptr<Node>> node(m, "Node");
-    //node.def("repr", &Node::repr)
-    //    .def("name", &Node::name)
-    //    .def_readwrite("func", &Node::func)
-    //    .def_readwrite("args", &Node::args);
-    //
-    //py::class_<Identifier, std::shared_ptr<Identifier>>(m, "Identifier", node)
-    //    .def(py::init<const std::string &>())
-    //    .def("repr", &Identifier::repr)
-    //    .def("name", &Identifier::name);
-    //
-    //m.def("printid", &printid, "A function that prints an id");
-//}
 ;
 []( auto &&  m) {
         py::bind_vector<std::vector<std::shared_ptr<const Node>>>(m, "NodeVector");

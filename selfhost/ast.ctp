@@ -307,38 +307,19 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
     return (*f)(matches)
 )
 
+PYBIND11_MAKE_OPAQUE(std.vector<Node>)
+PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
+
 cpp'
-PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<const Node>>);
-PYBIND11_MAKE_OPAQUE(std::map<std::string, std::shared_ptr<const Node>>);
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
-
-    // This would be the sensible thing to do but we are going to write the below in ceto as a torture test:
-
-    //py::bind_vector<std::vector<std::shared_ptr<Node>>>(m, "vector_node");
-    //
-    //py::class_<Node, std::shared_ptr<Node>> node(m, "Node");
-    //node.def("repr", &Node::repr)
-    //    .def("name", &Node::name)
-    //    .def_readwrite("func", &Node::func)
-    //    .def_readwrite("args", &Node::args);
-    //
-    //py::class_<Identifier, std::shared_ptr<Identifier>>(m, "Identifier", node)
-    //    .def(py::init<const std::string &>())
-    //    .def("repr", &Identifier::repr)
-    //    .def("name", &Identifier::name);
-    //
-    //m.def("printid", &printid, "A function that prints an id");
-//}
 '
 
-# More or less equivalent to the above commented c++:
-
-# trick transpiler into local variable context (TODO add 'localscope' blocks then ban non-constexpr global lambdas entirely)
+# trick transpiler into local variable context (TODO add 'scope(Block([]))' then ban non-constexpr global lambdas entirely)
 lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default (hence need for 'mut'). However, const auto&& pretty much makes no sense so maybe anything with 'rref' should be an exception to const by default logic
 
-    #py::bind_vector<[Node:mut]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (or maybe force type context with a leading unary ':')
+    #py::bind_vector<[Node]>(m, c"VectorNode")  # this should work but codegen for template params as types needs fix (also maybe force type context with a leading unary ':')
     py.bind_vector<std.vector<Node>>(m, c"NodeVector")
-    py.bind_map<std.map<std.string, Node>>(m, c"StringNodeMap") #, py.module_local(false))   # requires you to create an explicit d = MapStringNode() on python side
+    py.bind_map<std.map<std.string, Node>>(m, c"StringNodeMap")
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
     node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
@@ -354,7 +335,6 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     py.class_<Identifier.class, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref, py.tuple>())
 
-    #m.def(c"printid", &printid, c"A function that prints an id")
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
 
     return
