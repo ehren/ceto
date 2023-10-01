@@ -665,9 +665,17 @@ def (main:
     std.cout << l4(1)(2)
     l5 = lambda(x:int, lambda(y, y + x))(1)(1)
     std.cout << l5
-    l6 = lambda(x:int, lambda(y, y + x):int)(2)(3)
+    if (not defined(_MSC_VER):
+        l6 = lambda(x:int, lambda(y, y + x):int)(2)(3)
+    else:
+        l6 = lambda(x:int, return lambda(y, y + x):int)(2)(3)  # something about the 'is void?' constexpr if (for implicit return in lambda) doesn't even parse in msvc (their bug)
+    ) : pre
     std.cout << l6
-    l7 = lambda(x:int, lambda(y, y + x):decltype(1))(3)(4)
+    if (not defined(_MSC_VER):
+        l7 = lambda(x:int, lambda(y, y + x):decltype(1))(3)(4)
+    else:
+        l7 = lambda(x:int, return lambda(y, y + x):decltype(1))(3)(4)
+    ) : pre
     std.cout << l7
     # l8 = lambda(x:int, lambda(y, y + x)):decltype(lambda(x:int, 0))(0)(0)  # still an error
     # std.cout << l8

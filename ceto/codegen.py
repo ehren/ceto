@@ -62,8 +62,6 @@ def codegen_if(ifcall : Call, cx):
     assert isinstance(ifcall, Call)
     assert ifcall.func.name == "if" 
 
-    ifkind = ifcall.declared_type
-
     indt = cx.indent_str()
     cpp = ""
 
@@ -82,8 +80,21 @@ def codegen_if(ifcall : Call, cx):
 
     ifnode = IfWrapper(ifcall.func, ifcall.args)
 
-    if ifkind is not None and ifkind.name == "noscope":
-        # python-style "noscope" ifs requires a specifier
+    if ifcall.declared_type:
+        ifkind = ifcall.declared_type.name
+        if ifkind is None:
+            raise CodeGenError("unexpected if type", ifcall)
+    else:
+        ifkind = None
+
+    if_start = "if ("
+    block_opening = ") {\n"
+    elif_start = "} else if ("
+    else_start = "} else {\n"
+    block_closing = "}"
+
+    if ifkind == "noscope":
+        # python-style "noscope" ifs requires a specifier (TODO probably should just remove this silliness)
 
         if is_expression or not cx.in_function_body:
             raise CodeGenError("unscoped if disallowed in expression context", ifcall)
@@ -133,19 +144,31 @@ def codegen_if(ifcall : Call, cx):
         else:
             raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
 
-    cpp += "if (" + codegen_node(ifnode.cond, cx) + ") {\n"
+    # TODO should these be disallowed with expression ifs?
+    elif ifkind == "pre":
+        if_start = "#if "
+        block_opening = "\n"
+        elif_start = "#elif "
+        else_start = "#else\n"
+        block_closing = "#endif\n"
+    elif ifkind == "constexpr":
+        if_start = "if constexpr ("
+    elif ifkind == "consteval":  # c++23
+        if_start = "if consteval ("
+
+    cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
 
     cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
 
     for elifcond, elifblock in ifnode.eliftuples:
-        cpp += indt + "} else if (" + codegen_node(elifcond, cx.enter_scope()) + ") {\n"
+        cpp += indt + elif_start + codegen_node(elifcond, cx.enter_scope()) + block_opening
         cpp += codegen_block(elifblock, cx.enter_scope())
 
     if ifnode.elseblock:
-        cpp += indt + "} else {\n"
+        cpp += indt + else_start
         cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
 
-    cpp += indt + "}"
+    cpp += indt + block_closing
 
     if is_expression:
         if cx.in_function_body:
