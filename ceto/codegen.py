@@ -303,7 +303,7 @@ def codegen_class(node : Call, cx):
         if len(name.args) != 1:
             if len(name.args) == 0:
                 raise CodeGenError("empty inherits list", name)
-            raise CodeGenError("Multiple inheritance is not supported (and we're leaning towards not ever using the 'inheritance list' for interface conformance etc either)", name)
+            raise CodeGenError("Multiple inheritance is not supported yet", name)
         inherits = name.args[0]
         name = name.func
 
@@ -323,7 +323,8 @@ def codegen_class(node : Call, cx):
     inner_cx.in_function_body = False
 
     classdef = ClassDefinition(name, node, is_generic_param_index={},
-                               is_unique=node.declared_type and node.declared_type.name == "unique")
+                               is_unique=node.declared_type and node.declared_type.name == "unique",
+                               is_struct=node.func.name == "struct")
 
     cx.class_definitions.append(classdef)
 
@@ -548,8 +549,7 @@ def codegen_class(node : Call, cx):
 
     interface_def_str = ""
     for interface_type in defined_interfaces:
-        # note that shared_ptr<interface_type> is auto derefed
-        interface_def_str += "struct " + interface_type + " : ceto::object {\n"
+        interface_def_str += "struct " + interface_type + " : ceto::object {\n"  # no longer necessary to inherit from object to participate in autoderef but we're keeping it for now (would be required if we re-enabled call_or_construct)
         for method in defined_interfaces[interface_type]:
             print("method",method)
             interface_def_str += inner_indt + interface_method_declaration_str(method, cx)
@@ -564,8 +564,10 @@ def codegen_class(node : Call, cx):
 
     if not inherits:
         if classdef.is_unique:
+            # no longer necessary for autoderef (but would be required for call_or_construct)
             default_inherits += ["ceto::object"]
         else:
+            # TODO stop doing this automatically (non-trivial self use ie ceto::shared_from will fail to compile without the explicit opt-in)
             default_inherits += ["ceto::shared_object"]
 
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
@@ -609,7 +611,7 @@ def codegen_block(block: Block, cx):
             if b.func.name == "for":
                 cpp += codegen_for(b, cx)
                 continue
-            elif b.func.name == "class":
+            elif b.func.name in ["class", "struct"]:
                 cpp += codegen_class(b, cx)
                 continue
             elif b.func.name == "if":
@@ -763,8 +765,9 @@ def _strip_non_class_non_plain_mut_type(node : Node, cx):
     if mut_index < len(types) - 1:
         to_right_of_mut = types[mut_index + 1]
 
-    if any(t for t in [to_left_of_mut, to_right_of_mut] if t and cx.lookup_class(t)):
-        # don't strip 'mut' if adjacent to a class type
+    if any(t for t in [to_left_of_mut, to_right_of_mut] if t and (cdef := cx.lookup_class(t)) and not cdef.is_struct):
+        # don't strip 'mut' if adjacent to a class type.
+        # TODO this might need adjusting to support Foo:mut:shared or Foo:shared:mut when Foo is of struct type?
         return None
 
     types.remove(mut)
@@ -876,13 +879,13 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
             if isinstance(arg.rhs, Call) and (class_def := cx.lookup_class(arg.rhs.func)):
                 # it's a known class (object derived). auto add const&
                 # (though std::add_const_t works here, we can be direct)
-                make_shared = codegen_node(arg.rhs, cx)
+                make = codegen_node(arg.rhs, cx)
                 # (we can also be direct with the decltype addition as well though decltype_str works now)
                 # TODO needs tests
                 ref_part = ""
                 if not class_def.is_unique:
                     ref_part = "&"
-                return "const decltype(" + make_shared + ")" + ref_part, arg.lhs.name + " = " + make_shared
+                return "const decltype(" + make + ")" + ref_part, arg.lhs.name + " = " + make
             else:
                 # untyped default value
 
@@ -959,7 +962,7 @@ def class_name_node_from_inline_method(defcallnode : Call):
     parentblock = defcallnode.parent
     if isinstance(parentblock, Assign):  # e.g. = 0 pure virtual function
         parentblock = parentblock.parent
-    if isinstance(parentblock, Block) and isinstance(parentblock.parent, Call) and parentblock.parent.func.name == "class":
+    if isinstance(parentblock, Block) and isinstance(parentblock.parent, Call) and parentblock.parent.func.name in ["class", "struct"]:
         classname = parentblock.parent.args[0]
         if isinstance(classname, Call):
             # inheritance
@@ -1156,7 +1159,7 @@ def codegen_def(defnode: Call, cx):
 
             classdef = cx.lookup_class(class_identifier)
             if not classdef:
-                raise CodeGenError("expected a class in '= 0' declaration", class_identifier)
+                raise CodeGenError("expected a class/struct in '= 0' declaration", class_identifier)
 
             classdef.is_pure_virtual = True
 
@@ -1283,7 +1286,7 @@ def codegen_lambda(node, cx):
             return True
 
         # find all identifiers but not call funcs etc or anything in a nested class
-        idents = find_all(node, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name == "class")
+        idents = find_all(node, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name in ["class", "struct"])
 
         idents = {i.name: i for i in idents}.values()  # remove duplicates
 
@@ -1378,7 +1381,6 @@ def _decltype_str(node, cx):
 
         if class_def := cx.lookup_class(node.func):
             class_name = node.func.name
-            class_node = class_def.class_def_node
 
             # if class_def.has_generic_params():
             #     class_name += "<" + ", ".join(
@@ -1386,14 +1388,15 @@ def _decltype_str(node, cx):
 
             # instead of manual tracking like the above,
             # leave the matter of the desired class type up to C++ CTAD:
-            args_str = "(" + ", ".join([codegen_node(a, cx) for a in node.args]) + ")"   # this should be _decltype_str instead of codegen_node?
+            args_str = "{" + ", ".join([codegen_node(a, cx) for a in node.args]) + "}"   # this should be _decltype_str instead of codegen_node?
 
             const = "const " if _is_const_make(call) else ""
 
             class_name = "decltype(" + class_name + args_str + ")"
 
-            if isinstance(class_node.declared_type,
-                          Identifier) and class_node.declared_type.name == "unique":
+            if class_def.is_struct:
+                func_str = class_name
+            elif class_def.is_unique:
                 func_str = "std::unique_ptr<" + const + class_name + ">"
             else:
                 func_str = "std::shared_ptr<" + const + class_name + ">"
@@ -1506,11 +1509,12 @@ def _shared_ptr_str_for_type(type_node, cx):
 
     if classdef := cx.lookup_class(type_node):
         if isinstance(classdef, InterfaceDefinition):
+            # TODO this clearly needs a revisit (or just scrap current 'interface' handling)
             return "std::shared_ptr"
 
-        class_node = classdef.class_def_node
-
-        if isinstance(class_node.declared_type, Identifier) and class_node.declared_type.name == "unique":
+        if classdef.is_struct:
+            return None
+        elif classdef.is_unique:
             return "std::unique_ptr"
         else:
             return "std::shared_ptr"
@@ -1561,6 +1565,9 @@ def _codegen_compound_class_type(types, cx):
         if mut_by_default:
             return "std::weak_ptr<" + class_name + ">", indices
         return "std::weak_ptr<const " + class_name + ">", indices
+    if class_def.is_struct:
+        # let the defaults of codegen_type handle this
+        return None
     if indices := _indices_if_all_elements_form_contiguous_sublist(["mut", class_name], typenames):
         if class_def.is_unique:
             return "std::unique_ptr<" + class_name + ">", indices
@@ -1752,6 +1759,7 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
         if node.rhs.name == "class":
             # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
             # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes
+            # TODO ^ needs test
             return node.lhs.name
 
         # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
@@ -1835,7 +1843,6 @@ def codegen_call(node: Call, cx: Scope):
 
             if class_def := cx.lookup_class(node.func):
                 class_name = node.func.name
-                class_node = class_def.class_def_node
                 curly_args = "{" + args_inner + "}"
 
                 if not node.args:
@@ -1850,8 +1857,9 @@ def codegen_call(node: Call, cx: Scope):
 
                 const_part = "const " if _is_const_make(node) else ""
 
-                if isinstance(class_node.declared_type,
-                              Identifier) and class_node.declared_type.name == "unique":
+                if class_def.is_struct:
+                    func_str = class_name
+                elif class_def.is_unique:
                     func_str = "std::make_unique<" + const_part + class_name + ">"
                 else:
                     func_str = "std::make_shared<" + const_part + class_name + ">"
@@ -1976,7 +1984,9 @@ def codegen_call(node: Call, cx: Scope):
             map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
 
-def _is_const_make(node):
+def _is_const_make(node : Call):
+    assert isinstance(node, Call)
+
     is_const = not mut_by_default
 
     if node.declared_type is not None:
@@ -2238,7 +2248,7 @@ def codegen_node(node: Node, cx: Scope):
                             if parent.func.name == "lambda":
                                 made_easy_lambda_args_mistake = True
                                 break
-                            elif parent.func.name in ["def", "class"]:
+                            elif parent.func.name in ["def", "class", "sruct"]:
                                 made_easy_lambda_args_mistake = False
                                 break
                         elif isinstance(parent, Block) and len(parent.args) != 1:
@@ -2264,7 +2274,7 @@ def codegen_node(node: Node, cx: Scope):
                     defcode = codegen_def(modarg, funcx)
                     modcpp += defcode
                     continue
-                elif modarg.func.name == "class":
+                elif modarg.func.name in ["class", "struct"]:
                     classcode = codegen_class(modarg, cx)
                     modcpp += classcode
                     continue
@@ -2438,7 +2448,7 @@ def codegen_node(node: Node, cx: Scope):
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)
-            raise CodeGenError("Use round parentheses for class constructor call", node)
+            raise CodeGenError("Use round parentheses for ceto-defined class/struct constructor call (curly braces are automatic)", node)
         return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
     elif isinstance(node, UnOp):
         opername = node.func

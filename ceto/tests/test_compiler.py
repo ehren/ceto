@@ -22,6 +22,31 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_struct():
+    c = compile(r"""
+    
+struct (Foo:
+    x : string
+)
+
+def (foo, f : Foo:
+    static_assert(std.is_same_v<decltype(f), const:Foo:ref>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    std.cout << f.x
+)
+
+def (main:
+    foo(Foo("blah"))
+    # foo(Foo("blah") : mut)  # TODO this should be an error not a silent 'mut' strip
+                              # Foo("blah") : mut:shared or Foo("blah") : shared:mut should be allowed
+)
+    """)
+
+    assert c == "blah"
+
+
+
 def test_pointer_to_member():
     c = compile(r"""
 cpp'
@@ -636,15 +661,15 @@ def (main:
     l = lambda(x:int, 0):int(0)  # works (immediately invoked)
     l2 = lambda(x:int, 0):decltype(0) # now works (special case "decltype" logic in codegen lambda to avoid thinking this is an immediately invoked (with 0) lambda with return type the keyword "decltype")
     l3 = lambda(x:int, 0):decltype(1)(2)  # now works
-    l4 = lambda(x:int, return lambda(y, y + x))
+    l4 = lambda(x:int, lambda(y, y + x))
     std.cout << l4(1)(2)
-    l5 = lambda(x:int, return lambda(y, y + x))(1)(1)
+    l5 = lambda(x:int, lambda(y, y + x))(1)(1)
     std.cout << l5
-    l6 = lambda(x:int, return lambda(y, y + x):int)(2)(3)
+    l6 = lambda(x:int, lambda(y, y + x):int)(2)(3)
     std.cout << l6
-    l7 = lambda(x:int, return lambda(y, y + x):decltype(1))(3)(4)
+    l7 = lambda(x:int, lambda(y, y + x):decltype(1))(3)(4)
     std.cout << l7
-    # l8 = lambda(x:int, return lambda(y, y + x)):decltype(lambda(x:int, 0))(0)(0)  # still an error
+    # l8 = lambda(x:int, lambda(y, y + x)):decltype(lambda(x:int, 0))(0)(0)  # still an error
     # std.cout << l8
     static_assert(std.is_same_v<decltype(&blah), decltype(+lambda(x:int, return x))>)
     static_assert(std.is_same_v<decltype(&blah), decltype(+(lambda(x:int, return x):int))>)
@@ -2256,7 +2281,7 @@ def (main:
     f = Foo{1}
 )
 """)
-    raises(f2, "Use round parentheses for class constructor call")
+    raises(f2, "Use round parentheses for ceto-defined class/struct constructor call (curly braces are automatic)")
 
     def f3():
         compile(r"""
@@ -2853,26 +2878,28 @@ def (main:
         pass 
     )
     
-    # TODO: "is void?" detection also needs work (should never apply to lambda literal - disabled here via explicit return in outer lambda)
-    # also maybe should support semicolons for multiple statements in one liner lambda (either needs grammar change or stop to using ';' as block separator char - with ';' as a first class operator added)
-    f = lambda (return lambda (:
+    # TODO should support semicolons for multiple statements in one liner lambda (either needs grammar change or stop to using ';' as block separator char - with ';' as a first class operator added)
+    f = lambda (lambda (:
+        std.cout << "hi"
+        return
+    ))
+    f2 = lambda (return lambda (:
         std.cout << "hi"
         return
     ))
     
     # make sure array fix doesn't break function call
     f()()
+    f2()()
     
-    # fn = std.function(lambda("yo"))  # CTAD here needs working c++20:
-    # lf = [fn]  # needs _decltype_str fixes
-    # std.cout << lf[0]()
-    
-    pass
+    fn = std.function(lambda("yo"))
+    lf = [fn]
+    std.cout << lf[0]()
 )
 
     """)
 
-    assert c == "yesokhi"
+    assert c == "yesokhihiyo"
 
 
 def test_range_signedness():
