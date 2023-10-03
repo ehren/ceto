@@ -22,9 +22,9 @@ def (join, v, to_string, sep="":
 
 
 class (Node:
-    func : Node
-    args : [Node]
-    source : py.tuple  # typing.Tuple[str, int]
+    func: Node
+    args: [Node]
+    source: py.tuple  # typing.Tuple[str, int]
 
     def (init, func, args, source = py.tuple{}:
         self.func = func
@@ -32,9 +32,9 @@ class (Node:
         self.source = source
     )
 
-    parent : py.object = py.none()  # TODO implement weak (not sure if this will leak when a cycle is created in python code)
-    declared_type : Node = None
-    scope : py.object = py.none()
+    parent: Node:weak = {}
+    declared_type: Node = None
+    scope: py.object = py.none()
 
     def (repr: virtual:
         # selph : py.object = py.cast(this)

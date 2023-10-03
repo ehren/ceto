@@ -45,7 +45,7 @@ struct Node : ceto::shared_object {
 
     py::tuple source;
 
-    py::object parent = py::none(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::none()), std::remove_cvref_t<decltype(parent)>>);
+    std::weak_ptr<const Node> parent = {};
 
     std::shared_ptr<const Node> declared_type = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(declared_type)>>);
 
