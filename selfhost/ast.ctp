@@ -271,7 +271,7 @@ class (Module(Block):
 
 class (RedundantParens_(Node):
     def (init, args: [Node], source = py.tuple{}:
-        super.init(None,args)
+        super.init(None, args)
 
         a : Node = None
         b = BinOp(a, []: Node, py.tuple{})  # test we've got the inherited constructors right (TODO real test case)

@@ -566,6 +566,9 @@ def codegen_class(node : Call, cx):
         cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
         should_disable_default_constructor = True
 
+    if inherits and constructor_node is None:
+        should_disable_default_constructor = True
+
     if should_disable_default_constructor:
         # this matches python behavior (though we allow a default constructor for a class with no uninitialized attributes and no user defined constructor)
         cpp += inner_indt + name.name + "() = delete;\n\n"
