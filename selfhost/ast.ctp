@@ -236,7 +236,10 @@ class (StringLiteral(Node):
 #defmacro (x: std.function = lambda(b), x : Identifier, b:  # b is generic but it's fed to 'unpack' so it's a vector of WildCard. x is a WildInteger or maybe just WildCard with stored_type == Integer
 #    return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
 #)
-
+# better:
+#defmacro (x: std.function = lambda(b), x: Identifier, b: ...:  # b is a vector of WildCard. x is a WildInteger or maybe just WildCard with stored_type == Integer
+#    return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))  # unpack distinct from unquote is better in case we can't determine at transpile time if b is a vector
+#)
 
 # see a macro
 # defmacro_node = ...

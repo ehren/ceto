@@ -167,22 +167,41 @@ bar()()::blah::blah2
     # debatable if last result should really be parsed as (bar()()::blah)::blah2 but above is ok for now
 
 
-def test_errors2():
-    return
-    parse(r"""
+@pytest.mark.xfail
+def test_errors3():
+    raises(lambda: parse(r"""
+def (foo:
+    pass
+)
+
+def (bar:
+    pass
+)
+
+x = 0
+    
+def (oops_forgot_colon
+    pass
+)
 
 def (main:
+    pass
+)
+    """), exc="aaa")
+
+
+@pytest.mark.xfail
+def test_errors2():
+    raises(lambda: parse(r"""
+def (main:
     std.cout <<"hi"
-    #err(
     a(
 )
-    """)
+    """), exc="aaa")
 
 
 def test_errors():
-    return
-
-    parse(r"""
+    raises(lambda: parse(r"""
 def (main:
     a
     a
@@ -199,7 +218,8 @@ def (main:
     #'''
     aa
 )
-    """)
+    """), exc="Expected end of text, found 'if'  (at char 63), (line:12, col:5)")
+    # TODO all tests should be going through compiler.main
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="problems with native stack overflow failing windows ci")
