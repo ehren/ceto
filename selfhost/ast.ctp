@@ -144,18 +144,18 @@ class (Template(Node):
     ) : std.string
 )
 
-class (IntegerLiteral(Node):
-    integer : py.object
-
-    def (init, integer, source = py.tuple{}:
-        self.integer = integer
-        super.init(None, [] : Node, source)
-    )
-
-    def (repr:
-        return std.string(py.str(self.integer))
-    ) : std.string
-)
+#class (IntegerLiteral(Node):
+#    integer : py.object
+#
+#    def (init, integer, source = py.tuple{}:
+#        self.integer = integer
+#        super.init(None, [] : Node, source)
+#    )
+#
+#    def (repr:
+#        return std.string(py.str(self.integer))
+#    ) : std.string
+#)
 
 
 # User Ingmar
@@ -175,7 +175,7 @@ def (string_replace, source: string, from: string, to: string:
 
     new_string.append(source, last_pos, source.length() - last_pos)  # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – tav
 
-    return new_string
+    return new_string  # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
 )
 
 
@@ -199,16 +199,85 @@ class (StringLiteral(Node):
     )
 
     def (repr:
-        s : mut = self.escaped()
-        if (self.prefix:
-            s = self.prefix.name().value() + s
+        return if (self.prefix:
+            self.prefix.name().value()
+        else:
+            ""
+        ) + self.escaped() + if (self.suffix:
+            self.suffix.name().value()
+        else:
+            ""
         )
-        if (self.suffix:
-            s += self.suffix.name().value()
-        )
-        return s
     ) : string
 )
+
+class (IntegerLiteral(Node):
+    integer_string : std.string
+    suffix : Identifier
+
+    def (init, integer_string, suffix = None, source = py.tuple{}:
+        self.integer_string = integer_string
+        self.suffix = suffix
+        super.init(None, {}, source)
+    )
+
+    def (repr:
+        return self.integer_string + if (self.suffix: self.suffix.name().value() else: "")
+    ) : std.string
+)
+
+class (FloatLiteral(Node):
+    float_string : std.string
+    suffix : Identifier
+
+    def (init, float_string, suffix, source = py.tuple{}:
+        self.float_string = float_string
+        self.suffix = suffix
+        super.init(None, {}, source)
+    )
+
+)
+
+class (ListLike_(Node):
+    def (init, args: [Node], source = py.tuple{}:
+        super.init(None, args, source)
+    )
+
+    def (repr:
+        classname = std.string(typeid(*this).name())
+        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+    ) : std.string
+)
+
+class (ListLiteral(ListLike_):
+    pass
+)
+
+class (TupleLiteral(ListLike_):
+    pass
+)
+
+class (BracedLiteral(ListLike_):
+    pass
+)
+
+class (Block(ListLike_):
+    pass
+)
+
+class (Module(Block):
+    has_main_function = false
+)
+
+class (RedundantParens_(Node):
+    def (init, args: [Node], source = py.tuple{}:
+        super.init(None,args)
+
+        a : Node = None
+        b = BinOp(a, []: Node, py.tuple{})  # test we've got the inherited constructors right (TODO real test case)
+    )
+)
+
 
 #no:
 #defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:

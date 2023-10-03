@@ -596,6 +596,10 @@ def codegen_class(node : Call, cx):
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
+    if inherits and not constructor_node:
+        # TODO maybe a transpiler error when base class is a template
+        class_header += "using " + base_class_type + "::" + base_class_type + ";\n\n"
+
     if typenames:
         template_header = "template <" + ",".join(["typename " + t for t in typenames]) + ">"
     else:
