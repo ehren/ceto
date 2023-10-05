@@ -74,15 +74,11 @@ struct UnOp : public Node {
 
 using Node::Node;
 
-    UnOp() = delete;
-
 };
 
 struct LeftAssociativeUnOp : public Node {
 
 using Node::Node;
-
-    LeftAssociativeUnOp() = delete;
 
 };
 
@@ -104,23 +100,17 @@ using Node::Node;
                     }, std::string {" "});
         }
 
-    BinOp() = delete;
-
 };
 
 struct TypeOp : public BinOp {
 
 using BinOp::BinOp;
 
-    TypeOp() = delete;
-
 };
 
 struct SyntaxTypeOp : public TypeOp {
 
 using TypeOp::TypeOp;
-
-    SyntaxTypeOp() = delete;
 
 };
 
@@ -132,15 +122,11 @@ using BinOp::BinOp;
             return ((ceto::mado(this -> lhs())->repr() + std::string {"."}) + ceto::mado(this -> rhs())->repr());
         }
 
-    AttributeAccess() = delete;
-
 };
 
 struct ArrowOp : public BinOp {
 
 using BinOp::BinOp;
-
-    ArrowOp() = delete;
 
 };
 
@@ -148,15 +134,11 @@ struct ScopeResolution : public BinOp {
 
 using BinOp::BinOp;
 
-    ScopeResolution() = delete;
-
 };
 
 struct Assign : public BinOp {
 
 using BinOp::BinOp;
-
-    Assign() = delete;
 
 };
 
@@ -190,8 +172,6 @@ using Node::Node;
             return (((ceto::mado(this -> func)->repr() + std::string {"("}) + csv) + std::string {")"});
         }
 
-    Call() = delete;
-
 };
 
 struct ArrayAccess : public Node {
@@ -204,8 +184,6 @@ using Node::Node;
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"["}) + csv) + std::string {"]"});
         }
-
-    ArrayAccess() = delete;
 
 };
 
@@ -220,8 +198,6 @@ using Node::Node;
             return (((ceto::mado(this -> func)->repr() + std::string {"{"}) + csv) + std::string {"}"});
         }
 
-    BracedCall() = delete;
-
 };
 
 struct Template : public Node {
@@ -234,8 +210,6 @@ using Node::Node;
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"<"}) + csv) + std::string {">"});
         }
-
-    Template() = delete;
 
 };
 
@@ -343,15 +317,11 @@ struct ListLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-    ListLiteral() = delete;
-
 };
 
 struct TupleLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
-
-    TupleLiteral() = delete;
 
 };
 
@@ -359,15 +329,11 @@ struct BracedLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-    BracedLiteral() = delete;
-
 };
 
 struct Block : public ListLike_ {
 
 using ListLike_::ListLike_;
-
-    Block() = delete;
 
 };
 
@@ -376,8 +342,6 @@ struct Module : public Block {
 using Block::Block;
 
     std::remove_cvref_t<decltype(false)> has_main_function = false;
-
-    Module() = delete;
 
 };
 

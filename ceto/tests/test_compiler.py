@@ -22,6 +22,75 @@ def raises(func, exc=None):
         assert 0
 
 
+
+def test_inherited_constructors():
+    compile(r"""
+    
+class (Base:
+    pass  # this has a default constructor
+)
+
+class (Derived(Base):
+    pass  # this does too - (c++ implicitly calls Base default constructor)
+)
+
+def (main:
+    d = Derived()
+)
+    """)
+
+    preamble = r"""
+# deleted default constructor, explicit 1-arg constructor
+class (Base:
+    a: int
+)
+
+class (Derived(Base):  # Inheriting constructors because no user defined init method present. Default constructor is deleted (implicitly by c++) because it's deleted in the base class
+    pass
+)
+    """
+
+    good_code = r"""
+def (main:
+    d = Derived(5)
+    std.cout << d.a
+)
+    """
+
+    bad_code = r"""
+def (main:
+    d = Derived()
+)
+        """
+
+    preamble2 = r"""
+class (DerivedDerived(Derived):
+    def (init:
+        super.init(6)
+    )
+)
+    """
+
+    good_code2 = r"""
+def (main:
+    d = DerivedDerived()
+    std.cout << d.a
+)
+    """
+
+    bad_code2 = r"""
+def (main:
+    d2 = DerivedDerived(7)  # if a derived class implements an init method no constructors are inherited
+    std.cout << d2.a
+)
+    """
+
+    assert compile(preamble + good_code) == "5"
+    raises(lambda: compile(preamble + bad_code))
+    assert compile(preamble + preamble2 + good_code2) == "6"
+    raises(lambda: compile(preamble + preamble2 + bad_code2))
+
+
 def test_struct():
     c = compile(r"""
     
