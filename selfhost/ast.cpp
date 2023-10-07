@@ -70,21 +70,39 @@ struct Node : ceto::shared_object {
 
 };
 
-struct UnOp : public Node {
+struct UnOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
-using Node::Node;
+    std::string op;
+
+        inline auto repr() const -> std::string {
+            return ((((std::string {"("} + (this -> op)) + std::string {" "}) + ceto::mado(ceto::maybe_bounds_check_access(this -> args,0))->repr()) + std::string {")"});
+        }
+
+    explicit UnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, args, source), op(op) {
+    }
+
+    UnOp() = delete;
 
 };
 
-struct LeftAssociativeUnOp : public Node {
+struct LeftAssociativeUnOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
-using Node::Node;
+    std::string op;
+
+        inline auto repr() const -> std::string {
+            return ((((std::string {"("} + ceto::mado(ceto::maybe_bounds_check_access(this -> args,0))->repr()) + std::string {" "}) + (this -> op)) + std::string {")"});
+        }
+
+    explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, args, source), op(op) {
+    }
+
+    LeftAssociativeUnOp() = delete;
 
 };
 
-struct BinOp : public Node {
+struct BinOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
-using Node::Node;
+    std::string op;
 
         inline auto lhs() const -> auto {
             return ceto::maybe_bounds_check_access(this -> args,0);
@@ -95,10 +113,13 @@ using Node::Node;
         }
 
         inline auto repr() const -> std::string {
-            return join(std::vector {{this -> lhs(), this -> func, this -> rhs()}}, [](const auto &a) {
-                    if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
-                    }, std::string {" "});
+            return ((((((std::string {"("} + ceto::mado(this -> lhs())->repr()) + std::string {" "}) + (this -> op)) + std::string {" "}) + ceto::mado(this -> rhs())->repr()) + std::string {")"});
         }
+
+    explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, args, source), op(op) {
+    }
+
+    BinOp() = delete;
 
 };
 
@@ -139,6 +160,18 @@ using BinOp::BinOp;
 struct Assign : public BinOp {
 
 using BinOp::BinOp;
+
+};
+
+struct NamedParameter : public Assign {
+
+using Assign::Assign;
+
+        inline auto repr() const -> std::string {
+            return ((std::string {"NamedParameter("} + join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
+                    }, std::string {", "})) + std::string {")"});
+        }
 
 };
 
@@ -277,7 +310,7 @@ struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, s
 );
         }
 
-    explicit IntegerLiteral(const std::string&  integer_string, const decltype(nullptr) suffix = nullptr, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, {}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, {}, source), integer_string(integer_string), suffix(suffix) {
+    explicit IntegerLiteral(const std::string&  integer_string, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, {}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, {}, source), integer_string(integer_string), suffix(suffix) {
     }
 
     IntegerLiteral() = delete;
@@ -345,11 +378,9 @@ using Block::Block;
 
 };
 
-struct RedundantParens_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>()))> {
+struct RedundantParens_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
-    explicit RedundantParens_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>()))> (nullptr, args) {
-            const std::shared_ptr<const Node> a = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(a)>>);
-            const auto b = std::make_shared<const decltype(BinOp{a, std::vector<std::shared_ptr<const Node>>{}, py::tuple{}})>(a, std::vector<std::shared_ptr<const Node>>{}, py::tuple{});
+    explicit RedundantParens_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, args, source) {
     }
 
     RedundantParens_() = delete;
@@ -374,8 +405,23 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         py::bind_vector<std::vector<std::shared_ptr<const Node>>>(m, "NodeVector");
         py::bind_map<std::map<std::string,std::shared_ptr<const Node>>>(m, "StringNodeMap");
         auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("parent", (&Node::parent)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("name", (&Node::name)) } ;
-        ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<LeftAssociativeUnOp,std::shared_ptr<LeftAssociativeUnOp>>(m, "LeftAssociativeUnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        auto binop { py::class_<BinOp,std::shared_ptr<BinOp>>(m, "BinOp", node) } ;
+        ceto::mado(binop)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        auto typeop { py::class_<TypeOp,std::shared_ptr<TypeOp>>(m, "TypeOp", binop) } ;
+        ceto::mado(typeop)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<SyntaxTypeOp,std::shared_ptr<SyntaxTypeOp>>(m, "SyntaxTypeOp", typeop))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<AttributeAccess,std::shared_ptr<AttributeAccess>>(m, "AttributeAccess", binop))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<ArrowOp,std::shared_ptr<ArrowOp>>(m, "ArrowOp", binop))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<ScopeResolution,std::shared_ptr<ScopeResolution>>(m, "ScopeResolution", binop))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        auto assign { py::class_<Assign,std::shared_ptr<Assign>>(m, "Assign", binop) } ;
+        ceto::mado(assign)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<NamedParameter,std::shared_ptr<NamedParameter>>(m, "NamedParameter", assign))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<Identifier,std::shared_ptr<Identifier>>(m, "Identifier", node))->def(py::init<const std::string &,py::tuple>());
+        ceto::mado(py::class_<IntegerLiteral,std::shared_ptr<IntegerLiteral>>(m, "IntegerLiteral", node))->def(py::init<const std::string &,std::shared_ptr<const Identifier>,py::tuple>());
+        ceto::mado(py::class_<FloatLiteral,std::shared_ptr<FloatLiteral>>(m, "FloatLiteral", node))->def(py::init<const std::string &,std::shared_ptr<const Identifier>,py::tuple>());
+        ceto::mado(py::class_<FloatLiteral,std::shared_ptr<FloatLiteral>>(m, "FloatLiteral", node))->def(py::init<const std::string &,std::shared_ptr<const Identifier>,py::tuple>());
         ceto::mado(m)->def("macro_trampoline", (&macro_trampoline), "macro trampoline");
         return;
         }(m);

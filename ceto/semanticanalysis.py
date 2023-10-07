@@ -2,21 +2,11 @@ import typing
 from collections import defaultdict
 import sys
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter
 
 
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
-
-
-class NamedParameter(Assign):
-    # def __init__(self, args):
-    #     # self.func = "NamedParameter"
-    #     func = "="  # paper over that we've further loosened named parameter vs assignment distinction in codegen
-    #     super(Node).__init__(func, args, None)
-
-    def __repr__(self):
-        return "{}({})".format("NamedParameter", ",".join(map(str, self.args)))
 
 
 class IfWrapper:

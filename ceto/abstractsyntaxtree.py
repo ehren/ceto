@@ -191,6 +191,17 @@ if not selfhost:
             super().__init__(args, source)
 
 
+    class NamedParameter(Assign):
+        # def __init__(self, args):
+        #     # self.func = "NamedParameter"
+        #     func = "="  # paper over that we've further loosened named parameter vs assignment distinction in codegen
+        #     super(Node).__init__(func, args, None)
+
+        def __repr__(self):
+            return "{}({})".format("NamedParameter",
+                                   ",".join(map(str, self.args)))
+
+
     class RedundantParens(Node):
         def __init__(self, args, source=None):
             self.func = "RedundantParens"

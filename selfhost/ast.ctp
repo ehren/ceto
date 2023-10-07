@@ -50,14 +50,38 @@ class (Node:
 )
 
 class (UnOp(Node):
-    pass
+    op : std.string
+
+    def (init, op, args:[Node], source=py.tuple{}:
+        self.op = op
+        super.init(None, args, source)
+    )
+
+    def (repr:
+        return "(" +  self.op + " " + self.args[0].repr() + ")"
+    ) : std.string
 )
 
 class (LeftAssociativeUnOp(Node):
-    pass
+    op : std.string
+
+    def (init, op, args:[Node], source=py.tuple{}:
+        self.op = op
+        super.init(None, args, source)
+    )
+
+    def (repr:
+        return "(" + self.args[0].repr() + " " + self.op + ")"
+    ) : std.string
 )
 
 class (BinOp(Node):
+    op : std.string
+
+    def (init, op, args:[Node], source=py.tuple{}:
+        self.op = op
+        super.init(None, args, source)
+    )
 
     def (lhs:
         return self.args[0]
@@ -68,7 +92,7 @@ class (BinOp(Node):
     )
 
     def (repr:
-        return join([self.lhs(), self.func, self.rhs()], lambda(a, a.repr()), " ")
+        return "(" + self.lhs().repr() + " " + self.op + " " + self.rhs().repr() + ")"
     ) : std.string
 )
 
@@ -97,6 +121,12 @@ class (ScopeResolution(BinOp):
 
 class (Assign(BinOp):
     pass
+)
+
+class (NamedParameter(Assign):
+    def (repr:
+        return "NamedParameter(" + join(self.args, lambda(a, a.repr()), ", ")  + ")"
+    ) : std.string
 )
 
 class (Identifier(Node):
@@ -215,7 +245,7 @@ class (IntegerLiteral(Node):
     integer_string : std.string
     suffix : Identifier
 
-    def (init, integer_string, suffix = None, source = py.tuple{}:
+    def (init, integer_string, suffix: Identifier = None, source = py.tuple{}:
         self.integer_string = integer_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -230,7 +260,7 @@ class (FloatLiteral(Node):
     float_string : std.string
     suffix : Identifier
 
-    def (init, float_string, suffix, source = py.tuple{}:
+    def (init, float_string, suffix : Identifier, source = py.tuple{}:
         self.float_string = float_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -271,10 +301,7 @@ class (Module(Block):
 
 class (RedundantParens_(Node):
     def (init, args: [Node], source = py.tuple{}:
-        super.init(None, args)
-
-        a : Node = None
-        b = BinOp(a, []: Node, py.tuple{})  # test we've got the inherited constructors right (TODO real test case)
+        super.init(None, args, source)
     )
 )
 
@@ -405,10 +432,46 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"name", &Node.name)
 
     py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
-        py.init<Node, std.vector<Node>, py.tuple>())
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<LeftAssociativeUnOp.class, LeftAssociativeUnOp:mut>(m, c"LeftAssociativeUnOp", node).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    binop : mut = py.class_<BinOp.class, BinOp:mut>(m, c"BinOp", node)
+    binop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    typeop: mut = py.class_<TypeOp.class, TypeOp:mut>(m, c"TypeOp", binop)
+    typeop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<SyntaxTypeOp.class, SyntaxTypeOp:mut>(m, c"SyntaxTypeOp", typeop).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<AttributeAccess.class, AttributeAccess:mut>(m, c"AttributeAccess", binop).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<ArrowOp.class, ArrowOp:mut>(m, c"ArrowOp", binop).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<ScopeResolution.class, ScopeResolution:mut>(m, c"ScopeResolution", binop).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    assign:mut = py.class_<Assign.class, Assign:mut>(m, c"Assign", binop)
+    assign.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
+
+    py.class_<NamedParameter.class, NamedParameter:mut>(m, c"NamedParameter", assign).def(
+        py.init<const:string:ref, std.vector<Node>, py.tuple>())
 
     py.class_<Identifier.class, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref, py.tuple>())
+
+    py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, c"IntegerLiteral", node).def(
+        py.init<const:string:ref, Identifier, py.tuple>())
+
+    py.class_<FloatLiteral.class, FloatLiteral:mut>(m, c"FloatLiteral", node).def(
+        py.init<const:string:ref, Identifier, py.tuple>())
+
+    py.class_<FloatLiteral.class, FloatLiteral:mut>(m, c"FloatLiteral", node).def(
+        py.init<const:string:ref, Identifier, py.tuple>())
 
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
 
