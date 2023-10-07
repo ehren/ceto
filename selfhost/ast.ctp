@@ -214,7 +214,7 @@ class (StringLiteral(Node):
     prefix : Identifier
     suffix : Identifier
 
-    def (init, str, prefix, suffix, source = py.tuple{}:
+    def (init, str, prefix: Identifier = None, suffix: Identifier = None, source = py.tuple{}:
         self.str = str
         self.prefix = prefix
         self.suffix = suffix
@@ -299,10 +299,15 @@ class (Module(Block):
     has_main_function = false
 )
 
-class (RedundantParens_(Node):
+class (RedundantParens(Node):
     def (init, args: [Node], source = py.tuple{}:
         super.init(None, args, source)
     )
+
+    def (repr:
+        classname = std.string(typeid(*this).name())
+        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+    ) : std.string
 )
 
 
@@ -461,8 +466,23 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     py.class_<NamedParameter.class, NamedParameter:mut>(m, c"NamedParameter", assign).def(
         py.init<const:string:ref, std.vector<Node>, py.tuple>())
 
+    py.class_<Call.class, Call:mut>(m, c"Call", node).def(
+        py.init<Node, std.vector<Node>, py.tuple>())
+
+    py.class_<ArrayAccess.class, ArrayAccess:mut>(m, c"ArrayAccess", node).def(
+        py.init<Node, std.vector<Node>, py.tuple>())
+
+    py.class_<BracedCall.class, BracedCall:mut>(m, c"BracedCall", node).def(
+        py.init<Node, std.vector<Node>, py.tuple>())
+
+    py.class_<Template.class, Template:mut>(m, c"Template", node).def(
+        py.init<Node, std.vector<Node>, py.tuple>())
+
     py.class_<Identifier.class, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref, py.tuple>())
+
+    py.class_<StringLiteral.class, StringLiteral:mut>(m, c"StringLiteral", node).def(
+        py.init<const:string:ref, Identifier, Identifier, py.tuple>())
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, c"IntegerLiteral", node).def(
         py.init<const:string:ref, Identifier, py.tuple>())
@@ -470,8 +490,25 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     py.class_<FloatLiteral.class, FloatLiteral:mut>(m, c"FloatLiteral", node).def(
         py.init<const:string:ref, Identifier, py.tuple>())
 
-    py.class_<FloatLiteral.class, FloatLiteral:mut>(m, c"FloatLiteral", node).def(
-        py.init<const:string:ref, Identifier, py.tuple>())
+    list_like: mut = py.class_<ListLike_.class, ListLike_:mut>(m, c"ListLike_", node)
+
+    py.class_<ListLiteral.class, ListLiteral:mut>(m, c"ListLiteral", list_like).def(
+        py.init<std.vector<Node>, py.tuple>())
+
+    py.class_<TupleLiteral.class, TupleLiteral:mut>(m, c"TupleLiteral", list_like).def(
+        py.init<std.vector<Node>, py.tuple>())
+
+    py.class_<BracedLiteral.class, BracedLiteral:mut>(m, c"BracedLiteral", list_like).def(
+        py.init<std.vector<Node>, py.tuple>())
+
+    block:mut = py.class_<Block.class, Block:mut>(m, c"Block", list_like)
+    block.def(py.init<std.vector<Node>, py.tuple>())
+
+    py.class_<Module.class, Module:mut>(m, c"Module", block).def(
+        py.init<std.vector<Node>, py.tuple>())
+
+    py.class_<RedundantParens.class, RedundantParens:mut>(m, c"RedundantParens", node).def(
+        py.init<std.vector<Node>, py.tuple>())
 
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
 

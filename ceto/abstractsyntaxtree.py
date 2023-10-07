@@ -1,13 +1,17 @@
 import typing
 
-selfhost = False
+selfhost = True
 try:
     # from ._abstractsyntaxtree import *
     selfhost = False
 except ImportError:
-    pass
+    selfhost = False
+    # raise
 
 if not selfhost:
+# if False:
+
+
     # TODO should throw away the ladder soon
 
     class Node:
@@ -128,13 +132,13 @@ if not selfhost:
             return escaped
 
         def escaped(self):
-            escaped = self.string.replace("\n", r"\n")
+            escaped = self.str.replace("\n", r"\n")
             escaped = escaped.replace('"', r'\"')
             escaped = '"' + escaped + '"'
             return escaped
 
-        def __init__(self, string, prefix, suffix, source=None):
-            self.string = string
+        def __init__(self, string, prefix=None, suffix=None, source=None):
+            self.str = string
             self.prefix = prefix
             self.suffix = suffix
             super().__init__(None, [], source)
@@ -161,7 +165,7 @@ if not selfhost:
             return self.float_string + (self.suffix.name if self.suffix else "")
 
 
-    class _ListLike(Node):
+    class ListLike_(Node):
         def __init__(self, args, source=None):
             super().__init__(func=None, args=args, source=source)
 
@@ -169,19 +173,19 @@ if not selfhost:
             return "{}({})".format(self.__class__.__name__, ",".join(map(str, self.args)))
 
 
-    class ListLiteral(_ListLike):
+    class ListLiteral(ListLike_):
         pass
 
 
-    class TupleLiteral(_ListLike):
+    class TupleLiteral(ListLike_):
         pass
 
 
-    class BracedLiteral(_ListLike):
+    class BracedLiteral(ListLike_):
         pass
 
 
-    class Block(_ListLike):
+    class Block(ListLike_):
         pass
 
 
@@ -201,11 +205,12 @@ if not selfhost:
             return "{}({})".format("NamedParameter",
                                    ",".join(map(str, self.args)))
 
-
     class RedundantParens(Node):
         def __init__(self, args, source=None):
-            self.func = "RedundantParens"
             self.args = args
-            super().__init__(self.func, self.args, source)
+            super().__init__(None, self.args, source)
+
+        def __repr__(self):
+            return "{}({})".format("RedundantParens", ",".join(map(str, self.args)))
 
 

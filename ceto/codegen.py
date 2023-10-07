@@ -1014,7 +1014,7 @@ def codegen_def(defnode: Call, cx):
     return_type_node = defnode.declared_type
 
     if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
-        name = "operator" + operator_name_node.string
+        name = "operator" + operator_name_node.str
 
     if name is None:
         # no immediate plans to support out of line methods
@@ -1550,7 +1550,7 @@ def _shared_ptr_str_for_type(type_node, cx):
 
 
 def _codegen_extern_C(lhs, rhs):
-    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.string == "C":
+    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.str == "C":
         return 'extern "C"'
     return None
 
@@ -1862,7 +1862,7 @@ def codegen_call(node: Call, cx: Scope):
                 raise CodeGenError("range args not supported:", node)
         elif func_name == "operator" and len(node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
-            return "operator" + operator_name_node.string
+            return "operator" + operator_name_node.str
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)
@@ -1965,7 +1965,7 @@ def codegen_call(node: Call, cx: Scope):
                     node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
                 consume_method_name()
-                return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.string
+                return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.str
 
             elif method_name.parent and not isinstance(method_name.parent,
                                 (ScopeResolution, ArrowOp)):
@@ -2506,7 +2506,7 @@ def codegen_node(node: Node, cx: Scope):
             if node.suffix:
                 raise CodeGenError("no suffixes for cpp-string", node)
             # unsafe embedded c++
-            return node.string
+            return node.str
         if "c" in ffixes or "s" in ffixes:
             if node.prefix and node.prefix.name in ["c", "s"]:
                 str_prefix = node.prefix
