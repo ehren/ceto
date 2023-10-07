@@ -74,7 +74,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", source=None), last_statement], source=None)
+                synthetic_return = SyntaxTypeOp(op=":", args=[Identifier("return", source=None), last_statement], source=None)
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -216,7 +216,7 @@ def codegen_for(node, cx):
     else:
         instmt = node.args[0]
 
-    if not isinstance(instmt, BinOp) and instmt.func == "in": # fix non node args
+    if not isinstance(instmt, BinOp) and instmt.op == "in":
         raise CodeGenError("unexpected 1st argument to for", node)
 
     var = instmt.lhs
@@ -957,7 +957,7 @@ def codegen_function_body(defnode : Call, block, cx):
                                        AttributeAccess) and s.parent.lhs is s:
             # rewrite as this->foo:
             this = Identifier(name="this", source=None)
-            arrow = ArrowOp(func="->", args=[this, s.parent.rhs], source=None)
+            arrow = ArrowOp(op="->", args=[this, s.parent.rhs], source=None)
             arrow.scope = s.scope
             this.scope = s.scope
             arrow.parent = s.parent.parent
@@ -1272,7 +1272,7 @@ def codegen_lambda(node, cx):
         def codegen_capture_list_item(a):
 
             def codegen_capture_list_address_op(u : UnOp):
-                if isinstance(u, UnOp) and u.func == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
+                if isinstance(u, UnOp) and u.op == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
                     # codegen would add parenthese to UnOp arg here:
                     return "&" + codegen_node(u.args[0], cx)
                 return None
@@ -1288,7 +1288,7 @@ def codegen_lambda(node, cx):
             else:
                 if ref_capture := codegen_capture_list_address_op(a):
                     return ref_capture
-                if isinstance(a, UnOp) and a.func == "*" and a.args[0].name == "this":
+                if isinstance(a, UnOp) and a.op == "*" and a.args[0].name == "this":
                     return "*" + codegen_node(a.args[0])
                 if not isinstance(a, Identifier) or a.declared_type:
                     raise CodeGenError("Unexpected capture list item", a)
@@ -1402,7 +1402,7 @@ def _decltype_str(node, cx):
 
     elif isinstance(node, UnOp):
         assert False, "this needs fixes"
-        return True, "(" + str(node.func) + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
+        return True, "(" + node.op + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call) and isinstance(node.func, Identifier):
         call = node
 
@@ -1495,7 +1495,7 @@ def _decltype_str(node, cx):
 
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
-        if not isinstance(instmt, BinOp) and instmt.func == "in":
+        if not isinstance(instmt, BinOp) and instmt.op == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
             return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"
@@ -2001,7 +2001,7 @@ def codegen_call(node: Call, cx: Scope):
                 else:
 
                     # TODO don't do the silly mutation above in the first place!
-                    new_attr_access = AttributeAccess(func=".", args=[node.func, method_name], source=None)
+                    new_attr_access = AttributeAccess(op=".", args=[node.func, method_name], source=None)
                     func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
@@ -2226,7 +2226,7 @@ def codegen_assign(node: Assign, cx: Scope):
     else:
         lhs_str = codegen_node(node.lhs, cx)
 
-    assign_str = " ".join([lhs_str, node.func, rhs_str])
+    assign_str = " ".join([lhs_str, node.op, rhs_str])
 
     # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
     # NOTE 'already_declared' is kludge only for 'noscope' ifs
@@ -2425,13 +2425,13 @@ def codegen_node(node: Node, cx: Scope):
                     raise CodeGenError("unexpected ceto::comment ", node)
                 return "//" + node.rhs.args[0].func.replace("\n", "\\n") + "\n"
 
-            funcstr = node.func  # fix ast: should be Ident
-            if node.func == "and":  # don't use the weird C operators tho tempting
-                funcstr = "&&"
-            elif node.func == "or":
-                funcstr = "||"
+            opstr = node.op
+            if opstr == "and":  # don't use the weird C operators tho tempting
+                opstr = "&&"
+            elif node.op == "or":
+                opstr = "||"
 
-            binop_str = " ".join([codegen_node(node.lhs, cx), funcstr, codegen_node(node.rhs, cx)])
+            binop_str = " ".join([codegen_node(node.lhs, cx), opstr, codegen_node(node.rhs, cx)])
 
             if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
                 # guard against precedence mismatch (e.g. extra parenthesese
@@ -2485,7 +2485,7 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("Use round parentheses for ceto-defined class/struct constructor call (curly braces are automatic)", node)
         return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
     elif isinstance(node, UnOp):
-        opername = node.func
+        opername = node.op
         if opername == ":":
             assert 0
         elif opername == "not":
@@ -2494,7 +2494,7 @@ def codegen_node(node: Node, cx: Scope):
             return "(" + opername + codegen_node(node.args[0], cx) + ")"
             # return opername + codegen_node(node.args[0], cx)
     elif isinstance(node, LeftAssociativeUnOp):
-        opername = node.func
+        opername = node.op
         return codegen_node(node.args[0], cx) + opername
     elif isinstance(node, StringLiteral):
         if isinstance(node.parent, Call) and node.parent.func.name in cstdlib_functions:

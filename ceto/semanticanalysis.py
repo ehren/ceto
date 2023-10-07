@@ -16,7 +16,7 @@ class NamedParameter(Assign):
     #     super(Node).__init__(func, args, None)
 
     def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+        return "{}({})".format("NamedParameter", ",".join(map(str, self.args)))
 
 
 class IfWrapper:
@@ -141,9 +141,9 @@ def list_to_typed_node(lst):
         if first is None:
             first = second
             second = lst.pop(0)
-            op = TypeOp(func=":", args=[first, second], source=first.source)
+            op = TypeOp(op=":", args=[first, second], source=first.source)
         else:
-            op = TypeOp(func=":", args=[op, second], source=second.source)
+            op = TypeOp(op=":", args=[op, second], source=second.source)
     return op
 
 
@@ -161,9 +161,9 @@ def list_to_attribute_access_node(lst):
         if first is None:
             first = second
             second = lst.pop(0)
-            op = AttributeAccess(func=".", args=[first, second], source=first.source)
+            op = AttributeAccess(op=".", args=[first, second], source=first.source)
         else:
-            op = AttributeAccess(func=".", args=[op, second], source=second.source)
+            op = AttributeAccess(op=".", args=[op, second], source=second.source)
     return op
 
 
@@ -241,7 +241,7 @@ def one_liner_expander(parsed):
                         if not isinstance(c, TypeOp):
                             raise SemanticAnalysisError("bad if args")
                         cond, rest = c.args
-                        new_elif = TypeOp(a.func, [a.args[0], cond], a.source)
+                        new_elif = TypeOp(a.op, [a.args[0], cond], a.source)
                         new_block = Block(args=[rest])
                         rebuilt = ifop.args[0:i] + [new_elif, new_block] + ifop.args[i + 1:]
                         return Call(func=ifop.func, args=rebuilt, source=ifop.source)
@@ -262,10 +262,10 @@ def one_liner_expander(parsed):
             return op
 
         if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
-            op = SyntaxTypeOp(op.func, op.args, op.source)
+            op = SyntaxTypeOp(op.op, op.args, op.source)
 
-        if isinstance(op, UnOp) and op.func == "return":
-            op = SyntaxTypeOp(func=":", args=[Identifier("return", op.source)] + op.args, source=op.source)
+        if isinstance(op, UnOp) and op.op == "return":
+            op = SyntaxTypeOp(op=":", args=[Identifier("return", op.source)] + op.args, source=op.source)
 
         if isinstance(op, Call):
             if op.func.name == "def":
@@ -297,7 +297,7 @@ def one_liner_expander(parsed):
                         synthetic_return = Identifier("return", None)  # void return
                         block.args += [synthetic_return]
                     else:
-                        synthetic_return = SyntaxTypeOp(func=":", args=[Identifier("return", None), last_statement], source=None)
+                        synthetic_return = SyntaxTypeOp(op=":", args=[Identifier("return", None), last_statement], source=None)
                         if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
                             synthetic_return.synthetic_lambda_return_lambda = op
                         block.args = block.args[0:-1] + [synthetic_return]
@@ -328,11 +328,11 @@ def assign_to_named_parameter(expr):
             for arg in op.args:
                 if isinstance(arg, TypeOp):
                     if isinstance(arg.args[0], Assign):
-                        rebuilt.append(TypeOp(func=arg.func, args=[NamedParameter(func=arg.func, args=arg.args[0].args, source=arg.source), arg.args[1]], source=arg.source))
+                        rebuilt.append(TypeOp(op=arg.op, args=[NamedParameter(op=arg.op, args=arg.args[0].args, source=arg.source), arg.args[1]], source=arg.source))
                     else:
                         rebuilt.append(arg)
                 elif isinstance(arg, Assign):
-                    rebuilt.append(NamedParameter(func=arg.func, args=arg.args, source=arg.source))
+                    rebuilt.append(NamedParameter(op=arg.op, args=arg.args, source=arg.source))
                 elif isinstance(arg, RedundantParens) and isa_or_wrapped(arg.args[0], Assign):
                     rebuilt.append(arg.args[0])
                 else:
@@ -367,7 +367,7 @@ def warn_and_remove_redundant_parens(expr, error=False):
 def is_return(node):
     return ((isinstance(node, TypeOp) and node.lhs.name == "return") or (
             isinstance(node, Identifier) and node.name == "return") or (
-            isinstance(node, UnOp) and node.func == "return"))
+            isinstance(node, UnOp) and node.op == "return"))
 
 
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
@@ -614,7 +614,7 @@ class ScopeReplacer:
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
-            elif isinstance(a, BinOp) and a.func == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
+            elif isinstance(a, BinOp) and a.op == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
         return call

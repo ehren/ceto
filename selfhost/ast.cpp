@@ -374,6 +374,7 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         py::bind_vector<std::vector<std::shared_ptr<const Node>>>(m, "NodeVector");
         py::bind_map<std::map<std::string,std::shared_ptr<const Node>>>(m, "StringNodeMap");
         auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("parent", (&Node::parent)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("name", (&Node::name)) } ;
+        ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<Identifier,std::shared_ptr<Identifier>>(m, "Identifier", node))->def(py::init<const std::string &,py::tuple>());
         ceto::mado(m)->def("macro_trampoline", (&macro_trampoline), "macro trampoline");
         return;

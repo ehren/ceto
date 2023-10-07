@@ -404,6 +404,9 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"__repr__", &Node.repr).def(
         c"name", &Node.name)
 
+    py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
+        py.init<Node, std.vector<Node>, py.tuple>())
+
     py.class_<Identifier.class, Identifier:mut>(m, c"Identifier", node).def(
         py.init<const:string:ref, py.tuple>())
 

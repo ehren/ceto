@@ -1,178 +1,200 @@
 import typing
 
-
-class Node:
-
-    def __init__(self, func, args, source = None):
-        self.name : str = None
-        self.parent : Node = None
-        self.declared_type : Node = None
-        self.scope = None
-        self.func : Node = func
-        self.args : typing.List[Node] = args
-        self.source : typing.Tuple[str, int] = source
-
-    def __repr__(self):
-        return "{}({})({!r})".format(self.__class__.__name__,
-                                     self.func, self.args)
-
-
-class UnOp(Node):
+selfhost = False
+try:
+    # from ._abstractsyntaxtree import *
+    selfhost = False
+except ImportError:
     pass
 
+if not selfhost:
+    # TODO should throw away the ladder soon
 
-class LeftAssociativeUnOp(Node):
-    pass
+    class Node:
 
+        def __init__(self, func, args, source = None):
+            self.name : str = None
+            self.parent : Node = None
+            self.declared_type : Node = None
+            self.scope = None
+            self.func : Node = func
+            self.args : typing.List[Node] = args
+            self.source : typing.Tuple[str, int] = source
 
-class BinOp(Node):
-
-    def __repr__(self):
-        return "({} {} {})".format(self.lhs, self.func, self.rhs)
-
-    @property
-    def lhs(self):
-        return self.args[0]
-
-    @property
-    def rhs(self):
-        return self.args[1]
-
-
-class TypeOp(BinOp):
-    pass
+        def __repr__(self):
+            return "{}({})({!r})".format(self.__class__.__name__,
+                                         self.func, self.args)
 
 
-class SyntaxTypeOp(TypeOp):
-    pass
+    class UnOp(Node):
+        def __init__(self, op, args, source=None):
+            self.op = op
+            super().__init__(None, args, source)
+
+        def __repr__(self):
+            return "({} {})".format(self.op, self.args[0])
 
 
-class AttributeAccess(BinOp):
+    class LeftAssociativeUnOp(Node):
+        def __init__(self, op, args, source=None):
+            self.op = op
+            super().__init__(None, args, source)
 
-    def __repr__(self):
-        return "{}.{}".format(self.lhs, self.rhs)
-
-
-class ArrowOp(BinOp):
-    pass
-
-
-class ScopeResolution(BinOp):
-    pass
+        def __repr__(self):
+            return "({} {})".format(self.args[0], self.op)
 
 
-class Assign(BinOp):
-    pass
+    class BinOp(Node):
+        def __init__(self, op, args, source=None):
+            self.op = op
+            super().__init__(None, args, source)
+
+        def __repr__(self):
+            return "({} {} {})".format(self.lhs, self.op, self.rhs)
+
+        @property
+        def lhs(self):
+            return self.args[0]
+
+        @property
+        def rhs(self):
+            return self.args[1]
 
 
-class Call(Node):
-    def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
+    class TypeOp(BinOp):
+        pass
 
 
-class ArrayAccess(Node):
-    def __repr__(self):
-        return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
+    class SyntaxTypeOp(TypeOp):
+        pass
 
 
-class BracedCall(Node):
-    def __repr__(self):
-        return str(self.func) + "{" + ",".join(map(str, self.args)) + "}"
+    class AttributeAccess(BinOp):
+
+        def __repr__(self):
+            return "{}.{}".format(self.lhs, self.rhs)
 
 
-class Template(Node):
-    # template-id in proper standardese
-    def __repr__(self):
-        return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
+    class ArrowOp(BinOp):
+        pass
 
 
-class Identifier(Node):
-    def __init__(self, name, source = None):
-        super().__init__(None, [], source)
-        self.name = name
-
-    def __repr__(self):
-        return self.name
+    class ScopeResolution(BinOp):
+        pass
 
 
-class StringLiteral(Node):
-
-    def __repr__(self):
-        escaped = self.escaped()
-        if self.prefix:
-            escaped = self.prefix.name + escaped
-        if self.suffix:
-            escaped += self.suffix.name
-        return escaped
-
-    def escaped(self):
-        escaped = self.string.replace("\n", r"\n")
-        escaped = escaped.replace('"', r'\"')
-        escaped = '"' + escaped + '"'
-        return escaped
-
-    def __init__(self, string, prefix, suffix, source=None):
-        self.string = string
-        self.prefix = prefix
-        self.suffix = suffix
-        super().__init__(None, [], source)
+    class Assign(BinOp):
+        pass
 
 
-class IntegerLiteral(Node):
-    def __init__(self, integer, suffix=None, source=None):
-        self.integer = integer
-        self.suffix = suffix
-        super().__init__(None, [], source)
-
-    def __repr__(self):
-        # return str(self.integer) + self.suffix.name if self.suffix else ""  # oops wrong precedence for ternary if
-        return str(self.integer) + (self.suffix.name if self.suffix else "")
+    class Call(Node):
+        def __repr__(self):
+            return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
-class FloatLiteral(Node):
-    def __init__(self, float_string : str, suffix=None, source=None):
-        self.float_string = float_string
-        self.suffix = suffix
-        super().__init__(None, [], source)
-
-    def __repr__(self):
-        return self.float_string + (self.suffix.name if self.suffix else "")
+    class ArrayAccess(Node):
+        def __repr__(self):
+            return "{}[{}]".format(self.func, ",".join(map(str, self.args)))
 
 
-class _ListLike(Node):
-    def __init__(self, args, source=None):
-        super().__init__(func=None, args=args, source=source)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, ",".join(map(str, self.args)))
+    class BracedCall(Node):
+        def __repr__(self):
+            return str(self.func) + "{" + ",".join(map(str, self.args)) + "}"
 
 
-class ListLiteral(_ListLike):
-    pass
+    class Template(Node):
+        # template-id in proper standardese
+        def __repr__(self):
+            return "{}<{}>".format(self.func, ",".join(map(str, self.args)))
 
 
-class TupleLiteral(_ListLike):
-    pass
+    class Identifier(Node):
+        def __init__(self, name, source = None):
+            super().__init__(None, [], source)
+            self.name = name
+
+        def __repr__(self):
+            return self.name
 
 
-class BracedLiteral(_ListLike):
-    pass
+    class StringLiteral(Node):
+
+        def __repr__(self):
+            escaped = self.escaped()
+            if self.prefix:
+                escaped = self.prefix.name + escaped
+            if self.suffix:
+                escaped += self.suffix.name
+            return escaped
+
+        def escaped(self):
+            escaped = self.string.replace("\n", r"\n")
+            escaped = escaped.replace('"', r'\"')
+            escaped = '"' + escaped + '"'
+            return escaped
+
+        def __init__(self, string, prefix, suffix, source=None):
+            self.string = string
+            self.prefix = prefix
+            self.suffix = suffix
+            super().__init__(None, [], source)
 
 
-class Block(_ListLike):
-    pass
+    class IntegerLiteral(Node):
+        def __init__(self, integer, suffix=None, source=None):
+            self.integer = integer
+            self.suffix = suffix
+            super().__init__(None, [], source)
+
+        def __repr__(self):
+            # return str(self.integer) + self.suffix.name if self.suffix else ""  # oops wrong precedence for ternary if
+            return str(self.integer) + (self.suffix.name if self.suffix else "")
 
 
-class Module(Block):
-    def __init__(self, args, source=None):
-        self.has_main_function = False
-        super().__init__(args, source)
+    class FloatLiteral(Node):
+        def __init__(self, float_string : str, suffix=None, source=None):
+            self.float_string = float_string
+            self.suffix = suffix
+            super().__init__(None, [], source)
+
+        def __repr__(self):
+            return self.float_string + (self.suffix.name if self.suffix else "")
 
 
-class RedundantParens(Node):
-    def __init__(self, args, source=None):
-        self.func = "RedundantParens"
-        self.args = args
-        super().__init__(self.func, self.args, source)
+    class _ListLike(Node):
+        def __init__(self, args, source=None):
+            super().__init__(func=None, args=args, source=source)
+
+        def __repr__(self):
+            return "{}({})".format(self.__class__.__name__, ",".join(map(str, self.args)))
+
+
+    class ListLiteral(_ListLike):
+        pass
+
+
+    class TupleLiteral(_ListLike):
+        pass
+
+
+    class BracedLiteral(_ListLike):
+        pass
+
+
+    class Block(_ListLike):
+        pass
+
+
+    class Module(Block):
+        def __init__(self, args, source=None):
+            self.has_main_function = False
+            super().__init__(args, source)
+
+
+    class RedundantParens(Node):
+        def __init__(self, args, source=None):
+            self.func = "RedundantParens"
+            self.args = args
+            super().__init__(self.func, self.args, source)
 
 
