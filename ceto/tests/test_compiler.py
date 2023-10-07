@@ -22,6 +22,69 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_weak_ptr_with_timer():
+    c = compile(r"""
+    
+cpp'
+#include <mutex>
+'
+    
+class (Delegate:
+    def (action:
+        std.cout << "action\n"
+    )
+)
+
+class (Timer:
+    _delegate: Delegate
+    
+    _delegate_mutex = std.mutex()
+    _thread: std.thread = {}
+
+    def (start: mut:
+        w: weak:Delegate = self._delegate
+        
+        self._thread = std.thread(lambda(:
+            while (true:
+                std.this_thread.sleep_for(std.chrono.seconds(1))
+                guard = std.lock_guard<std.mutex>(self._delegate_mutex)
+                # if (s = w.lock():  # TODO find_defs prob (no VariableDefinition created - this should be / was an error anyway (if with NamedParameter))
+                if ((s = w.lock()):
+                    s.action()
+                else:
+                    break
+                )
+            )
+        ))
+    )
+    
+    def (join: mut:
+        self._thread.join()
+    )
+    
+    def (clear_delegate: mut:
+        guard = std.lock_guard<std.mutex>(self._delegate_mutex)
+        self._delegate = None
+    )
+)
+    
+def (main:
+    timer: mut = Timer(Delegate())
+    timer.start()
+    
+    std.literals: using:namespace
+    std.this_thread.sleep_for(3.5s)
+    
+    timer.clear_delegate()
+    timer.join()
+)
+    """)
+
+    assert c == r"""action
+action
+action
+"""
+
 
 def test_inherited_constructors():
     compile(r"""
@@ -228,13 +291,18 @@ def (main:
     assert c == "func1func15522"
 
 
-def test_floating_point():
-    c = compile(r"""
+def test_number_suffixes():
+    compile(r"""
     
 def (main:
     x = 10.0
-    y = 10.00lf  # TODO ignored by codegen
-    z = 100ULL   # same
+    y = 10.00l
+    z = 100ULL
+    w = 10.0f
+    static_assert(std.is_same_v<decltype(x), const:double>)
+    static_assert(std.is_same_v<decltype(y), const:long:double>)
+    static_assert(std.is_same_v<decltype(z), const:unsigned:long:long>)
+    static_assert(std.is_same_v<decltype(w), const:float>)
 )
     
     """)

@@ -119,21 +119,24 @@ class StringLiteral(Node):
 
 
 class IntegerLiteral(Node):
-    def __init__(self, integer, source):
+    def __init__(self, integer, suffix=None, source=None):
         self.integer = integer
+        self.suffix = suffix
         super().__init__(None, [], source)
 
     def __repr__(self):
-        return str(self.integer)
+        # return str(self.integer) + self.suffix.name if self.suffix else ""  # oops wrong precedence for ternary if
+        return str(self.integer) + (self.suffix.name if self.suffix else "")
 
 
 class FloatLiteral(Node):
-    def __init__(self, float_string : str, source):
+    def __init__(self, float_string : str, suffix=None, source=None):
         self.float_string = float_string
+        self.suffix = suffix
         super().__init__(None, [], source)
 
     def __repr__(self):
-        return self.float_string
+        return self.float_string + (self.suffix.name if self.suffix else "")
 
 
 class _ListLike(Node):

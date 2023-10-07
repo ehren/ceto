@@ -141,14 +141,16 @@ def _parse_identifier(s, l, t):
 
 def _parse_integer_literal(s, l, t):
     integer = int(t[0])
+    suffix = t[1] if len(t) > 1 else None
     source = s, l
-    return IntegerLiteral(integer, source)
+    return IntegerLiteral(integer, suffix, source)
 
 
 def _parse_float_literal(s, l, t):
     float_str = str(t[0])
+    suffix = t[1] if len(t) > 1 else None
     source = s, l
-    return FloatLiteral(float_str, source)
+    return FloatLiteral(float_str, suffix, source)
 
 
 def _parse_template(s, l, t):

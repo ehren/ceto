@@ -2163,6 +2163,13 @@ def codegen_assign(node: Assign, cx: Scope):
             if node.lhs.declared_type.name in ["using", "namespace"]:
                 return node.lhs.declared_type.name + " " + lhs_str + " = " + rhs_str
 
+            if node.lhs.declared_type.name == "weak":
+                is_weak_const = True
+            type_names = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
+            adjacent_type_names = zip(type_names, type_names[1:])
+            if ("const", "weak") in adjacent_type_names:
+                pass
+
             # add const if not mut
 
             if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
@@ -2311,9 +2318,9 @@ def codegen_node(node: Node, cx: Scope):
         return codegen_call(node, cx)
 
     elif isinstance(node, IntegerLiteral):
-        return str(node.integer)
+        return str(node)
     elif isinstance(node, FloatLiteral):
-        return node.float_string
+        return str(node)
     elif isinstance(node, Identifier):
         name = node.name
 
