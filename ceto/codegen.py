@@ -74,7 +74,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(op=":", args=[Identifier("return", source=None), last_statement], source=None)
+                synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -252,7 +252,7 @@ def codegen_for(node, cx):
             end = iterable.args[1]
         else:
             end = start
-            start = IntegerLiteral(integer=0, source=None)
+            start = IntegerLiteral("0")
             start.parent = end.parent
         # sub = BinOp(func="-", args=[end, start], source=None)
         # sub.parent = start.parent
@@ -956,8 +956,8 @@ def codegen_function_body(defnode : Call, block, cx):
         if replace_self and isinstance(s.parent,
                                        AttributeAccess) and s.parent.lhs is s:
             # rewrite as this->foo:
-            this = Identifier(name="this", source=None)
-            arrow = ArrowOp(op="->", args=[this, s.parent.rhs], source=None)
+            this = Identifier("this")
+            arrow = ArrowOp("->", [this, s.parent.rhs])
             arrow.scope = s.scope
             this.scope = s.scope
             arrow.parent = s.parent.parent
@@ -2001,7 +2001,7 @@ def codegen_call(node: Call, cx: Scope):
                 else:
 
                     # TODO don't do the silly mutation above in the first place!
-                    new_attr_access = AttributeAccess(op=".", args=[node.func, method_name], source=None)
+                    new_attr_access = AttributeAccess(".", [node.func, method_name])
                     func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
@@ -2317,9 +2317,7 @@ def codegen_node(node: Node, cx: Scope):
     elif isinstance(node, Call):
         return codegen_call(node, cx)
 
-    elif isinstance(node, IntegerLiteral):
-        return str(node)
-    elif isinstance(node, FloatLiteral):
+    elif isinstance(node, (IntegerLiteral, FloatLiteral)):
         return str(node)
     elif isinstance(node, Identifier):
         name = node.name
@@ -2538,4 +2536,4 @@ def codegen_node(node: Node, cx: Scope):
         else:
             return codegen_node(node.func, cx) + template_args
 
-    assert False, "unhandled node"
+    assert False, "unhandled node: " + str(node)

@@ -32,9 +32,9 @@ class (Node:
         self.source = source
     )
 
-    parent: Node:weak = {}
     declared_type: Node = None
     scope: py.object = py.none()
+    _parent: Node:weak = {}
 
     def (repr: virtual:
         # selph : py.object = py.cast(this)
@@ -47,6 +47,14 @@ class (Node:
     def (name: virtual:
         return std.nullopt
     ) : std.optional<std.string>
+
+    def (parent: virtual:
+        return self._parent.lock()
+    ) : Node
+
+    def (set_parent: virtual:mut, p: Node:
+        self._parent = p
+    )
 )
 
 class (UnOp(Node):
@@ -443,12 +451,12 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
         c"func", &Node.func).def_readwrite(
         c"args", &Node.args).def_readwrite(
-        c"parent", &Node.parent).def_readwrite(
         c"declared_type", &Node.declared_type).def_readwrite(
         c"scope", &Node.scope).def_readwrite(
         c"source", &Node.source).def(
         c"__repr__", &Node.repr).def(
-        c"name", &Node.name)
+        c"name", &Node.name).def_property(
+        c"parent", &Node.parent, &Node.set_parent)
 
     py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
         py.init<const:string:ref, std.vector<Node>, py.tuple>()).def_readwrite(
@@ -460,7 +468,9 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
 
     binop : mut = py.class_<BinOp.class, BinOp:mut>(m, c"BinOp", node)
     binop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>()).def_readwrite(
-        c"op", &BinOp.op)
+        c"op", &BinOp.op).def_property_readonly(
+        c"lhs", &BinOp.lhs).def_property_readonly(
+        c"rhs", &BinOp.rhs)
 
     typeop: mut = py.class_<TypeOp.class, TypeOp:mut>(m, c"TypeOp", binop)
     typeop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
@@ -499,13 +509,19 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         py.init<const:string:ref, py.tuple>())
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, c"StringLiteral", node).def(
-        py.init<const:string:ref, Identifier, Identifier, py.tuple>())
+        py.init<const:string:ref, Identifier, Identifier, py.tuple>()).def_readonly(
+        c"prefix", &StringLiteral.prefix).def_readonly(
+        c"suffix", &StringLiteral.suffix)
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, c"IntegerLiteral", node).def(
-        py.init<const:string:ref, Identifier, py.tuple>())
+        py.init<const:string:ref, Identifier, py.tuple>()).def_readonly(
+        c"integer_string", &IntegerLiteral.integer_string).def_readonly(
+        c"suffix", &IntegerLiteral.suffix)
 
     py.class_<FloatLiteral.class, FloatLiteral:mut>(m, c"FloatLiteral", node).def(
-        py.init<const:string:ref, Identifier, py.tuple>())
+        py.init<const:string:ref, Identifier, py.tuple>()).def_readonly(
+        c"float_string", &FloatLiteral.float_string).def_readonly(
+        c"suffix", &FloatLiteral.suffix)
 
     list_like: mut = py.class_<ListLike_.class, ListLike_:mut>(m, c"ListLike_", node)
 
