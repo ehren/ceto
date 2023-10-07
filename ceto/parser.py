@@ -16,7 +16,7 @@ from .preprocessor import preprocess
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
-    Block, Module, StringLiteral, RedundantParens, Assign, Template
+    Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_
 
 
 class ParserError(Exception):
@@ -83,19 +83,6 @@ def _parse_left_associative_bin_op(s, l, t):
         return BinOp(func, args, source)
 
 
-# this introduces an implicit wrapper node around every infix expression
-# but it allows us to preserve truly redundant parentheses by checking for
-# double wrapped nodes. (e.g. assignment expression instead of named parameter
-# in call requires one set extra parens)
-class _InfixExpr(Node):
-    def __init__(self, s, l, t):
-        self.func = "_InfixExpr"
-        self.args = [t.as_list()[0]]
-        source = s, l
-        super().__init__(self.func, self.args, source)
-
-    def __repr__(self):
-        return "{}({})".format(self.func, ",".join(map(str, self.args)))
 
 
 def _parse_maybe_scope_resolved_call_like(s, l, t):
@@ -140,7 +127,7 @@ def _parse_identifier(s, l, t):
 
 
 def _parse_integer_literal(s, l, t):
-    integer = int(t[0])
+    integer = str(t[0])
     suffix = t[1] if len(t) > 1 else None
     source = s, l
     return IntegerLiteral(integer, suffix, source)
@@ -185,6 +172,12 @@ def _make_parse_action_list_like(clazz):
         source = s, l
         return clazz(args, source)
     return parse_action
+
+
+def _parse_infix_wrapper(s, l, t):
+    args = [t.as_list()[0]]
+    source = s, l
+    return InfixWrapper_(args, source)
 
 
 def _build_grammar():
@@ -332,7 +325,7 @@ def _build_grammar():
             (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
             (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
         ],
-    ).set_parse_action(_InfixExpr)
+    ).set_parse_action(_parse_infix_wrapper)
 
     module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(_make_parse_action_list_like(Module))
 
@@ -432,9 +425,9 @@ def parse(source: str):
         if not isinstance(op, Node):
             return op
 
-        if isinstance(op, _InfixExpr):
-            if isinstance(op.args[0], _InfixExpr):
-                op = RedundantParens(args=[op.args[0].args[0]])
+        if isinstance(op, InfixWrapper_):
+            if isinstance(op.args[0], InfixWrapper_):
+                op = RedundantParens([op.args[0].args[0]], op.args[0].source)
             else:
                 op = op.args[0]
 

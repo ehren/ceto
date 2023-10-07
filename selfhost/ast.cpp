@@ -323,6 +323,15 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 
     std::shared_ptr<const Identifier> suffix;
 
+        inline auto repr() const -> std::string {
+            return ((this -> float_string) + [&]() {if (this -> suffix) {
+                return ceto::mad(ceto::mado(this -> suffix)->name())->value();
+            } else {
+                return std::string {""};
+            }}()
+);
+        }
+
     explicit FloatLiteral(const std::string&  float_string, const std::shared_ptr<const Identifier>&  suffix, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, {}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, {}, source), float_string(float_string), suffix(suffix) {
     }
 
@@ -394,6 +403,22 @@ struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std:
 
 };
 
+struct InfixWrapper_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
+
+        inline auto repr() const -> std::string {
+            const auto classname = std::string(ceto::mado(typeid((*this)))->name());
+            return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
+                    if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
+                    }, std::string {", "})) + std::string {")"});
+        }
+
+    explicit InfixWrapper_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> (nullptr, args, source) {
+    }
+
+    InfixWrapper_() = delete;
+
+};
+
     inline auto example_macro_body_workaround_no_fptr_syntax_yet(const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
         return nullptr;
     }
@@ -403,8 +428,6 @@ struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std:
         return (*f)(matches);
     }
 
-PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<const Node>>);
-PYBIND11_MAKE_OPAQUE(std::map<std::string,std::shared_ptr<const Node>>);
 
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 ;
@@ -412,10 +435,10 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         py::bind_vector<std::vector<std::shared_ptr<const Node>>>(m, "NodeVector");
         py::bind_map<std::map<std::string,std::shared_ptr<const Node>>>(m, "StringNodeMap");
         auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("parent", (&Node::parent)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("name", (&Node::name)) } ;
-        ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
-        ceto::mado(py::class_<LeftAssociativeUnOp,std::shared_ptr<LeftAssociativeUnOp>>(m, "LeftAssociativeUnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>()))->def_readwrite("op", (&UnOp::op));
+        ceto::mado(ceto::mado(py::class_<LeftAssociativeUnOp,std::shared_ptr<LeftAssociativeUnOp>>(m, "LeftAssociativeUnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>()))->def_readwrite("op", (&LeftAssociativeUnOp::op));
         auto binop { py::class_<BinOp,std::shared_ptr<BinOp>>(m, "BinOp", node) } ;
-        ceto::mado(binop)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(ceto::mado(binop)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>()))->def_readwrite("op", (&BinOp::op));
         auto typeop { py::class_<TypeOp,std::shared_ptr<TypeOp>>(m, "TypeOp", binop) } ;
         ceto::mado(typeop)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<SyntaxTypeOp,std::shared_ptr<SyntaxTypeOp>>(m, "SyntaxTypeOp", typeop))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
@@ -441,6 +464,7 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         ceto::mado(block)->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<Module,std::shared_ptr<Module>>(m, "Module", block))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<RedundantParens,std::shared_ptr<RedundantParens>>(m, "RedundantParens", node))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(py::class_<InfixWrapper_,std::shared_ptr<InfixWrapper_>>(m, "InfixWrapper_", node))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(m)->def("macro_trampoline", (&macro_trampoline), "macro trampoline");
         return;
         }(m);

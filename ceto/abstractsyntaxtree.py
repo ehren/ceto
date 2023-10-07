@@ -145,14 +145,14 @@ if not selfhost:
 
 
     class IntegerLiteral(Node):
-        def __init__(self, integer, suffix=None, source=None):
-            self.integer = integer
+        def __init__(self, integer_string, suffix=None, source=None):
+            self.integer_string = integer_string
             self.suffix = suffix
             super().__init__(None, [], source)
 
         def __repr__(self):
             # return str(self.integer) + self.suffix.name if self.suffix else ""  # oops wrong precedence for ternary if
-            return str(self.integer) + (self.suffix.name if self.suffix else "")
+            return self.integer_string + (self.suffix.name if self.suffix else "")
 
 
     class FloatLiteral(Node):
@@ -213,4 +213,16 @@ if not selfhost:
         def __repr__(self):
             return "{}({})".format("RedundantParens", ",".join(map(str, self.args)))
 
+
+    # this introduces an implicit wrapper node around every infix expression
+    # but it allows us to preserve truly redundant parentheses by checking for
+    # double wrapped nodes. (e.g. assignment expression instead of named parameter
+    # in call requires one set extra parens)
+    class InfixWrapper_(Node):
+        def __init__(self, args, source=None):
+            self.args = args
+            super().__init__(None, self.args, source)
+
+        def __repr__(self):
+            return "{}({})".format("InfixWrapper_", ",".join(map(str, self.args)))
 

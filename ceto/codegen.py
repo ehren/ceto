@@ -1182,7 +1182,7 @@ def codegen_def(defnode: Call, cx):
         if return_type_node is None:
             raise CodeGenError("declarations must specify a return type", defnode)
 
-        if isinstance(rhs, IntegerLiteral) and rhs.integer == 0:
+        if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
 
             classdef = cx.lookup_class(class_identifier)
             if not classdef:

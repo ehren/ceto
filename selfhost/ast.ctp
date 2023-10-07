@@ -266,6 +266,9 @@ class (FloatLiteral(Node):
         super.init(None, {}, source)
     )
 
+    def (repr:
+        return self.float_string + if (self.suffix: self.suffix.name().value() else: "")
+    ) : std.string
 )
 
 class (ListLike_(Node):
@@ -300,6 +303,17 @@ class (Module(Block):
 )
 
 class (RedundantParens(Node):
+    def (init, args: [Node], source = py.tuple{}:
+        super.init(None, args, source)
+    )
+
+    def (repr:
+        classname = std.string(typeid(*this).name())
+        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+    ) : std.string
+)
+
+class (InfixWrapper_(Node):
     def (init, args: [Node], source = py.tuple{}:
         super.init(None, args, source)
     )
@@ -411,8 +425,8 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
     return (*f)(matches)
 )
 
-PYBIND11_MAKE_OPAQUE(std.vector<Node>)
-PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
+#PYBIND11_MAKE_OPAQUE(std.vector<Node>)
+#PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
 
 cpp'
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
@@ -437,13 +451,16 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"name", &Node.name)
 
     py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
-        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+        py.init<const:string:ref, std.vector<Node>, py.tuple>()).def_readwrite(
+        c"op", &UnOp.op)
 
     py.class_<LeftAssociativeUnOp.class, LeftAssociativeUnOp:mut>(m, c"LeftAssociativeUnOp", node).def(
-        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+        py.init<const:string:ref, std.vector<Node>, py.tuple>()) .def_readwrite(
+        c"op", &LeftAssociativeUnOp.op)
 
     binop : mut = py.class_<BinOp.class, BinOp:mut>(m, c"BinOp", node)
-    binop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
+    binop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>()).def_readwrite(
+        c"op", &BinOp.op)
 
     typeop: mut = py.class_<TypeOp.class, TypeOp:mut>(m, c"TypeOp", binop)
     typeop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
@@ -508,6 +525,9 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         py.init<std.vector<Node>, py.tuple>())
 
     py.class_<RedundantParens.class, RedundantParens:mut>(m, c"RedundantParens", node).def(
+        py.init<std.vector<Node>, py.tuple>())
+
+    py.class_<InfixWrapper_.class, InfixWrapper_:mut>(m, c"InfixWrapper_", node).def(
         py.init<std.vector<Node>, py.tuple>())
 
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
