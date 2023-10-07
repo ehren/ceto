@@ -284,10 +284,10 @@ def one_liner_expander(parsed):
                     if is_return(last_statement):
                         pass
                     elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class" "struct"]:
-                        synthetic_return = Identifier("return", None)  # void return
+                        synthetic_return = Identifier("return", ())  # void return
                         block.args += [synthetic_return]
                     else:
-                        synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
+                        synthetic_return = SyntaxTypeOp(":", [Identifier("return", ()), last_statement])
                         if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
                             synthetic_return.synthetic_lambda_return_lambda = op
                         block.args = block.args[0:-1] + [synthetic_return]

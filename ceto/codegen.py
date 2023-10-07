@@ -956,8 +956,8 @@ def codegen_function_body(defnode : Call, block, cx):
         if replace_self and isinstance(s.parent,
                                        AttributeAccess) and s.parent.lhs is s:
             # rewrite as this->foo:
-            this = Identifier("this")
-            arrow = ArrowOp("->", [this, s.parent.rhs])
+            this = Identifier("this", ())
+            arrow = ArrowOp("->", [this, s.parent.rhs], ())
             arrow.scope = s.scope
             this.scope = s.scope
             arrow.parent = s.parent.parent
@@ -2001,7 +2001,7 @@ def codegen_call(node: Call, cx: Scope):
                 else:
 
                     # TODO don't do the silly mutation above in the first place!
-                    new_attr_access = AttributeAccess(".", [node.func, method_name])
+                    new_attr_access = AttributeAccess(".", [node.func, method_name], ())
                     func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:

@@ -454,7 +454,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"declared_type", &Node.declared_type).def_readwrite(
         c"scope", &Node.scope).def_readwrite(
         c"source", &Node.source).def(
-        c"__repr__", &Node.repr).def(
+        c"__repr__", &Node.repr).def_property_readonly(
         c"name", &Node.name).def_property(
         c"parent", &Node.parent, &Node.set_parent)
 
@@ -510,6 +510,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, c"StringLiteral", node).def(
         py.init<const:string:ref, Identifier, Identifier, py.tuple>()).def_readonly(
+        c"str", &StringLiteral.str).def_readonly(
         c"prefix", &StringLiteral.prefix).def_readonly(
         c"suffix", &StringLiteral.suffix)
 
@@ -538,7 +539,8 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     block.def(py.init<std.vector<Node>, py.tuple>())
 
     py.class_<Module.class, Module:mut>(m, c"Module", block).def(
-        py.init<std.vector<Node>, py.tuple>())
+        py.init<std.vector<Node>, py.tuple>()).def_readwrite(
+        c"has_main_function", &Module.has_main_function)
 
     py.class_<RedundantParens.class, RedundantParens:mut>(m, c"RedundantParens", node).def(
         py.init<std.vector<Node>, py.tuple>())
