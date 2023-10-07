@@ -3,7 +3,7 @@ import typing
 
 class Node:
 
-    def __init__(self, func, args, source):
+    def __init__(self, func, args, source = None):
         self.name : str = None
         self.parent : Node = None
         self.declared_type : Node = None
@@ -87,7 +87,7 @@ class Template(Node):
 
 
 class Identifier(Node):
-    def __init__(self, name, source):
+    def __init__(self, name, source = None):
         super().__init__(None, [], source)
         self.name = name
 
@@ -111,7 +111,7 @@ class StringLiteral(Node):
         escaped = '"' + escaped + '"'
         return escaped
 
-    def __init__(self, string, prefix, suffix, source):
+    def __init__(self, string, prefix, suffix, source=None):
         self.string = string
         self.prefix = prefix
         self.suffix = suffix
@@ -140,7 +140,7 @@ class FloatLiteral(Node):
 
 
 class _ListLike(Node):
-    def __init__(self, args, source):
+    def __init__(self, args, source=None):
         super().__init__(func=None, args=args, source=source)
 
     def __repr__(self):
@@ -160,20 +160,19 @@ class BracedLiteral(_ListLike):
 
 
 class Block(_ListLike):
-    def __init__(self, args, source=None):
-        super().__init__(args, source)
+    pass
 
 
 class Module(Block):
-    def __init__(self, args, source):
+    def __init__(self, args, source=None):
         self.has_main_function = False
         super().__init__(args, source)
 
 
 class RedundantParens(Node):
-    def __init__(self, args):
+    def __init__(self, args, source=None):
         self.func = "RedundantParens"
         self.args = args
-        super().__init__(self.func,self.args,None)
+        super().__init__(self.func, self.args, source)
 
 
