@@ -29,6 +29,9 @@ if not selfhost:
             return "{}({})({!r})".format(self.__class__.__name__,
                                          self.func, self.args)
 
+        def referentially_equals(self, other):
+            return self is other
+
 
     class UnOp(Node):
         def __init__(self, op, args, source=None):
@@ -70,7 +73,9 @@ if not selfhost:
 
 
     class SyntaxTypeOp(TypeOp):
-        pass
+        def __init__(self, op, args, source=None):
+            self.synthetic_lambda_return_lambda = None
+            super().__init__(op, args, source)
 
 
     class AttributeAccess(BinOp):

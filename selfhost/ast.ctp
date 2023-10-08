@@ -55,6 +55,10 @@ class (Node:
     def (set_parent: virtual:mut, p: Node:
         self._parent = p
     )
+
+    def (referentially_equals: virtual, other: Node:
+        return self == other
+    )
 )
 
 class (UnOp(Node):
@@ -109,7 +113,7 @@ class (TypeOp(BinOp):
 )
 
 class (SyntaxTypeOp(TypeOp):
-    pass
+    synthetic_lambda_return_lambda : Node = None
 )
 
 class (AttributeAccess(BinOp):
@@ -128,7 +132,7 @@ class (ScopeResolution(BinOp):
 )
 
 class (Assign(BinOp):
-    pass
+
 )
 
 class (NamedParameter(Assign):
@@ -454,6 +458,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"declared_type", &Node.declared_type).def_readwrite(
         c"scope", &Node.scope).def_readwrite(
         c"source", &Node.source).def(
+#        c"referentially_equals", &Node.referentially_equals).def(
         c"__repr__", &Node.repr).def_property_readonly(
         c"name", &Node.name).def_property(
         c"parent", &Node.parent, &Node.set_parent)
@@ -476,7 +481,8 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     typeop.def(py.init<const:string:ref, std.vector<Node>, py.tuple>())
 
     py.class_<SyntaxTypeOp.class, SyntaxTypeOp:mut>(m, c"SyntaxTypeOp", typeop).def(
-        py.init<const:string:ref, std.vector<Node>, py.tuple>())
+        py.init<const:string:ref, std.vector<Node>, py.tuple>()).def_readwrite(
+        c"synthetic_lambda_return_lambda", &SyntaxTypeOp.synthetic_lambda_return_lambda)
 
     py.class_<AttributeAccess.class, AttributeAccess:mut>(m, c"AttributeAccess", binop).def(
         py.init<const:string:ref, std.vector<Node>, py.tuple>())
@@ -510,9 +516,10 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, c"StringLiteral", node).def(
         py.init<const:string:ref, Identifier, Identifier, py.tuple>()).def_readonly(
-        c"str", &StringLiteral.str).def_readonly(
-        c"prefix", &StringLiteral.prefix).def_readonly(
-        c"suffix", &StringLiteral.suffix)
+        c"str", &StringLiteral.str).def_readwrite(
+        c"prefix", &StringLiteral.prefix).def_readwrite(
+        c"suffix", &StringLiteral.suffix).def(
+        c"escaped", &StringLiteral.escaped)
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, c"IntegerLiteral", node).def(
         py.init<const:string:ref, Identifier, py.tuple>()).def_readonly(

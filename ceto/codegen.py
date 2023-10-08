@@ -74,7 +74,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
+                synthetic_return = SyntaxTypeOp(":", [Identifier("return", ()), last_statement], ())
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -2269,6 +2269,9 @@ def _is_unique_var(node: Identifier, cx: Scope):
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
+    # import pytest
+    # pytest.set_trace()
+
     if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):
 
@@ -2380,7 +2383,7 @@ def codegen_node(node: Node, cx: Scope):
             if isinstance(node, SyntaxTypeOp):
                 if node.lhs.name == "return":
                     ret_body = codegen_node(node.rhs, cx)
-                    if hasattr(node, "synthetic_lambda_return_lambda"):
+                    if node.synthetic_lambda_return_lambda is not None:
                         lambdanode = node.synthetic_lambda_return_lambda
                         assert lambdanode
                         if lambdanode.declared_type is not None:

@@ -207,7 +207,7 @@ def one_liner_expander(parsed):
                 block_arg = ifop.args[0].args[1]
                 if isinstance(block_arg, Assign):
                     raise SemanticAnalysisError("no assignment statements in if one liners")
-                rebuilt = [ifop.args[0].args[0], Block([block_arg])] + ifop.args[1:]
+                rebuilt = [ifop.args[0].args[0], Block([block_arg], ())] + ifop.args[1:]
                 return Call(ifop.func, rebuilt, ifop.source)
             else:
                 raise SemanticAnalysisError("bad first if-args")
@@ -222,9 +222,8 @@ def one_liner_expander(parsed):
                     raise SemanticAnalysisError(
                         f"Unexpected if arg {a} at position {i}")
                 if a.args[0].name == "else":
-                    rebuilt = ifop.args[0:i] + [a.args[0], Block(
-                        args=[a.args[1]])] + ifop.args[i + 1:]
-                    return Call(ifop.func, args=rebuilt, source=ifop.source)
+                    rebuilt = ifop.args[0:i] + [a.args[0], Block([a.args[1]], ())] + ifop.args[i + 1:]
+                    return Call(ifop.func, rebuilt, ifop.source)
                 elif a.args[0].name == "elif":
                     if i == len(ifop.args) - 1 or not isinstance(ifop.args[i + 1], Block):
                         c = a.args[1]
@@ -232,7 +231,7 @@ def one_liner_expander(parsed):
                             raise SemanticAnalysisError("bad if args")
                         cond, rest = c.args
                         new_elif = TypeOp(a.op, [a.args[0], cond], a.source)
-                        new_block = Block([rest])
+                        new_block = Block([rest], ())
                         rebuilt = ifop.args[0:i] + [new_elif, new_block] + ifop.args[i + 1:]
                         return Call(ifop.func, rebuilt, ifop.source)
             elif isinstance(a, Identifier) and a.name == "else":
@@ -277,7 +276,7 @@ def one_liner_expander(parsed):
             if is_call_lambda(op):
                 if not isinstance(op.args[-1], Block):
                     # last arg becomes one-element block
-                    op = Call(op.func, op.args[0:-1] + [Block([op.args[-1]])], op.source)
+                    op = Call(op.func, op.args[0:-1] + [Block([op.args[-1]], ())], op.source)
                 if is_call_lambda(op):
                     block = op.args[-1]
                     last_statement = block.args[-1]
@@ -287,7 +286,7 @@ def one_liner_expander(parsed):
                         synthetic_return = Identifier("return", ())  # void return
                         block.args += [synthetic_return]
                     else:
-                        synthetic_return = SyntaxTypeOp(":", [Identifier("return", ()), last_statement])
+                        synthetic_return = SyntaxTypeOp(":", [Identifier("return", ()), last_statement], ())
                         if not (isinstance(last_statement, Call) and last_statement.func.name == "lambda"):  # exclude 'lambda' from 'is void?' check
                             synthetic_return.synthetic_lambda_return_lambda = op
                         block.args = block.args[0:-1] + [synthetic_return]
