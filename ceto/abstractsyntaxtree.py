@@ -2,7 +2,8 @@ import typing
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import *
+    # from ._abstractsyntaxtree import *
+    selfhost = False
 except ImportError:
     selfhost = False
     raise  # comment this out to use pure python ast

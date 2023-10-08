@@ -424,6 +424,7 @@ def test_string_escapes():
     c = compile(r"""
 
 def (main:
+    std.cout << "\n"
     std.cout << std.endl << "\"" << std.endl
     std.cout << '"' << std.endl
     std.cout << '\"'  << std.endl  # Note that in python '\"' is the same as '"'
@@ -433,6 +434,7 @@ def (main:
     """)
 
     assert c == r'''
+
 "
 "
 "
