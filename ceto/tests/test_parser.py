@@ -74,7 +74,7 @@ x < y <= z
 x <= y < z
     """
     p = parse(source)
-    assert str(p) == "Module((x <= y),(x <<= y),(x >= y),(x >>= y),((x > y) >>= y),((x < y) >>= z),((x >= y) > z),((x > y) >= z),((x < y) <= z),((x <= y) < z))"
+    assert str(p) == "Module((x <= y), (x <<= y), (x >= y), (x >>= y), ((x > y) >>= y), ((x < y) >>= z), ((x >= y) > z), ((x > y) >= z), ((x < y) <= z), ((x <= y) < z))"
 
 
 def test_compound_comparison():
@@ -162,7 +162,7 @@ bar()::blah
 bar()()::blah::blah2
     
     """)
-    assert str(a) == "Module((foo :: bar)(),((foo :: foo2) :: bar)(),((foo :: foo2) :: bar)(),(((foo :: foo2) :: foo3) :: bar)(),foo.bar(),(bar() :: blah),(bar()() :: (blah :: blah2)))"
+    assert str(a) == "Module((foo :: bar)(), ((foo :: foo2) :: bar)(), ((foo :: foo2) :: bar)(), (((foo :: foo2) :: foo3) :: bar)(), foo.bar(), (bar() :: blah), (bar()() :: (blah :: blah2)))"
 
     # debatable if last result should really be parsed as (bar()()::blah)::blah2 but above is ok for now
 
