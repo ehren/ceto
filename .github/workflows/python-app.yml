@@ -31,7 +31,7 @@ jobs:
         pip install -r requirements.txt
     - name: Install package
       run: |
-        pip install .
+        pip install --editable .  # editable because we want the dll inside the source directory (we're testing with the code in the source directory below instead of testing the system/installed version)
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -60,7 +60,7 @@ jobs:
         pip install -r requirements.txt
     - name: Install package
       run: |
-        pip install .
+        pip install --editable .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -89,7 +89,7 @@ jobs:
         pip install -r requirements.txt
     - name: Install package
       run: |
-        pip install .
+        pip install --editable .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
