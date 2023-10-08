@@ -52,7 +52,8 @@ struct Node : ceto::shared_object {
     std::weak_ptr<const Node> _parent = {};
 
          virtual inline auto repr() const -> std::string {
-            const std::string classname = ceto::mado(typeid((*this)))->name(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::mado(typeid((*this)))->name()), std::remove_cvref_t<decltype(classname)>>);
+            const py::object selph = py::cast(this); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::cast(this)), std::remove_cvref_t<decltype(selph)>>);
+            const auto classname = std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
@@ -352,7 +353,8 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 struct ListLike_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto classname = std::string(ceto::mado(typeid((*this)))->name());
+            const py::object selph = py::cast(this); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::cast(this)), std::remove_cvref_t<decltype(selph)>>);
+            const auto classname = std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
@@ -400,7 +402,8 @@ using Block::Block;
 struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto classname = std::string(ceto::mado(typeid((*this)))->name());
+            const py::object selph = py::cast(this); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::cast(this)), std::remove_cvref_t<decltype(selph)>>);
+            const auto classname = std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
@@ -416,7 +419,8 @@ struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std:
 struct InfixWrapper_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto classname = std::string(ceto::mado(typeid((*this)))->name());
+            const py::object selph = py::cast(this); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::cast(this)), std::remove_cvref_t<decltype(selph)>>);
+            const auto classname = std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});

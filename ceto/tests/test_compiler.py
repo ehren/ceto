@@ -1198,6 +1198,8 @@ def (main:
     """))
 
 
+# unnecessary misfeature
+@pytest.mark.xfail
 def test_noscope_if():
     c = compile(r"""
 def (main:

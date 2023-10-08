@@ -6,12 +6,9 @@ try:
     selfhost = False
 except ImportError:
     selfhost = False
-    # raise
+    # raise  # comment this out to use pure python ast
 
 if not selfhost:
-# if False:
-
-
     # TODO should throw away the ladder soon
 
     class Node:

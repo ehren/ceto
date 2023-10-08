@@ -37,9 +37,9 @@ class (Node:
     _parent: Node:weak = {}
 
     def (repr: virtual:
-        # selph : py.object = py.cast(this)
-        # classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))  # cool but unnecessary
-        classname : std.string = typeid(*this).name()
+        #classname : std.string = typeid(*this).name()
+        selph : py.object = py.cast(this)
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         csv = join(self.args, lambda(a, a.repr()), ", ")
         return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
@@ -285,7 +285,9 @@ class (ListLike_(Node):
     )
 
     def (repr:
-        classname = std.string(typeid(*this).name())
+#        classname = std.string(typeid(*this).name())
+        selph : py.object = py.cast(this)
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 )
@@ -316,7 +318,9 @@ class (RedundantParens(Node):
     )
 
     def (repr:
-        classname = std.string(typeid(*this).name())
+#        classname = std.string(typeid(*this).name())
+        selph : py.object = py.cast(this)
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 )
@@ -327,7 +331,9 @@ class (InfixWrapper_(Node):
     )
 
     def (repr:
-        classname = std.string(typeid(*this).name())
+#        classname = std.string(typeid(*this).name())
+        selph : py.object = py.cast(this)
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 )
