@@ -1956,8 +1956,11 @@ def codegen_call(node: Call, cx: Scope):
                 assert method_parent.rhs is method_name
 
                 if method_parent in method_parent.parent.args:
-                    method_parent.parent.args.remove(method_parent)
-                    method_parent.parent.args.append(method_parent.lhs)
+                    new_args = method_parent.parent.args
+                    new_args.remove(method_parent)
+                    new_args.append(method_parent.lhs)
+                    # important that we reset the list instead of mutating directly here (difference between plain python and pybind11 ast)
+                    method_parent.parent.args = new_args
                     method_parent.lhs.parent = method_parent.parent
                 elif method_parent is method_parent.parent.func:
                     method_parent.parent.func = method_parent.lhs
