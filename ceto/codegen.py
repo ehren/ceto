@@ -210,7 +210,9 @@ def codegen_for(node, cx):
             raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
 
         arg.declared_type = None  # this sort of thing is unfortunate (TODO remove .declared_type)
-        instmt.args[0] = arg
+        instmt_args = instmt.args
+        instmt_args[0] = arg
+        instmt.args = instmt_args  # we're not modifying instmt.args directly (pybind11 copying semantics without MAKE_OPAQUE)
 
         type_str = codegen_type(arg, list_to_typed_node(itertypes), cx)
     else:
