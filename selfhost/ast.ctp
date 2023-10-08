@@ -232,8 +232,8 @@ class (StringLiteral(Node):
     def (escaped:
         # why does the python version get away with doing the \ escapes before newline? deeply confusing
 
-        s : mut = string_replace(s, "\n", "\\n")    # replace actual newlines with \n escape sequence
-        s = string_replace(self.str, "\\", "\\\\")  # replace \ with \\ escape sequence
+        s : mut = string_replace(self.str, "\n", "\\n")    # replace actual newlines with \n escape sequence
+        s = string_replace(s, "\\", "\\\\")  # replace \ with \\ escape sequence
         s = string_replace(s, '"', '\\"')           # replace actual " with \" escape sequence.
         s = '"' + s + '"'
         return s
