@@ -252,7 +252,7 @@ def codegen_for(node, cx):
             end = iterable.args[1]
         else:
             end = start
-            start = IntegerLiteral("0")
+            start = IntegerLiteral("0", None, ())
             start.parent = end.parent
         # sub = BinOp(func="-", args=[end, start], source=None)
         # sub.parent = start.parent
@@ -966,7 +966,9 @@ def codegen_function_body(defnode : Call, block, cx):
 
             if s.parent in s.parent.parent.args:
                 index = s.parent.parent.args.index(s.parent)
-                s.parent.parent.args[index] = arrow
+                new_args = s.parent.parent.args
+                new_args[index] = arrow
+                s.parent.parent.args = new_args  # resetting args (unnecessary in pure python but necessary with pybind11 copying semantics _without_ MAKE_OPAQUE)
             elif s.parent is s.parent.parent.func:
                 s.parent.parent.func = arrow
         else:
@@ -2268,9 +2270,6 @@ def _is_unique_var(node: Identifier, cx: Scope):
 
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
-
-    # import pytest
-    # pytest.set_trace()
 
     if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):

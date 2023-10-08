@@ -29,9 +29,6 @@ if not selfhost:
             return "{}({})({!r})".format(self.__class__.__name__,
                                          self.func, self.args)
 
-        def referentially_equals(self, other):
-            return self is other
-
 
     class UnOp(Node):
         def __init__(self, op, args, source=None):

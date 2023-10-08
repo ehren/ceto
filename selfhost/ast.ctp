@@ -55,10 +55,6 @@ class (Node:
     def (set_parent: virtual:mut, p: Node:
         self._parent = p
     )
-
-    def (referentially_equals: virtual, other: Node:
-        return self == other
-    )
 )
 
 class (UnOp(Node):
@@ -132,7 +128,7 @@ class (ScopeResolution(BinOp):
 )
 
 class (Assign(BinOp):
-
+    pass
 )
 
 class (NamedParameter(Assign):
@@ -458,7 +454,6 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         c"declared_type", &Node.declared_type).def_readwrite(
         c"scope", &Node.scope).def_readwrite(
         c"source", &Node.source).def(
-#        c"referentially_equals", &Node.referentially_equals).def(
         c"__repr__", &Node.repr).def_property_readonly(
         c"name", &Node.name).def_property(
         c"parent", &Node.parent, &Node.set_parent)

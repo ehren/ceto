@@ -71,11 +71,6 @@ struct Node : ceto::shared_object {
             (this -> _parent) = p;
         }
 
-         virtual inline auto referentially_equals(const std::shared_ptr<const Node>&  other) const -> auto {
-            const auto self = ceto::shared_from(this);
-            return (self == other);
-        }
-
     explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(py::tuple{}) source = py::tuple{}) : func(func), args(args), source(source) {
     }
 
