@@ -424,12 +424,21 @@ def test_string_escapes():
     c = compile(r"""
 
 def (main:
-    std.cout << "\""
-    std.cout << '"'
+    std.cout << std.endl << "\"" << std.endl
+    std.cout << '"' << std.endl
+    std.cout << '\"'  << std.endl  # Note that in python '\"' is the same as '"'
+    std.cout << '\\"' << std.endl
+    std.cout << '\\\"' << std.endl  # in python '\\\"' == '\\"' (same for us)
 )
     """)
 
-    assert c == '""'
+    assert c == r'''
+"
+"
+"
+\"
+\"
+'''
 
 
 def test_more_mut_const_declarations_with_class_asserts():

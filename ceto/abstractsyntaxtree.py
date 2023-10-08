@@ -131,7 +131,8 @@ if not selfhost:
             return escaped
 
         def escaped(self):
-            escaped = self.str.replace("\n", r"\n")
+            escaped = self.str.replace("\\", "\\\\")
+            escaped = escaped.replace("\n", r"\n")
             escaped = escaped.replace('"', r'\"')
             escaped = '"' + escaped + '"'
             return escaped
