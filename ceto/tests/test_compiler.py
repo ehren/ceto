@@ -1,3 +1,5 @@
+import os
+
 from ceto.compiler import runtest
 from ceto.parser import parse
 
@@ -420,7 +422,7 @@ def (main:
     assert c == "44blahblahblah44blahblahblahor"
 
 
-@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
+@pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
 def test_simple_unicode():
     c = compile(r"""
 def (main:
@@ -430,7 +432,7 @@ def (main:
     assert c == "∀"
 
 
-@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
+@pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
 def test_string_escapes_unicode_escape():
     c = compile(r"""
 def (main:

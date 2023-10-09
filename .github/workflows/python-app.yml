@@ -101,4 +101,5 @@ jobs:
         pytest
       env:
         CXX: cl
+        PYTHONUTF8: 1
         #esp.extensions:cppcorecheck.dll
