@@ -422,7 +422,8 @@ def (main:
     assert c == "44blahblahblah44blahblahblahor"
 
 
-@pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
+# @pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
+@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
 def test_simple_unicode():
     c = compile(r"""
 def (main:
@@ -432,14 +433,16 @@ def (main:
     assert c == "∀"
 
 
-@pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
+# @pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
+# ^ I think we also want encoding=utf-8 in .gitattributes and /utf-8 flag for msvc
+@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
 def test_string_escapes_unicode_escape():
     c = compile(r"""
 def (main:
-    std.cout << "\u2200"
+    std.cout << "\u2200" << "\U2200" << "\u2200\U2200"
 )
     """)
-    assert c == "∀"
+    assert c == "∀∀∀∀"
 
 
 def test_string_escapes_escape_slash():
@@ -470,9 +473,11 @@ def (main:
 
 
 def test_string_escapes():
+    # note that among other issues \? \v \a \r are broken
+
     c = compile(r"""
 def (main:
-    std.cout << "\n"
+    std.cout << "\t\f\n"
     std.cout << std.endl << "\"" << std.endl
     std.cout << '"' << std.endl
     std.cout << '\"'  << std.endl  # Note that in python '\"' is the same as '"'
@@ -481,7 +486,7 @@ def (main:
 )
     """)
 
-    assert c == r'''
+    assert c == "\t\f" + r'''
 
 "
 "
