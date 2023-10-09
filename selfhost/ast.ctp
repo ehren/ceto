@@ -240,13 +240,13 @@ class (StringLiteral(Node):
     def (escaped:
         # broken
         s : mut = string_replace(self.str, "\\", "\\\\")  # replace \ with \\ escape sequence
-#        s = string_replace(s, "\n", "\\n")               # broken
-        s = string_replace(s, "\n", "\\" + "n")           # cheating workaround
+        s = string_replace(s, "\n", "\\n")                # now "fixed"
+#        s = string_replace(s, "\n", "\\" + "n")          # cheating workaround no longer necessary
         s = string_replace(s, '"', '\\"')                 # replace actual " with \" escape sequence.
         s = '"' + s + '"'
         return s
 
-         # this is even more broken
+         # this is still very broken
 #        cpp'
 #            std::string s = string_replace(this->str, "\\", "\\\\");
 #            s = string_replace(s, "\n", "\\n");

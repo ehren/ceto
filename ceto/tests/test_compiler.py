@@ -420,8 +420,44 @@ def (main:
     assert c == "44blahblahblah44blahblahblahor"
 
 
-# TODO
+# probably going to fail on windows etc
+def test_simple_unicode():
+    c = compile(r"""
+def (main:
+    std.cout << "∀"
+)
+    """)
+    assert c == "∀"
+
+
 @pytest.mark.xfail
+def test_string_escapes_unicode_escape():
+    c = compile(r"""
+def (main:
+    std.cout << "\u2200"
+)
+    """)
+    assert c == "∀"
+
+
+def test_string_escapes_escape_slash():
+    c = compile(r"""
+def (main:
+    std.cout << "\\"
+)
+    """)
+    assert c == "\\"
+
+
+def test_string_escapes_tab_escape():
+    c = compile(r"""
+def (main:
+    std.cout << "\\t"
+)
+    """)
+    assert c == "\\t"
+
+
 def test_string_escapes_newline_escape():
     c = compile(r"""
 def (main:

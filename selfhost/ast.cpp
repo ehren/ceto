@@ -289,7 +289,7 @@ struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::v
 
         inline auto escaped() const -> auto {
             auto s { string_replace(this -> str, std::string {"\\"}, std::string {"\\\\"}) } ;
-            s = string_replace(s, std::string {"\n"}, std::string {"\\"} + std::string {"n"});
+            s = string_replace(s, std::string {"\n"}, std::string {"\\n"});
             s = string_replace(s, std::string {"\""}, std::string {"\\\""});
             s = ((std::string {"\""} + s) + std::string {"\""});
             return s;

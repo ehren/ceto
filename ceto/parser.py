@@ -163,6 +163,8 @@ def _parse_string_literal(s, loc, tokens):
     else:
         assert len(tokens) == 1
         string = tokens[0]
+
+    string = string.replace("CETO_PRIVATE_ESCAPED_ESCAPED", "\\")
     return StringLiteral(string, prefix, suffix, source)
 
 
@@ -345,7 +347,7 @@ def _parse(source: str):
             pattern = p
         pattern |= p
 
-    qs = pp.QuotedString('"') | pp.QuotedString("'")
+    qs = pp.QuotedString('"', multiline=True, esc_char="\\") | pp.QuotedString("'", multiline=True, esc_char="\\")
     pattern = pattern.ignore(qs)
     source = pattern.transform_string(source)
 
@@ -369,6 +371,7 @@ def _parse(source: str):
 def parse(source: str):
     from textwrap import dedent
 
+    source = source.replace("\\\\", "CETO_PRIVATE_ESCAPED_ESCAPED")
     sio = io.StringIO(source)
     preprocessed, _, _ = preprocess(sio, reparse=False)
     preprocessed = preprocessed.getvalue()
