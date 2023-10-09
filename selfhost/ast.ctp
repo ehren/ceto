@@ -216,6 +216,14 @@ def (string_replace, source: string, from: string, to: string:
     return new_string  # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
 )
 
+def (get_string_replace_function:
+    func : mut:static:std.function<std.string(std.string)> = {}
+    return func
+)
+
+def (set_string_replace_function, f: decltype(get_string_replace_function()):
+    get_string_replace_function() = f
+)
 
 class (StringLiteral(Node):
     str : string
@@ -230,13 +238,25 @@ class (StringLiteral(Node):
     )
 
     def (escaped:
-        # why does the python version get away with doing the \ escapes before newline? deeply confusing
-
-        s : mut = string_replace(self.str, "\n", "\\n")    # replace actual newlines with \n escape sequence
-        s = string_replace(s, "\\", "\\\\")  # replace \ with \\ escape sequence
-        s = string_replace(s, '"', '\\"')           # replace actual " with \" escape sequence.
+        # broken
+        s : mut = string_replace(self.str, "\\", "\\\\")  # replace \ with \\ escape sequence
+#        s = string_replace(s, "\n", "\\n")               # broken
+        s = string_replace(s, "\n", "\\" + "n")           # cheating workaround
+        s = string_replace(s, '"', '\\"')                 # replace actual " with \" escape sequence.
         s = '"' + s + '"'
         return s
+
+         # this is even more broken
+#        cpp'
+#            std::string s = string_replace(this->str, "\\", "\\\\");
+#            s = string_replace(s, "\n", "\\n");
+#            s = string_replace(s, "\"", "\\"");
+#        '
+
+        # TODO make this a testcase
+#        replacer = get_string_replace_function()
+#        return replacer(std.string)
+
     )
 
     def (repr:
@@ -559,6 +579,7 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
     py.class_<InfixWrapper_.class, InfixWrapper_:mut>(m, c"InfixWrapper_", node).def(
         py.init<std.vector<Node>, py.tuple>())
 
+    m.def(c"set_string_replace_function", &set_string_replace_function, c"unfortunate kludge until we fix the baffling escape sequence probs in the selfhost implementation")
     m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
 
     return

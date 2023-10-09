@@ -270,6 +270,15 @@ while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos)
         return new_string;
     }
 
+    inline auto get_string_replace_function() -> auto {
+        static std::function<std::string(std::string)> func = {};
+        return func;
+    }
+
+    inline auto set_string_replace_function(const decltype(get_string_replace_function())  f) -> void {
+        get_string_replace_function() = f;
+    }
+
 struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(py::tuple{})>>()))> {
 
     std::string str;
@@ -279,8 +288,8 @@ struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::v
     std::shared_ptr<const Identifier> suffix;
 
         inline auto escaped() const -> auto {
-            auto s { string_replace(this -> str, std::string {"\n"}, std::string {"\\\n"}) } ;
-            s = string_replace(s, std::string {"\\"}, std::string {"\\\\"});
+            auto s { string_replace(this -> str, std::string {"\\"}, std::string {"\\\\"}) } ;
+            s = string_replace(s, std::string {"\n"}, std::string {"\\"} + std::string {"n"});
             s = string_replace(s, std::string {"\""}, std::string {"\\\""});
             s = ((std::string {"\""} + s) + std::string {"\""});
             return s;
@@ -480,6 +489,7 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         ceto::mado(ceto::mado(py::class_<Module,std::shared_ptr<Module>>(m, "Module", block))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>()))->def_readwrite("has_main_function", (&Module::has_main_function));
         ceto::mado(py::class_<RedundantParens,std::shared_ptr<RedundantParens>>(m, "RedundantParens", node))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<InfixWrapper_,std::shared_ptr<InfixWrapper_>>(m, "InfixWrapper_", node))->def(py::init<std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(m)->def("set_string_replace_function", (&set_string_replace_function), "unfortunate kludge until we fix the baffling escape sequence probs in the selfhost implementation");
         ceto::mado(m)->def("macro_trampoline", (&macro_trampoline), "macro trampoline");
         return;
         }(m);

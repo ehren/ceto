@@ -156,11 +156,31 @@ def preprocess(file_object, reparse = False):
                         raise PreprocessorError("Expected dedent got " + char, line_number)
                     else:
                         raise PreprocessorError("Unexpected state {} for close char {} ".format(top, char), line_number)
-                elif char in '"\'' and not (n > 0 and line[n - 1] == '\\'):
-                    if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
+                # elif char in '"\'' and not (n > 0 and line[n - 1] == '\\'):
+                #     if parsing_stack[-1] in [SingleQuote, DoubleQuote]:
+                #         parsing_stack.pop()
+                #     else:
+                #         parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
+                # elif char == "'" and not (n > 0 and line[n - 1] == '\\' and not (n > 1 and line[n - 1] == '\\')):
+                #     if parsing_stack[-1] == SingleQuote:
+                #         parsing_stack.pop()
+                #     else:
+                #         parsing_stack.append(SingleQuote)
+                # elif char == '"' and not (n > 0 and line[n - 1] == '\\' and not (n > 1 and line[n - 1] == '\\')):
+                #     if parsing_stack[-1] == DoubleQuote:
+                #         parsing_stack.pop()
+                #     else:
+                #         parsing_stack.append(DoubleQuote)
+                elif char == "'":
+                    if parsing_stack[-1] != SingleQuote:
+                        parsing_stack.append(SingleQuote)
+                    elif not (n > 0 and line[n - 1] == '\\' and not (n > 1 and line[n - 2] == '\\')):
                         parsing_stack.pop()
-                    else:
-                        parsing_stack.append(DoubleQuote if char == '"' else SingleQuote)
+                elif char == '"':
+                    if parsing_stack[-1] != DoubleQuote:
+                        parsing_stack.append(DoubleQuote)
+                    elif not (n > 0 and line[n - 1] == '\\' and not (n > 1 and line[n - 2] == '\\')):
+                        parsing_stack.pop()
                 elif char == "<":
                     if parsing_stack[-1] not in [SingleQuote, DoubleQuote]:
                         # doesn't take parenthesized identifiers into account:

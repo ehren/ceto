@@ -420,9 +420,19 @@ def (main:
     assert c == "44blahblahblah44blahblahblahor"
 
 
+# TODO
+@pytest.mark.xfail
+def test_string_escapes_newline_escape():
+    c = compile(r"""
+def (main:
+    std.cout << "\\n"
+)
+    """)
+    assert c == "\\n"
+
+
 def test_string_escapes():
     c = compile(r"""
-
 def (main:
     std.cout << "\n"
     std.cout << std.endl << "\"" << std.endl
