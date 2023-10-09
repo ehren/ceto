@@ -420,7 +420,7 @@ def (main:
     assert c == "44blahblahblah44blahblahblahor"
 
 
-# probably going to fail on windows etc
+@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
 def test_simple_unicode():
     c = compile(r"""
 def (main:
