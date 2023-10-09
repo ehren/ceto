@@ -372,6 +372,7 @@ def parse(source: str):
     from textwrap import dedent
 
     source = source.replace("\\\\", "CETO_PRIVATE_ESCAPED_ESCAPED")
+    source = source.replace("\\u", "CETO_PRIVATE_ESCAPED_UNICODE")
     sio = io.StringIO(source)
     preprocessed, _, _ = preprocess(sio, reparse=False)
     preprocessed = preprocessed.getvalue()

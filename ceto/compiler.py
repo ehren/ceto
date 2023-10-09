@@ -38,6 +38,7 @@ def compile(s) -> (str, Module):
     print("semantic", node)
     t = perf_counter()
     code = codegen(node)
+    code = code.replace("CETO_PRIVATE_ESCAPED_UNICODE", "\\u")
     perf_messages.append(f"codegen time {perf_counter() - t}")
     print("\n".join(perf_messages))
     return code, node

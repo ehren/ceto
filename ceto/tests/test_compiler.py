@@ -430,7 +430,7 @@ def (main:
     assert c == "∀"
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
 def test_string_escapes_unicode_escape():
     c = compile(r"""
 def (main:
