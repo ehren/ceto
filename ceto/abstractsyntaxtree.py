@@ -3,6 +3,7 @@ import typing
 selfhost = True
 try:
     from ._abstractsyntaxtree import *
+    # selfhost = False
 except ImportError:
     selfhost = False
 

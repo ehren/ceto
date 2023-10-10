@@ -95,7 +95,155 @@ def (main:
     assert c == "8"
 
 
-def test_weak_ptr_with_timer():
+def test_weak_ptr_with_timer_no_unnecessary_locking():
+    c = compile(r"""
+
+cpp'
+#include <mutex>
+'
+
+class (Delegate:
+    def (action:
+        std.cout << "action\n"
+    )
+
+    def (destruct:
+        std.cout << "Delegate destruct\n"
+    )
+)
+
+class (Timer:
+    _delegate: Delegate
+
+    _thread: std.thread = {}
+
+    def (start: mut:
+        w: weak:Delegate = self._delegate
+
+        self._thread = std.thread(lambda(:
+            while (true:
+                std.this_thread.sleep_for(std.chrono.seconds(1))
+                if ((s = w.lock()):
+                    s.action()
+                else:
+                    break
+                )
+            )
+        ))
+    )
+
+    def (join: mut:
+        self._thread.join()
+    )
+
+    def (clear_delegate: mut:
+        self._delegate = None
+    )
+
+    def (destruct:
+        std.cout << "Timer destruct\n"
+    )
+)
+
+def (main:
+    timer: mut = Timer(Delegate())
+    timer.start()
+
+    std.literals: using:namespace
+    std.this_thread.sleep_for(3.5s)
+
+    timer.clear_delegate()
+    timer.join()
+)
+    """)
+
+    assert c == r"""action
+action
+action
+Delegate destruct
+Timer destruct
+"""
+
+
+def test_timer_weak_ptr_with_atomic_shared():
+    # there's no need for std.atomic here
+    c = compile(r"""
+
+cpp'
+#include <mutex>
+#include <atomic>
+'
+
+class (Delegate:
+    def (action:
+        std.cout << "action\n"
+    )
+    
+    def (destruct:
+        std.cout << "Delegate destruct\n"
+    )
+)
+
+class (Timer:
+    _thread: std.thread = {}
+    _delegate: std.atomic<Delegate>
+    
+    def (init, delegate: Delegate:
+        self._delegate = delegate
+    )
+    
+    def (start: mut:
+        # the atomic weak_ptr here is also overkill but it's an ok testcase
+        w: std.atomic<weak:Delegate> = self._delegate.load()
+
+        self._thread = std.thread(lambda[w](:
+            while (true:
+                std.this_thread.sleep_for(std.chrono.seconds(1))
+                if ((s = w.load().lock()):
+                    s.action()
+                else:
+                    break
+                )
+            )
+        ))
+    )
+
+    def (join: mut:
+        self._thread.join()
+    )
+
+    def (clear_delegate: mut:
+        # self._delegate = None  # ??? error: ambiguous overload for ‘operator=’ (operand types are ‘std::atomic<std::shared_ptr. cppref says it's possible
+        self._delegate.store(None)
+    )
+    
+    def (destruct:
+        std.cout << "Timer destruct\n"
+    )
+)
+
+def (main:
+    timer: mut = Timer(Delegate())
+    timer.start()
+
+    std.literals: using:namespace
+    std.this_thread.sleep_for(3.5s)
+
+    timer.clear_delegate()
+    timer.join()
+)
+    """)
+
+    assert c == r"""action
+action
+action
+Delegate destruct
+Timer destruct
+"""
+
+
+def test_weak_ptr_with_timer_unnecessary_mutex():
+    # TODO better using shared/unique_ptr that actually requires a mutex but doesn't involve raw pointers or mut:ref
     c = compile(r"""
     
 cpp'
@@ -107,6 +255,10 @@ cpp'
 class (Delegate:
     def (action:
         std.cout << "action\n"
+    )
+    
+    def (destruct:
+        std.cout << "Delegate destruct\n"
     )
 )
 
@@ -140,6 +292,10 @@ class (Timer:
         guard = std.lock_guard<std.mutex>(self._delegate_mutex)
         self._delegate = None
     )
+    
+    def (destruct:
+        std.cout << "Timer destruct\n"
+    )
 )
     
 def (main:
@@ -157,6 +313,8 @@ def (main:
     assert c == r"""action
 action
 action
+Delegate destruct
+Timer destruct
 """
 
 
@@ -982,6 +1140,7 @@ def (main:
 
 
 def test_lambda_function_pointer_coercion():
+    # TODO these lambda return type with decltype cases are pretty dubious - they should just require parenthesese (the post parse hacks to make them work should also not be in codegen - will break macro system)
     c = compile(r"""
 def (blah, x: int:
     return x
