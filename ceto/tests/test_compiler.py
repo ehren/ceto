@@ -4612,7 +4612,7 @@ def (main:
     x = 5
     
     l : mut = [1,2,3]
-    for (x:auto:rref in l:  # note the context sensitivity disguised by a post parse fixup (ordinarily ':' has a lower precedence than 'in')
+    for (x:mut:auto:rref in l:  # note the context sensitivity disguised by a post parse fixup (ordinarily ':' has a lower precedence than 'in')
         x = x + 1
     )
     
@@ -4620,7 +4620,7 @@ def (main:
         printf("%d", x)
     )
     
-    for ((x:auto:rref) in [1, 2, 3]:
+    for ((x:mut:auto:rref) in [1, 2, 3]:
         x = x + 1
         printf("%d", x)
     )
@@ -4784,7 +4784,7 @@ class (Shared:
 
 def (main:
     x = 5
-    for (x:auto:rref in [1, 2, 3]:
+    for (x:mut:auto:rref in [1, 2, 3]:
         printf("%d\n", x)
         x = x + 1
     )
@@ -4792,11 +4792,11 @@ def (main:
     static_assert(std.is_const_v<decltype(x)>)
     
     lst : mut = [1,2,3]
-    for (x:auto:rref in lst:
+    for (x:mut:auto:rref in lst:
         printf("%d\n", x)
         x = x + 1
     )
-    for (x:auto:rref in lst:
+    for (x:mut:auto:rref in lst:
         printf("%d\n", x)
         x = x + 1
     )

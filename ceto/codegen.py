@@ -1410,8 +1410,9 @@ def _decltype_str(node, cx):
         return True, "(" + node.op + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call):
 
-        if node.func.name == "lambda":
-            return codegen_node(node, cx)
+        # appending e.g. a method call that contains a lambda to a generic list needs work
+        # if node.func.name == "lambda":
+        #     return codegen_node(node, cx)
 
         call = node
 
@@ -1440,8 +1441,8 @@ def _decltype_str(node, cx):
             return False, func_str
 
         else:
-            # return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
-            return True, codegen_node(call, cx)
+            return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
+            # return True, codegen_node(call, cx)
     elif isinstance(node, ListLiteral):
         return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
     elif isinstance(node, ArrayAccess):
