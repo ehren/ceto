@@ -155,6 +155,8 @@ class (Identifier(Node):
 )
 
 class (Call(Node):
+    is_one_liner_if = false
+
     def (repr:
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "(" + csv + ")"
@@ -524,7 +526,8 @@ lambda(m: mut:auto:rref:  # TODO lambda params are now naively const by default 
         py.init<const:string:ref, std.vector<Node>, py.tuple>())
 
     py.class_<Call.class, Call:mut>(m, c"Call", node).def(
-        py.init<Node, std.vector<Node>, py.tuple>())
+        py.init<Node, std.vector<Node>, py.tuple>()).def_readwrite(
+        c"is_one_liner_if", &Call.is_one_liner_if)
 
     py.class_<ArrayAccess.class, ArrayAccess:mut>(m, c"ArrayAccess", node).def(
         py.init<Node, std.vector<Node>, py.tuple>())

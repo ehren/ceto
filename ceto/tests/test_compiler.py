@@ -24,6 +24,77 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_if_assign_missing_parenthesese():
+    raises(lambda:compile(r"""
+
+def (main:
+    x:mut = 5
+    if (x = 6:
+        pass
+    )
+)
+    
+"""), exc="assignment in if missing extra parenthesese")
+
+    raises(lambda: compile(r"""
+
+def (main:
+    x:mut = 5
+    if ((x = 6):
+        pass
+    elif x = 7:
+        pass
+    )
+)
+
+"""), exc="bad if-arg ((elif : x) = 7) at position 2")
+
+    c = compile(r"""
+
+def (main:
+    x:mut = 5
+    if ((x = 6):
+        pass
+    elif (x = 7):
+        pass
+    )
+    std.cout << x
+)
+
+""")
+
+    assert c == "6"
+
+    raises(lambda: compile(r"""
+
+def (main:
+    x:mut = 5
+    if (x = 6: pass)
+)
+
+"""), exc="bad first if-args")
+
+    raises(lambda: compile(r"""
+
+def (main:
+    x:mut = 5
+    if ((x = 6): pass elif x = 7: pass)
+)
+
+"""), exc="bad if-arg ((elif : x) = (7 : pass)) at position 2")
+
+    c = compile(r"""
+def (main:
+    x:mut = 5
+    if ((x = 6): pass elif (x = 7): pass )
+    if ((x = 8): pass elif (x = 9): pass else: pass)
+    std.cout << x
+)
+""")
+
+    assert c == "8"
+
+
 def test_weak_ptr_with_timer():
     c = compile(r"""
     
@@ -50,7 +121,6 @@ class (Timer:
             while (true:
                 std.this_thread.sleep_for(std.chrono.seconds(1))
                 guard = std.lock_guard<std.mutex>(self._delegate_mutex)
-                # if (s = w.lock():  # TODO find_defs prob (no VariableDefinition created - this should be / was an error anyway (if with NamedParameter))
                 if ((s = w.lock()):
                     s.action()
                 else:

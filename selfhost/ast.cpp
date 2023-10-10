@@ -209,6 +209,8 @@ struct Call : public Node {
 
 using Node::Node;
 
+    std::remove_cvref_t<decltype(false)> is_one_liner_if = false;
+
         inline auto repr() const -> std::string {
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
@@ -472,7 +474,7 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         auto assign { py::class_<Assign,std::shared_ptr<Assign>>(m, "Assign", binop) } ;
         ceto::mado(assign)->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<NamedParameter,std::shared_ptr<NamedParameter>>(m, "NamedParameter", assign))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,py::tuple>());
-        ceto::mado(py::class_<Call,std::shared_ptr<Call>>(m, "Call", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());
+        ceto::mado(ceto::mado(py::class_<Call,std::shared_ptr<Call>>(m, "Call", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>()))->def_readwrite("is_one_liner_if", (&Call::is_one_liner_if));
         ceto::mado(py::class_<ArrayAccess,std::shared_ptr<ArrayAccess>>(m, "ArrayAccess", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<BracedCall,std::shared_ptr<BracedCall>>(m, "BracedCall", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());
         ceto::mado(py::class_<Template,std::shared_ptr<Template>>(m, "Template", node))->def(py::init<std::shared_ptr<const Node>,std::vector<std::shared_ptr<const Node>>,py::tuple>());

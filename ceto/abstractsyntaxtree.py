@@ -91,6 +91,10 @@ if not selfhost:
 
 
     class Call(Node):
+        def __init__(self, func, args, source=None):
+            self.is_one_liner_if = False
+            super().__init__(func, args, source)
+
         def __repr__(self):
             return "{}({})".format(self.func, ", ".join(map(str, self.args)))
 

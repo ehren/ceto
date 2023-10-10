@@ -270,6 +270,7 @@ def one_liner_expander(parsed):
                     new = ifreplacer(op)
                     if new is not op:
                         op = new
+                        op.is_one_liner_if = True
                     else:
                         break
             # if op.func.name in ["def", "lambda"]:  # no def one liners

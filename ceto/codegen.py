@@ -156,6 +156,9 @@ def codegen_if(ifcall : Call, cx):
     elif ifkind == "consteval":  # c++23
         if_start = "if consteval ("
 
+    if isinstance(ifnode.cond, NamedParameter) and not ifcall.is_one_liner_if:
+        raise CodeGenError("assignment in if missing extra parenthesese", ifnode.cond)
+
     cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
 
     cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
