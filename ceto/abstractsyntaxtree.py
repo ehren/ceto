@@ -2,11 +2,9 @@ import typing
 
 selfhost = True
 try:
-    # from ._abstractsyntaxtree import *
-    selfhost = False
+    from ._abstractsyntaxtree import *
 except ImportError:
     selfhost = False
-    raise  # comment this out to use pure python ast
 
 if not selfhost:
     # TODO should throw away the ladder soon

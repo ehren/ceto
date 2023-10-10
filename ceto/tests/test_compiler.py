@@ -101,6 +101,8 @@ def test_weak_ptr_with_timer():
 cpp'
 #include <mutex>
 '
+# include<mutex>
+# include(ast.cth)
     
 class (Delegate:
     def (action:
