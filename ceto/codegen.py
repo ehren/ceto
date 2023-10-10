@@ -190,7 +190,8 @@ def codegen_for(node, cx):
     arg, block = node.args
     if not isinstance(block, Block):
         raise CodeGenError("expected block as last arg of for", node)
-    type_str = None
+
+    iter_type : Node = None
 
     if not isinstance(arg, BinOp) and isinstance(arg, Identifier) and arg.declared_type is not None:
         # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
@@ -212,12 +213,10 @@ def codegen_for(node, cx):
         if not all(isinstance(i, Identifier) for i in itertypes):
             raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
 
-        arg.declared_type = None  # this sort of thing is unfortunate (TODO remove .declared_type)
+        arg.declared_type = list_to_typed_node(itertypes)
         instmt_args = instmt.args
         instmt_args[0] = arg
         instmt.args = instmt_args  # we're not modifying instmt.args directly (pybind11 copying semantics without MAKE_OPAQUE)
-
-        type_str = codegen_type(arg, list_to_typed_node(itertypes), cx)
     else:
         instmt = node.args[0]
 
@@ -225,19 +224,18 @@ def codegen_for(node, cx):
         raise CodeGenError("unexpected 1st argument to for", node)
 
     var = instmt.lhs
-    iterable = instmt.rhs
-
     if not isinstance(var, Identifier):
         # TODO for ((x,y):const:auto in pairs:
         raise CodeGenError("Unexpected iter var", var)
 
-    # if the user took enough care to consult the precedence table followed by using parenthesese for their for loop variable...
+    iterable = instmt.rhs
+
     if var.declared_type is not None:
-        assert type_str is None
-        type_str = codegen_type(var, var.declared_type, cx)
-        var_str = var.name
+        assert isinstance(var, Identifier)
+        type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
     else:
         var_str = codegen_node(var, cx)
+        type_str = None
 
     indt = cx.indent_str()
 
@@ -1410,7 +1408,11 @@ def _decltype_str(node, cx):
     elif isinstance(node, UnOp):
         assert False, "this needs fixes"
         return True, "(" + node.op + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
-    elif isinstance(node, Call) and isinstance(node.func, Identifier):
+    elif isinstance(node, Call):
+
+        if node.func.name == "lambda":
+            return codegen_node(node, cx)
+
         call = node
 
         if class_def := cx.lookup_class(node.func):
@@ -1438,7 +1440,8 @@ def _decltype_str(node, cx):
             return False, func_str
 
         else:
-            return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
+            # return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
+            return True, codegen_node(call, cx)
     elif isinstance(node, ListLiteral):
         return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
     elif isinstance(node, ArrayAccess):

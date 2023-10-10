@@ -24,6 +24,93 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_atomic_weak():
+    # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
+    # atomic_weak_ptr<X> p_last;
+    #
+    # void use( const shared_ptr<X>& x ) {
+    # do_something_with( *x );
+    #     p_last = x; // remember last X seen
+    # }
+
+
+    c = compile(r"""
+    
+cpp'
+#include <atomic>
+#include <ranges>
+'
+    
+class (Task:
+    _id : int
+    
+    def (id:
+        return self._id
+    )
+
+    def (action:
+        std.cout << "action: " << self._id << "\n"
+        std.this_thread.sleep_for(std.chrono.milliseconds(self._id * 100))
+        std.cout << "finished: " << self._id << "\n"
+    )
+    
+    def (destruct:
+        std.cout << "Task " << self._id << " dead\n"
+    )
+)
+    
+class (Executor:
+    last_submitted : std.atomic<weak:Task> = {}
+    last_finished : std.atomic<weak:Task> = {}
+
+    def (do_something: mut, task: Task:
+        self.last_submitted = task
+        task.action()
+        self.last_finished = task
+    )
+    
+    def (destruct:
+        std.cout << "Last task submitted: " << if ((strong = self.last_submitted.load().lock()): 
+            std.to_string(strong.id())
+        else:
+            "Last submitted task not found"
+        ) << "\nLast task finished: " << if ((strong2 = self.last_finished.load().lock()):   # TODO should work with var name 'strong' - assignments in if conditions added to wrong scope
+            std.to_string(strong2.id())
+        else:
+            "Last finished task not found"
+        ) << "\n"
+    )
+)
+
+def (launch, tasks : [Task]:
+    executor : mut = Executor()
+    # threads: mut:[std.thread] = []  # TODO should work
+    # threads: mut = []  # TODO should work (lambdas at least with an implicit capture not handled well by codegen.decltype_str)
+    threads: mut = [] : std.thread
+    
+    for (task in tasks:
+        threads.append(std.thread(lambda(executor.do_something(task))))
+    )
+    
+    for (thread: mut:auto:rref in threads:
+        thread.join()
+    )
+)
+
+def (main:
+    tasks : mut = [] : Task
+    
+    for (i in std.ranges.views.iota(0, 10):
+        task = Task(i)
+        tasks.append(task)
+    )
+    
+    launch(tasks)
+)
+    
+    """)
+
+
 def test_if_assign_missing_parenthesese():
     raises(lambda:compile(r"""
 
@@ -166,7 +253,7 @@ Timer destruct
 
 
 def test_timer_weak_ptr_with_atomic_shared():
-    # there's no need for std.atomic here
+    # there's no need for std.atomic here. but also this never worked?
     c = compile(r"""
 
 cpp'
@@ -174,6 +261,7 @@ cpp'
 #include <atomic>
 '
 
+# this could be struct but this is more of an atomic<shared/weak> initialization test
 class (Delegate:
     def (action:
         std.cout << "action\n"
@@ -194,7 +282,8 @@ class (Timer:
     
     def (start: mut:
         # the atomic weak_ptr here is also overkill but it's an ok testcase
-        w: std.atomic<weak:Delegate> = self._delegate.load()
+        w: mut:std.atomic<weak:Delegate> = {}# = self._delegate.load()  # is this a failure of our diy non-narrowing init?
+        w.store(self._delegate.load())
 
         self._thread = std.thread(lambda[w](:
             while (true:
