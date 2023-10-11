@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 
 import pytest
 
@@ -23,7 +24,7 @@ def raises(func, exc=None):
         assert 0
 
 
-@pytest.mark.xfail(sys.platform == "darwin", reason="apparently incomplete support for atomic<weak_ptr> with apple clang")
+@pytest.mark.xfail(sys.platform == "darwin" or (sys.platform != "win32" and "clang version 12." in subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")), reason="apparently incomplete support for atomic<weak_ptr> with apple clang and same with ranges for clang < 14")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
     # atomic_weak_ptr<X> p_last;
