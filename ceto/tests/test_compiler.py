@@ -24,7 +24,7 @@ def raises(func, exc=None):
         assert 0
 
 
-@pytest.mark.xfail(sys.platform == "darwin" or (sys.platform != "win32" and "clang version 13." in subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")), reason="apparently incomplete support for atomic<weak_ptr> with apple clang and same with ranges for clang < 14")
+@pytest.mark.xfail(sys.platform == "darwin" or (sys.platform != "win32" and "clang version 14." in subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")), reason="apparently incomplete support for atomic<weak_ptr> with apple clang and same with ranges for clang < 15. might even need clang 16.")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
     # atomic_weak_ptr<X> p_last;
@@ -39,21 +39,8 @@ def test_atomic_weak():
 cpp'
 #include <atomic>
 #include <ranges>
-#include <numeric>
 '
 
-def (xrange, x, y:
-    if (__clang_major__ <= 14:
-        # it's like range in python 2
-        r: mut = std.vector<int>(y)
-        std.iota(std.begin(r), std.end(r), x)
-        return r
-    else:
-        # range in python 3 (xrange in python 2)
-        return std.ranges.views.iota(x, y)
-    ) : pre
-)
-    
 class (Task:
     _id : int
     
@@ -113,7 +100,7 @@ def (launch, tasks : [Task]:
 def (main:
     tasks : mut = []
     
-    for (i in xrange(0, 10):
+    for (i in std.ranges.iota_view(0, 10):
         tasks.append(Task(i))
     )
     
