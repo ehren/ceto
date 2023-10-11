@@ -1510,7 +1510,7 @@ def _decltype_str(node, cx):
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
             # return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"  # only works for std::vector and similar
-            # this breaks in clang14 (maybe fixed in 15?) but that's ok - no python style empty lists for clang users:
+            # this breaks in clang14/15 (fine in 16) but that's ok - no python style empty lists for old clang users:
             return True, "std::declval<std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">>()"
 
     else:

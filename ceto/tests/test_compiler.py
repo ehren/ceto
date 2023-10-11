@@ -24,7 +24,7 @@ def raises(func, exc=None):
         assert 0
 
 
-@pytest.mark.xfail(sys.platform == "darwin" or (sys.platform != "win32" and "clang version 14." in subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")), reason="apparently incomplete support for atomic<weak_ptr> with apple clang and same with ranges for clang < 15. might even need clang 16.")
+@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"])) or "clang version 15." in cv).decode("utf8"), reason="")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
     # atomic_weak_ptr<X> p_last;
@@ -1284,6 +1284,7 @@ class (Foo:
     """), exc="const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use c = whatever (with no const \"type\" specified)")
 
 
+@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"])) or "clang version 15." in cv).decode("utf8"), reason="")
 def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
     c = compile(r"""
 class (Foo:
