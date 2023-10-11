@@ -44,7 +44,7 @@ jobs:
       env:
         CXX: clang++
 
-  clang_14_build:
+  clang_15_build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -54,7 +54,8 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        sudo apt install clang-14
+        sudo apt update
+        sudo apt install clang-15
         python -m pip install --upgrade pip
         pip install flake8 pytest
         pip install -r requirements.txt
@@ -71,7 +72,7 @@ jobs:
       run: |
         pytest
       env:
-        CXX: clang++14
+        CXX: clang++-15
 
   gcc_build:
     runs-on: ubuntu-latest
