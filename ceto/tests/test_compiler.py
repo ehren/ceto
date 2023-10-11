@@ -24,7 +24,7 @@ def raises(func, exc=None):
         assert 0
 
 
-@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"])) or "clang version 15." in cv).decode("utf8"), reason="")
+@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
     # atomic_weak_ptr<X> p_last;
@@ -1284,7 +1284,7 @@ class (Foo:
     """), exc="const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use c = whatever (with no const \"type\" specified)")
 
 
-@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"])) or "clang version 15." in cv).decode("utf8"), reason="")
+@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
 def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
     c = compile(r"""
 class (Foo:
@@ -4298,6 +4298,7 @@ def (main:
     """)
 
 
+@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
 def test_py14_map_example():
     c = compile(r"""
 def (map, values, fun:
