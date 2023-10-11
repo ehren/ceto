@@ -44,7 +44,7 @@ jobs:
       env:
         CXX: clang++
 
-  clang_16_build:
+  clang16_build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -54,8 +54,9 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt install clang-16
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
         python -m pip install --upgrade pip
         pip install flake8 pytest
         pip install -r requirements.txt
