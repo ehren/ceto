@@ -17,6 +17,13 @@
 #define CETO_SOURCE_LOC_ARG
 #endif
 
+#if __clang_major__ <= 14
+    // don't know if this works in clang 15 yet
+    #define CETO_ITERABLE_VALUE_T(...) (std::declval<typename std::remove_cvref_t<(__VA_ARGS__)>::value_type>())
+#else
+    #define CETO_ITERABLE_VALUE_T(...) (std::declval<std::ranges::range_value_t< (__VA_ARGS__)>>())
+#endif
+
 namespace ceto {
 
 struct object {

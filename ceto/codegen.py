@@ -1510,7 +1510,8 @@ def _decltype_str(node, cx):
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
             # return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"  # only works for std::vector and similar
-            return True, "std::declval<std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">>()"
+            # return True, "std::declval<std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">>()"
+            return True, "CETO_ITERABLE_VALUE_T((" + decltype_str(instmt.rhs, cx) + "))"
 
     else:
         return True, codegen_node(last_ident, cx)
