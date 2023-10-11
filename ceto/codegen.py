@@ -1425,7 +1425,7 @@ def _decltype_str(node, cx):
 
             # instead of manual tracking like the above,
             # leave the matter of the desired class type up to C++ CTAD:
-            args_str = "{" + ", ".join([codegen_node(a, cx) for a in node.args]) + "}"   # this should be _decltype_str instead of codegen_node?
+            args_str = "{" + ", ".join([_decltype_maybe_wrapped_in_declval(a, cx) for a in node.args]) + "}"
 
             const = "const " if _is_const_make(call) else ""
 
@@ -1509,7 +1509,8 @@ def _decltype_str(node, cx):
         if not isinstance(instmt, BinOp) and instmt.op == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
-            return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"
+            # return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"  # only works for std::vector and similar
+            return True, "std::declval<std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">>()"
 
     else:
         return True, codegen_node(last_ident, cx)

@@ -97,11 +97,10 @@ def (launch, tasks : [Task]:
 )
 
 def (main:
-    tasks : mut = [] : Task
+    tasks : mut = []
     
     for (i in std.ranges.views.iota(0, 10):
-        task = Task(i)
-        tasks.append(task)
+        tasks.append(Task(i))
     )
     
     launch(tasks)
