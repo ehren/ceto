@@ -1,11 +1,10 @@
+import sys
 import os
+
+import pytest
 
 from ceto.compiler import runtest
 from ceto.parser import parse
-
-import sys
-
-import pytest
 
 
 def compile(s):
@@ -24,15 +23,15 @@ def raises(func, exc=None):
         assert 0
 
 
+@pytest.mark.xfail(sys.platform == "darwin", reason="apparently incomplete support for atomic<weak_ptr> with apple clang")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
     # atomic_weak_ptr<X> p_last;
     #
     # void use( const shared_ptr<X>& x ) {
-    # do_something_with( *x );
+    #     do_something_with( *x );
     #     p_last = x; // remember last X seen
     # }
-
 
     c = compile(r"""
     
