@@ -24,6 +24,37 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_empty_list_append_simple_vector_iterate():
+    c = compile(r"""
+
+def (main:
+    v: mut = []
+    v2: mut = []
+    range = [0, 1, 2]
+    
+    for (x in range:
+        v.append(x)    
+    )
+    
+    for (x in [0, 1, 2]:
+        v.append(x)    
+    )
+    
+    for (x in v:
+        v2.append(x)
+        v2.append(x)
+    )
+    
+    for (x in v2:
+        std.cout << x
+    )
+)
+    
+    """)
+
+    assert c == "001122001122"
+
+
 @pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
 def test_atomic_weak():
     # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf

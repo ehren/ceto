@@ -1441,10 +1441,12 @@ def _decltype_str(node, cx):
             return False, func_str
 
         else:
-            return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
+            # return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_str(a, cx)[1] for a in call.args]) + ")"
+            return True, codegen_node(call.func, cx) + "(" + ", ".join([_decltype_maybe_wrapped_in_declval(a, cx) for a in call.args]) + ")"
             # return True, codegen_node(call, cx)
     elif isinstance(node, ListLiteral):
-        return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
+        # return True, "std::vector<" + decltype_str(node.args[0], cx) + "> {}"
+        return False, "std::vector<" + decltype_str(node.args[0], cx) + ">"
     elif isinstance(node, ArrayAccess):
 
         # for n, c in cx.find_defs(node.func): # doesn't work for forward inference (would require 2 passes - just keep using old find_defs for now)
@@ -1497,7 +1499,15 @@ def _decltype_str(node, cx):
     if not eligible_defs:
         return True, node.name
 
-    last_ident, last_context = eligible_defs[-1]
+    # TODO cleanup dodgy 'continue' use above
+    last_def = eligible_defs[-1]
+    if isinstance(last_def, tuple):
+        last_ident, last_context = eligible_defs[-1]
+    else:
+        last_ident = eligible_defs[-1].defined_node
+        last_context = eligible_defs[-1].defining_node
+
+    assert isinstance(last_ident, Identifier)
 
     if isinstance(last_context, Assign):
         assign = last_context
@@ -1509,12 +1519,16 @@ def _decltype_str(node, cx):
         if not isinstance(instmt, BinOp) and instmt.op == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
         if last_ident is instmt.lhs:  # maybe we should adjust find_defs to return the in-operator ?
-            # return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"  # only works for std::vector and similar
+            return False, "std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">"  # broken in clang < 16 but that's ok
+
+            # previously messed up declval/Call handling led to this unnecessary/broken declval usage.
+            return True, "std::declval<typename std::remove_cvref_t<" + decltype_str(instmt.rhs, cx) + ">::value_type>()"  # only works for std::vector and similar
             # this breaks in clang14/15 (fine in 16) but that's ok - no python style empty lists for old clang users:
             return True, "std::declval<std::ranges::range_value_t<" + decltype_str(instmt.rhs, cx) + ">>()"
 
     else:
-        return True, codegen_node(last_ident, cx)
+        # return True, codegen_node(last_ident, cx)
+        return True, last_ident.name  # hope that we validated this is a legal name elsewhere...
 
 
 def vector_decltype_str(node, cx):
