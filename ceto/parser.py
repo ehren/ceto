@@ -244,21 +244,23 @@ def _build_grammar():
     # dict_entry = pp.Group(infix_expr + bel + infix_expr)
     # dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
-    braced_literal <<= (lbrace + pp.Optional(pp.delimited_list(infix_expr)) + rbrace).set_parse_action(_make_parse_action_list_like(BracedLiteral))
+    optional_infix_csv = pp.Optional(pp.delimited_list(infix_expr))
+
+    braced_literal <<= (lbrace + optional_infix_csv + rbrace).set_parse_action(_make_parse_action_list_like(BracedLiteral))
 
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Block))
 
     template_disambig_char = pp.Suppress("\x06")
-    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + pp.delimitedList(infix_expr) + pp.Suppress(">") + pp.Optional(template_disambig_char)).set_parse_action(_parse_template)
+    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char)).set_parse_action(_parse_template)
 
     non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
 
     # no python slice syntax - but can be faked with TypeOp
     # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
-    array_access_args = lit_lbrack + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrack
+    array_access_args = lit_lbrack + optional_infix_csv + lit_rbrack
 
-    braced_args = lit_lbrace + pp.Optional(pp.delimited_list(infix_expr)) + lit_rbrace
+    braced_args = lit_lbrace + optional_infix_csv + lit_rbrace
 
     call_args = lit_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + lit_rparen
 
