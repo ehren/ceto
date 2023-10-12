@@ -116,8 +116,8 @@ class (Executor:
 def (launch, tasks : [Task]:
     executor : mut = Executor()
     # threads: mut:[std.thread] = []  # TODO should work
-    # threads: mut = []  # TODO should work (lambdas at least with an implicit capture not handled well by codegen.decltype_str)
     threads: mut = [] : std.thread
+    # threads: mut = []  # TODO should work (we don't handle the captured var 'task' well when building the type upon encountering the lambda)
     
     for (task in tasks:
         threads.append(std.thread(lambda(executor.do_something(task))))

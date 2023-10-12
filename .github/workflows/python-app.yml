@@ -85,8 +85,6 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        deb http://apt.llvm.org/focal/ llvm-toolchain-focal-16 main
-        deb-src http://apt.llvm.org/focal/ llvm-toolchain-focal-16 main
         sudo apt install gcc-12 g++-12
         python -m pip install --upgrade pip
         pip install flake8 pytest

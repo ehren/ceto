@@ -1410,9 +1410,10 @@ def _decltype_str(node, cx):
         return True, "(" + node.op + _decltype_str(node.args[0], cx)[1] + ")"  # the other place unop is parenthesized is "necessary". here too?
     elif isinstance(node, Call):
 
-        # appending e.g. a method call that contains a lambda to a generic list needs work
-        # if node.func.name == "lambda":
-        #     return codegen_node(node, cx)
+        if node.func.name == "lambda":
+            # this isn't going to work if the lambda captures variables (at least variables defined after the empty list whose type we're creating).
+            # lambdas with a capture list are easier to handle - TODO move the implicit capture to an earlier pass than codegen.
+            return True, codegen_lambda(node, cx)
 
         call = node
 
