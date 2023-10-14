@@ -2263,6 +2263,8 @@ def codegen_assign(node: Assign, cx: Scope):
 
         for a in node.lhs.args:
             if not isinstance(a, Identifier) or a.scope.find_def(a):
+                if node.lhs.declared_type:
+                    raise CodeGenError('typed tuple unpacking ("structured bindings" in C++) can\'t redefine variable: ', a)
                 is_tie = True
             if a.declared_type:
                 raise CodeGenError("unexpected type in tuple", node)

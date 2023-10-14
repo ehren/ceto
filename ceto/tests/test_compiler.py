@@ -31,14 +31,28 @@ def (main:
     (x, y) = (0, 1)
     std.cout << x
     std.cout << y
-    # (x, y) = (2, 3)  # TODO need to create a VariableDefinition for x and y above
-    # std.cout << x
-    # std.cout << y
+    static_assert(std.is_same_v<decltype(x), const:int>)
+    static_assert(std.is_same_v<decltype(y), const:int>)
 )
-    
     """)
 
     assert c == "01"
+
+    c = compile(r"""
+
+def (main:
+    (x, y): mut = (0, 1)
+    std.cout << x
+    std.cout << y
+    static_assert(std.is_same_v<decltype(x), int>)
+    static_assert(std.is_same_v<decltype(y), int>)
+    (x, y) = (2, 3)
+    std.cout << x
+    std.cout << y
+)
+    """)
+
+    assert c == "0123"
 
 
 def test_empty_list_append_simple_vector_iterate():

@@ -2,7 +2,7 @@ import typing
 from collections import defaultdict
 import sys
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -627,6 +627,9 @@ class ScopeReplacer:
         assign = self.replace_Node(assign)
         if isinstance(assign.lhs, Identifier) and not (assign.lhs.declared_type and assign.lhs.declared_type.name in ["using", "namespace"]):
             assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
+        elif isinstance(assign.lhs, TupleLiteral):
+            for a in assign.lhs.args:
+                assign.scope.add_variable_definition(defined_node=a, defining_node=assign)
         return assign
 
     def replace_Module(self, module):
