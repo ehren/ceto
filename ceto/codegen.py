@@ -193,7 +193,7 @@ def codegen_for(node, cx):
 
     iter_type : Node = None
 
-    if not isinstance(arg, BinOp) and isinstance(arg, Identifier) and arg.declared_type is not None:
+    if not isinstance(arg, BinOp) and isinstance(arg, (Identifier, TupleLiteral)) and arg.declared_type is not None:
         # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
 
         # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
@@ -220,7 +220,7 @@ def codegen_for(node, cx):
     else:
         instmt = node.args[0]
 
-    if not isinstance(instmt, BinOp) and instmt.op == "in":
+    if not isinstance(instmt, BinOp) or instmt.op != "in":
         raise CodeGenError("unexpected 1st argument to for", node)
 
     var = instmt.lhs
@@ -1686,7 +1686,7 @@ def codegen_type(expr_node, type_node, cx):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
-    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp, AttributeAccess)):
+    elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess)):
         raise CodeGenError("unexpected typed expression", expr_node)
     if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
         raise CodeGenError("unexpected typed call", expr_node)
@@ -2178,15 +2178,16 @@ def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, 
         elif node.declared_type.name == "const":
             # plain const means by const value unless it's a for iter unpacking (const ref)
             return "const auto" + ref_part + structured_binding
-        binding_types = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
-        if "const" not in binding_types and "mut" not in binding_types:
-            binding_types.insert(0, "const")
+        binding_types = type_node_to_list_of_types(node.declared_type)
+        binding_type_names = [t.name for t in binding_types]
+        if "const" not in binding_type_names and "mut" not in binding_type_names:
+            binding_types.insert(0, Identifier("const"))
         # we don't have to worry about stripping out a mut/const that belongs to
         # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
         # allowed in structured bindings, otherwise C++ error).
         binding_types = [t for t in binding_types if t.name != "mut"]
         binding_type = list_to_typed_node(binding_types)
-        binding_type_code = codegen_type(node.lhs, binding_type, cx)
+        binding_type_code = codegen_type(node, binding_type, cx)
         return binding_type_code + " " + structured_binding
 
     return "const auto" + ref_part + structured_binding
