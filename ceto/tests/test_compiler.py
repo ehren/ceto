@@ -24,6 +24,23 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_structured_binding_with_tuples():
+    c = compile(r"""
+    
+def (main:
+    (x, y) = (0, 1)
+    std.cout << x
+    std.cout << y
+    # (x, y) = (2, 3)  # TODO need to create a VariableDefinition for x and y above
+    # std.cout << x
+    # std.cout << y
+)
+    
+    """)
+
+    assert c == "01"
+
+
 def test_empty_list_append_simple_vector_iterate():
     c = compile(r"""
 

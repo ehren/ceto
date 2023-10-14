@@ -2158,7 +2158,7 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
 def codegen_assign(node: Assign, cx: Scope):
     assert isinstance(node, Assign)
 
-    if not isinstance(node.lhs, Identifier):
+    if not isinstance(node.lhs, (Identifier, TupleLiteral)):
         return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
 
     is_lambda_rhs_with_return_type = False
@@ -2259,7 +2259,32 @@ def codegen_assign(node: Assign, cx: Scope):
             # note that 'plain_initialization' will handle cvref mismatch errors!
             return f"{const_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
     elif isinstance(node.lhs, TupleLiteral):
-        assert 0, "TODO (x, y):mut = blah"
+        is_tie = False
+
+        for a in node.lhs.args:
+            if not isinstance(a, Identifier) or a.scope.find_def(a):
+                is_tie = True
+            if a.declared_type:
+                raise CodeGenError("unexpected type in tuple", node)
+
+        if is_tie:
+            return "std::tie(" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + ") = " + rhs_str
+
+        structured_binding_assign = "[" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + "] = " + rhs_str
+        if node.lhs.declared_type:
+            if node.lhs.declared_type.name == "mut":
+                return "auto " + structured_binding_assign
+            elif node.lhs.declared_type.name == "const":
+                return "const auto " + structured_binding_assign
+            binding_types = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
+            if "const" not in binding_types and "mut" not in binding_types:
+                binding_types.insert(0, "const")
+            binding_type = list_to_typed_node(binding_types)
+            binding_type_code = codegen_type(node.lhs, binding_type, cx)
+            return binding_type_code + " " + structured_binding_assign
+
+        return "const auto " + structured_binding_assign
+
     else:
         lhs_str = codegen_node(node.lhs, cx)
 
