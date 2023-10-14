@@ -591,11 +591,12 @@ class ScopeReplacer:
 
         for a in call.args:
             if isinstance(a, Block):
-                a.scope = scope.enter_scope()
-                scope = a.scope
+                index = call.args.index(a)
+                if index > 0:
+                    # e.g. the "then" block of an if-stmt is a child scope of the if-condition scope
+                    a.scope = call.args[index - 1].scope.enter_scope()
             elif call.func.name in ["if", "for", "while"]:
                 a.scope = scope.enter_scope()
-                scope = a.scope
 
             if isinstance(a, Identifier) and call.func.name in ["def", "lambda"]: #args_have_inner_scope(call):
                 a.scope = scope.enter_scope()

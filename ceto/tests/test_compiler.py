@@ -24,6 +24,31 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_proper_if_scopes():
+    c = compile(r"""
+def (main:
+    if (0:
+        x = 5
+    else:
+        x = "1"
+    )
+    x = [0, 1]
+)
+    """)
+
+    c = compile(r"""
+def (main:
+    if ((x:mut = 5):
+        x = 1
+    elif (x:mut = 2):
+        x = 3
+    )
+    x = [0, 1]
+)
+    """)
+
+
+
 def test_tuples_for_typed():
     c = compile(r"""
 cpp'
@@ -63,7 +88,7 @@ def (main:
         static_assert(std.is_same_v<decltype(y), const:int>)
     )
     
-    # TODO plain 'auto' whereever accepted treated as 'const auto' currently - maybe it should be an error (you must choose mut or const)
+    # TODO plain 'auto' wherever accepted treated as 'const auto' currently - maybe it should be an error (you must choose mut or const)
 )
     
     """)
