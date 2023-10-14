@@ -590,14 +590,18 @@ class ScopeReplacer:
             scope = scope.enter_scope()
 
         for a in call.args:
-            a.scope = scope
-
             if isinstance(a, Block):
-                a.scope = a.scope.enter_scope()
+                a.scope = scope.enter_scope()
+                scope = a.scope
+            elif call.func.name in ["if", "for", "while"]:
+                a.scope = scope.enter_scope()
+                scope = a.scope
 
-            if isinstance(a, Identifier) and args_have_inner_scope(call):
+            if isinstance(a, Identifier) and call.func.name in ["def", "lambda"]: #args_have_inner_scope(call):
+                a.scope = scope.enter_scope()
                 a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
+                scope = a.scope
             elif isinstance(a, TypeOp) and args_have_inner_scope(call):
                 # lambda inside a decltype itself a .declared_type case
                 assert 0, "should be unreachable"

@@ -122,8 +122,8 @@ class (Executor:
             std.to_string(strong.id())
         else:
             "Last submitted task not found"
-        ) << "\nLast task finished: " << if ((strong2 = self.last_finished.load().lock()):   # TODO should work with var name 'strong' - assignments in if conditions added to wrong scope
-            std.to_string(strong2.id())
+        ) << "\nLast task finished: " << if ((strong = self.last_finished.load().lock()):
+            std.to_string(strong.id())
         else:
             "Last finished task not found"
         ) << "\n"
