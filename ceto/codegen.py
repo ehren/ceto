@@ -74,7 +74,7 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(":", [Identifier("return", ()), last_statement], ())
+                synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
                 last_statement.parent = synthetic_return
                 a.args = a.args[0:-1] + [synthetic_return]
 
@@ -255,7 +255,7 @@ def codegen_for(node, cx):
             end = iterable.args[1]
         else:
             end = start
-            start = IntegerLiteral("0", None, ())
+            start = IntegerLiteral("0", None)
             start.parent = end.parent
         # sub = BinOp(func="-", args=[end, start], source=None)
         # sub.parent = start.parent
@@ -959,8 +959,8 @@ def codegen_function_body(defnode : Call, block, cx):
         if replace_self and isinstance(s.parent,
                                        AttributeAccess) and s.parent.lhs is s:
             # rewrite as this->foo:
-            this = Identifier("this", ())
-            arrow = ArrowOp("->", [this, s.parent.rhs], ())
+            this = Identifier("this")
+            arrow = ArrowOp("->", [this, s.parent.rhs])
             arrow.scope = s.scope
             this.scope = s.scope
             arrow.parent = s.parent.parent
@@ -1720,6 +1720,10 @@ def codegen_type(expr_node, type_node, cx):
             if len(t.args) != 1:
                 raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
             code = "std::vector<" + codegen_type(expr_node, t.args[0], cx) + ">"
+        elif isinstance(t, TupleLiteral):
+            if len(t.args) == 0:
+                raise CodeGenError("No empty tuples as types", expr_node)
+            code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
         elif t.name == "ptr":
             code = "*"
         elif t.name == "ref":
@@ -2032,7 +2036,7 @@ def codegen_call(node: Call, cx: Scope):
                 else:
 
                     # TODO don't do the silly mutation above in the first place!
-                    new_attr_access = AttributeAccess(".", [node.func, method_name], ())
+                    new_attr_access = AttributeAccess(".", [node.func, method_name])
                     func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
@@ -2254,6 +2258,8 @@ def codegen_assign(node: Assign, cx: Scope):
 
             # note that 'plain_initialization' will handle cvref mismatch errors!
             return f"{const_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+    elif isinstance(node.lhs, TupleLiteral):
+        assert 0, "TODO (x, y):mut = blah"
     else:
         lhs_str = codegen_node(node.lhs, cx)
 
@@ -2502,6 +2508,9 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("Curly brace expression is invalid here. Use 'scope' for an anonymous scope.", node)
         elements = [codegen_node(e, cx) for e in node.args]
         return "{" + ", ".join(elements) + "}"
+    elif isinstance(node, TupleLiteral):
+        elements = [codegen_node(e, cx) for e in node.args]
+        return "std::make_tuple(" + ", ".join(elements) + ")"
     elif isinstance(node, ArrayAccess):
         if len(node.args) > 1:
             raise CodeGenError("advanced slicing not supported yet")
