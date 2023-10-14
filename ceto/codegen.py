@@ -224,13 +224,16 @@ def codegen_for(node, cx):
         raise CodeGenError("unexpected 1st argument to for", node)
 
     var = instmt.lhs
-    if not isinstance(var, Identifier):
-        # TODO for ((x,y):const:auto in pairs:
+    if not isinstance(var, (Identifier, TupleLiteral)):
         raise CodeGenError("Unexpected iter var", var)
 
     iterable = instmt.rhs
 
-    if var.declared_type is not None:
+    if isinstance(var, TupleLiteral):
+        structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
+        type_str = " "
+        var_str = structured_binding
+    elif var.declared_type is not None:
         assert isinstance(var, Identifier)
         type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
     else:
@@ -1403,7 +1406,7 @@ def _decltype_str(node, cx):
             # TODO needs fixes for implicit scope resolution
             return True, "ceto::mad(" + _decltype_maybe_wrapped_in_declval(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
 
-        return True, _decltype_maybe_wrapped_in_declval(binop.lhs, cx) + str(binop.func) + _decltype_maybe_wrapped_in_declval(binop.rhs, cx)
+        return True, _decltype_maybe_wrapped_in_declval(binop.lhs, cx) + binop.op + _decltype_maybe_wrapped_in_declval(binop.rhs, cx)
 
     elif isinstance(node, UnOp):
         assert False, "this needs fixes"
@@ -1458,6 +1461,9 @@ def _decltype_str(node, cx):
                 if vds := vector_decltype_str(c, cx):
                     return False, vds
         return False, "std::remove_cvref_t<{}>::value_type".format(decltype_str(node.func, cx))
+
+    elif isinstance(node, TupleLiteral):
+        return True, "std::make_tuple(" + ", ".join(_decltype_maybe_wrapped_in_declval(a, cx) for a in node.args) + ")"
 
     assert isinstance(node, Identifier)
 
@@ -2155,6 +2161,37 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
     return const_specifier, lhs_type_str
 
 
+def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, cx):
+    assert isinstance(node, TupleLiteral)
+
+    structured_binding = "[" + ", ".join(codegen_node(a, cx) for a in node.args) + "]"
+
+    if is_for_loop_iter:
+        ref_part = "& "
+    else:
+        ref_part = " "
+
+    if node.declared_type:
+        if node.declared_type.name == "mut":
+            # plain mut means by value
+            return "auto " + structured_binding
+        elif node.declared_type.name == "const":
+            # plain const means by const value unless it's a for iter unpacking (const ref)
+            return "const auto" + ref_part + structured_binding
+        binding_types = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
+        if "const" not in binding_types and "mut" not in binding_types:
+            binding_types.insert(0, "const")
+        # we don't have to worry about stripping out a mut/const that belongs to
+        # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
+        # allowed in structured bindings, otherwise C++ error).
+        binding_types = [t for t in binding_types if t.name != "mut"]
+        binding_type = list_to_typed_node(binding_types)
+        binding_type_code = codegen_type(node.lhs, binding_type, cx)
+        return binding_type_code + " " + structured_binding
+
+    return "const auto" + ref_part + structured_binding
+
+
 def codegen_assign(node: Assign, cx: Scope):
     assert isinstance(node, Assign)
 
@@ -2272,20 +2309,8 @@ def codegen_assign(node: Assign, cx: Scope):
         if is_tie:
             return "std::tie(" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + ") = " + rhs_str
 
-        structured_binding_assign = "[" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + "] = " + rhs_str
-        if node.lhs.declared_type:
-            if node.lhs.declared_type.name == "mut":
-                return "auto " + structured_binding_assign
-            elif node.lhs.declared_type.name == "const":
-                return "const auto " + structured_binding_assign
-            binding_types = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
-            if "const" not in binding_types and "mut" not in binding_types:
-                binding_types.insert(0, "const")
-            binding_type = list_to_typed_node(binding_types)
-            binding_type_code = codegen_type(node.lhs, binding_type, cx)
-            return binding_type_code + " " + structured_binding_assign
-
-        return "const auto " + structured_binding_assign
+        structured_binding = _structured_binding_unpack_from_tuple(node.lhs, False, cx)
+        return structured_binding + " = " + rhs_str
 
     else:
         lhs_str = codegen_node(node.lhs, cx)

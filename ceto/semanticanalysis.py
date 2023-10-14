@@ -608,8 +608,12 @@ class ScopeReplacer:
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
-            elif isinstance(a, BinOp) and a.op == "in" and call.func.name == "for" and isinstance(a.lhs, Identifier):
-                a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
+            elif isinstance(a, BinOp) and a.op == "in" and call.func.name == "for":
+                if isinstance(a.lhs, Identifier):
+                    a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
+                elif isinstance(a.lhs, TupleLiteral):
+                    for tuple_arg in a.lhs.args:
+                        a.scope.add_variable_definition(defined_node=tuple_arg, defining_node=call)
 
         return call
 

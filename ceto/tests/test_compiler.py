@@ -24,6 +24,36 @@ def raises(func, exc=None):
         assert 0
 
 
+def test_tuples_for():
+    c = compile(r"""
+cpp'
+#include <ranges>
+'
+
+def (main:
+    tuples: mut = []
+    for (i in std.ranges.iota_view(0, 10):
+        tuples.append((i, i + 1))
+    )
+    for ((x, y) in tuples:
+        std.cout << x << y << "\n"
+    )
+)
+        """)
+
+    assert c == r"""01
+12
+23
+34
+45
+56
+67
+78
+89
+910
+"""
+
+
 def test_structured_binding_with_tuples():
     c = compile(r"""
     
