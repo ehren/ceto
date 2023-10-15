@@ -164,7 +164,7 @@ def main():
     cppfilename = basename + ext
 
     if ext == ".h" and not cmdargs.no_pragma_once:
-        code = "#pragma once\n" + code + "\n#end\n"
+        code = "#pragma once\n" + code
 
     with open(cppfilename, "w") as output:
         output.write(code)

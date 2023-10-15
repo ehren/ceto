@@ -2,8 +2,8 @@ import typing
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import *
-    # selfhost = False
+    #from ._abstractsyntaxtree import *
+    selfhost = False
 except ImportError:
     selfhost = False
 
@@ -20,6 +20,7 @@ if not selfhost:
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source
+            self.from_include = False
 
         def __repr__(self):
             return "{}({})({!r})".format(self.__class__.__name__,

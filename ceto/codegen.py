@@ -1901,6 +1901,10 @@ def codegen_call(node: Call, cx: Scope):
         elif func_name == "operator" and len(node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
             return "operator" + operator_name_node.str
+        elif func_name == "include":
+            cpp_name = node.args[0]
+            assert isinstance(cpp_name, Identifier)
+            return f'#include "{cpp_name.name}.h"'
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)
@@ -2358,6 +2362,9 @@ def _is_unique_var(node: Identifier, cx: Scope):
 
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
+
+    if node.from_include:
+        return ""
 
     if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):
