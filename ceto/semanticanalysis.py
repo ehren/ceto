@@ -568,9 +568,14 @@ class Scope:
         return s
 
 
-def args_have_inner_scope(call : Call):
+def is_def_or_class_like(call : Call):
     assert isinstance(call, Call)
-    return call.func.name in ["def", "lambda", "class", "struct"]
+    if call.func.name in ["def", "lambda", "class", "struct"]:
+        return True
+    if isinstance(call.func, ArrayAccess) and call.func.func.name == "lambda":
+        # lambda with explicit capture list
+        return True
+    return False
 
 
 class ScopeReplacer:
@@ -585,25 +590,31 @@ class ScopeReplacer:
     def replace_Call(self, call):
         call = self.replace_Node(call)
 
-        scope = call.scope
-        if args_have_inner_scope(call):
-            scope = scope.enter_scope()
+        if is_def_or_class_like(call):
+            # call.scope = call.scope.enter_scope()
+            call_inner_scope = call.scope.enter_scope()
 
         for a in call.args:
-            if isinstance(a, Block):
+            # TODO these kind of decisions should be controlled by built-in language constructs
+            # for use by macros / custom special-form calls. Something like e.g. localscope and even
+            # block_ancestor_scope (scope_with_next_block_in_child_scope ?) etc
+
+            if isinstance(a, Block) and not is_def_or_class_like(call):
                 index = call.args.index(a)
                 if index > 0:
                     # e.g. the "then" block of an if-stmt is a child scope of the if-condition scope
                     a.scope = call.args[index - 1].scope.enter_scope()
+                else:
+                    a.scope = call.scope.enter_scope()
             elif call.func.name in ["if", "for", "while"]:
-                a.scope = scope.enter_scope()
+                a.scope = call.scope.enter_scope()
+            elif is_def_or_class_like(call):
+                a.scope = call_inner_scope
 
-            if isinstance(a, Identifier) and call.func.name in ["def", "lambda"]: #args_have_inner_scope(call):
-                a.scope = scope.enter_scope()
+            if isinstance(a, Identifier) and call.func.name in ["def", "lambda"]: #is_def_or_class_like(call):
                 a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
-                scope = a.scope
-            elif isinstance(a, TypeOp) and args_have_inner_scope(call):
+            elif isinstance(a, TypeOp) and is_def_or_class_like(call):
                 # lambda inside a decltype itself a .declared_type case
                 assert 0, "should be unreachable"
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
