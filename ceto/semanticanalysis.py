@@ -1,8 +1,11 @@
 import typing
 from collections import defaultdict
 import sys
+import os
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral
+
+from .parser import parse
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -578,17 +581,16 @@ def is_def_or_class_like(call : Call):
     return False
 
 
-class ScopeReplacer:
+class ScopeVisitor:
     def __init__(self):
         self._module_scope = None
 
-    def replace_Node(self, node):
+    def visit_Node(self, node):
         if node.scope is None:
             node.scope = node.parent.scope
-        return node
 
-    def replace_Call(self, call):
-        call = self.replace_Node(call)
+    def visit_Call(self, call):
+        self.visit_Node(call)
 
         if is_def_or_class_like(call):
             # call.scope = call.scope.enter_scope()
@@ -627,31 +629,60 @@ class ScopeReplacer:
                     for tuple_arg in a.lhs.args:
                         a.scope.add_variable_definition(defined_node=tuple_arg, defining_node=call)
 
-        return call
-
-    # def replace_Block(self, block):
+    # def visit_Block(self, block):
     #     block.scope = block.scope.enter_scope()
     #     return block
 
-    def replace_Identifier(self, ident):
-        ident = self.replace_Node(ident)
+    def visit_Identifier(self, ident):
+        self.visit_Node(ident)
         if ident.declared_type and not ident.declared_type.name in ["using", "namespace", "typedef"]:
             ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
-        return ident
 
-    def replace_Assign(self, assign):
-        assign = self.replace_Node(assign)
+    def visit_Assign(self, assign):
+        self.visit_Node(assign)
         if isinstance(assign.lhs, Identifier) and not (assign.lhs.declared_type and assign.lhs.declared_type.name in ["using", "namespace"]):
             assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
         elif isinstance(assign.lhs, TupleLiteral):
             for a in assign.lhs.args:
                 assign.scope.add_variable_definition(defined_node=a, defining_node=assign)
-        return assign
 
-    def replace_Module(self, module):
+    def visit_Module(self, module):
         module.scope = Scope()
         self._module_scope = module.scope
-        return module
+
+
+# TODO this will probably need a -I like include path mechanism in the future
+def parse_include(module_name: str) -> str:
+    from .compiler import cmdargs
+
+    dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
+    module_path = os.path.join(dirname, module_name)
+
+    with open(module_path) as f:
+        source = f.read()
+
+    return parse(source)
+
+
+class IncludeVisitor:
+
+    # handles include(module.cth)
+    # note that
+    # include<string>
+    # include"opencv.h"
+    # are handled by codegen alone
+
+    def visit_Call(self, call):
+        if call.func.name != "include":
+            return
+        if len(call.args) != 1:
+            raise SemanticAnalysisError("include call must have a single arg", call)
+        module = call.args[0]
+        if not isinstance(module, AttributeAccess) or not isinstance(module.lhs, Identifier) or not module.rhs.name == "cth":
+            raise SemanticAnalysisError('include calls must be of the form "identifier.cth"', call)
+        module_name = module.lhs.name + ".cth"
+        module_ast = parse_include(module_name)
+        call.args = [module_ast]
 
 
 def apply_replacers(module: Module, visitors):
@@ -662,11 +693,14 @@ def apply_replacers(module: Module, visitors):
             return node
 
         for v in visitors:
-            func_name = "replace_" + node.__class__.__name__
+            func_name = "visit_" + node.__class__.__name__
+            new = None
             if hasattr(v, func_name):
-                node = getattr(v, func_name)(node)
-            else:
-                node = v.replace_Node(node)
+                new = getattr(v, func_name)(node)
+            elif hasattr(v, "visit_Node"):
+                new = v.visit_Node(node)
+            if new is not None:
+                node = new
 
         node.args = [replace(a) for a in node.args]
         node.func = replace(node.func)
@@ -679,13 +713,14 @@ def apply_replacers(module: Module, visitors):
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
 
+    expr = apply_replacers(expr, [IncludeVisitor()])
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
     expr = build_types(expr)
     expr = build_parents(expr)
-    expr = apply_replacers(expr, [ScopeReplacer()])
+    expr = apply_replacers(expr, [ScopeVisitor()])
 
     print("after lowering", expr)
 

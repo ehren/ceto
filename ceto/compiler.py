@@ -11,6 +11,9 @@ import pathlib
 from time import perf_counter
 
 
+cmdargs = None
+
+
 def safe_unique_filename(name, extension, basepath=""):
     """
     :return:sanitized pathname with numeric suffixes added if file already exists
@@ -119,21 +122,22 @@ def main():
     ap = argparse.ArgumentParser()
     # -m / -c to mimic python
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
-    ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
+    # ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
     ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file even if filename does not end in .ctp", action="store_true")
     ap.add_argument("--no-pragma-once", help="Do not automatically add a '#pragma once' include guard to a header", action="store_true")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
+
+    global cmdargs
     cmdargs = ap.parse_args()
 
-    if cmdargs.runstring:
-        source = cmdargs.filename
-        basename = safe_unique_filename("cetodashccode", extension="")
-
-    else:
-        with open(cmdargs.filename) as f:
-            source = f.read()
-        basename = str(pathlib.Path(cmdargs.filename).with_suffix(""))
+    # if cmdargs.runstring:
+    #     source = cmdargs.filename
+    #     basename = safe_unique_filename("cetodashccode", extension="")
+    # else:
+    with open(cmdargs.filename) as f:
+        source = f.read()
+    basename = str(pathlib.Path(cmdargs.filename).with_suffix(""))
 
     try:
         code, module = compile(source)
