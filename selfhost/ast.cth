@@ -35,6 +35,7 @@ class (Node:
     declared_type: Node = None
     scope: py.object = py.none()
     _parent: Node:weak = {}
+    from_include = false
 
     def (repr: virtual:
         #classname : std.string = typeid(*this).name()

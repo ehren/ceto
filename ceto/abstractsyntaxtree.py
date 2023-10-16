@@ -92,6 +92,10 @@ if not selfhost:
 
     class Call(Node):
         def __init__(self, func, args, source=None):
+            if func.name == "example_macro_body_workaround_no_fptr_syntax_yet":
+                import pdb
+                pdb.set_trace()
+
             self.is_one_liner_if = False
             super().__init__(func, args, source)
 

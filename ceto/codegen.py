@@ -1738,6 +1738,7 @@ def codegen_type(expr_node, type_node, cx):
             code = "&&"
         elif t.name == "mut":
             raise CodeGenError("unexpected placement of 'mut'", expr_node)
+
         elif t.name in ["new", "goto"]:
             raise CodeGenError("nice try", t)
         elif not isinstance(t, (Identifier, Call, Template, AttributeAccess, ScopeResolution)):
@@ -1904,7 +1905,7 @@ def codegen_call(node: Call, cx: Scope):
         elif func_name == "include":
             cpp_name = node.args[0]
             assert isinstance(cpp_name, Identifier)
-            return f'#include "{cpp_name.name}.h"'
+            return f'#include "{cpp_name.name}.h"\n'
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)
@@ -2363,9 +2364,6 @@ def _is_unique_var(node: Identifier, cx: Scope):
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
-    if node.from_include:
-        return ""
-
     if node.declared_type is not None:
         if not isinstance(node, (ListLiteral, Call)):
 
@@ -2397,19 +2395,22 @@ def codegen_node(node: Node, cx: Scope):
 
     if isinstance(node, Module):
         modcpp = ""
+
+        from_include = False
         for modarg in node.args:
-            if isinstance(modarg, Call):
-                if modarg.func.name == "def":
-                    funcx = cx.enter_scope()
-                    funcx.in_function_param_list = True
-                    defcode = codegen_def(modarg, funcx)
-                    modcpp += defcode
-                    continue
-                elif modarg.func.name in ["class", "struct"]:
-                    classcode = codegen_class(modarg, cx)
-                    modcpp += classcode
-                    continue
-            modcpp += codegen_node(modarg, cx) + ";\n"  # untested # TODO: pass at global scope
+
+            if isinstance(modarg, Call) and modarg.func.name == "def":
+                funcx = cx.enter_scope()
+                funcx.in_function_param_list = True
+                modarg_code = codegen_def(modarg, funcx)
+            elif isinstance(modarg, Call) and modarg.func.name in ["class", "struct"]:
+                modarg_code = codegen_class(modarg, cx)
+            else:
+                modarg_code = codegen_node(modarg, cx) + ";\n"  # TODO: pass at global scope etc (this should maybe all be a call to codegen_block)
+
+            if not modarg.from_include:
+                modcpp += modarg_code
+
         return modcpp
     elif isinstance(node, Call):
         return codegen_call(node, cx)

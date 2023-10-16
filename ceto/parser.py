@@ -5,8 +5,10 @@
 #
 import sys
 import pyparsing as pp
+import os
 
 # pp.ParserElement.enable_left_recursion()  # this works but packrat is faster
+import typing
 
 pp.ParserElement.enable_packrat(2**20)
 
@@ -370,6 +372,24 @@ def _parse(source: str):
     return res[0]
 
 
+# TODO this will probably need a -I like include path mechanism in the future
+def parse_include(module: Identifier) -> typing.Tuple[str, Module]:
+    from .compiler import cmdargs
+
+    module_name = module.name
+
+    dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
+    module_path = os.path.join(dirname, module_name + ".cth")
+
+    # note that the C++ code might nevertheless require a -I flag to be built (even if we don't yet support one to locate the .cth file)
+    module_name_node = Identifier(module_name)
+
+    with open(module_path) as f:
+        source = f.read()
+
+    return parse(source)
+
+
 def parse(source: str):
     from textwrap import dedent
 
@@ -446,6 +466,45 @@ def parse(source: str):
         return op
 
     res = replacer(res)
+
+    seen_includes = set()
+
+    def set_from_include(node):
+        if not isinstance(node, Node):
+            return
+        node.from_include = True
+        for a in node.args:
+            set_from_include(a)
+        set_from_include(node.func)
+
+    while True:
+        new_args = None
+
+        for call in res.args:
+            if isinstance(call, Call) and call.func.name == "include" and call not in seen_includes:
+                print("processing include")
+                if len(call.args) != 1:
+                    raise ParserError("include call must have a single arg", call)
+                module = call.args[0]
+                if not isinstance(module, Identifier):
+                    raise ParserError('module names must be valid identifiers', call)
+                module_ast = parse_include(module)
+                # call.args = [module, module_ast]
+                call.args = [module]
+                # if not isinstance(call.parent, Module):  # TODO validate elsewhere
+                #    raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
+                index = res.args.index(call)
+                # this is crappy but avoids needing to move ClassDefinition handling out of codegen (even though that should still happen)
+                for a in module_ast.args:
+                    set_from_include(a)
+                new_args = res.args[0:index] + module_ast.args + res.args[index:]
+                seen_includes.add(call)
+                break
+
+        if new_args:
+            res.args = new_args
+        else:
+            break
 
     print("final parse:", res)
 

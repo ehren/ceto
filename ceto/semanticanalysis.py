@@ -596,10 +596,12 @@ class ScopeVisitor:
         #    assert isinstance(call.args[1], Module)
         #    call.args[1].scope = call.scope
         #    return
-
-        if call.func.name in ["class", "struct"]:
-            # let codegen fill in the details
-            call.scope.class_definitions.append(ClassDefinition())
+        #
+        # TODO we should be handling class definitions here (this will allow us
+        # to stop hackily inserting the args of an included module into the includee)
+        #if call.func.name in ["class", "struct"]:
+        #    # let codegen fill in the details
+        #    call.scope.class_definitions.append(ClassDefinition())
 
         if is_def_or_class_like(call):
             # call.scope = call.scope.enter_scope()
@@ -663,49 +665,56 @@ class ScopeVisitor:
         self._module_scope = module.scope
 
 
-# TODO this will probably need a -I like include path mechanism in the future
-def parse_include(module: Identifier) -> tuple[str, Module]:
-    from .compiler import cmdargs
-
-    module_name = module.name
-
-    dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
-    module_path = os.path.join(dirname, module_name + ".cth")
-
-    # note that the C++ code might nevertheless require a -I flag to be built (even if we don't yet support one to locate the .cth file)
-    module_name_node = Identifier(module_name)
-
-    with open(module_path) as f:
-        source = f.read()
-
-    return parse(source)
-
-
-class IncludeVisitor:
-
-    # handles include(module.cth)
-    # note that
-    # include<string>
-    # include"opencv.h"
-    # are handled by codegen alone
-
-    def visit_Call(self, call):
-        if call.func.name != "include":
-            return
-        if len(call.args) != 1:
-            raise SemanticAnalysisError("include call must have a single arg", call)
-        module = call.args[0]
-        if not isinstance(module, Identifier):
-            raise SemanticAnalysisError('module names must be valid identifiers', call)
-        module_ast = parse_include(module)
-        call.args = [module, module_ast]
-        if not isinstance(call.parent, Module):
-            raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
-        index = call.parent.args.index(call)
-        # this is crappy but avoids needing to move ClassDefinition handling out of codegen (even though that should still happen)
-        for a in module_ast.args:
-            a.from_include = True
-        call.parent.args = call.parent.args[0:index] + module_ast.args + call.parent.args[index:]
+# # TODO this will probably need a -I like include path mechanism in the future
+# def parse_include(module: Identifier) -> tuple[str, Module]:
+#     from .compiler import cmdargs
+#
+#     module_name = module.name
+#
+#     dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
+#     module_path = os.path.join(dirname, module_name + ".cth")
+#
+#     # note that the C++ code might nevertheless require a -I flag to be built (even if we don't yet support one to locate the .cth file)
+#     module_name_node = Identifier(module_name)
+#
+#     with open(module_path) as f:
+#         source = f.read()
+#
+#     return parse(source)
+#
+#
+# class IncludeVisitor:
+#
+#     def __init__(self, parent_module: Module):
+#         self.parent_module = parent_module
+#         assert isinstance(self.parent_module, Module)
+#
+#     # handles include(module.cth)
+#     # note that
+#     # include<string>
+#     # include"opencv.h"
+#     # are handled by codegen alone
+#
+#     def visit_Call(self, call):
+#         if call.func.name != "include":
+#             return
+#         if len(call.args) != 1:
+#             raise SemanticAnalysisError("include call must have a single arg", call)
+#         module = call.args[0]
+#         if not isinstance(module, Identifier):
+#             raise SemanticAnalysisError('module names must be valid identifiers', call)
+#         module_ast = parse_include(module)
+#         # call.args = [module, module_ast]
+#         call.args = [module]
+#         #if not isinstance(call.parent, Module):  # TODO validate elsewhere
+#         #    raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
+#         index = self.parent_module.args.index(call)
+#         # this is crappy but avoids needing to move ClassDefinition handling out of codegen (even though that should still happen)
+#         for a in module_ast.args:
+#             a.from_include = True
+#         import pdb
+#         pdb.set_trace()
+#         self.parent_module.args = self.parent_module.args[0:index] + module_ast.args + self.parent_module.args[index:]
 
 
 def apply_replacers(module: Module, visitors):
@@ -736,7 +745,7 @@ def apply_replacers(module: Module, visitors):
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
 
-    expr = apply_replacers(expr, [IncludeVisitor()])
+    # expr = apply_replacers(expr, [IncludeVisitor(expr)])
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)

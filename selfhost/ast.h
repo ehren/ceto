@@ -52,6 +52,8 @@ struct Node : ceto::shared_object {
 
     std::weak_ptr<const Node> _parent = {};
 
+    std::remove_cvref_t<decltype(false)> from_include = false;
+
          virtual inline auto repr() const -> std::string {
             const py::object selph = py::cast(this); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::cast(this)), std::remove_cvref_t<decltype(selph)>>);
             const auto classname = std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
