@@ -482,7 +482,6 @@ def parse(source: str):
 
         for call in res.args:
             if isinstance(call, Call) and call.func.name == "include" and call not in seen_includes:
-                print("processing include")
                 if len(call.args) != 1:
                     raise ParserError("include call must have a single arg", call)
                 module = call.args[0]

@@ -2600,6 +2600,8 @@ def codegen_node(node: Node, cx: Scope):
         ffixes = [f.name for f in [node.prefix, node.suffix] if f]
         if "c" in ffixes and "s" in ffixes:
             raise CodeGenError("string literal cannot be both c-string and std::string", node)
+        if node.prefix and node.prefix.name == "include":
+            return '#include "' + node.str + '"\n'
         if node.prefix and node.prefix.name == "cpp":
             if node.suffix:
                 raise CodeGenError("no suffixes for cpp-string", node)
@@ -2628,6 +2630,12 @@ def codegen_node(node: Node, cx: Scope):
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
     elif isinstance(node, Template):
+        if node.func.name == "include":
+            if not len(node.args) == 1:
+                raise CodeGenError("bad angle include args", node)
+            # note abuse of division and attribute access (in additon to template syntax) for e.g. include<pybind11/stl.h>
+            return "#include <" + "".join(str(node.args[0]).split()).replace("(", "").replace(")", "") + ">\n"
+
         # allow auto shared_ptr etc with parameterized classes e.g. f : Foo<int> results in shared_ptr<Foo<int>> f not shared_ptr<Foo><int>(f)
         # (^ this is a bit of a dubious feature when e.g. f: decltype(Foo(1)) works without this special case logic)
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"

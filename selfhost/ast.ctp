@@ -1,19 +1,16 @@
 # vim: syntax=python
 
-cpp'
-#include <map>
-#include <typeinfo>
-#include <numeric>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
-'
+include <map>
+include <typeinfo>
+include <numeric>
+include <bybind11/pybind11.h>
+include <bybind11/stl.h>
+include <bybind11/stl_bind.h>
 
 include(ast)
 
 
 py: namespace = pybind11
-
 
 #PYBIND11_MAKE_OPAQUE(std.vector<Node>)
 #PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
