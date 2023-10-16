@@ -24,6 +24,50 @@ def raises(func, exc=None):
         assert 0
 
 
+clang_xfailing_tests = ["atomic_weak.ctp",
+                        "list_type_on_left_or_right_also_decltype_array_attribute_access.ctp"]
+
+msvc_xfailing_tests = ["simple_unicode.ctp",
+                       "test_string_escapes_unicode_escape.ctp"]
+
+
+test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp")
+              and not f in clang_xfailing_tests and not f in msvc_xfailing_tests]
+
+for xfailing in clang_xfailing_tests:
+    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
+
+for xfailing in msvc_xfailing_tests:
+    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
+
+
+@pytest.mark.parametrize("file", test_files)
+def test_file(file):
+    prefix = "# Test Output:"
+
+    path = os.path.join(os.path.dirname(__file__), file)
+
+    with open(path) as f:
+        content = f.readlines()
+
+    output_lines = [c[len(prefix):].strip() for c in content if c.startswith(prefix)]
+
+    if output_lines:
+        expected_output = "\n".join(output_lines)
+    else:
+        expected_output = None
+
+    build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
+    print(build_output)
+
+    output = subprocess.check_output("./a.exe", shell=True).decode("utf8")
+
+    print(output)
+
+    if expected_output is not None:
+        assert output.strip() == expected_output.strip()
+
+
 def test_proper_if_scopes():
     c = compile(r"""
 
