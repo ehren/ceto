@@ -381,9 +381,6 @@ def parse_include(module: Identifier) -> typing.Tuple[str, Module]:
     dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
     module_path = os.path.join(dirname, module_name + ".cth")
 
-    # note that the C++ code might nevertheless require a -I flag to be built (even if we don't yet support one to locate the .cth file)
-    module_name_node = Identifier(module_name)
-
     with open(module_path) as f:
         source = f.read()
 
