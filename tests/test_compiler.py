@@ -8,8 +8,40 @@ from ceto.compiler import runtest
 from ceto.parser import parse
 
 
+test_names_seen = []
+
+
 def compile(s):
-    return runtest(s, compile_cpp=True)
+    global test_names_seen
+
+    import inspect
+    name = inspect.stack()[1][3]
+
+    test_dir = os.path.dirname(__file__)
+
+    if "<lambda>" in name or len(name) <= 5:
+        # it's a raises case
+        name = inspect.stack()[3][3]
+        name += "_errors"
+        test_dir = os.path.join(test_dir, "errors")
+
+    name = name.replace("test_", "")
+
+    i = 1
+    while name in test_names_seen:
+        name = f"{name}_{i}"
+        i += 1
+
+    test_names_seen.append(name)
+
+    name += ".ctp"
+
+    with open(os.path.join(test_dir, name), "w") as f:
+        f.write(s)
+
+    output = subprocess.check_output(f"python3 -m ceto -o a.exe tests/{name}", shell=True).decode("utf8")
+    return output
+    # return runtest(s, compile_cpp=True)
 
 
 def raises(func, exc=None):

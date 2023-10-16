@@ -1,0 +1,62 @@
+
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <functional>
+#include <cassert>
+#include <compare> // for <=>
+#include <thread>
+#include <optional>
+
+//#include <concepts>
+//#include <ranges>
+//#include <numeric>
+
+
+#include "ceto.h"
+
+
+#include <chrono>
+;
+struct Foo : ceto::shared_object {
+
+    int x { 1 } ; static_assert(std::is_convertible_v<decltype(1), decltype(x)>);
+
+        inline auto long_running_method() -> void {
+while (x <= 5) {                ((std::cout << std::string {"in Foo: "}) << (this -> x)) << std::string {"\n"};
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                (this -> x) += 1;
+            }
+        }
+
+        ~Foo() {
+            std::cout << std::string {"Foo destruct\n"};
+        }
+
+};
+
+struct Holder : ceto::shared_object {
+
+    std::shared_ptr<Foo> f = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f)>>);
+
+        inline auto getter() const -> auto {
+            return f;
+        }
+
+};
+
+    auto main() -> int {
+        const auto g = std::make_shared<decltype(Holder())>();
+        ceto::mado(g)->f = std::make_shared<decltype(Foo())>();
+        auto t { std::thread([g = ceto::default_capture(g)]() {
+                if constexpr (!std::is_void_v<decltype(ceto::mado(ceto::mado(g)->f)->long_running_method())>) { return ceto::mado(ceto::mado(g)->f)->long_running_method(); } else { static_cast<void>(ceto::mado(ceto::mado(g)->f)->long_running_method()); };
+                }) } ;
+        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+        ceto::mado(g)->f = nullptr;
+        ceto::mado(t)->join();
+        std::cout << std::string {"ub has occured\n"};
+    }
+
