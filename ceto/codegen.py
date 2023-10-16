@@ -2396,7 +2396,6 @@ def codegen_node(node: Node, cx: Scope):
     if isinstance(node, Module):
         modcpp = ""
 
-        from_include = False
         for modarg in node.args:
 
             if isinstance(modarg, Call) and modarg.func.name == "def":

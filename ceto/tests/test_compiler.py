@@ -27,8 +27,6 @@ def raises(func, exc=None):
 def test_proper_if_scopes():
     c = compile(r"""
 
-include(blah)
-    
 def (main:
     if (0:
         x = 5
