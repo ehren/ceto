@@ -1,8 +1,11 @@
+# Test Output: action
+# Test Output: action
+# Test Output: action
+# Test Output: Delegate destruct
+# Test Output: Timer destruct
 
-
-cpp'
-#include <mutex>
-'
+include <mutex>
+include <thread>
 
 class (Delegate:
     def (action:

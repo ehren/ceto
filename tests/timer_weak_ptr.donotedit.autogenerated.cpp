@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
-
 #include <mutex>
+;
+#include <thread>
 ;
 struct Delegate : ceto::shared_object {
 
