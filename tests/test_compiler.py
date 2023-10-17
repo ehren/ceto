@@ -11,6 +11,65 @@ from ceto.parser import parse
 test_names_seen = []
 
 
+def _build_testcases(s):
+    global test_names_seen
+
+    import inspect
+    name = inspect.stack()[1][3]
+
+    test_dir = os.path.dirname(__file__)
+
+    if "<lambda>" in name or len(name) <= 5:
+        # it's a raises case
+        name = inspect.stack()[3][3]
+        name += "_errors"
+        test_dir = os.path.join(test_dir, "errors")
+
+    name = name.replace("test_", "")
+
+    i = 1
+    while name in test_names_seen:
+        name = f"{name}_{i}"
+        i += 1
+
+    test_names_seen.append(name)
+
+    name += ".ctp"
+
+    with open(os.path.join(test_dir, name), "w") as f:
+        f.write(s)
+
+    output = subprocess.check_output(f"python3 -m ceto -o a.exe tests/{name}", shell=True).decode("utf8")
+    return output
+    # return runtest(s, compile_cpp=True)
+
+
+test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp")]
+
+
+@pytest.mark.parametrize("file", test_files)
+def test_file(file):
+    prefix = "# Test Output: "
+
+    path = os.path.join(os.path.dirname(__file__), file)
+
+    with open(path) as f:
+        content = f.readlines()
+
+    output_lines = [c[len(prefix):] for c in content if c.startswith(prefix)]
+
+    expected_output = "".join(output_lines)
+
+    build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
+    print(build_output)
+
+    output = subprocess.check_output("./a.exe", shell=True).decode("utf8")
+
+    print(output)
+
+    assert output == expected_output
+
+
 def compile(s):
     global test_names_seen
 
@@ -2508,8 +2567,7 @@ hi35"""
 
 
 def test_no_null_autoderef():
-    def f():
-        compile(r"""
+    raises(lambda:compile(r"""
 class (Foo:
     def (method:
         printf("no this")    
@@ -2521,8 +2579,7 @@ def (main:
     f = nullptr
     f.method()
 )
-        """)
-    raises(f)
+        """))
 
     # intentional UB to ensure the above test works:
     c = compile(r"""
@@ -2764,16 +2821,13 @@ def (main:
 
 
 def test_requires_bad():
-    def f():
-        compile(r"""
+    raises(lambda:compile(r"""
 # now fails codegen (no braced literals in type declarations - also shouldn't allow ':' in simple calls unless we switch to that syntax for named parameters)
 # (if it passed codegen would also fail c++ compilation because no current way to print "x + x;" ending with a semicolon)
 def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
     return x + y
 ) : T
-    """)
-    raises(f, "unexpected type")
-    # raises(f, "unexpected context for typed construct")
+    """), "unexpected type") # "unexpected context for typed construct")
 
 
 def test_requires():
@@ -5375,150 +5429,6 @@ def (main:
     )
 
     Foo().doit()
-)
-    """)
-
-
-def test_add_stuff():
-    output = compile(r"""
-
-class (Foo:
-    def (operator("+"), foo:Foo:
-        printf("adding foo and foo (in the member function)\n")
-        return this
-    )
-    def (operator("+"), other:
-        printf("adding foo and other (in the member function)\n")
-        return this
-    )
-)
-
-def (operator("+"), f:Foo, x:
-    printf("adding foo and other\n")
-    # return f + x
-    return f.operator("+")(x)
-    # return 10
-)
-def (operator("+"), x, f:Foo:
-    printf("adding other and foo\n")
-    # return f + x
-    return f.operator("+")(x)
-    # return 10
-)
-def (operator("+"), x:Foo, f:Foo:
-    printf("adding foo and foo\n")
-    # return f + x
-    return f.operator("+")(x)
-    # return 10
-)
-# def (operator("+"), x, y:
-#     printf("adding any and any\n")
-#     return std.operator("+")(x, y)
-# )
-
-# def (operator("+"), x, f:Foo:
-#     printf("adding other and foo\n")
-#     # return f + x
-#     return add(f, x)
-#     # return 10
-# )
-
-def (main:
-    #a = f : object
-    #b = y : object
-    #add (y, f)
-    #add (a, b)
-    # add(add (y, f),
-    # add (a, b))
-    
-    n = 1
-    k = 2
-    # printf("%d\n", add(n,k))
-    
-    Foo() + 1
-    1 + Foo()
-    Foo() + Foo()
-    printf("%d\n", n + k)
-    
-    # std.cout << add(Foo(), 2) << std.endl
-    # std.cout << add(Foo(), Foo()) << std.endl
-    # std.cout << add(2, Foo()) << std.endl
-    
-    # Foo() + Foo()
-    # 1 + Foo()
-)
-    """)
-
-    output = output.strip()
-
-    assert output.endswith("3")
-
-    import re
-    addinglines = list(re.findall("adding.*", output))
-    assert len(addinglines) == 6
-
-    assert "\n".join(addinglines) == """adding foo and other
-adding foo and other (in the member function)
-adding other and foo
-adding foo and other (in the member function)
-adding foo and foo
-adding foo and foo (in the member function)"""
-
-
-def test_add_stuff_old():
-    return
-    output = compile(r"""
-
-class (Foo: #Bar :
-    # x = 1
-    # y = 2
-
-    # def (init:
-    #     printf("init\n")
-    # )
-
-    # def (destruct:
-    #     printf("destruct\n")
-    # )
-
-    def (foo:
-        printf("in foo method %p\n", this)
-        return this
-    )
-
-
-)
-
-def (calls_foo, x:
-    x.foo()
-    return x
-)
-
-def (main:
-    # printf("hi")
-    # x = 1
-    # printf("%d", x)
-    Foo().foo()
-    y = Foo()
-    f = y
-    f.foo()
-    f.x = 55
-    f.foo()
-    calls_foo(y).foo().foo()
-    
-    # a 
-    
-    a = f : object
-    b = y : object
-    
-    add (y, f)
-    add (a, b)
-    
-    # add(add (y, f),
-    # add (a, b))
-    n = 1
-    k = 2
-    printf("%d\n", add(n,k))
 )
     """)
 
