@@ -1,5 +1,5 @@
+# Test Output: blahblahblahblahhiblahblahblahhiviaptr
 
-    
 struct (Foo:
     x : string
 )

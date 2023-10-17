@@ -1,5 +1,5 @@
+# Test Output: 12341234555
 
-    
 def (byref, v : [int]:  # pass by const ref
     static_assert(std.is_reference_v<decltype(v)>)
     static_assert(std.is_const_v<std.remove_reference_t<decltype(v)>>)

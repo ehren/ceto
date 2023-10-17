@@ -1,3 +1,4 @@
+# Test Output: func1func15522
 
 cpp'
 #define MFPTR_DOT(a, b) (a.*b)
