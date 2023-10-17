@@ -396,32 +396,6 @@ def (main:
     assert c == "555"
 
 
-def test_string_join_capture_list():
-    c = compile(r"""
-    
-cpp'
-#include <numeric>  
-'
-    
-# https://stackoverflow.com/a/54888823/1391250
-def (join, v, to_string, sep="":
-    return std.accumulate(v.begin() + 1, v.end(), to_string(v[0]),
-        lambda[&to_string = to_string, &sep](a, el, a + sep + to_string(el)))
-)
-
-def (main:
-    l = lambda(a, std.to_string(a))
-    csv = join([1, 2, 3, 4, 5], lambda[ref](a, l(a)), ", ")  # capture the outer lambda by ref just to test all by ref (&) capture list
-    b = "blah"
-    csv2 = join([0], lambda[val](a, b + std.to_string(a)))
-    std.cout << csv << csv2
-)
-    
-    """)
-
-    assert c == "1, 2, 3, 4, 5blah0"
-
-
 def test_attempt_use_after_free2():
 
     # no plans to address - be careful with multithreaded code!
@@ -550,32 +524,6 @@ def (main:
     """)
 
     assert c == "1Foo destruct101"
-
-
-def test_bug_constructor_param_should_be_ptr_to_mut_not_const():
-    c = compile(r"""
-
-class (Node:
-    func : Node:mut
-    args : [Node:mut]
-
-    def (init,
-         func,  # this was incorrectly codegening as const shared_ptr<const Node>& rather than const shared_ptr<Node>&
-         args:
-        self.func = func
-        self.args = args
-        static_assert(std.is_reference_v<decltype(func)>)
-        static_assert(std.is_const_v<std.remove_reference_t<decltype(func)>>)
-        static_assert(not std.is_const_v<decltype(self.func)>)
-    )
-)
-
-def (main:
-    std.cout << Node(nullptr, [] : Node:mut).args.size()
-)
-    """)
-
-    assert c == "0"
 
 
 def test_class_data_members_pointer_to_const_by_default_with_explicit_class_types():

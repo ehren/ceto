@@ -1,4 +1,4 @@
-
+# Test Output: 0
 
 class (Node:
     func : Node:mut

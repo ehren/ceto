@@ -1,9 +1,7 @@
+# Test Output: 1, 2, 3, 4, 5blah0
 
-    
-cpp'
-#include <numeric>  
-'
-    
+include <numeric>
+
 # https://stackoverflow.com/a/54888823/1391250
 def (join, v, to_string, sep="":
     return std.accumulate(v.begin() + 1, v.end(), to_string(v[0]),
