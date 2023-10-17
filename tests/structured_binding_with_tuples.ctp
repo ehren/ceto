@@ -1,4 +1,4 @@
-
+# Test Output: 01
     
 def (main:
     (x, y) = (0, 1)

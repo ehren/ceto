@@ -1,7 +1,16 @@
+# Test Output: 01
+# Test Output: 12
+# Test Output: 23
+# Test Output: 34
+# Test Output: 45
+# Test Output: 56
+# Test Output: 67
+# Test Output: 78
+# Test Output: 89
+# Test Output: 910
 
-cpp'
-#include <ranges>
-'
+include <ranges>
+include <iostream>
 
 def (main:
     tuples: mut = []
@@ -12,4 +21,3 @@ def (main:
         std.cout << x << y << "\n"
     )
 )
-        

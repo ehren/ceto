@@ -1,4 +1,4 @@
-
+# Test Output: 001122001122
 
 def (main:
     v: mut = []
@@ -22,5 +22,3 @@ def (main:
         std.cout << x
     )
 )
-    
-    
