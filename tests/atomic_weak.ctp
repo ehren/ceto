@@ -1,9 +1,14 @@
+# https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
+# atomic_weak_ptr<X> p_last;
+#
+# void use( const shared_ptr<X>& x ) {
+#     do_something_with( *x );
+#     p_last = x; // remember last X seen
+# }
 
-    
-cpp'
-#include <atomic>
-#include <ranges>
-'
+include <atomic>
+include <ranges>
+
 
 class (Task:
     _id : int
@@ -70,5 +75,3 @@ def (main:
     
     launch(tasks)
 )
-    
-    

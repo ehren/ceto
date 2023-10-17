@@ -8,43 +8,12 @@ from ceto.compiler import runtest
 from ceto.parser import parse
 
 
-test_names_seen = []
+clang_xfailing_tests = ["atomic_weak.ctp"]
 
+test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp") and not f in clang_xfailing_tests]
 
-def _build_testcases(s):
-    global test_names_seen
-
-    import inspect
-    name = inspect.stack()[1][3]
-
-    test_dir = os.path.dirname(__file__)
-
-    if "<lambda>" in name or len(name) <= 5:
-        # it's a raises case
-        name = inspect.stack()[3][3]
-        name += "_errors"
-        test_dir = os.path.join(test_dir, "errors")
-
-    name = name.replace("test_", "")
-
-    i = 1
-    while name in test_names_seen:
-        name = f"{name}_{i}"
-        i += 1
-
-    test_names_seen.append(name)
-
-    name += ".ctp"
-
-    with open(os.path.join(test_dir, name), "w") as f:
-        f.write(s)
-
-    output = subprocess.check_output(f"python3 -m ceto -o a.exe tests/{name}", shell=True).decode("utf8")
-    return output
-    # return runtest(s, compile_cpp=True)
-
-
-test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp")]
+for xfailing in clang_xfailing_tests:
+    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
 
 
 @pytest.mark.parametrize("file", test_files)
@@ -58,7 +27,11 @@ def test_file(file):
 
     output_lines = [c[len(prefix):] for c in content if c.startswith(prefix)]
 
-    expected_output = "".join(output_lines)
+    if output_lines:
+        expected_output = "".join(output_lines)
+    else:
+        expected_output = None
+
 
     build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
     print(build_output)
@@ -67,40 +40,8 @@ def test_file(file):
 
     print(output)
 
-    assert output == expected_output
-
-
-def compile(s):
-    global test_names_seen
-
-    import inspect
-    name = inspect.stack()[1][3]
-
-    test_dir = os.path.dirname(__file__)
-
-    if "<lambda>" in name or len(name) <= 5:
-        # it's a raises case
-        name = inspect.stack()[3][3]
-        name += "_errors"
-        test_dir = os.path.join(test_dir, "errors")
-
-    name = name.replace("test_", "")
-
-    i = 1
-    while name in test_names_seen:
-        name = f"{name}_{i}"
-        i += 1
-
-    test_names_seen.append(name)
-
-    name += ".ctp"
-
-    with open(os.path.join(test_dir, name), "w") as f:
-        f.write(s)
-
-    output = subprocess.check_output(f"python3 -m ceto -o a.exe tests/{name}", shell=True).decode("utf8")
-    return output
-    # return runtest(s, compile_cpp=True)
+    if expected_output is not None:
+        assert output == expected_output
 
 
 def raises(func, exc=None):
@@ -113,92 +54,6 @@ def raises(func, exc=None):
             print(e)
     else:
         assert 0
-
-
-@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
-def test_atomic_weak():
-    # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4162.pdf
-    # atomic_weak_ptr<X> p_last;
-    #
-    # void use( const shared_ptr<X>& x ) {
-    #     do_something_with( *x );
-    #     p_last = x; // remember last X seen
-    # }
-
-    c = compile(r"""
-    
-cpp'
-#include <atomic>
-#include <ranges>
-'
-
-class (Task:
-    _id : int
-    
-    def (id:
-        return self._id
-    )
-
-    def (action:
-        std.cout << "action: " << self._id << "\n"
-        std.this_thread.sleep_for(std.chrono.milliseconds(self._id * 100))
-        std.cout << "finished: " << self._id << "\n"
-    )
-    
-    def (destruct:
-        std.cout << "Task " << self._id << " dead\n"
-    )
-)
-    
-class (Executor:
-    last_submitted : std.atomic<weak:Task> = {}
-    last_finished : std.atomic<weak:Task> = {}
-
-    def (do_something: mut, task: Task:
-        self.last_submitted = task
-        task.action()
-        self.last_finished = task
-    )
-    
-    def (destruct:
-        std.cout << "Last task submitted: " << if ((strong = self.last_submitted.load().lock()): 
-            std.to_string(strong.id())
-        else:
-            "Last submitted task not found"
-        ) << "\nLast task finished: " << if ((strong = self.last_finished.load().lock()):
-            std.to_string(strong.id())
-        else:
-            "Last finished task not found"
-        ) << "\n"
-    )
-)
-
-def (launch, tasks : [Task]:
-    executor : mut = Executor()
-    # threads: mut:[std.thread] = []  # TODO should work
-    threads: mut = [] : std.thread
-    # threads: mut = []  # TODO should work (we don't handle the captured var 'task' well when building the type upon encountering the lambda)
-    
-    for (task in tasks:
-        threads.append(std.thread(lambda(executor.do_something(task))))
-    )
-    
-    for (thread: mut:auto:rref in threads:
-        thread.join()
-    )
-)
-
-def (main:
-    tasks : mut = []
-    
-    for (i in std.ranges.iota_view(0, 10):
-        tasks.append(Task(i))
-    )
-    
-    launch(tasks)
-)
-    
-    """)
 
 
 def test_if_assign_missing_parenthesese():
