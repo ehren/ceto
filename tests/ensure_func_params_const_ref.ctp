@@ -1,3 +1,10 @@
+# Test Output: generic yo
+# Test Output: FooConcrete hi
+# Test Output: generic hi
+# Test Output: hey
+# Test Output: generic hello
+# Test Output: FooConcreteUnique yo
+# Test Output: byval hello
 
 class (FooGeneric:
     a

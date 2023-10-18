@@ -1,3 +1,5 @@
+# Test Output: hi53
+# Test Output: 2
 
 def (main:
     x:int:mut

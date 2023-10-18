@@ -1,3 +1,4 @@
+# Test Output: 0121019
 
 # https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:

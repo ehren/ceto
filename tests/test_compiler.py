@@ -41,7 +41,7 @@ def test_file(file):
     output_lines = [c[len(prefix):] for c in content if c.startswith(prefix)]
 
     if output_lines:
-        expected_output = "".join(output_lines).strip()
+        expected_output = "".join(output_lines)
     else:
         expected_output = None
 
@@ -53,7 +53,7 @@ def test_file(file):
     print(output)
 
     if expected_output is not None:
-        assert output == expected_output
+        assert output.strip() == expected_output.strip()
 
 
 def raises(func, exc=None):
@@ -2799,103 +2799,6 @@ def (main:
     """))
 
 
-def test_contains_helper():
-    c = compile(r"""
-# https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
-def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
-    return std.find(container.begin(), container.end(), element) != container.end()
-)
-
-def (main:
-    l = [0, 1, 2, 10, 19, 20]
-    for (i in range(20):
-        if (contains(l, i):
-            std.cout << i
-        )
-    )
-)
-    
-""")
-
-    assert c == "0121019"
-
-
-def test_ensure_func_params_const_ref():
-    c = compile(r"""
-class (FooGeneric:
-    a
-)
-    
-class (FooConcrete:
-    a : string
-)
-
-class (FooGenericUnique:
-    a
-) : unique
-
-class (FooConcreteUnique:
-    a : string
-) : unique
-
-def (func, f:
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-    static_assert(std.is_reference_v<decltype(f)>)
-    std.cout << "generic " << f.a << std.endl
-)
-    
-def (func, f : FooConcrete:
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-    static_assert(std.is_reference_v<decltype(f)>)
-    std.cout << "FooConcrete " << f.a << std.endl
-)
-
-def (func, f : FooConcreteUnique:
-    # static_assert(std.is_const_v<decltype(f)>)  # TODO this and all params should still be const (at least in const by default mode...). 
-    static_assert(not std.is_reference_v<decltype(f)>)
-    std.cout << "FooConcreteUnique " << f.a << std.endl
-)
-
-# now raises: CodeGenError: Invalid specifier for class type (although maybe this case should be allowed)
-# def (func2, f : const: FooConcreteUnique: ref:
-#     static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-#     static_assert(std.is_reference_v<decltype(f)>)
-#     std.cout << "FooConcreteUnique " << f.a << std.endl
-# )
-
-def (byval, f : auto:
-    static_assert(not std.is_reference_v<decltype(f)>)  # when this is the last use, arguably bad insertion of std::move here? maybe it's expected (comment no longer relevant: we no longer apply std::move willy nilly to the last use of all vars, just those known to be :unique local/funcparm ceto class instances)
-    std.cout << "byval " << f.a << "\n"
-)
-
-def (main:
-    f = FooGeneric("yo")
-    f2 = FooConcrete("hi")
-    func(f)
-    func(f2)
-    func(FooGenericUnique("hi"))
-    f3 = FooConcreteUnique("hey")
-    f4 : mut = FooConcreteUnique("hello")
-    # func2(std.move(f4))
-    # func2(FooConcreteUnique("hello"))
-    # func(f3)
-    std.cout << f3.a << "\n"  # make sure the above call isn't the last use of f3...
-    func(f4)
-    func(FooConcreteUnique("yo"))
-    byval(f4)
-    # byval(f3)  # error call to deleted blah blah (f3 is const)
-)
-    """)
-
-    assert c == r"""generic yo
-FooConcrete hi
-generic hi
-hey
-generic hello
-FooConcreteUnique yo
-byval hello
-"""
-
 def test_constructors():
     0 and compile(r"""
     
@@ -2965,23 +2868,6 @@ class (Bad2:
     """)
 
 
-def test_scope_resolution():
-    c = compile(r"""
-
-def (main:
-    std.cout  : using  # this should be the encouraged syntax
-    std::endl : using  # but for additional C++ compat
-    
-    # However, regarding implicit namespaces e.g. std.cout vs std::endl
-    # is there a precedence mismatch problem with the tighter binding scope resolution operator in C++? (when our parse tree is built using '.'). Can't think of problematic example 
-    
-    cout << "hi" << endl << std::endl << std.endl
-)
-    """)
-
-    assert c == "hi\n\n\n"
-
-
 def test_lambda_void_deduction_and_return_types():
     c = compile(r"""
 
@@ -3033,29 +2919,6 @@ def (main:
 4
 5
     """.strip()
-
-
-def test_typed_identifiers_as_cpp_variable_declarations():
-    c = compile(r"""
-def (main:
-    x:int:mut
-    x = 0
-    (static_cast<void>)(x)  # silence unused variable warning
-    
-    f = lambda (y:const:char:ptr, z:int:mut:
-        std: using: namespace  # variable declaration 'like'
-        t : typedef : int
-        w : t = 3
-        cout << y << z << w << endl
-        z = 2  # unrelated test that lambda params treated as defs in 'find_defs'.
-        cout << z << endl
-        void()
-    )
-    
-    f("hi".c_str(), 5)
-)
-    """)
-    assert c.strip() == "hi53\n2"
 
 
 def test_manual_implementation_of_proper_refcounted_return_self():
@@ -4081,7 +3944,7 @@ def (main:
     )
 )
     """)
-    
+
 
 def test_reset_ptr():
 
