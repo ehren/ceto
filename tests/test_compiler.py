@@ -4081,66 +4081,7 @@ def (main:
     )
 )
     """)
-
-
-def test_uniq_ptr():
-    c = compile(r"""
-class (Foo:
-    a:int = 5
     
-    def (bar:
-        printf("bar %d\n", self.a)
-        return self.a
-    )
-): unique
-
-def (bam, f: Foo:
-    f.bar()
-)
-
-def (baz, f: Foo:
-    f.bar()
-    bam(f)  # last use automoved
-)
-
-def (main:
-    Foo().bar()
-    
-    baz(Foo())
-
-    f : mut = Foo()
-    f.bar()
-
-    f2 : mut = Foo()
-    f2.bar()
-
-    # baz(std.move(f2))  # this is no longer necessary
-    baz(f2)  # automatic move from last use
-
-    # lst = [Foo(), Foo(), Foo()]  # pfft https://stackoverflow.com/questions/46737054/vectorunique-ptra-using-initialization-list
-    lst : mut = []
-    lst.append(Foo() : mut)
-    f = Foo() : mut
-    # lst.append(std.move(f))  # no longer necessary
-    lst.append(f)
-
-    lst[0].bar()
-    lst[1].bar()
-)
-    """)
-
-    assert c == r"""
-bar 5
-bar 5
-bar 5
-bar 5
-bar 5
-bar 5
-bar 5
-bar 5
-bar 5
-    """.strip() + "\n"
-
 
 def test_reset_ptr():
 
@@ -4240,66 +4181,6 @@ dead
 #     """
 
     assert "we're dead" in c
-
-
-def test_parser_left_accociativity():
-    c = compile(r"""
-def (main:
-    std.cout << 9+3 << "\n" << 9-3-2 << "\n" << - 5 - 2 - 2 << "\n" << (( -5) - 2) - 2 << "\n" << 7-3-2 << std.endl
-)
-    """)
-
-    assert """
-12
-4
--9
--9
-2
-    """.strip() in c
-
-
-def test_clearing_pointers_assignment():
-    c = compile("""
-    
-class (Foo:
-    def (foo:
-        printf("foo\n")
-        return 5
-    )
-)
-
-def (main:
-    f : mut = Foo()
-    f.foo()
-    f2 : mut = f
-    f2.foo()
-    std.cout << (&f)->use_count() << std.endl
-    std.cout << (&f2)->use_count() << std.endl
-    f2 = nullptr
-    f = nullptr
-    printf("f %d\n", not f)
-    printf("f2 %d\n", not f2)
-    std.cout << (&f)->use_count() << std.endl
-    std.cout << (&f2)->use_count() << std.endl
-    # f.foo()  # std::terminate
-    # f2.foo() # std::terminate
-    f->foo()  # intentional UB
-    f2->foo()  # UB
-)
-    """)
-
-    assert c.strip() == r"""
-foo
-foo
-2
-2
-f 1
-f2 1
-0
-0
-foo
-foo
-    """.strip()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="problems with native stack overflow / recursionlimit failing windows ci")

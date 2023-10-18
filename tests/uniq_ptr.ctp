@@ -1,3 +1,13 @@
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+# Test Output: bar 5
+
 
 class (Foo:
     a:int = 5

@@ -1,5 +1,15 @@
+# Test Output: foo
+# Test Output: foo
+# Test Output: 2
+# Test Output: 2
+# Test Output: f 1
+# Test Output: f2 1
+# Test Output: 0
+# Test Output: 0
+# Test Output: foo
+# Test Output: foo
 
-    
+
 class (Foo:
     def (foo:
         printf("foo
