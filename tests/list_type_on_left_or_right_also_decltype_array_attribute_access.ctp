@@ -1,3 +1,4 @@
+# Test Output: 333123
 
 class (Foo:
     a : [int]

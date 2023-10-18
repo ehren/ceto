@@ -8,12 +8,25 @@ from ceto.compiler import runtest
 from ceto.parser import parse
 
 
-clang_xfailing_tests = ["atomic_weak.ctp"]
+def compile(s, compile_cpp=True):
+    return runtest(s, compile_cpp)
 
-test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp") and not f in clang_xfailing_tests]
+
+clang_xfailing_tests = ["atomic_weak.ctp",
+                        "list_type_on_left_or_right_also_decltype_array_attribute_access.ctp"]
+
+msvc_xfailing_tests = ["simple_unicode.ctp",
+                       "test_string_escapes_unicode_escape.ctp"]
+
+
+test_files = [f for f in os.listdir(os.path.dirname(__file__)) if f.endswith("ctp")
+              and not f in clang_xfailing_tests and not f in msvc_xfailing_tests]
 
 for xfailing in clang_xfailing_tests:
     test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
+
+for xfailing in msvc_xfailing_tests:
+    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
 
 
 @pytest.mark.parametrize("file", test_files)
@@ -31,7 +44,6 @@ def test_file(file):
         expected_output = "".join(output_lines)
     else:
         expected_output = None
-
 
     build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
     print(build_output)
@@ -193,29 +205,6 @@ def (main:
     raises(lambda: compile(preamble + bad_code))
     assert compile(preamble + preamble2 + good_code2) == "6"
     raises(lambda: compile(preamble + preamble2 + bad_code2))
-
-
-# @pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
-@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
-def test_simple_unicode():
-    c = compile(r"""
-def (main:
-    std.cout << "∀"
-)
-    """)
-    assert c == "∀"
-
-
-# @pytest.mark.xfail(sys.platform == "win32" and os.environ.get("PYTHONUTF8") != "1", reason="blargh")
-# ^ I think we also want encoding=utf-8 in .gitattributes and /utf-8 flag for msvc
-@pytest.mark.xfail(sys.platform == "win32", reason="blargh")
-def test_string_escapes_unicode_escape():
-    c = compile(r"""
-def (main:
-    std.cout << "\u2200" << "\U2200" << "\u2200\U2200"
-)
-    """)
-    assert c == "∀∀∀∀"
 
 
 def test_string_escapes_escape_slash():
@@ -647,51 +636,6 @@ class (Foo:
     c: const = 1
 )
     """), exc="const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use c = whatever (with no const \"type\" specified)")
-
-
-@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
-def test_list_type_on_left_or_right_also_decltype_array_attribute_access():
-    c = compile(r"""
-class (Foo:
-    a : [int]
-    b : [int] = [1,2,3]
-    c = [1,2,3] : int
-    d = [1,2,3]
-)
-    
-def (main:
-    x:[int] = [1,2,3]
-    l1 = [Foo(x)]
-    lm : mut = []
-    lm2 : mut = []
-    lm3 : mut = []
-    lm4 : mut = []
-    lm5 : mut = []
-    lm6 : mut = []
-    lm8 : mut = []
-    lm7 : mut = []
-    lm9 : mut = []
-    l2 = [Foo(x)] : Foo
-    l3 : [Foo] = [Foo(x)]
-    for (l in [l1, l2, l3]:
-        lm.append(l[0].a[2])
-        lm2.append(l3[0].a[2])
-        a = l1[0].a[2]
-        lm3.append(a)
-        b = l[0].a[2]
-        lm4.append(b)
-        lm5.append(lm[0])
-        lm6.append(lm2[0])
-        lm7.append(l[0])
-        lm8.append(lm7[0])
-        c = l
-        lm9.append(c[0])
-    )
-    
-    std.cout << lm[0] << lm2[0] << lm4[0] << lm7[0].a[0] << lm8[0].b[1] << lm9[0].c[2]
-)
-    """)
-    assert c == "333123"
 
 
 def test_mut_classes():
