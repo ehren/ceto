@@ -1,3 +1,8 @@
+Test Output: Blah1 foo
+Test Output: huh 2
+Test Output: Blah2 foo
+Test Output: huh 1
+
 
 class (Blah1:
     # ugly
