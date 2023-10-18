@@ -1,3 +1,7 @@
+# Test Output: 325744
+
+# TODO these lambda return type with decltype cases are pretty dubious - they should just require parenthesese (the post parse hacks to make them work should also not be in codegen - will break macro system)
+
 
 def (blah, x: int:
     return x

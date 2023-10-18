@@ -1,3 +1,4 @@
+# Test Output: 25
 
 g : const = 5  # codegen writes this as constexpr const g = 5 (TODO confirm this with a test)
 def (main:
