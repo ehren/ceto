@@ -21,6 +21,6 @@
     auto main() -> int {
 using std::cout;
 using std :: endl;
-        (((cout << std::string {"hi"}) << endl) << (std :: endl)) << std::endl;
+        ((((cout << std::string {"hi"}) << endl) << (std :: endl)) << std::endl) << std::string {"end"};
     }
 

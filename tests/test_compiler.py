@@ -31,17 +31,17 @@ for xfailing in msvc_xfailing_tests:
 
 @pytest.mark.parametrize("file", test_files)
 def test_file(file):
-    prefix = "# Test Output: "
+    prefix = "# Test Output:"
 
     path = os.path.join(os.path.dirname(__file__), file)
 
     with open(path) as f:
         content = f.readlines()
 
-    output_lines = [c[len(prefix):] for c in content if c.startswith(prefix)]
+    output_lines = [c[len(prefix):].strip() for c in content if c.startswith(prefix)]
 
     if output_lines:
-        expected_output = "".join(output_lines)
+        expected_output = "\n".join(output_lines)
     else:
         expected_output = None
 
