@@ -50,7 +50,10 @@ def test_file(file):
     build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
     print(build_output)
 
-    output = subprocess.check_output("./a.exe", shell=True).decode("utf8")
+    output = subprocess.check_output(os.path.join(os.path.curdir, "a.exe"), shell=True).decode("utf8")
+
+    if sys.platform == "win32":
+        output = output.replace("\r\n", "\n")
 
     print(output)
 

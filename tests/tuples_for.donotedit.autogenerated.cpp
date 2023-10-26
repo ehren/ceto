@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
-
 #include <ranges>
+;
+#include <iostream>
 ;
     auto main() -> int {
         auto tuples { std::vector<decltype(std::make_tuple(std::declval<std::ranges::range_value_t<decltype(std::ranges::iota_view(0, 10))>>(), std::declval<std::ranges::range_value_t<decltype(std::ranges::iota_view(0, 10))>>()+1))>() } ;

@@ -175,17 +175,34 @@ def main():
         sys.exit(0)
 
     CXX = "c++"
-    CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/"
+    CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread"
+
     if "CXX" in os.environ:
         CXX = os.environ["CXX"]
+
+    is_msvc = CXX.startswith("cl") and not CXX.startswith("clang")
+
+    if is_msvc:
+        CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc /I{os.path.join(os.path.dirname(__file__))}/../include/"
+
     if "CXXFLAGS" in os.environ:
         CXXFLAGS = os.environ["CXXFLAGS"]
+
+    if is_msvc:
+        CXXFLAGS += f" /I{os.path.join(os.path.dirname(__file__))}/../include/"
+    else:
+        CXXFLAGS += f" -I{os.path.join(os.path.dirname(__file__))}/../include/"
 
     exename = cmdargs.exename
     if not cmdargs.exename:
         exename = basename
 
-    cmd = " ".join([CXX, cppfilename, "-o " + exename, CXXFLAGS])
+    if is_msvc:
+        exeswitch = "/Fe" + exename
+    else:
+        exeswitch = "-o " + exename
+
+    cmd = " ".join([CXX, cppfilename, exeswitch, CXXFLAGS])
     print(cmd)
     p = subprocess.Popen(cmd, shell=True)
     rc = p.wait()
@@ -200,7 +217,9 @@ def main():
         args += cmdargs.args
 
     print(" ".join(args))
-    subprocess.Popen(args)
+    p = subprocess.Popen(args)
+    rc = p.wait()
+    sys.exit(rc)
 
 
 if __name__ == "__main__":
