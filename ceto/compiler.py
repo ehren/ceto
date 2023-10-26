@@ -121,9 +121,7 @@ def report_error(e : ParseException, source : str):
 def main():
     ap = argparse.ArgumentParser()
     # -m / -c to mimic python
-    ap.add_argument("-o", "--exename", help="Executable program name (including suffix if any)")
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
-    ap.add_argument("--donotexecute", action='store_true', help="If compiling C++, do not attempt to run an executable")
     # ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
     ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file even if filename does not end in .ctp", action="store_true")
     ap.add_argument("--no-pragma-once", help="Do not automatically add a '#pragma once' include guard to a header", action="store_true")
@@ -181,9 +179,7 @@ def main():
     if "CXXFLAGS" in os.environ:
         CXXFLAGS = os.environ["CXXFLAGS"]
 
-    exename = cmdargs.exename
-    if not cmdargs.exename:
-        exename = basename
+    exename = basename
 
     cmd = " ".join([CXX, cppfilename, "-o " + exename, CXXFLAGS])
     print(cmd)
@@ -191,9 +187,6 @@ def main():
     rc = p.wait()
     if rc != 0:
         sys.exit(rc)
-
-    if cmdargs.donotexecute:
-        return
 
     args = [os.path.join(".", exename)]
     if cmdargs.args:
