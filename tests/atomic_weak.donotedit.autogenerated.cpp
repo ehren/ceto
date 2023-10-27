@@ -74,7 +74,7 @@ struct Executor : ceto::shared_object {
 
 };
 
-    inline auto launch(const std::vector<std::shared_ptr<const Task>>&  tasks) -> auto {
+    inline auto launch(const std::vector<std::shared_ptr<const Task>>&  tasks) -> void {
         auto executor { std::make_shared<decltype(Executor())>() } ;
         auto threads { std::vector<std::thread>{} } ;
         for(const auto& task : tasks) {

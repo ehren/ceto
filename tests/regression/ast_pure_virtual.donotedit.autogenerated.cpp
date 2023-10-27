@@ -18,7 +18,6 @@
 
 #include "ceto.h"
 
-
 #include <map>
 ;
 struct Node : ceto::shared_object {
@@ -63,15 +62,15 @@ struct Identifier : public Node {
     }
 
 constexpr const auto glob = 0;
-    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<Node>>  matches) -> auto {
-        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<const Node>>  matches) -> auto {
+        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(fptr);
-        const auto f2 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+        const auto f2 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(0);
-        const auto f3 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+        const auto f3 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(glob);
         const auto f4 = (&example_macro_body_workaround_no_fptr_syntax_yet);
         static_assert(std::is_same_v<decltype(f),decltype(f2)>);
