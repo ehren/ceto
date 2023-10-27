@@ -58,15 +58,30 @@ struct Identifier : public Node {
 
 };
 
-    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<Node>>  matches) -> void {
-        ; // pass
+    inline auto example_macro_body_workaround_no_fptr_syntax_yet(const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
+        return nullptr;
+    }
+
+constexpr const auto glob = 0;
+    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<Node>>  matches) -> auto {
+        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+                })>(fptr);
+        const auto f2 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+                })>(0);
+        const auto f3 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+                })>(glob);
+        const auto f4 = (&example_macro_body_workaround_no_fptr_syntax_yet);
+        static_assert(std::is_same_v<decltype(f),decltype(f2)>);
+        static_assert(std::is_same_v<decltype(f),decltype(f3)>);
+        static_assert(std::is_same_v<decltype(f),decltype(f4)>);
+        return (*f)(matches);
     }
 
     auto main() -> int {
         const auto id = std::make_shared<const decltype(Identifier{std::string {"a"}})>(std::string {"a"});
         std::cout << ceto::mad(ceto::mado(id)->name())->value();
-        const auto f2 = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<Node>>  matches) -> std::shared_ptr<Node> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
-                })>(0);
     }
 
