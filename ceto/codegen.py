@@ -1318,13 +1318,6 @@ def codegen_lambda(node, cx):
                 return False
             elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
                 return False
-            # if isinstance(pd := n.scope.find_def(n), ParameterDefinition):
-            if pd := n.scope.find_def(n):
-                # TODO this logic is seemingly duplicated below - but both checks are needed for e.g. regression/if_expressions_lambdas.ctp
-                if pd.defining_node.source[1] < node.source[1]:
-                    # a parameter defined before the outer lambda should be captured if used in the body of the lambda
-                    # a parameter defined after the outer lambda should not be captured
-                    return False
             return True
 
         # find all identifiers but not call funcs etc or anything in a nested class
@@ -1336,6 +1329,8 @@ def codegen_lambda(node, cx):
         for i in idents:
             if i.name == "self":
                 possible_captures.append(i.name)
+            elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
+                pass  # don't capture a lambda parameter
             elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
                 defnode = d.defined_node
                 is_capture = True
@@ -1353,9 +1348,6 @@ def codegen_lambda(node, cx):
     #    capture_list = "&"
     else:
         capture_list = ""
-    # TODO:
-    # lambda[ref](foo(x))
-    # lambda[&x=x, y=bar(y)](foo(x,y))  # need to loosen ArrayAccess
 
     return ("[" + ", ".join(capture_list) + "](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)

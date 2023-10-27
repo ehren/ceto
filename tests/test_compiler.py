@@ -30,7 +30,9 @@ for xfailing in clang_xfailing_tests:
 for xfailing in msvc_xfailing_tests:
     test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
 
-# test_files = ["if_expressions.ctp"]
+# test_files = ["regression/if_expressions_lambdas.ctp"]
+_CETO_DEBUG = False
+
 
 @pytest.mark.parametrize("file", test_files)
 def test_file(file):
@@ -48,8 +50,7 @@ def test_file(file):
     else:
         expected_output = None
 
-    CETO_DEBUG = False
-    if CETO_DEBUG:
+    if _CETO_DEBUG:
         runtest("\n".join(content))
         return
     build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
