@@ -1,4 +1,4 @@
-# Test Output: 12222
+# Test Output: 122222222
 
 
 def (main:
@@ -29,5 +29,33 @@ def (main:
     else:
         0
     )
+
+    # no need for the lambda
+    std.cout << if ((r = if (x[1] == 2:
+        x[1]
+    else:
+        x[0]
+    )):
+        r
+    else:
+        0
+    )
+
+    # no need for the lambda - one-liner
+    std.cout << if ((r = if (x[1] == 2: x[1] else: x[0])): r else: 0)
+
+    # 'simple' nested expression if
+    std.cout << if (if (x[1] == 2:
+        x[1]
+    else:
+        x[0]
+    ):
+        x[1]
+    else:
+        0
+    )
+
+    # 'simple' nested expression if - one liner
+    std.cout << if (if (x[1] == 2: x[1] else: x[0]): x[1] else: 0)
 )
 

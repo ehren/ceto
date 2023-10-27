@@ -96,5 +96,49 @@
             return 0;
         }}()
 ;
+        std::cout << [&]() {if (const auto r = [&]() {if (ceto::maybe_bounds_check_access(x,1) == 2) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return ceto::maybe_bounds_check_access(x,0);
+        }}()
+) {
+            return r;
+        } else {
+            return 0;
+        }}()
+;
+        std::cout << [&]() {if (const auto r = [&]() {if (ceto::maybe_bounds_check_access(x,1) == 2) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return ceto::maybe_bounds_check_access(x,0);
+        }}()
+) {
+            return r;
+        } else {
+            return 0;
+        }}()
+;
+        std::cout << [&]() {if ([&]() {if (ceto::maybe_bounds_check_access(x,1) == 2) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return ceto::maybe_bounds_check_access(x,0);
+        }}()
+) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return 0;
+        }}()
+;
+        std::cout << [&]() {if ([&]() {if (ceto::maybe_bounds_check_access(x,1) == 2) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return ceto::maybe_bounds_check_access(x,0);
+        }}()
+) {
+            return ceto::maybe_bounds_check_access(x,1);
+        } else {
+            return 0;
+        }}()
+;
     }
 
