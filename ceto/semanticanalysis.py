@@ -382,9 +382,9 @@ def find_use(assign: Assign):
     return None
 
 
-def find_all(node, test=lambda n: False, stop=lambda n: False):
-    if not isinstance(node, Node):
-        return
+def find_all(node: Node, test=lambda n: False, stop=lambda n: False):
+    assert isinstance(node, Node)
+
     if stop(node):
         return
     if test(node):
@@ -393,8 +393,9 @@ def find_all(node, test=lambda n: False, stop=lambda n: False):
     for arg in node.args:
         if stop(arg):
             return
-        yield from find_all(arg, test)
-    yield from find_all(node.func, test)
+        yield from find_all(arg, test=test, stop=stop)
+    if node.func:
+        yield from find_all(node.func, test=test, stop=stop)
 
 
 def find_nodes(node, search_node):

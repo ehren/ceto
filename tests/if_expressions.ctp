@@ -1,4 +1,4 @@
-
+# Test Output: 122
 
 def (main:
     x = if (1:
