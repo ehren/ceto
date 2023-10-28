@@ -1,11 +1,12 @@
-# Test Output: visiting Identifier
-# Test Output: visiting Node
-# Test Output: recording Ident visit
-# Test Output: recording Node visit
-# Test Output: recording Ident visit
-# Test Output: recording Ident visit
-# Test Output: recording Ident visit
-
+# Test Output: BaseVisitor visiting Identifier
+# Test Output: BaseVisitor visiting Node
+# Test Output: BaseVisitor visiting ListLiteral
+# Test Output: RecordingVisitor visiting Identifier
+# Test Output: RecordingVisitor visiting Node
+# Test Output: RecordingVisitor visiting ListLiteral
+# Test Output: RecordingVisitor visiting Identifier
+# Test Output: RecordingVisitor visiting Identifier
+# Test Output: RecordingVisitor visiting Identifier
 
 class (Node)
 class (Identifier)
@@ -13,19 +14,17 @@ class (ListLiteral)
 
 
 class (BaseVisitor:
+
     def (visit: virtual:mut, node: Node:
-        std.cout << "visiting Node\n"
+        std.cout << "BaseVisitor visiting Node\n"
     )
 
     def (visit: virtual:mut, ident: Identifier:
-        std.cout << "visiting Identifier\n"
+        std.cout << "BaseVisitor visiting Identifier\n"
     )
 
     def (visit: virtual:mut, list_literal: ListLiteral:
-        std.cout << "visiting ListLiteral\n"
-        # here we're choosing not to visit the children of list_literal to
-        # contrast with the behavior of RecordingVisitor
-        # (and to avoid needing to define currently unsupported out of line methods...)
+        std.cout << "BaseVisitor visiting ListLiteral\n"
     )
 )
 
@@ -65,15 +64,15 @@ class (RecordingVisitor(BaseVisitor):
     record = ""
 
     def (visit: virtual:mut, node: Node:
-        self.record += "recording Node visit\n"
+        self.record += "RecordingVisitor visiting Node\n"
     )
 
     def (visit: virtual:mut, ident: Identifier:
-        self.record += "recording Ident visit\n"
+        self.record += "RecordingVisitor visiting Identifier\n"
     )
 
     def (visit: virtual:mut, list_literal: ListLiteral:
-        std.cout << "visiting ListLiteral\n"
+        self.record += "RecordingVisitor visiting ListLiteral\n"
 
         # in contrast to BaseVisitor, here we choose to traverse the children
         for (arg in list_literal.args:
