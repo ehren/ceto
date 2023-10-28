@@ -1,9 +1,19 @@
 # Test Output: adding foo and other
 # Test Output: adding foo and other (in the member function)
+# Test Output: done
 # Test Output: adding other and foo
+# Test Output: adding foo and other (in the member function)
+# Test Output: done
+# Test Output: adding foo and foo
+# Test Output: adding foo and foo (in the member function)
+# Test Output: done
+# Test Output: adding other and foo
+# Test Output: adding foo and other (in the member function)
+# Test Output: adding foo and other
 # Test Output: adding foo and other (in the member function)
 # Test Output: adding foo and foo
 # Test Output: adding foo and foo (in the member function)
+# Test Output: done
 
 
 class (Foo:
@@ -34,12 +44,13 @@ def (operator("+"), x:Foo, f:Foo:
     return f.operator("+")(x)
 )
 
-
 def (main:
-    n = 1
-    k = 2
-
     Foo() + 1
+    printf("done\n")
     1 + Foo()
-    Foo() + Foo()
+    printf("done\n")
+    two_foo = Foo() + Foo()
+    printf("done\n")
+    (1 + two_foo + 1) + Foo()
+    printf("done\n")
 )

@@ -37,7 +37,9 @@ class (Executor:
         task.action()
         self.last_finished = task
     )
-    
+
+    # doing a bunch of stuff that can throw in a destructor is usually not the best idea
+    # (fine for testsuite)
     def (destruct:
         std.cout << "Last task submitted: " << if ((strong = self.last_submitted.load().lock()): 
             std.to_string(strong.id())

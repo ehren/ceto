@@ -53,10 +53,13 @@ auto operator+(const T1& x, const std::shared_ptr<const Foo>&  f) -> auto {
     }
 
     auto main() -> int {
-        const auto n = 1;
-        const auto k = 2;
         std::make_shared<const decltype(Foo())>() + 1;
+        printf("done\n");
         1 + std::make_shared<const decltype(Foo())>();
-        std::make_shared<const decltype(Foo())>() + std::make_shared<const decltype(Foo())>();
+        printf("done\n");
+        const auto two_foo = (std::make_shared<const decltype(Foo())>() + std::make_shared<const decltype(Foo())>());
+        printf("done\n");
+        ((1 + two_foo) + 1) + std::make_shared<const decltype(Foo())>();
+        printf("done\n");
     }
 
