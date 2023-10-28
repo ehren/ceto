@@ -1,6 +1,6 @@
-# Test Output: BaseVisitor visiting Identifier
-# Test Output: BaseVisitor visiting Node
-# Test Output: BaseVisitor visiting ListLiteral
+# Test Output: SimpleVisitor visiting Identifier
+# Test Output: SimpleVisitor visiting Node
+# Test Output: SimpleVisitor visiting ListLiteral
 # Test Output: RecordingVisitor visiting Identifier
 # Test Output: RecordingVisitor visiting Node
 # Test Output: RecordingVisitor visiting ListLiteral
@@ -12,20 +12,13 @@ class (Node)
 class (Identifier)
 class (ListLiteral)
 
-
 class (BaseVisitor:
 
-    def (visit: virtual:mut, node: Node:
-        std.cout << "BaseVisitor visiting Node\n"
-    )
+    def (visit: virtual:mut, node: Node): void = 0
 
-    def (visit: virtual:mut, ident: Identifier:
-        std.cout << "BaseVisitor visiting Identifier\n"
-    )
+    def (visit: virtual:mut, ident: Identifier): void = 0
 
-    def (visit: virtual:mut, list_literal: ListLiteral:
-        std.cout << "BaseVisitor visiting ListLiteral\n"
-    )
+    def (visit: virtual:mut, list_literal: ListLiteral): void = 0
 )
 
 class (Node:
@@ -36,11 +29,7 @@ class (Node:
 )
 
 class (Identifier(Node):
-    _name : string
-
-    def (init, name:
-        self._name = name
-    )
+    name : string
 
     def (accept: virtual, visitor: BaseVisitor:mut:
         visitor.visit(self)
@@ -50,15 +39,25 @@ class (Identifier(Node):
 class (ListLiteral(Node):
     args : [Node]
 
-    def (init, args:
-        self.args = args
-    )
-
     def (accept: virtual, visitor: BaseVisitor:mut:
         visitor.visit(self)
     )
 )
 
+class (SimpleVisitor(BaseVisitor):
+    def (visit: virtual:mut, node: Node:
+        std.cout << "SimpleVisitor visiting Node\n"
+    )
+
+    def (visit: virtual:mut, ident: Identifier:
+        std.cout << "SimpleVisitor visiting Identifier\n"
+    )
+
+    def (visit: virtual:mut, list_literal: ListLiteral:
+        std.cout << "SimpleVisitor visiting ListLiteral\n"
+        # here we're choosing not to traverse the children (in contrast to RecordingVisitor)
+    )
+)
 
 class (RecordingVisitor(BaseVisitor):
     record = ""
@@ -74,19 +73,17 @@ class (RecordingVisitor(BaseVisitor):
     def (visit: virtual:mut, list_literal: ListLiteral:
         self.record += "RecordingVisitor visiting ListLiteral\n"
 
-        # in contrast to BaseVisitor, here we choose to traverse the children
         for (arg in list_literal.args:
             arg.accept(self)
         )
     )
 )
 
-
 def (main:
     node = Node()
     ident = Identifier("a")
 
-    simple_visitor: mut = BaseVisitor()
+    simple_visitor: mut = SimpleVisitor()
     ident.accept(simple_visitor)
     node.accept(simple_visitor)
 
