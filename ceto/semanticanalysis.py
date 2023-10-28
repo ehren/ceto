@@ -446,12 +446,13 @@ def _find_uses(node, search_node):
 
 class ClassDefinition:
 
-    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique, is_struct):
+    def __init__(self, name_node : Identifier, class_def_node: Call, is_generic_param_index, is_unique, is_struct, is_forward_declaration):
         self.name_node = name_node
         self.class_def_node = class_def_node
         self.is_generic_param_index = is_generic_param_index
         self.is_unique = is_unique
         self.is_struct = is_struct
+        self.is_forward_declaration = is_forward_declaration
         self.is_concrete = False
         self.is_pure_virtual = False
         if self.is_unique and self.is_struct:
@@ -463,7 +464,7 @@ class ClassDefinition:
 
 class InterfaceDefinition(ClassDefinition):
     def __init__(self):
-        super().__init__(None, None, None, False, False)
+        super().__init__(None, None, None, False, False, False)
 
 
 class VariableDefinition:

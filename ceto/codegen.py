@@ -338,24 +338,36 @@ def codegen_class(node : Call, cx):
 
     if not isinstance(name, Identifier):
         raise CodeGenError("bad class first arg", name)
-    block = node.args[-1]
-    if not isinstance(block, Block):
-        raise CodeGenError("class missing block (TODO forward declarations)", node)
+
+    if len(node.args) not in [1, 2]:
+        raise CodeGenError("bad number of args to class", node)
+
+    if len(node.args) == 1:
+        is_forward_declaration = True
+    else:
+        is_forward_declaration = False
+        block = node.args[-1]
+        if not isinstance(block, Block):
+            raise CodeGenError("class missing block (bad second class arg)", node)
+
+    classdef = ClassDefinition(name, node, is_generic_param_index={},
+                               is_unique=node.declared_type and node.declared_type.name == "unique",
+                               is_struct=node.func.name == "struct",
+                               is_forward_declaration=is_forward_declaration)
+    cx.class_definitions.append(classdef)
 
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
     typenames = []
 
     indt = cx.indent_str()
+
+    if is_forward_declaration:
+        return indt + "class " + name.name + ";\n\n"
+
     inner_cx = cx.enter_scope()
     inner_cx.in_class_body = True
     inner_cx.in_function_body = False
-
-    classdef = ClassDefinition(name, node, is_generic_param_index={},
-                               is_unique=node.declared_type and node.declared_type.name == "unique",
-                               is_struct=node.func.name == "struct")
-
-    cx.class_definitions.append(classdef)
 
     cpp = indt
     inner_indt = inner_cx.indent_str()
