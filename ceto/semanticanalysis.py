@@ -651,7 +651,8 @@ class ScopeVisitor:
             assign.scope.add_variable_definition(defined_node=assign.lhs, defining_node=assign)
         elif isinstance(assign.lhs, TupleLiteral):
             for a in assign.lhs.args:
-                assign.scope.add_variable_definition(defined_node=a, defining_node=assign)
+                if isinstance(a, Identifier):
+                    assign.scope.add_variable_definition(defined_node=a, defining_node=assign)
 
     def visit_Module(self, module):
         if module.scope:
