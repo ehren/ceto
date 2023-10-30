@@ -1,0 +1,17 @@
+#include (ast)
+
+
+class (Node)
+class (Identifier)
+class (ListLiteral)
+
+
+struct (Visitor:
+
+    def (visit: virtual:mut, node: Node): void = 0
+
+    def (visit: virtual:mut, ident: Identifier): void = 0
+
+    def (visit: virtual:mut, list_literal: ListLiteral): void = 0
+)
+

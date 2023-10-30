@@ -1832,7 +1832,7 @@ def codegen_type_old(expr_node, type_node, cx, _is_leading=True):
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
     assert isinstance(node, AttributeAccess)
 
-    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):
+    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO: bad separate lookup mechanism for class defs and variable defs won't work with shadowing of a class name by a local (legal in C++)
         if node.rhs.name == "class":
             # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
             # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes

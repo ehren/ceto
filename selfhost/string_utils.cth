@@ -1,0 +1,33 @@
+include <numeric>
+
+
+def (join, v, to_string, sep="":
+    if (v.empty():
+        return ""
+    )
+    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
+        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
+)
+
+
+# User Ingmar
+# https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/29752943#29752943
+def (string_replace, source: std.string, from: std.string, to: std.string:
+    new_string : mut = std.string()
+    new_string.reserve(source.length())  # avoids a few memory allocations
+
+    last_pos : mut:std.string.size_type = 0  # TODO just string.size_type should also generate std::string::size_type
+    find_pos : mut:std.string.size_type = 0
+
+    while (std.string.npos != (find_pos = source.find(from, last_pos)):
+        new_string.append(source, last_pos, find_pos - last_pos)
+        new_string += to
+        last_pos = find_pos + from.length()
+    )
+
+    # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – User tav
+    new_string.append(source, last_pos, source.length() - last_pos)
+
+    # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
+    return new_string
+)

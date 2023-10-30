@@ -2,21 +2,16 @@
 
 include <map>
 include <typeinfo>
-include <numeric>
 include <pybind11/pybind11.h>
 include <pybind11/stl.h>
 include <pybind11/stl_bind.h>
 
+
+include (string_utils)
+include (visitor)
+
+
 py: namespace = pybind11
-
-
-def (join, v, to_string, sep="":
-    if (v.empty():
-        return ""
-    )
-    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
-        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
-)
 
 
 class (Node:
@@ -54,6 +49,10 @@ class (Node:
     def (set_parent: virtual:mut, p: Node:
         self._parent = p
     )
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (UnOp(Node):
@@ -67,6 +66,10 @@ class (UnOp(Node):
     def (repr:
         return "(" +  self.op + " " + self.args[0].repr() + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (LeftAssociativeUnOp(Node):
@@ -80,6 +83,10 @@ class (LeftAssociativeUnOp(Node):
     def (repr:
         return "(" + self.args[0].repr() + " " + self.op + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (BinOp(Node):
@@ -101,14 +108,25 @@ class (BinOp(Node):
     def (repr:
         return "(" + self.lhs().repr() + " " + self.op + " " + self.rhs().repr() + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (TypeOp(BinOp):
-    pass
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (SyntaxTypeOp(TypeOp):
     synthetic_lambda_return_lambda : Node = None
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (AttributeAccess(BinOp):
@@ -116,24 +134,38 @@ class (AttributeAccess(BinOp):
     def (repr:
         return self.lhs().repr() + "." + self.rhs().repr()
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (ArrowOp(BinOp):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (ScopeResolution(BinOp):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Assign(BinOp):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (NamedParameter(Assign):
     def (repr:
         return "NamedParameter(" + join(self.args, lambda(a, a.repr()), ", ")  + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Identifier(Node):
@@ -151,6 +183,10 @@ class (Identifier(Node):
     def (name:
         return self._name
     ) : std.optional<std.string>
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Call(Node):
@@ -160,6 +196,10 @@ class (Call(Node):
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "(" + csv + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (ArrayAccess(Node):
@@ -167,6 +207,10 @@ class (ArrayAccess(Node):
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "[" + csv + "]"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (BracedCall(Node):
@@ -174,6 +218,10 @@ class (BracedCall(Node):
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "{" + csv + "}"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Template(Node):
@@ -181,28 +229,12 @@ class (Template(Node):
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "<" + csv + ">"
     ) : std.string
-)
 
-
-# User Ingmar
-# https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/29752943#29752943
-def (string_replace, source: string, from: string, to: string:
-    new_string : mut = std.string()
-    new_string.reserve(source.length())  # avoids a few memory allocations
-
-    last_pos : mut:std.string.size_type = 0  # TODO just string.size_type should also generate std::string::size_type
-    find_pos : mut:std.string.size_type = 0
-
-    while (std.string.npos != (find_pos = source.find(from, last_pos)):
-        new_string.append(source, last_pos, find_pos - last_pos)
-        new_string += to
-        last_pos = find_pos + from.length()
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
     )
-
-    new_string.append(source, last_pos, source.length() - last_pos)  # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – tav
-
-    return new_string  # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
 )
+
 
 def (get_string_replace_function:
     func : mut:static:std.function<std.string(std.string)> = {}
@@ -258,6 +290,10 @@ class (StringLiteral(Node):
             ""
         )
     ) : string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (IntegerLiteral(Node):
@@ -273,6 +309,10 @@ class (IntegerLiteral(Node):
     def (repr:
         return self.integer_string + if (self.suffix: self.suffix.name().value() else: "")
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (FloatLiteral(Node):
@@ -288,6 +328,10 @@ class (FloatLiteral(Node):
     def (repr:
         return self.float_string + if (self.suffix: self.suffix.name().value() else: "")
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (ListLike_(Node):
@@ -301,26 +345,42 @@ class (ListLike_(Node):
         classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (ListLiteral(ListLike_):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (TupleLiteral(ListLike_):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (BracedLiteral(ListLike_):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Block(ListLike_):
-    pass
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (Module(Block):
     has_main_function = false
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (RedundantParens(Node):
@@ -334,6 +394,10 @@ class (RedundantParens(Node):
         classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 class (InfixWrapper_(Node):
@@ -347,6 +411,10 @@ class (InfixWrapper_(Node):
         classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
+
+    def (accept: virtual, visitor: Visitor:mut:ref:
+        visitor.visit(self)
+    )
 )
 
 
