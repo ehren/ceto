@@ -14,6 +14,11 @@ include (visitor)
 py: namespace = pybind11
 
 
+class (Node)
+
+def (class_name, node: Node) : std.string
+
+
 class (Node:
     func: Node
     args: [Node]
@@ -31,9 +36,7 @@ class (Node:
     from_include = false
 
     def (repr: virtual:
-        #classname : std.string = typeid(*this).name()
-        selph : py.object = py.cast(this)
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        classname = class_name(self)
         csv = join(self.args, lambda(a, a.repr()), ", ")
         return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
@@ -340,9 +343,7 @@ class (ListLike_(Node):
     )
 
     def (repr:
-#        classname = std.string(typeid(*this).name())
-        selph : py.object = py.cast(this)
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        classname = class_name(self)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
@@ -389,9 +390,7 @@ class (RedundantParens(Node):
     )
 
     def (repr:
-#        classname = std.string(typeid(*this).name())
-        selph : py.object = py.cast(this)
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        classname = class_name(self)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
@@ -406,9 +405,7 @@ class (InfixWrapper_(Node):
     )
 
     def (repr:
-#        classname = std.string(typeid(*this).name())
-        selph : py.object = py.cast(this)
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        classname = class_name(self)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 

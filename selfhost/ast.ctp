@@ -13,6 +13,13 @@ include(repr_visitors)
 
 py: namespace = pybind11
 
+
+def (class_name, node: Node:
+    selph : py.object = py.cast((&node)->get())
+    return std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+) : std.string
+
+
 #PYBIND11_MAKE_OPAQUE(std.vector<Node>)
 #PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
 

@@ -1190,30 +1190,31 @@ def codegen_def(defnode: Call, cx):
         if typenames:
             raise CodeGenError("no declarations with untyped/generic params", defnode)
 
-        if not is_method and not isinstance(defnode.parent, Assign):
-            raise CodeGenError("forward declarations not currently supported", defnode)
+        if is_method and isinstance(defnode.parent, Assign):
 
-        rhs = defnode.parent.rhs
+            rhs = defnode.parent.rhs
 
-        if name == "init" and rhs.name in ["default", "delete"]:
-            # return class_name + "() = " + defnode.parent.rhs.name
-            raise CodeGenError("TODO decide best way to express = default/delete", defnode)
+            if name == "init" and rhs.name in ["default", "delete"]:
+                # return class_name + "() = " + defnode.parent.rhs.name
+                raise CodeGenError("TODO decide best way to express = default/delete", defnode)
 
-        if return_type_node is None:
-            raise CodeGenError("declarations must specify a return type", defnode)
+            if return_type_node is None:
+                raise CodeGenError("declarations must specify a return type", defnode)
 
-        if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
+            if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
 
-            classdef = cx.lookup_class(class_identifier)
-            if not classdef:
-                raise CodeGenError("expected a class/struct in '= 0' declaration", class_identifier)
+                classdef = cx.lookup_class(class_identifier)
+                if not classdef:
+                    raise CodeGenError("expected a class/struct in '= 0' declaration", class_identifier)
 
-            classdef.is_pure_virtual = True
+                classdef.is_pure_virtual = True
 
-            # pure virtual function (codegen_assign handles the "= 0" part)
-            return indt + funcdef
+                # pure virtual function (codegen_assign handles the "= 0" part)
+                return indt + funcdef
+            else:
+                raise CodeGenError("bad assignment to function declaration", defnode)
         else:
-            raise CodeGenError("bad assignment to function declaration", defnode)
+            return indt + funcdef + ";\n\n"
 
     block_str = codegen_function_body(defnode, block, cx)
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
