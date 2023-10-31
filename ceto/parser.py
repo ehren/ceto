@@ -387,6 +387,9 @@ def parse_include(module: Identifier) -> typing.Tuple[str, Module]:
     return parse(source)
 
 
+seen_modules = set()
+
+
 def parse(source: str):
     from textwrap import dedent
 
@@ -464,8 +467,6 @@ def parse(source: str):
 
     res = replacer(res)
 
-    seen_includes = set()
-
     def set_from_include(node):
         if not isinstance(node, Node):
             return
@@ -478,24 +479,25 @@ def parse(source: str):
         new_args = None
 
         for call in res.args:
-            if isinstance(call, Call) and call.func.name == "include" and call not in seen_includes:
+            if isinstance(call, Call) and call.func.name == "include":
                 if len(call.args) != 1:
                     raise ParserError("include call must have a single arg", call)
                 module = call.args[0]
                 if not isinstance(module, Identifier):
                     raise ParserError('module names must be valid identifiers', call)
-                module_ast = parse_include(module)
-                # call.args = [module, module_ast]
-                call.args = [module]
-                # if not isinstance(call.parent, Module):  # TODO validate elsewhere
-                #    raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
-                index = res.args.index(call)
-                # this is crappy but avoids needing to move ClassDefinition handling out of codegen (even though that should still happen)
-                for a in module_ast.args:
-                    set_from_include(a)
-                new_args = res.args[0:index] + module_ast.args + res.args[index:]
-                seen_includes.add(call)
-                break
+                if module.name not in seen_modules:
+                    module_ast = parse_include(module)
+                    # call.args = [module, module_ast]
+                    call.args = [module]
+                    # if not isinstance(call.parent, Module):  # TODO validate elsewhere
+                    #    raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
+                    index = res.args.index(call)
+                    # this is crappy but avoids needing to move ClassDefinition handling out of codegen (even though that should still happen)
+                    for a in module_ast.args:
+                        set_from_include(a)
+                    new_args = res.args[0:index] + module_ast.args + res.args[index:]
+                    seen_modules.add(module.name)
+                    break
 
         if new_args:
             res.args = new_args

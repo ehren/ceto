@@ -8,6 +8,7 @@ include <pybind11/stl.h>
 include <pybind11/stl_bind.h>
 
 include(ast)
+include(repr_visitors)
 
 
 py: namespace = pybind11
@@ -24,15 +25,20 @@ lambda(m : mut:auto:rref:
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
     node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
-        c"func", &Node.func).def_readwrite(
-        c"args", &Node.args).def_readwrite(
-        c"declared_type", &Node.declared_type).def_readwrite(
-        c"scope", &Node.scope).def_readwrite(
-        c"source", &Node.source).def(
-        c"__repr__", &Node.repr).def_property_readonly(
-        c"name", &Node.name).def_property(
-        c"parent", &Node.parent, &Node.set_parent).def_readwrite(
-        c"from_include", &Node.from_include)
+    c"func", &Node.func).def_readwrite(
+    c"args", &Node.args).def_readwrite(
+    c"declared_type", &Node.declared_type).def_readwrite(
+    c"scope", &Node.scope).def_readwrite(
+    c"source", &Node.source).def(
+    c"__repr__", &Node.repr).def(
+    c"ast_repr", lambda(n: const:Node.class:ref:
+        vis: mut = EvalableAstReprVisitor()
+        n.accept(vis)
+        vis.repr
+    )).def_property_readonly(
+    c"name", &Node.name).def_property(
+    c"parent", &Node.parent, &Node.set_parent).def_readwrite(
+    c"from_include", &Node.from_include)
 
     py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
         py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),

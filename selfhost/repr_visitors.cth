@@ -1,0 +1,131 @@
+include <pybind11/pybind11.h>
+
+include (visitor)
+include (ast)
+include (string_utils)
+
+struct (EvalableAstReprVisitor(Visitor):
+
+    repr = ""
+
+    def (visit: virtual:mut, node: Node:
+        selph : py.object = py.cast((&node)->get())
+        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
+        self.repr += classname + "("
+        if (node.func:
+            node.func.accept(*this)
+        )
+        self.repr += ")(["
+        for (arg in node.args:
+            arg.accept(*this)
+            self.repr += ", "
+        )
+        self.repr += "])"
+    )
+
+    def (visit: virtual:mut, node: UnOp:
+        self.repr += "(" +  node.op + " "
+        node.args[0].accept(*this)
+        self.repr += ")"
+    )
+
+    def (visit: virtual:mut, node: LeftAssociativeUnOp:
+        pass
+    )
+
+    def (visit: virtual:mut, node: BinOp:
+        pass
+    )
+
+    def (visit: virtual:mut, node: TypeOp:
+        pass
+    )
+
+    def (visit: virtual:mut, node: SyntaxTypeOp:
+        pass
+    )
+
+    def (visit: virtual:mut, node: AttributeAccess:
+        pass
+    )
+
+    def (visit: virtual:mut, node: ArrowOp:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Assign:
+        pass
+    )
+
+    def (visit: virtual:mut, node: ScopeResolution:
+        pass
+    )
+
+    def (visit: virtual:mut, node: NamedParameter:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Identifier:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Call:
+        pass
+    )
+
+    def (visit: virtual:mut, node: ArrayAccess:
+        pass
+    )
+
+    def (visit: virtual:mut, node: BracedCall:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Template:
+        pass
+    )
+
+    def (visit: virtual:mut, node: StringLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: IntegerLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: FloatLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: ListLike_:
+        pass
+    )
+
+    def (visit: virtual:mut, node: ListLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: TupleLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: BracedLiteral:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Block:
+        pass
+    )
+
+    def (visit: virtual:mut, node: Module:
+        pass
+    )
+
+    def (visit: virtual:mut, node: RedundantParens:
+        pass
+    )
+
+    def (visit: virtual:mut, node: InfixWrapper_:
+        pass
+    )
+)
