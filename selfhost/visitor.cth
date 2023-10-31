@@ -1,17 +1,59 @@
-#include (ast)
-
-
 class (Node)
+class (UnOp)
+class (LeftAssociativeUnOp)
+class (BinOp)
+class (TypeOp)
+class (SyntaxTypeOp)
+class (AttributeAccess)
+class (ArrowOp)
+class (ScopeResolution)
+class (Assign)
+class (NamedParameter)
 class (Identifier)
+class (Call)
+class (ArrayAccess)
+class (BracedCall)
+class (Template)
+class (StringLiteral)
+class (IntegerLiteral)
+class (FloatLiteral)
+class (ListLike_)
 class (ListLiteral)
+class (TupleLiteral)
+class (BracedLiteral)
+class (Block)
+class (Module)
+class (RedundantParens)
+class (InfixWrapper_)
 
 
 struct (Visitor:
-
     def (visit: virtual:mut, node: Node): void = 0
-
-    def (visit: virtual:mut, ident: Identifier): void = 0
-
-    def (visit: virtual:mut, list_literal: ListLiteral): void = 0
+    def (visit: virtual:mut, node: UnOp): void = 0
+    def (visit: virtual:mut, node: LeftAssociativeUnOp): void = 0
+    def (visit: virtual:mut, node: BinOp): void = 0
+    def (visit: virtual:mut, node: TypeOp): void = 0
+    def (visit: virtual:mut, node: SyntaxTypeOp): void = 0
+    def (visit: virtual:mut, node: AttributeAccess): void = 0
+    def (visit: virtual:mut, node: ArrowOp): void = 0
+    def (visit: virtual:mut, node: Assign): void = 0
+    def (visit: virtual:mut, node: ScopeResolution): void = 0
+    def (visit: virtual:mut, node: NamedParameter): void = 0
+    def (visit: virtual:mut, node: Identifier): void = 0
+    def (visit: virtual:mut, node: Call): void = 0
+    def (visit: virtual:mut, node: ArrayAccess): void = 0
+    def (visit: virtual:mut, node: BracedCall): void = 0
+    def (visit: virtual:mut, node: Template): void = 0
+    def (visit: virtual:mut, node: StringLiteral): void = 0
+    def (visit: virtual:mut, node: IntegerLiteral): void = 0
+    def (visit: virtual:mut, node: FloatLiteral): void = 0
+    def (visit: virtual:mut, node: ListLike_): void = 0
+    def (visit: virtual:mut, node: ListLiteral): void = 0
+    def (visit: virtual:mut, node: TupleLiteral): void = 0
+    def (visit: virtual:mut, node: BracedLiteral): void = 0
+    def (visit: virtual:mut, node: Block): void = 0
+    def (visit: virtual:mut, node: Module): void = 0
+    def (visit: virtual:mut, node: RedundantParens): void = 0
+    def (visit: virtual:mut, node: InfixWrapper_): void = 0
 )
 
