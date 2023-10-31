@@ -328,12 +328,6 @@ def codegen_class(node : Call, cx):
     name = node.args[0]
     inherits = None
 
-    if isinstance(name, Template):
-        template_args = name.args
-        name = name.func
-    else:
-        template_args = None
-
     if isinstance(name, Call):
         if len(name.args) != 1:
             if len(name.args) == 0:
@@ -341,6 +335,12 @@ def codegen_class(node : Call, cx):
             raise CodeGenError("Multiple inheritance is not supported yet", name)
         inherits = name.args[0]
         name = name.func
+
+    if isinstance(name, Template):
+        template_args = name.args
+        name = name.func
+    else:
+        template_args = None
 
     if not isinstance(name, Identifier):
         raise CodeGenError("bad class first arg", name)
@@ -454,7 +454,7 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
-    base_class_type : typing.Optional[str] = inherits.name if inherits is not None else None
+    base_class_type : typing.Optional[str] = codegen_node(inherits, cx) if inherits is not None else None
     classdef.is_concrete = not classdef.is_generic_param_index
 
     if constructor_node is not None:
@@ -567,7 +567,7 @@ def codegen_class(node : Call, cx):
 
             inherits_dfn = cx.lookup_class(inherits)
 
-            if not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual:
+            if not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual and isinstance(inherits, Identifier):
                 # here CTAD takes care of the real type of the base class (in case the base class is a template)
                 # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
                 base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
@@ -617,7 +617,7 @@ def codegen_class(node : Call, cx):
         default_inherits.append("public " + base_class_type)
 
     if not inherits:
-        if classdef.is_unique:
+        if classdef.is_unique or classdef.is_struct:
             # no longer necessary for autoderef (but would be required for call_or_construct)
             default_inherits += ["ceto::object"]
         else:
@@ -627,8 +627,7 @@ def codegen_class(node : Call, cx):
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
-    if inherits and not constructor_node:
-        # TODO maybe a transpiler error when base class is a template
+    if inherits and not constructor_node and isinstance(inherits, Identifier):
         class_header += "using " + base_class_type + "::" + base_class_type + ";\n\n"
 
     if typenames:
@@ -1029,7 +1028,7 @@ def class_name_node_from_inline_method(defcallnode : Call):
         if isinstance(classname, Call):
             # inheritance
             classname = classname.func
-        assert isinstance(classname, Identifier)
+        assert isinstance(classname, (Identifier, Template))
         return classname
     return None
 
@@ -1062,7 +1061,7 @@ def codegen_def(defnode: Call, cx):
     class_identifier = class_name_node_from_inline_method(defnode)
     is_method = class_identifier is not None
     if is_method:
-        class_name = class_identifier.name
+        class_name = codegen_node(class_identifier, cx)
     else:
         class_name = None
 
