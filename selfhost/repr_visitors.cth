@@ -4,18 +4,34 @@ include (visitor)
 include (ast)
 include (string_utils)
 
+
+struct (BaseVisitor<typename:T>:
+    x : T
+)
+
 struct (EvalableAstReprVisitor(Visitor):
+    # This should really just be a few virtual methods on Node, but we want to keep the visitor infrastructure in place for the future
 
     repr = ""
 
     def (visit: virtual:mut, node: Node:
-        selph : py.object = py.cast((&node)->get())
-        classname = std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
-        self.repr += classname + "("
-        if (node.func:
-            node.func.accept(*this)
-        )
-        self.repr += ")(["
+        pass
+    )
+
+    def (visit: virtual:mut, node: UnOp:
+        self.repr += class_name(node) + "(" +  node.op + ", ["
+        node.args[0].accept(*this)
+        self.repr += "])"
+    )
+
+    def (visit: virtual:mut, node: LeftAssociativeUnOp:
+        self.repr += class_name(node) + "(" +  node.op + ", ["
+        node.args[0].accept(*this)
+        self.repr += "])"
+    )
+
+    def (visit: virtual:mut, node: BinOp:
+        self.repr += class_name(node) + "(" +  node.op + ", ["
         for (arg in node.args:
             arg.accept(*this)
             self.repr += ", "
@@ -23,46 +39,32 @@ struct (EvalableAstReprVisitor(Visitor):
         self.repr += "])"
     )
 
-    def (visit: virtual:mut, node: UnOp:
-        self.repr += "(" +  node.op + " "
-        node.args[0].accept(*this)
-        self.repr += ")"
-    )
-
-    def (visit: virtual:mut, node: LeftAssociativeUnOp:
-        pass
-    )
-
-    def (visit: virtual:mut, node: BinOp:
-        pass
-    )
-
     def (visit: virtual:mut, node: TypeOp:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: SyntaxTypeOp:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: AttributeAccess:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: ArrowOp:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: Assign:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: ScopeResolution:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: NamedParameter:
-        pass
+        self.visit(static_pointer_cast<BinOp.class>(node))
     )
 
     def (visit: virtual:mut, node: Identifier:

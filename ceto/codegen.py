@@ -328,6 +328,12 @@ def codegen_class(node : Call, cx):
     name = node.args[0]
     inherits = None
 
+    if isinstance(name, Template):
+        template_args = name.args
+        name = name.func
+    else:
+        template_args = None
+
     if isinstance(name, Call):
         if len(name.args) != 1:
             if len(name.args) == 0:
@@ -408,6 +414,10 @@ def codegen_class(node : Call, cx):
                 continue
             elif b.declared_type is None:  # or b.declared_type.name in ["mut", "const"]:  # BAD: don't make it easy/convenient to declare const data members
                 # generic case
+
+                if template_args is not None:
+                    raise CodeGenError("no generic params with an explicit template class")
+
                 t = gensym("C")
                 typenames.append(t)
                 field_types[b.name] = t
@@ -518,6 +528,9 @@ def codegen_class(node : Call, cx):
                             init_param_type_from_name[arg.name] = field_type
 
                 if not found_type:
+                    if template_args:
+                        raise CodeGenError("no generic params in constructor for explicit template class", node)
+
                     t = gensym("C")
                     typenames.append(t)
                     init_params.append("const " + t + "& " + arg.name)
@@ -619,7 +632,9 @@ def codegen_class(node : Call, cx):
         class_header += "using " + base_class_type + "::" + base_class_type + ";\n\n"
 
     if typenames:
-        template_header = "template <" + ",".join(["typename " + t for t in typenames]) + ">"
+        template_header = "template <" + ", ".join(["typename " + t for t in typenames]) + ">"
+    elif template_args:
+        template_header = "template <" + ", ".join(codegen_node(t, cx) for t in template_args) + ">"
     else:
         template_header = ""
 
