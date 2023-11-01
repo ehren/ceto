@@ -34,7 +34,7 @@ struct Holder : ceto::shared_object {
 
     std::shared_ptr<const Foo> f;
 
-    explicit Holder(std::shared_ptr<const Foo> f) : f(f) {}
+    explicit Holder(std::shared_ptr<const Foo> f) : f(std::move(f)) {}
 
     Holder() = delete;
 

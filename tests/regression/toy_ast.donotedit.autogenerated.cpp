@@ -37,7 +37,7 @@ struct Node : ceto::shared_object {
             return r;
         }
 
-    explicit Node(std::shared_ptr<const Node> func, std::vector<std::shared_ptr<const Node>> args) : func(func), args(args) {}
+    explicit Node(std::shared_ptr<const Node> func, std::vector<std::shared_ptr<const Node>> args) : func(std::move(func)), args(std::move(args)) {}
 
     Node() = delete;
 

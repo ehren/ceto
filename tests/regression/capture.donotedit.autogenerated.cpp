@@ -42,7 +42,7 @@ struct Inner : ceto::shared_object {
                     ceto::mado(f)->foo(x);
                 }
 
-            explicit Inner(std::shared_ptr<const Foo> f) : f(f) {}
+            explicit Inner(std::shared_ptr<const Foo> f) : f(std::move(f)) {}
 
             Inner() = delete;
 

@@ -412,7 +412,7 @@ def codegen_class(node : Call, cx):
 
             if b.name == "pass":
                 continue
-            elif b.declared_type is None:  # or b.declared_type.name in ["mut", "const"]:  # BAD: don't make it easy/convenient to declare const data members
+            elif b.declared_type is None:
                 # generic case
 
                 if template_args is not None:
@@ -422,26 +422,13 @@ def codegen_class(node : Call, cx):
                 typenames.append(t)
                 field_types[b.name] = t
                 decl_const_part = ""
-                # BAD: don't promote const data members (remove this commented code)
-                # if (b.declared_type is None and not mut_by_default) or (b.declared_type and b.declared_type.name == "const"):
-                #     decl_const_part = "const "
                 decl = decl_const_part + t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = True
             else:
-                # idea to "flatten out" the generic params is too crazy (and supporting the same behaviour in function defs means losing auto function arg deduction (more spamming decltype would maybe fix)
-                # dependent_class = cx.lookup_class(b.declared_type)
-                # if dependent_class is not None and dependent_class.num_generic_params > 0:
-                #     # TODO fix unique here
-                #     deps = [gensym("C") for _ in range(dependent_class.num_generic_params)]
-                #     typenames.extend(deps)
-                #     decl = "std::shared_ptr<" + dependent_class.name_node.name + "<" + ", ".join(deps) + ">> " + b.name
-                # else:
                 field_type = b.declared_type
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
-                # field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)  # BAD / remove this: const data members are bad
-                # decl = field_type_const_part + field_type_str + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
                 classdef.is_generic_param_index[block_index] = False
 
@@ -523,6 +510,7 @@ def codegen_class(node : Call, cx):
                         found_type = True
                         if isinstance(field_type, Node):
                             # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
+                            # TODO this is not the worst thing (which would be byval + a copy) but we should be std::move-ing if self.a = a is the last use of param a (at least in the same circumstances as we do for uninitialized variables constructor synthesis)
                             arg.declared_type = field_type
                             typed_arg_str_lhs, typed_arg_str_rhs = _codegen_typed_def_param_as_tuple(arg, initcx)  # this might add const& etc
                             init_params.append(typed_arg_str_lhs + " " + typed_arg_str_rhs)
@@ -564,8 +552,6 @@ def codegen_class(node : Call, cx):
                 elif is_self_field_access(arg):  # this would fail in C++
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
-                    # this is silly:
-                    # super_init_fake_args.append("std::declval<std::remove_cvref_t<decltype(" + codegen_node(arg, inner_cx) + ")>>()")
                     super_init_fake_args.append(codegen_node(arg, inner_cx))
 
             super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
@@ -597,9 +583,15 @@ def codegen_class(node : Call, cx):
         if constructor_node is not None:
             raise CodeGenError("class {} defines a constructor (init method) but does not initialize these attributes: {}".format(name.name, ", ".join(str(u) for u in uninitialized_attributes)))
 
+        def initializer_list_initializer(a):
+            if a.declared_type and (_should_add_const_ref_to_typed_param(a, cx) or (cd := _class_def_from_typed_param(a, cx)) and cd.is_unique):
+                return a.name + "(std::move(" + a.name + "))"
+            else:
+                return a.name + "(" + a.name + ")"
+
         # autosynthesize constructor
         cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(uninitialized_attribute_declarations) + ") : "
-        cpp += ", ".join([a.name + "(" + a.name + ")" for a in uninitialized_attributes]) + " {}\n\n"
+        cpp += ", ".join([initializer_list_initializer(a) for a in uninitialized_attributes]) + " {}\n\n"
         should_disable_default_constructor = True
 
     if should_disable_default_constructor:
@@ -783,13 +775,25 @@ def strip_mut_or_const(type_node : Node):
     return type_node
 
 
+def _class_def_from_typed_param(param, cx):
+    assert param.declared_type is not None
+    type_node = strip_mut_or_const(param.declared_type)
+    # note that mut:Foo (or Foo:mut), that is shared_ptr<Foo>, should still be passed by const ref
+    if class_def := cx.lookup_class(type_node):
+        return not class_def
+
+
 def _should_add_const_ref_to_typed_param(param, cx):
     assert param.declared_type is not None
     type_node = strip_mut_or_const(param.declared_type)
     # note that mut:Foo (or Foo:mut), that is shared_ptr<Foo>, should still be passed by const ref
     if class_def := cx.lookup_class(type_node):
         return not class_def.is_unique
-    return isinstance(param.declared_type, ListLiteral) or param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string"
+    if isinstance(param.declared_type, (ListLiteral, TupleLiteral)):
+        return True
+    if param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string":
+        return True
+    return False
 
 
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1

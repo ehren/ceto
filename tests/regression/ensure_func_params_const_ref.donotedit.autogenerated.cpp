@@ -32,7 +32,7 @@ struct FooConcrete : ceto::shared_object {
 
     std::string a;
 
-    explicit FooConcrete(std::string a) : a(a) {}
+    explicit FooConcrete(std::string a) : a(std::move(a)) {}
 
     FooConcrete() = delete;
 
@@ -52,7 +52,7 @@ struct FooConcreteUnique : ceto::object {
 
     std::string a;
 
-    explicit FooConcreteUnique(std::string a) : a(a) {}
+    explicit FooConcreteUnique(std::string a) : a(std::move(a)) {}
 
     FooConcreteUnique() = delete;
 

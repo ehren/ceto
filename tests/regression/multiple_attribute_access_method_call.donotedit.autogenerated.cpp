@@ -27,7 +27,7 @@ struct Foo : ceto::shared_object {
             return (&self) -> use_count();
         }
 
-    explicit Foo(std::shared_ptr<const Foo> f) : f(f) {}
+    explicit Foo(std::shared_ptr<const Foo> f) : f(std::move(f)) {}
 
     Foo() = delete;
 

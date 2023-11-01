@@ -42,7 +42,7 @@ struct C : ceto::shared_object {
 
                     std::vector<std::vector<int>> a;
 
-            explicit C(std::vector<std::vector<int>> a) : a(a) {}
+            explicit C(std::vector<std::vector<int>> a) : a(std::move(a)) {}
 
             C() = delete;
 

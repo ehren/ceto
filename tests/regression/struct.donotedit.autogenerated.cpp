@@ -22,7 +22,7 @@ struct Foo : ceto::object {
 
     std::string x;
 
-    explicit Foo(std::string x) : x(x) {}
+    explicit Foo(std::string x) : x(std::move(x)) {}
 
     Foo() = delete;
 

@@ -66,7 +66,7 @@ if (const auto s = ceto::mado(w)->lock()) {
             std::cout << std::string {"Timer destruct\n"};
         }
 
-    explicit Timer(std::shared_ptr<const Delegate> _delegate) : _delegate(_delegate) {}
+    explicit Timer(std::shared_ptr<const Delegate> _delegate) : _delegate(std::move(_delegate)) {}
 
     Timer() = delete;
 

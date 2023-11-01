@@ -41,7 +41,7 @@ struct HolderMut : ceto::shared_object {
 
     std::shared_ptr<Foo> f;
 
-    explicit HolderMut(std::shared_ptr<Foo> f) : f(f) {}
+    explicit HolderMut(std::shared_ptr<Foo> f) : f(std::move(f)) {}
 
     HolderMut() = delete;
 
@@ -51,7 +51,7 @@ struct HolderConst : ceto::shared_object {
 
     std::shared_ptr<const Foo> f;
 
-    explicit HolderConst(std::shared_ptr<const Foo> f) : f(f) {}
+    explicit HolderConst(std::shared_ptr<const Foo> f) : f(std::move(f)) {}
 
     HolderConst() = delete;
 

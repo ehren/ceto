@@ -28,7 +28,7 @@ struct Foo : ceto::shared_object {
 
     std::remove_cvref_t<decltype(std::vector {{1, 2, 3}})> d = std::vector {{1, 2, 3}};
 
-    explicit Foo(std::vector<int> a) : a(a) {}
+    explicit Foo(std::vector<int> a) : a(std::move(a)) {}
 
     Foo() = delete;
 

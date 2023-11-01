@@ -22,7 +22,7 @@
 ;
 #include <iostream>
 ;
-    inline auto foo(const std::tuple<int, int>  tuple1, const decltype(std::make_tuple(0, 1)) tuple2 = std::make_tuple(0, 1)) -> auto {
+    inline auto foo(const std::tuple<int, int>&  tuple1, const decltype(std::make_tuple(0, 1)) tuple2 = std::make_tuple(0, 1)) -> auto {
         return std::make_tuple(std::get<0>(tuple1), std::get<1>(tuple2));
     }
 
