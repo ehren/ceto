@@ -7,112 +7,112 @@ include (string_utils)
 struct (BaseVisitor<class:Derived>(Visitor):
     ### taken from https://github.com/symengine/symengine/blob/master/symengine/visitor.h
 
-    def (visit: virtual:mut, node: Node:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Node.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: UnOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:UnOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: LeftAssociativeUnOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:LeftAssociativeUnOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: BinOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:BinOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: TypeOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:TypeOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: SyntaxTypeOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:SyntaxTypeOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: AttributeAccess:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:AttributeAccess.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: ArrowOp:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:ArrowOp.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Assign:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Assign.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: ScopeResolution:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:ScopeResolution.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: NamedParameter:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:NamedParameter.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Identifier:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Identifier.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Call:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Call.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: ArrayAccess:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:ArrayAccess.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: BracedCall:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:BracedCall.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Template:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Template.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: StringLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:StringLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: IntegerLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:IntegerLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: FloatLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:FloatLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: ListLike_:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:ListLike_.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: ListLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:ListLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: TupleLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:TupleLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: BracedLiteral:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:BracedLiteral.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Block:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Block.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: Module:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:Module.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: RedundantParens:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:RedundantParens.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 
-    def (visit: virtual:mut, node: InfixWrapper_:
-        dynamic_cast<Derived:ptr>(this)->visit(node)
+    def (visit: virtual:mut, node: const:InfixWrapper_.class:ref:
+        static_cast<Derived:ptr>(this)->visit(node)
     )
 )
 
@@ -121,28 +121,46 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
 
     repr = ""
 
-    def (visit: virtual:mut, node: Node:
-        repr += "node"
+    def (visit: virtual:mut, node: const:Node.class:ref:
+        self.repr += class_name(&node) + "("
+
+        if (node.func:
+            node.func.accept(*this)
+            self.repr += ", "
+        )
+
+        if (node.args.size() > 0:
+            self.repr += "["
+
+            for (arg in node.args:
+                arg.accept(*this)
+                self.repr += ", "
+            )
+
+            self.repr += "]"
+        )
+
+        self.repr += ")"
     )
-#
-    def (visit: virtual:mut, node: UnOp:
-        self.repr += class_name(node) + "(" +  node.op + ", ["
+
+    def (visit: virtual:mut, node: const:UnOp.class:ref:
+        self.repr += class_name(&node) + "(" +  node.op + ", ["
         node.args[0].accept(*this)
         self.repr += "])"
     )
 #
-#    def (visit: virtual:mut, node: LeftAssociativeUnOp:
-#        self.repr += class_name(node) + "(" +  node.op + ", ["
-#        node.args[0].accept(*this)
-#        self.repr += "])"
-#    )
-#
-#    def (visit: virtual:mut, node: BinOp:
-#        self.repr += class_name(node) + "(" +  node.op + ", ["
-#        for (arg in node.args:
-#            arg.accept(*this)
-#            self.repr += ", "
-#        )
-#        self.repr += "])"
-#    )
+    def (visit: virtual:mut, node: const:LeftAssociativeUnOp.class:ref:
+        self.repr += class_name(&node) + "(" +  node.op + ", ["
+        node.args[0].accept(*this)
+        self.repr += "])"
+    )
+
+    def (visit: virtual:mut, node: const:BinOp.class:ref:
+        self.repr += class_name(&node) + "(" +  node.op + ", ["
+        for (arg in node.args:
+            arg.accept(*this)
+            self.repr += ", "
+        )
+        self.repr += "])"
+    )
 )

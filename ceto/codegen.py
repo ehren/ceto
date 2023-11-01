@@ -459,7 +459,7 @@ def codegen_class(node : Call, cx):
         base_class_type = inherits.name
     elif isinstance(inherits, Template):
         base_class_type = inherits.func.name + "<" + ", ".join(codegen_node(t, cx) for t in inherits.args) + ">"
-        
+
     classdef.is_concrete = not classdef.is_generic_param_index
 
     if constructor_node is not None:

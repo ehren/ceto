@@ -31,112 +31,112 @@ template <class Derived>struct BaseVisitor : public Visitor {
 
 using Visitor::Visitor;
 
-         virtual inline auto visit(const std::shared_ptr<const Node>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Node &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const UnOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const UnOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const LeftAssociativeUnOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const LeftAssociativeUnOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const BinOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const BinOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const TypeOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const TypeOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const SyntaxTypeOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const SyntaxTypeOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const AttributeAccess>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const AttributeAccess &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const ArrowOp>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const ArrowOp &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Assign>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Assign &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const ScopeResolution>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const ScopeResolution &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const NamedParameter>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const NamedParameter &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Identifier>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Identifier &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Call>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Call &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const ArrayAccess>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const ArrayAccess &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const BracedCall>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const BracedCall &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Template>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Template &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const StringLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const StringLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const IntegerLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const IntegerLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const FloatLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const FloatLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const ListLike_>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const ListLike_ &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const ListLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const ListLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const TupleLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const TupleLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const BracedLiteral>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const BracedLiteral &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Block>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Block &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const Module>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const Module &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const RedundantParens>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const RedundantParens &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const std::shared_ptr<const InfixWrapper_>&  node) -> void {
-            dynamic_cast<Derived *>(this) -> visit(node);
+         virtual inline auto visit( const InfixWrapper_ &  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
         }
 
 };
@@ -145,13 +145,41 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     std::remove_cvref_t<decltype(std::string {""})> repr = std::string {""};
 
-         virtual inline auto visit(const std::shared_ptr<const Node>&  node) -> void {
-            repr += std::string {"node"};
+         virtual inline auto visit( const Node &  node) -> void {
+            (this -> repr) += (class_name((&node)) + std::string {"("});
+if (ceto::mado(node)->func) {
+                ceto::mado(ceto::mado(node)->func)->accept((*this));
+                (this -> repr) += std::string {", "};
+            }
+if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
+                (this -> repr) += std::string {"["};
+                for(const auto& arg : ceto::mado(node)->args) {
+                    ceto::mado(arg)->accept((*this));
+                    (this -> repr) += std::string {", "};
+                }
+                (this -> repr) += std::string {"]"};
+            }
+            (this -> repr) += std::string {")"};
         }
 
-         virtual inline auto visit(const std::shared_ptr<const UnOp>&  node) -> void {
-            (this -> repr) += (((class_name(node) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+         virtual inline auto visit( const UnOp &  node) -> void {
+            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
+            (this -> repr) += std::string {"])"};
+        }
+
+         virtual inline auto visit( const LeftAssociativeUnOp &  node) -> void {
+            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+            ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
+            (this -> repr) += std::string {"])"};
+        }
+
+         virtual inline auto visit( const BinOp &  node) -> void {
+            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+            for(const auto& arg : ceto::mado(node)->args) {
+                ceto::mado(arg)->accept((*this));
+                (this -> repr) += std::string {", "};
+            }
             (this -> repr) += std::string {"])"};
         }
 

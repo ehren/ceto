@@ -16,7 +16,7 @@ py: namespace = pybind11
 
 class (Node)
 
-def (class_name, node: Node) : std.string
+def (class_name, node: Node.class:ptr) : std.string
 
 
 class (Node:
@@ -36,7 +36,7 @@ class (Node:
     from_include = false
 
     def (repr: virtual:
-        classname = class_name(self)
+        classname = class_name(this)
         csv = join(self.args, lambda(a, a.repr()), ", ")
         return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
@@ -54,7 +54,7 @@ class (Node:
     )
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -71,7 +71,7 @@ class (UnOp(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -88,7 +88,7 @@ class (LeftAssociativeUnOp(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -113,14 +113,14 @@ class (BinOp(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (TypeOp(BinOp):
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -128,7 +128,7 @@ class (SyntaxTypeOp(TypeOp):
     synthetic_lambda_return_lambda : Node = None
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -139,25 +139,25 @@ class (AttributeAccess(BinOp):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (ArrowOp(BinOp):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (ScopeResolution(BinOp):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (Assign(BinOp):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -167,7 +167,7 @@ class (NamedParameter(Assign):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -188,7 +188,7 @@ class (Identifier(Node):
     ) : std.optional<std.string>
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -201,7 +201,7 @@ class (Call(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -212,7 +212,7 @@ class (ArrayAccess(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -223,7 +223,7 @@ class (BracedCall(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -234,7 +234,7 @@ class (Template(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -295,7 +295,7 @@ class (StringLiteral(Node):
     ) : string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -314,7 +314,7 @@ class (IntegerLiteral(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -333,7 +333,7 @@ class (FloatLiteral(Node):
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -343,36 +343,36 @@ class (ListLike_(Node):
     )
 
     def (repr:
-        classname = class_name(self)
+        classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (ListLiteral(ListLike_):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (TupleLiteral(ListLike_):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (BracedLiteral(ListLike_):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
 class (Block(ListLike_):
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -380,7 +380,7 @@ class (Module(Block):
     has_main_function = false
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -390,12 +390,12 @@ class (RedundantParens(Node):
     )
 
     def (repr:
-        classname = class_name(self)
+        classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 
@@ -405,12 +405,12 @@ class (InfixWrapper_(Node):
     )
 
     def (repr:
-        classname = class_name(self)
+        classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: virtual, visitor: Visitor:mut:ref:
-        visitor.visit(self)
+        visitor.visit(*this)
     )
 )
 

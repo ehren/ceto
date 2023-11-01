@@ -36,7 +36,7 @@
 namespace py = pybind11;
 class Node;
 
-    auto class_name(const std::shared_ptr<const Node>&  node) -> std::string;
+    auto class_name(const Node *  node) -> std::string;
 
 struct Node : ceto::shared_object {
 
@@ -55,8 +55,7 @@ struct Node : ceto::shared_object {
     std::remove_cvref_t<decltype(false)> from_include = false;
 
          virtual inline auto repr() const -> std::string {
-            const auto self = ceto::shared_from(this);
-            const auto classname = class_name(self);
+            const auto classname = class_name(this);
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
@@ -76,8 +75,7 @@ struct Node : ceto::shared_object {
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : func(func), args(args), source(source) {
@@ -96,8 +94,7 @@ struct UnOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<st
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit UnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source), op(op) {
@@ -116,8 +113,7 @@ struct LeftAssociativeUnOp : public std::type_identity_t<decltype(Node(nullptr, 
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source), op(op) {
@@ -144,8 +140,7 @@ struct BinOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<s
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source), op(op) {
@@ -160,8 +155,7 @@ struct TypeOp : public BinOp {
 using BinOp::BinOp;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -173,8 +167,7 @@ using TypeOp::TypeOp;
     std::shared_ptr<const Node> synthetic_lambda_return_lambda = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(synthetic_lambda_return_lambda)>>);
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -188,8 +181,7 @@ using BinOp::BinOp;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -199,8 +191,7 @@ struct ArrowOp : public BinOp {
 using BinOp::BinOp;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -210,8 +201,7 @@ struct ScopeResolution : public BinOp {
 using BinOp::BinOp;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -221,8 +211,7 @@ struct Assign : public BinOp {
 using BinOp::BinOp;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -238,8 +227,7 @@ using Assign::Assign;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -257,8 +245,7 @@ struct Identifier : public std::type_identity_t<decltype(Node(nullptr, std::vect
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit Identifier(const std::string&  name, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), _name(name) {
@@ -282,8 +269,7 @@ using Node::Node;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -300,8 +286,7 @@ using Node::Node;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -318,8 +303,7 @@ using Node::Node;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -336,8 +320,7 @@ using Node::Node;
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -382,8 +365,7 @@ struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::v
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit StringLiteral(const std::string&  str, const std::shared_ptr<const Identifier>& prefix = nullptr, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}, std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), str(str), prefix(prefix), suffix(suffix) {
@@ -409,8 +391,7 @@ struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, s
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit IntegerLiteral(const std::string&  integer_string, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, {}, std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, {}, source), integer_string(integer_string), suffix(suffix) {
@@ -436,8 +417,7 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit FloatLiteral(const std::string&  float_string, const std::shared_ptr<const Identifier>&  suffix, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, {}, std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, {}, source), float_string(float_string), suffix(suffix) {
@@ -450,16 +430,14 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 struct ListLike_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto self = ceto::shared_from(this);
-            const auto classname = class_name(self);
+            const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit ListLike_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source) {
@@ -474,8 +452,7 @@ struct ListLiteral : public ListLike_ {
 using ListLike_::ListLike_;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -485,8 +462,7 @@ struct TupleLiteral : public ListLike_ {
 using ListLike_::ListLike_;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -496,8 +472,7 @@ struct BracedLiteral : public ListLike_ {
 using ListLike_::ListLike_;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -507,8 +482,7 @@ struct Block : public ListLike_ {
 using ListLike_::ListLike_;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -520,8 +494,7 @@ using Block::Block;
     std::remove_cvref_t<decltype(false)> has_main_function = false;
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
 };
@@ -529,16 +502,14 @@ using Block::Block;
 struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto self = ceto::shared_from(this);
-            const auto classname = class_name(self);
+            const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit RedundantParens(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source) {
@@ -551,16 +522,14 @@ struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std:
 struct InfixWrapper_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
         inline auto repr() const -> std::string {
-            const auto self = ceto::shared_from(this);
-            const auto classname = class_name(self);
+            const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
          virtual inline auto accept( Visitor &  visitor) const -> void {
-            const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            ceto::mado(visitor)->visit((*this));
         }
 
     explicit InfixWrapper_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> (nullptr, args, source) {
