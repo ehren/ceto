@@ -1066,7 +1066,13 @@ def codegen_def(defnode: Call, cx):
     class_identifier = class_name_node_from_inline_method(defnode)
     is_method = class_identifier is not None
     if is_method:
-        class_name = codegen_node(class_identifier, cx)
+        if isinstance(class_identifier, Identifier):
+            class_name = class_identifier.name
+        elif isinstance(class_identifier, Template):
+            class_name = class_identifier.name + "<" + ", ".join(codegen_node(t, cx) for t in class_identifier.args) + ">"
+        else:
+            assert 0, class_identifier
+
     else:
         class_name = None
 
