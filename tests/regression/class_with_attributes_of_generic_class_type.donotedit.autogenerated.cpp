@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1,typename _ceto_private_C2,typename _ceto_private_C3>struct Foo : ceto::shared_object {
+template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_private_C3>struct Foo : ceto::shared_object {
 
     _ceto_private_C1 a;
 
@@ -32,7 +32,7 @@ template <typename _ceto_private_C1,typename _ceto_private_C2,typename _ceto_pri
 
 };
 
-template <typename _ceto_private_C4,typename _ceto_private_C5>struct Bar : ceto::shared_object {
+template <typename _ceto_private_C4, typename _ceto_private_C5>struct Bar : ceto::shared_object {
 
     _ceto_private_C4 a;
 
@@ -46,7 +46,7 @@ template <typename _ceto_private_C4,typename _ceto_private_C5>struct Bar : ceto:
 
 };
 
-template <typename _ceto_private_C6,typename _ceto_private_C7>struct Bar2 : ceto::shared_object {
+template <typename _ceto_private_C6, typename _ceto_private_C7>struct Bar2 : ceto::shared_object {
 
     _ceto_private_C6 a;
 
