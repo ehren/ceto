@@ -28,32 +28,32 @@ class (InfixWrapper_)
 
 
 struct (Visitor:
-    def (visit: virtual:mut, node: const:Node.class:ref): void = 0
-    def (visit: virtual:mut, node: const:UnOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:LeftAssociativeUnOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:BinOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:TypeOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:SyntaxTypeOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:AttributeAccess.class:ref): void = 0
-    def (visit: virtual:mut, node: const:ArrowOp.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Assign.class:ref): void = 0
-    def (visit: virtual:mut, node: const:ScopeResolution.class:ref): void = 0
-    def (visit: virtual:mut, node: const:NamedParameter.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Identifier.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Call.class:ref): void = 0
-    def (visit: virtual:mut, node: const:ArrayAccess.class:ref): void = 0
-    def (visit: virtual:mut, node: const:BracedCall.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Template.class:ref): void = 0
-    def (visit: virtual:mut, node: const:StringLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:IntegerLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:FloatLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:ListLike_.class:ref): void = 0
-    def (visit: virtual:mut, node: const:ListLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:TupleLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:BracedLiteral.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Block.class:ref): void = 0
-    def (visit: virtual:mut, node: const:Module.class:ref): void = 0
-    def (visit: virtual:mut, node: const:RedundantParens.class:ref): void = 0
-    def (visit: virtual:mut, node: const:InfixWrapper_.class:ref): void = 0
+    def (visit: virtual:mut, node: Node.class): void = 0
+    def (visit: virtual:mut, node: UnOp.class): void = 0
+    def (visit: virtual:mut, node: LeftAssociativeUnOp.class): void = 0
+    def (visit: virtual:mut, node: BinOp.class): void = 0
+    def (visit: virtual:mut, node: TypeOp.class): void = 0
+    def (visit: virtual:mut, node: SyntaxTypeOp.class): void = 0
+    def (visit: virtual:mut, node: AttributeAccess.class): void = 0
+    def (visit: virtual:mut, node: ArrowOp.class): void = 0
+    def (visit: virtual:mut, node: Assign.class): void = 0
+    def (visit: virtual:mut, node: ScopeResolution.class): void = 0
+    def (visit: virtual:mut, node: NamedParameter.class): void = 0
+    def (visit: virtual:mut, node: Identifier.class): void = 0
+    def (visit: virtual:mut, node: Call.class): void = 0
+    def (visit: virtual:mut, node: ArrayAccess.class): void = 0
+    def (visit: virtual:mut, node: BracedCall.class): void = 0
+    def (visit: virtual:mut, node: Template.class): void = 0
+    def (visit: virtual:mut, node: StringLiteral.class): void = 0
+    def (visit: virtual:mut, node: IntegerLiteral.class): void = 0
+    def (visit: virtual:mut, node: FloatLiteral.class): void = 0
+    def (visit: virtual:mut, node: ListLike_.class): void = 0
+    def (visit: virtual:mut, node: ListLiteral.class): void = 0
+    def (visit: virtual:mut, node: TupleLiteral.class): void = 0
+    def (visit: virtual:mut, node: BracedLiteral.class): void = 0
+    def (visit: virtual:mut, node: Block.class): void = 0
+    def (visit: virtual:mut, node: Module.class): void = 0
+    def (visit: virtual:mut, node: RedundantParens.class): void = 0
+    def (visit: virtual:mut, node: InfixWrapper_.class): void = 0
 )
 

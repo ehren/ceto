@@ -791,6 +791,8 @@ def _should_add_const_ref_to_typed_param(param, cx):
         return not class_def.is_unique
     if isinstance(param.declared_type, (ListLiteral, TupleLiteral)):
         return True
+    if isinstance(param.declared_type, AttributeAccess) and param.declared_type.rhs.name == "class" and cx.lookup_class(param.declared_type.lhs):
+        return True
     if param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string":
         return True
     return False
@@ -1073,7 +1075,7 @@ def codegen_def(defnode: Call, cx):
         if isinstance(class_identifier, Identifier):
             class_name = class_identifier.name
         elif isinstance(class_identifier, Template):
-            class_name = class_identifier.name + "<" + ", ".join(codegen_node(t, cx) for t in class_identifier.args) + ">"
+            class_name = class_identifier.func.name + "<" + ", ".join(codegen_node(t, cx) for t in class_identifier.args) + ">"
         else:
             assert 0, class_identifier
 
