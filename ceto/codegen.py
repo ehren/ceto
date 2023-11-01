@@ -454,7 +454,12 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
-    base_class_type : typing.Optional[str] = codegen_node(inherits, cx) if inherits is not None else None
+    base_class_type : typing.Optional[str] = None
+    if isinstance(inherits, Identifier):
+        base_class_type = inherits.name
+    elif isinstance(inherits, Template):
+        base_class_type = inherits.func.name + "<" + ", ".join(codegen_node(t, cx) for t in inherits.args) + ">"
+        
     classdef.is_concrete = not classdef.is_generic_param_index
 
     if constructor_node is not None:
