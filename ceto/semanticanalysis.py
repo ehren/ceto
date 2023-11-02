@@ -2,7 +2,7 @@ import typing
 from collections import defaultdict
 import sys
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, ScopeBase
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -494,9 +494,10 @@ def creates_new_variable_scope(e: Node) -> bool:
     return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
 
 
-class Scope:
+class Scope(ScopeBase):
 
     def __init__(self):
+        super().__init__()
         self.interfaces = defaultdict(list)
         self.class_definitions = []
         self.variable_definitions = []

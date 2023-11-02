@@ -30,6 +30,8 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 # trick transpiler into local variable context
 lambda(m : mut:auto:rref:
 
+    py.class_<ScopeBase.class, ScopeBase:mut>(m, c"ScopeBase").def(py.init<>())
+
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
     node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
     c"func", &Node.func).def_readwrite(

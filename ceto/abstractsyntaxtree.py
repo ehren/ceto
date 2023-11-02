@@ -10,13 +10,18 @@ except ImportError:
 if not selfhost:
     # TODO should throw away the ladder soon
 
+
+    class ScopeBase:
+        pass
+
+
     class Node:
 
         def __init__(self, func, args, source = None):
             self.name : str = None
             self.parent : Node = None
             self.declared_type : Node = None
-            self.scope = None
+            self.scope: ScopeBase = None
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source
