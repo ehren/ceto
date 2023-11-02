@@ -19,25 +19,33 @@ def (class_name, node: Node.class:ptr:
     return std.string(py.str(selph.attr(c"__class__").attr(c"__name__")))
 ) : std.string
 
-
-#PYBIND11_MAKE_OPAQUE(std.vector<Node>)
-#PYBIND11_MAKE_OPAQUE(std.map<string, Node>)
-
 cpp'
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 '
 
 # trick transpiler into local variable context
 lambda(m : mut:auto:rref:
-
-    py.class_<ScopeBase.class, ScopeBase:mut>(m, c"ScopeBase").def(py.init<>())
+    # we don't want to define a virtual base class for Scope (defined in python). Nor do we want to expost py.class
+    node_scope_map : mut:static:std.map<Node:weak, py.object> = {}
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
-    node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
+    node : mut = py.class_<Node.class, Node:mut>(m, c"Node", py.dynamic_attr()).def_readwrite(
     c"func", &Node.func).def_readwrite(
     c"args", &Node.args).def_readwrite(
-    c"declared_type", &Node.declared_type).def_readwrite(
-    c"scope", &Node.scope).def_readwrite(
+    c"declared_type", &Node.declared_type).def_readwrite(   #.def_property(
+#    c"scope", lambda(s: const:py.object:ref:
+#        thiz = s.cast<Node.class:ptr>()
+#        strong = ceto.shared_from(thiz)
+#        w : weak:Node = strong
+#        node_scope_map[w]
+#    ), lambda(s: const:py.object:ref, o:const:py.object:ref:
+#        thiz = s.cast<Node.class:ptr>()
+#        strong = ceto.shared_from(thiz)
+#        w : weak:Node = strong
+#        node_scope_map[w] = o
+#        return
+#        void()
+#    )).def_readwrite(
     c"source", &Node.source).def(
     c"__repr__", &Node.repr).def(
     c"ast_repr", lambda(n: Node.class:

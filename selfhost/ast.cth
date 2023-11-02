@@ -13,11 +13,6 @@ class (Node)
 def (class_name, node: Node.class:ptr) : std.string
 
 
-class (ScopeBase:
-    pass  # defined/subclassed entirely in python
-)
-
-
 class (MacroScope:
     pass
 )
@@ -35,7 +30,6 @@ class (Node:
     )
 
     declared_type: Node = None
-    scope: ScopeBase = None
     macro_scope: MacroScope = None
     _parent: Node:weak = {}
     from_include = false

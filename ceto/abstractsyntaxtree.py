@@ -3,16 +3,18 @@ import typing
 selfhost = True
 try:
     from ._abstractsyntaxtree import *
-    # selfhost = False
+    selfhost = False
+
+    def _set_scope(self, o):
+        self.__dict__["scope"] = o
+    Node.scope = property(lambda n: n.__dict__["scope"], _set_scope)
+
 except ImportError:
     selfhost = False
 
 if not selfhost:
     # TODO should throw away the ladder soon
 
-
-    class ScopeBase:
-        pass
 
 
     class Node:
@@ -21,7 +23,7 @@ if not selfhost:
             self.name : str = None
             self.parent : Node = None
             self.declared_type : Node = None
-            self.scope: ScopeBase = None
+            self.scope = None
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source

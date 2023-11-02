@@ -2,7 +2,7 @@ import typing
 from collections import defaultdict
 import sys
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, ScopeBase
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -494,7 +494,7 @@ def creates_new_variable_scope(e: Node) -> bool:
     return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
 
 
-class Scope(ScopeBase):
+class Scope:
 
     def __init__(self):
         super().__init__()
@@ -643,7 +643,7 @@ class ScopeVisitor:
 
     def visit_Identifier(self, ident):
         self.visit_Node(ident)
-        if ident.declared_type and not ident.declared_type.name in ["using", "namespace", "typedef"]:
+        if ident.declared_type and not isinstance(ident.parent, Template) and not ident.declared_type.name in ["using", "namespace", "typedef"] :
             ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
 
     def visit_Assign(self, assign):

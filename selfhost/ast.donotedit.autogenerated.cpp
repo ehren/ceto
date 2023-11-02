@@ -44,8 +44,8 @@ namespace py = pybind11;
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 ;
 []( auto &&  m) {
-        ceto::mado(py::class_<ScopeBase,std::shared_ptr<ScopeBase>>(m, "ScopeBase"))->def(py::init<>());
-        auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("ast_repr", [](const Node&  n) {
+        static std::map<std::weak_ptr<const Node>,py::object> node_scope_map = {};
+        auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node", py::dynamic_attr()))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("ast_repr", [](const Node&  n) {
                 auto vis { decltype(EvalableAstReprVisitor())() } ;
                 ceto::mado(n)->accept(vis);
                 if constexpr (!std::is_void_v<decltype(ceto::mado(vis)->repr)>) { return ceto::mado(vis)->repr; } else { static_cast<void>(ceto::mado(vis)->repr); };

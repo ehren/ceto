@@ -1376,6 +1376,8 @@ def codegen_lambda(node, cx):
             elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
                 pass  # don't capture a lambda parameter
             elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
+                # import pdb
+                # pdb.set_trace()
                 defnode = d.defined_node
                 is_capture = True
                 while defnode is not None:

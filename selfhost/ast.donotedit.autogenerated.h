@@ -31,10 +31,6 @@ class Node;
 
     auto class_name(const Node *  node) -> std::string;
 
-struct ScopeBase : ceto::shared_object {
-
-};
-
 struct MacroScope : ceto::shared_object {
 
 };
@@ -48,8 +44,6 @@ struct Node : ceto::shared_object {
     std::tuple<std::string, int> source;
 
     std::shared_ptr<const Node> declared_type = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(declared_type)>>);
-
-    std::shared_ptr<const ScopeBase> scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(scope)>>);
 
     std::shared_ptr<const MacroScope> macro_scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(macro_scope)>>);
 
