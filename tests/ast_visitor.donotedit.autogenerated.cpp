@@ -54,7 +54,7 @@ using Node::Node;
             ceto::mado(visitor)->visit(self);
         }
 
-    explicit Identifier(std::string name) : name(name) {}
+    explicit Identifier(std::string name) : name(std::move(name)) {}
 
     Identifier() = delete;
 
@@ -71,7 +71,7 @@ using Node::Node;
             ceto::mado(visitor)->visit(self);
         }
 
-    explicit ListLiteral(std::vector<std::shared_ptr<const Node>> args) : args(args) {}
+    explicit ListLiteral(std::vector<std::shared_ptr<const Node>> args) : args(std::move(args)) {}
 
     ListLiteral() = delete;
 
