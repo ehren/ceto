@@ -41,26 +41,15 @@ struct ClassDefinition : ceto::shared_object {
 
     std::remove_cvref_t<decltype(false)> is_concrete = false;
 
-    std::remove_cvref_t<decltype(std::map<int,bool>())> is_generic_param_index = std::map<int,bool>();
-
-        inline auto has_generic_params() const -> auto {
-            for(  const auto& [k, v] : (this -> is_generic_param_index)) {
-if (v) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
     explicit ClassDefinition(std::shared_ptr<const Identifier> name_node, std::shared_ptr<const Call> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(std::move(name_node)), class_def_node(std::move(class_def_node)), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
 
     ClassDefinition() = delete;
 
 };
 
-struct InterfaceDefinition : public std::type_identity_t<decltype(ClassDefinition(nullptr, nullptr, false, false, false))> {
+struct InterfaceDefinition : public ClassDefinition {
 
-    explicit InterfaceDefinition() : std::type_identity_t<decltype(ClassDefinition(nullptr, nullptr, false, false, false))> (nullptr, nullptr, false, false, false) {
+    explicit InterfaceDefinition() : ClassDefinition (nullptr, nullptr, false, false, false) {
     }
 
 };
@@ -107,7 +96,7 @@ auto contains(const T1& container,  const typename std::remove_reference_t<declt
     }
 
     inline auto creates_new_variable_scope(const std::shared_ptr<const Node>&  e) -> auto {
-        const auto call = dynamic_pointer_cast<const Node>(e);
+        const auto call = dynamic_pointer_cast<const Call>(e);
 if (call) {
             const auto name = ceto::mado(ceto::mado(call)->func)->name();
             return (name && contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, ceto::mad(name)->value()));
@@ -157,14 +146,20 @@ if ((name == std::string {"class"}) || (name == std::string {"struct"})) {
                 }
                 parent = ceto::mado(parent)->parent();
             }
+            const auto defn = std::make_shared<const decltype(GlobalVariableDefinition{defined_node, defining_node})>(defined_node, defining_node);
+            ceto::mado(this -> variable_definitions)->push_back(defn);
         }
 
-        inline auto add_interface(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
+        inline auto add_interface_method(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
 if (ceto::mado(this -> interfaces)->contains(interface_name)) {
                 ceto::mado(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))->push_back(interface_method_def_node);
             } else {
                 ceto::maybe_bounds_check_access(this -> interfaces,interface_name) = std::vector {interface_method_def_node};
             }
+        }
+
+        inline auto add_class_definition(const std::shared_ptr<const ClassDefinition>&  class_definition) -> void {
+            ceto::mado(this -> class_definitions)->push_back(class_definition);
         }
 
         inline auto lookup_class(const std::shared_ptr<const Node>&  class_node) const -> std::shared_ptr<const ClassDefinition> {
@@ -202,7 +197,7 @@ if (!find_all) {
 if (assign) {
                             const auto ident = dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs());
 if (ident) {
-                                auto more { this -> find_defs(ident, find_all) } ;
+                                const auto more = this -> find_defs(ident, find_all);
                                 ceto::mado(results)->insert(ceto::mado(results)->end(), ceto::mado(more)->begin(), ceto::mado(more)->end());
                             }
                         }
@@ -216,14 +211,14 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
             return results;
         }
 
-        template <typename T1>
-auto find_def(const T1& var_node) const -> auto {
+        inline auto find_def(const std::shared_ptr<const Node>&  var_node) const -> auto {
             const auto find_all = false;
             const auto found = this -> find_defs(var_node, find_all);
             return [&]() {if (ceto::mado(found)->size() > 0) {
                 return ceto::maybe_bounds_check_access(found,0);
             } else {
-                return nullptr;
+                const std::shared_ptr<const VariableDefinition> none_result = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none_result)>>);
+                return none_result;
             }}()
 ;
         }
@@ -236,6 +231,10 @@ auto find_def(const T1& var_node) const -> auto {
             ceto::mado(s)->in_decltype = (this -> in_decltype);
             ceto::mado(s)->indent = ((this -> indent) + 1);
             return s;
+        }
+
+        inline auto parent() const -> auto {
+            return ceto::mado(this -> _parent)->lock();
         }
 
 };

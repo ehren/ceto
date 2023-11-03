@@ -26,6 +26,8 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 
 # trick transpiler into local variable context
 lambda(m : mut:auto:rref:
+    pybind11.literals: using:namespace  # to bring in the `_a` literal
+
     # we don't want to define a virtual base class for Scope (defined in python). Nor do we want to expost py.class
     node_scope_map : mut:static:std.map<Node:weak, py.object> = {}
 
@@ -47,6 +49,7 @@ lambda(m : mut:auto:rref:
 #        return
 #        void()
 #    )).def_readwrite(
+    c"scope", &Node.scope).def_readwrite(
     c"source", &Node.source).def(
     c"__repr__", &Node.repr).def(
     c"ast_repr", lambda(n: Node.class:
@@ -169,8 +172,58 @@ lambda(m : mut:auto:rref:
     py.class_<InfixWrapper_.class, InfixWrapper_:mut>(m, c"InfixWrapper_", node).def(
         py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg(c"args"), py.arg(c"source") = ("", 0))
 
-    m.def(c"set_string_replace_function", &set_string_replace_function, c"unfortunate kludge until we fix the baffling escape sequence probs in the selfhost implementation")
-    m.def(c"macro_trampoline", &macro_trampoline, c"macro trampoline")
+    # Scope bindings:
+    # These should probably go in a separate python module at some point (C++ namespace support would be more useful in general though)
+
+    class_def: mut = py.class_<ClassDefinition.class, ClassDefinition:mut>(m, c"ClassDefinition").def(
+        py.init<Identifier, Call, bool, bool, bool>(), py.arg(c"name_node"),
+        py.arg(c"class_def_node"), py.arg(c"is_unique"), py.arg(c"is_struct"),
+        py.arg(c"is_forward_declaration")).def_readwrite(
+        c"name_node", &ClassDefinition.name_node).def_readwrite(
+        c"class_def_node", &ClassDefinition.class_def_node).def_readwrite(
+        c"is_unique", &ClassDefinition.is_unique).def_readwrite(
+        c"is_struct", &ClassDefinition.is_struct).def_readwrite(
+        c"is_forward_declaration", &ClassDefinition.is_forward_declaration).def_readwrite(
+        c"is_concrete", &ClassDefinition.is_concrete).def_readwrite(
+        c"is_pure_virtual", &ClassDefinition.is_pure_virtual)
+
+    py.class_<InterfaceDefinition.class, InterfaceDefinition:mut>(m, c"InterfaceDefinition", class_def).def(py.init<>())
+
+    variable_def: mut = py.class_<VariableDefinition.class, VariableDefinition:mut>(m, c"VariableDefinition").def(
+        py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node")).def_readwrite(
+        c"defined_node", &VariableDefinition.defined_node).def_readwrite(
+        c"defining_node", &VariableDefinition.defining_node)
+
+    py.class_<LocalVariableDefinition.class, LocalVariableDefinition:mut>(m, c"LocalVariableDefinition", variable_def).def(
+        py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node"))
+
+    py.class_<GlobalVariableDefinition.class, GlobalVariableDefinition:mut>(m, c"GlobalVariableDefinition", variable_def).def(
+        py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node"))
+
+    py.class_<FieldDefinition.class, FieldDefinition:mut>(m, c"FieldDefinition", variable_def).def(
+        py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node"))
+
+    py.class_<ParameterDefinition.class, ParameterDefinition:mut>(m, c"ParameterDefinition", variable_def).def(
+        py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node"))
+#
+    py.class_<Scope.class, Scope:mut>(m, c"Scope").def(
+        py.init<>()).def_readwrite(
+        c"indent", &Scope.indent).def_readwrite(
+        c"in_function_body", &Scope.in_function_body).def_readwrite(
+        c"in_function_param_list", &Scope.in_function_param_list).def_readwrite(
+        c"in_class_body", &Scope.in_class_body).def_readwrite(
+        c"in_decltype", &Scope.in_decltype).def(
+        c"indent_str", &Scope.indent_str).def(
+        c"add_variable_definition", &Scope.add_variable_definition, c"defined_node"_a, c"defining_node"_a).def(
+        c"add_interface_method", &Scope.add_interface_method).def(
+        c"add_class_definition", &Scope.add_class_definition).def(
+        c"lookup_class", &Scope.lookup_class).def(
+        c"find_defs", &Scope.find_defs, py.arg(c"var_node"), py.arg(c"find_all") = true).def(
+        c"find_def", &Scope.find_def).def(
+        c"enter_scope", &Scope.enter_scope).def_property_readonly(
+        c"parent", &Scope.parent)
+
+    m.def(c"creates_new_variable_scope", &creates_new_variable_scope)
 
     return
 )(m)

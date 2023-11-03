@@ -356,15 +356,16 @@ def codegen_class(node : Call, cx):
         if not isinstance(block, Block):
             raise CodeGenError("class missing block (bad second class arg)", node)
 
-    classdef = ClassDefinition(name, node, is_generic_param_index={},
+    classdef = ClassDefinition(name, node, #is_generic_param_index={},
                                is_unique=node.declared_type and node.declared_type.name == "unique",
                                is_struct=node.func.name == "struct",
                                is_forward_declaration=is_forward_declaration)
-    cx.class_definitions.append(classdef)
+    cx.add_class_definition(classdef)
 
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
     typenames = []
+    is_template = False
 
     indt = cx.indent_str()
 
@@ -397,7 +398,7 @@ def codegen_class(node : Call, cx):
                     if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
                         defined_interfaces[interface_type.name].append(b)
 
-                    cx.interfaces[interface_type.name].append(b)
+                    cx.add_interface_method(interface_type.name, b)
                     local_interfaces.add(interface_type.name)
 
             if methodname.name == "init":
@@ -424,13 +425,14 @@ def codegen_class(node : Call, cx):
                 decl_const_part = ""
                 decl = decl_const_part + t + " " + b.name
                 cpp += inner_indt + decl + ";\n\n"
-                classdef.is_generic_param_index[block_index] = True
+                # classdef.is_generic_param_index[block_index] = True
+                is_template = True
             else:
                 field_type = b.declared_type
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
                 cpp += inner_indt + decl + ";\n\n"
-                classdef.is_generic_param_index[block_index] = False
+                # classdef.is_generic_param_index[block_index] = False
 
             uninitialized_attributes.append(b)
             uninitialized_attribute_declarations.append(decl)
@@ -447,7 +449,8 @@ def codegen_class(node : Call, cx):
     elif isinstance(inherits, Template):
         base_class_type = inherits.func.name + "<" + ", ".join(codegen_node(t, cx) for t in inherits.args) + ">"
 
-    classdef.is_concrete = not classdef.is_generic_param_index
+    # classdef.is_concrete = not classdef.is_generic_param_index
+    classdef.is_concrete = not is_template
 
     if constructor_node is not None:
         constructor_args = constructor_node.args[1:-1]

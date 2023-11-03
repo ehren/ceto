@@ -67,16 +67,16 @@ struct Node : ceto::shared_object {
             return std::nullopt;
         }
 
-         virtual inline auto parent() const -> std::shared_ptr<const Node> {
+         virtual inline auto accept( Visitor &  visitor) const -> void {
+            ceto::mado(visitor)->visit((*this));
+        }
+
+        inline auto parent() const -> auto {
             return ceto::mado(this -> _parent)->lock();
         }
 
-         virtual inline auto set_parent(const std::shared_ptr<const Node>&  p) -> void {
+        inline auto set_parent(const std::shared_ptr<const Node>&  p) -> void {
             (this -> _parent) = p;
-        }
-
-         virtual inline auto accept( Visitor &  visitor) const -> void {
-            ceto::mado(visitor)->visit((*this));
         }
 
     explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : func(func), args(args), source(source) {

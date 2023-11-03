@@ -12,17 +12,17 @@ class (ClassDefinition:
 
     is_pure_virtual = false
     is_concrete = false
-    is_generic_param_index = std.map<int, bool>()
-
-    def (has_generic_params:
-        for ((k, v) in self.is_generic_param_index:
-            if (v:
-                return true
-            )
-        )
-
-        return false
-    )
+#    is_generic_param_index = std.map<int, bool>()
+#
+#    def (has_generic_params:
+#        for ((k, v) in self.is_generic_param_index:
+#            if (v:
+#                return true
+#            )
+#        )
+#
+#        return false
+#    )
 )
 
 class (InterfaceDefinition(ClassDefinition):
@@ -57,7 +57,7 @@ def (contains, container, element: const:typename:std.remove_reference_t<decltyp
 )
 
 def (creates_new_variable_scope, e: Node:
-    call = dynamic_pointer_cast<const:Node.class>(e)
+    call = dynamic_pointer_cast<const:Call.class>(e)
     if (call:
         name = call.func.name()
         return name and contains(["def", "lambda", "class", "struct"], name.value())
@@ -80,34 +80,6 @@ class (Scope:
         return std.string(4*self.indent, char' ')
     )
 
-#    def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
-#        parent: mut = defined_node.parent()
-##        defn: mut:decltype(VariableDefinition(defined_node, defining_node)) = None  # this is unfortunate
-##        empty_const_defn: VariableDefinition = None
-##        defn: mut = empty_const_defn  # also pretty bad
-#        defn : mut:VariableDefinition = None  # having to work with mut instances (shared_ptr to non-const) also not great
-
-#        although to be fair, needing defn to be mutable is a bit silly anyway (below impl better)
-#
-#        while (parent:
-#            if (creates_new_variable_scope(parent):
-#                name = parent.func.name()
-#                if (name == "class" or name == "struct":
-#                    defn = FieldDefinition(defined_node, defining_node) : mut
-#                elif name == "def" or name == "lambda":
-#                    defn = ParameterDefinition(defined_node, defining_node) : mut
-#                else:
-#                    defn = LocalVariableDefinition(defined_node, defining_node) : mut
-#                )
-#                break
-#            )
-#            parent = parent.parent()
-#        )
-#
-#        assert(defn != None)
-#        self.variable_definitions.push_back(defn)
-#    )
-
     def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
         parent: mut = defined_node.parent()
 
@@ -128,14 +100,20 @@ class (Scope:
             )
             parent = parent.parent()
         )
+        defn = GlobalVariableDefinition(defined_node, defining_node)
+        self.variable_definitions.push_back(defn)
     )
 
-    def (add_interface: mut, interface_name: std.string, interface_method_def_node: Node:
+    def (add_interface_method: mut, interface_name: std.string, interface_method_def_node: Node:
         if (self.interfaces.contains(interface_name):
             self.interfaces[interface_name].push_back(interface_method_def_node)
         else:
             self.interfaces[interface_name] = [interface_method_def_node]
         )
+    )
+
+    def (add_class_definition: mut, class_definition: ClassDefinition:
+        self.class_definitions.push_back(class_definition)
     )
 
     def (lookup_class, class_node: Node:
@@ -181,7 +159,7 @@ class (Scope:
                     if (assign:
                         ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())
                         if (ident:
-                            more: mut = self.find_defs(ident, find_all)
+                            more = self.find_defs(ident, find_all)
                             results.insert(results.end(), more.begin(), more.end())
                         )
                     )
@@ -197,13 +175,14 @@ class (Scope:
         return results
     ) : [VariableDefinition]
 
-    def (find_def, var_node:
+    def (find_def, var_node: Node:
         find_all = false
         found = self.find_defs(var_node, find_all)
         return if (found.size() > 0:
             found[0]
         else:
-            None
+            none_result : VariableDefinition = None
+            none_result  # needed for lambda return type deduction; arguably expression-if usage here is silly.
         )
     )
 
@@ -215,4 +194,8 @@ class (Scope:
         s.indent = self.indent + 1
         return s
     ) : Scope
+
+    def (parent:
+        return self._parent.lock()
+    )
 )

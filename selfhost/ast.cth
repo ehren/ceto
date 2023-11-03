@@ -48,16 +48,16 @@ class (Node:
         return std.nullopt
     ) : std.optional<std.string>
 
-    def (parent: virtual:
-        return self._parent.lock()
-    ) : Node
-
-    def (set_parent: virtual:mut, p: Node:
-        self._parent = p
-    )
-
     def (accept: virtual, visitor: Visitor:mut:ref:
         visitor.visit(*this)
+    )
+
+    def (parent:
+        return self._parent.lock()
+    )
+
+    def (set_parent: mut, p: Node:
+        self._parent = p
     )
 )
 
