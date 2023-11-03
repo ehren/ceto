@@ -9,6 +9,7 @@ include <pybind11/stl_bind.h>
 
 include(ast)
 include(repr_visitors)
+include(scope)
 
 
 py: namespace = pybind11

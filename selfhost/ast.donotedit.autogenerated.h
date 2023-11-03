@@ -35,6 +35,8 @@ struct MacroScope : ceto::shared_object {
 
 };
 
+class Scope;
+
 struct Node : ceto::shared_object {
 
     std::shared_ptr<const Node> func;
@@ -46,6 +48,8 @@ struct Node : ceto::shared_object {
     std::shared_ptr<const Node> declared_type = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(declared_type)>>);
 
     std::shared_ptr<const MacroScope> macro_scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(macro_scope)>>);
+
+    std::shared_ptr<const Scope> scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(scope)>>);
 
     std::weak_ptr<const Node> _parent = {};
 

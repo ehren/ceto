@@ -1,0 +1,163 @@
+include <map>
+include (ast)
+
+class (ClassDefinition:
+    name_node : Identifier
+    class_def_node : Call
+    is_unique: bool
+    is_struct: bool
+    is_forward_declaration: bool
+
+    is_pure_virtual = false
+    is_concrete = false
+    is_generic_param_index = std.map<int, bool>()
+
+    def (has_generic_params:
+        for ((k, v) in self.is_generic_param_index:
+            if (v:
+                return true
+            )
+        )
+
+        return false
+    )
+)
+
+class (InterfaceDefinition(ClassDefinition):
+    def (init:
+        super.init(None, None, false, false, false)
+    )
+)
+
+class (VariableDefinition:
+    defined_node: Identifier
+    defining_node: Node
+)
+
+class (LocalVariableDefinition(VariableDefinition):
+    pass
+)
+
+class (GlobalVariableDefinition(VariableDefinition):
+    pass
+)
+
+class (FieldDefinition(VariableDefinition):
+    pass
+)
+
+class (ParameterDefinition(VariableDefinition):
+    pass
+)
+
+def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
+    return std.find(container.begin(), container.end(), element) != container.end()
+)
+
+def (creates_new_variable_scope, e: Node:
+#    return isinstance(e, Call) and e.func.name and contains(["def", "lambda", "class", "struct"], e.func.name.value())
+    pass
+)
+
+class (Scope:
+    interfaces = std.map<std.string, Node>()
+    class_definitions: [ClassDefinition] = []
+    variable_definitions: [VariableDefinition] = []
+    indent = 0
+    _parent: weak:Scope = {}
+    in_function_body = false
+    in_function_param_list = false  # TODO unused remove
+    in_class_body = false
+    in_decltype = false
+
+    def (indent_str:
+        return std.string(4*self.indent, char' ')
+    )
+
+    def (add_variable_definition, defined_node: Identifier, defining_node: Node:
+#        assert isinstance(defined_node, Identifier)
+
+#        var_class = GlobalVariableDefinition
+#        _parent = defined_node._parent
+#        while _parent:
+#            if creates_new_variable_scope(_parent):
+#                if _parent.func.name in ["class", "struct"]:
+#                    var_class = FieldDefinition
+#                elif _parent.func.name in ["def", "lambda"]:
+#                    var_class = ParameterDefinition
+#                else:
+#                    var_class = LocalVariableDefinition
+#                break
+#            _parent = _parent._parent
+#
+#        self.variable_definitions.append(var_class(defined_node, defining_node))
+
+        pass
+    )
+
+    def (lookup_class, class_node: Node:
+        if (not dynamic_pointer_cast<const:Identifier.class>(class_node):
+            return None
+        )
+        for (c in self.class_definitions:
+            if (c.name_node.name() == class_node.name():
+                return c
+            )
+        )
+        if (self.interfaces.contains(class_node.name().value()):
+            return InterfaceDefinition()
+        )
+        if ((s = self._parent.lock()):
+            return s.lookup_class(class_node)
+        )
+        return None
+    ) : ClassDefinition
+
+    def (find_defs, var_node: Node, find_all=true:
+        if (not dynamic_pointer_cast<const:Identifier.class>(var_node):
+            return {}
+        )
+
+        results: mut = [] : VariableDefinition
+
+        for (d in self.variable_definitions:
+            if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:
+                defined_loc = std.get<1>(d.defined_node.source)
+                var_loc = std.get<1>(var_node.source)
+
+                if (defined_loc < var_loc:
+                    if (not find_all:
+                        return [d]
+                    )
+#                    if ((assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)) and (ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs)):
+#                        more: mut = self.find_defs(ident, find_all)
+#                        results.insert(results.end(), more.begin(), more.end())
+#                    )
+                )
+            )
+        )
+
+        if ((s = self._parent.lock()):
+            more = s.find_defs(var_node, find_all)
+            results.insert(results.end(), more.begin(), more.end())
+        )
+
+        return results
+    ) : [VariableDefinition]
+
+    def (find_def, var_node:
+        find_all = false
+        return self.find_defs(var_node, find_all)
+    )
+
+    def (enter_scope:
+        s: mut = Scope()
+        s._parent = self
+        s.in_function_body = self.in_function_body
+        s.in_decltype = self.in_decltype
+        s.indent = self.indent + 1
+        return s
+    ) : Scope
+)
+
+

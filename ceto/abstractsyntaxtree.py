@@ -2,12 +2,12 @@ import typing
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import *
+    # from ._abstractsyntaxtree import *
     selfhost = False
 
-    def _set_scope(self, o):
-        self.__dict__["scope"] = o
-    Node.scope = property(lambda n: n.__dict__["scope"], _set_scope)
+    # def _set_scope(self, o):
+    #     self.__dict__["scope"] = o
+    # Node.scope = property(lambda n: n.__dict__["scope"], _set_scope)
 
 except ImportError:
     selfhost = False

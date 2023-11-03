@@ -2647,6 +2647,9 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("string literal cannot be both c-string and std::string", node)
         if node.prefix and node.prefix.name == "include":
             return '#include "' + node.str + '"\n'
+        if node.prefix and node.prefix.name == "char":
+            # TODO more error checking / needs escape of '
+            return "'" + node.str + "'"
         if node.prefix and node.prefix.name == "cpp":
             if node.suffix:
                 raise CodeGenError("no suffixes for cpp-string", node)
