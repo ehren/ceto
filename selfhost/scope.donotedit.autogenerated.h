@@ -41,6 +41,14 @@ struct ClassDefinition : ceto::shared_object {
 
     std::remove_cvref_t<decltype(false)> is_concrete = false;
 
+        inline auto repr() const -> auto {
+            return ((((((((((this -> class_name() + std::string {"("}) + ceto::mado(this -> name_node)->repr()) + std::string {", "}) + ceto::mado(this -> class_def_node)->repr()) + std::to_string(this -> is_unique)) + std::string {", "}) + std::to_string(this -> is_struct)) + std::string {", "}) + std::to_string(this -> is_forward_declaration)) + std::string {")"});
+        }
+
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"ClassDefinition"};
+        }
+
     explicit ClassDefinition(std::shared_ptr<const Identifier> name_node, std::shared_ptr<const Call> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(std::move(name_node)), class_def_node(std::move(class_def_node)), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
 
     ClassDefinition() = delete;
@@ -48,6 +56,10 @@ struct ClassDefinition : ceto::shared_object {
 };
 
 struct InterfaceDefinition : public ClassDefinition {
+
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"InterfaceDefinition"};
+        }
 
     explicit InterfaceDefinition() : ClassDefinition (nullptr, nullptr, false, false, false) {
     }
@@ -60,6 +72,14 @@ struct VariableDefinition : ceto::shared_object {
 
     std::shared_ptr<const Node> defining_node;
 
+        inline auto repr() const -> auto {
+            return (((((this -> class_name() + std::string {"("}) + ceto::mado(this -> defined_node)->repr()) + std::string {", "}) + ceto::mado(this -> defining_node)->repr()) + std::string {")"});
+        }
+
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"VariableDefinition"};
+        }
+
     explicit VariableDefinition(std::shared_ptr<const Identifier> defined_node, std::shared_ptr<const Node> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
 
     VariableDefinition() = delete;
@@ -70,11 +90,19 @@ struct LocalVariableDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
 
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"LocalVariableDefinition"};
+        }
+
 };
 
 struct GlobalVariableDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
+
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"GlobalVariableDefinition"};
+        }
 
 };
 
@@ -82,11 +110,19 @@ struct FieldDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
 
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"FieldDefinition"};
+        }
+
 };
 
 struct ParameterDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
+
+         virtual inline auto class_name() const -> std::string {
+            return std::string {"ParameterDefinition"};
+        }
 
 };
 
@@ -184,7 +220,7 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
 if (!dynamic_pointer_cast<const Identifier>(var_node)) {
                 return {};
             }
-            auto results { std::vector<std::shared_ptr<const VariableDefinition>>{} } ;
+            auto results { std::vector<std::ranges::range_value_t<decltype(this->variable_definitions)>>() } ;
             for(const auto& d : (this -> variable_definitions)) {
 if ((ceto::mado(ceto::mado(d)->defined_node)->name() == ceto::mado(var_node)->name()) && (ceto::mado(d)->defined_node != var_node)) {
                     const auto defined_loc = std::get<1>(ceto::mado(ceto::mado(d)->defined_node)->source);
@@ -193,6 +229,7 @@ if (defined_loc < var_loc) {
 if (!find_all) {
                             return std::vector {d};
                         }
+                        ceto::mad(results)->push_back(d);
                         const auto assign = dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node);
 if (assign) {
                             const auto ident = dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs());

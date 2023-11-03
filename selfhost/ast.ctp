@@ -5,7 +5,6 @@ include <typeinfo>
 include <numeric>
 include <pybind11/pybind11.h>
 include <pybind11/stl.h>
-include <pybind11/stl_bind.h>
 
 include(ast)
 include(repr_visitors)
@@ -29,7 +28,7 @@ lambda(m : mut:auto:rref:
     pybind11.literals: using:namespace  # to bring in the `_a` literal
 
     # we don't want to define a virtual base class for Scope (defined in python). Nor do we want to expost py.class
-    node_scope_map : mut:static:std.map<Node:weak, py.object> = {}
+#    node_scope_map : mut:static:std.map<Node:weak, py.object> = {}
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
     node : mut = py.class_<Node.class, Node:mut>(m, c"Node", py.dynamic_attr()).def_readwrite(
@@ -185,14 +184,16 @@ lambda(m : mut:auto:rref:
         c"is_struct", &ClassDefinition.is_struct).def_readwrite(
         c"is_forward_declaration", &ClassDefinition.is_forward_declaration).def_readwrite(
         c"is_concrete", &ClassDefinition.is_concrete).def_readwrite(
-        c"is_pure_virtual", &ClassDefinition.is_pure_virtual)
+        c"is_pure_virtual", &ClassDefinition.is_pure_virtual).def(
+        c"__repr__", &ClassDefinition.repr)
 
     py.class_<InterfaceDefinition.class, InterfaceDefinition:mut>(m, c"InterfaceDefinition", class_def).def(py.init<>())
 
     variable_def: mut = py.class_<VariableDefinition.class, VariableDefinition:mut>(m, c"VariableDefinition").def(
         py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node")).def_readwrite(
         c"defined_node", &VariableDefinition.defined_node).def_readwrite(
-        c"defining_node", &VariableDefinition.defining_node)
+        c"defining_node", &VariableDefinition.defining_node).def(
+        c"__repr__", &VariableDefinition.repr)
 
     py.class_<LocalVariableDefinition.class, LocalVariableDefinition:mut>(m, c"LocalVariableDefinition", variable_def).def(
         py.init<Identifier, Node>(), py.arg(c"defined_node"), py.arg(c"defining_node"))

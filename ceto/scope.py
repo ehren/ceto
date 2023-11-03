@@ -5,8 +5,8 @@ from .abstractsyntaxtree import Identifier, Call, Node, Assign
 
 selfhost = True
 try:
-    # from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
-    selfhost = False
+    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
+    # selfhost = False
 except ImportError:
     selfhost = False
 
@@ -28,10 +28,13 @@ if not selfhost:
         # def has_generic_params(self):
         #     return True in self.is_generic_param_index.values()
 
+        def __repr__(self):
+            return f"{self.__class__.__name__}({self.name_node}, {self.class_def_node}, {self.is_unique}, {self.is_struct}, {self.is_forward_declaration})"
+
 
     class InterfaceDefinition(ClassDefinition):
         def __init__(self):
-            super().__init__(None, None, None, False, False, False)
+            super().__init__(None, None, False, False, False)
 
 
     class VariableDefinition:
@@ -39,6 +42,9 @@ if not selfhost:
         def __init__(self, defined_node: Identifier, defining_node: Node):
             self.defined_node = defined_node
             self.defining_node = defining_node
+
+        def __repr__(self):
+            return f"{self.__class__.__name__}({self.defined_node}, {self.defining_node})"
 
 
     class LocalVariableDefinition(VariableDefinition):
@@ -80,6 +86,7 @@ if not selfhost:
 
         def add_variable_definition(self, defined_node: Identifier, defining_node: Node):
             assert isinstance(defined_node, Identifier)
+            assert isinstance(defining_node, Node)
 
             var_class = GlobalVariableDefinition
             parent = defined_node.parent

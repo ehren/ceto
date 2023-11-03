@@ -124,7 +124,7 @@ def list_to_typed_node(lst):
     op = None
     first = None
     if not lst:
-        return lst
+        return None
     if len(lst) == 1:
         return lst[0]
     lst = lst.copy()

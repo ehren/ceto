@@ -23,33 +23,61 @@ class (ClassDefinition:
 #
 #        return false
 #    )
+
+    def (repr:
+        return self.class_name() + "(" + self.name_node.repr() + ", " + self.class_def_node.repr() + std.to_string(self.is_unique) + ", " + std.to_string(self.is_struct) + ", " + std.to_string(self.is_forward_declaration) + ")"
+    )
+
+    def (class_name: virtual:
+        return "ClassDefinition"
+    ) : std.string
 )
 
 class (InterfaceDefinition(ClassDefinition):
     def (init:
         super.init(None, None, false, false, false)
     )
+
+    def (class_name: virtual:
+        return "InterfaceDefinition"
+    ) : std.string
 )
 
 class (VariableDefinition:
     defined_node: Identifier
     defining_node: Node
+
+    def (repr:
+        return self.class_name() + "(" + self.defined_node.repr() + ", " + self.defining_node.repr() + ")"
+    )
+
+    def (class_name: virtual:
+        return "VariableDefinition"
+    ) : std.string
 )
 
 class (LocalVariableDefinition(VariableDefinition):
-    pass
+    def (class_name: virtual:
+        return "LocalVariableDefinition"
+    ) : std.string
 )
 
 class (GlobalVariableDefinition(VariableDefinition):
-    pass
+    def (class_name: virtual:
+        return "GlobalVariableDefinition"
+    ) : std.string
 )
 
 class (FieldDefinition(VariableDefinition):
-    pass
+    def (class_name: virtual:
+        return "FieldDefinition"
+    ) : std.string
 )
 
 class (ParameterDefinition(VariableDefinition):
-    pass
+    def (class_name: virtual:
+        return "ParameterDefinition"
+    ) : std.string
 )
 
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
@@ -82,6 +110,9 @@ class (Scope:
 
     def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
         parent: mut = defined_node.parent()
+
+#        std.cout << defined_node.name().value() << std.endl
+#        std.cout << defining_node.name().value() << std.endl
 
         while (parent:
             if (creates_new_variable_scope(parent):
@@ -135,11 +166,12 @@ class (Scope:
     ) : ClassDefinition
 
     def (find_defs, var_node: Node, find_all=true:
+
         if (not dynamic_pointer_cast<const:Identifier.class>(var_node):
             return {}
         )
 
-        results: mut = [] : VariableDefinition
+        results: mut = []
 
         for (d in self.variable_definitions:
             if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:
@@ -148,8 +180,10 @@ class (Scope:
 
                 if (defined_loc < var_loc:
                     if (not find_all:
+#                        std.cout << "find_defs (find_all=False): " << d.repr() << std.endl
                         return [d]
                     )
+                    results.append(d)
                     # TODO doesn't produce parseable c++ code???
 #                    if ((assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)) and (ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())):
 #                        more: mut = self.find_defs(ident, find_all)
@@ -171,6 +205,7 @@ class (Scope:
             more = s.find_defs(var_node, find_all)
             results.insert(results.end(), more.begin(), more.end())
         )
+#        std.cout << "find_defs for " << var_node.repr() << ": " << join(results, lambda(a, a.repr()), ", ") << std.endl
 
         return results
     ) : [VariableDefinition]

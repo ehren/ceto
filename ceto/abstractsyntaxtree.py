@@ -2,8 +2,8 @@ import typing
 
 selfhost = True
 try:
-    # from ._abstractsyntaxtree import *
-    selfhost = False
+    from ._abstractsyntaxtree import *
+    # selfhost = False
 
     # def _set_scope(self, o):
     #     self.__dict__["scope"] = o
@@ -14,8 +14,6 @@ except ImportError:
 
 if not selfhost:
     # TODO should throw away the ladder soon
-
-
 
     class Node:
 
@@ -240,4 +238,3 @@ if not selfhost:
 
         def __repr__(self):
             return "{}({})".format("InfixWrapper_", ", ".join(map(str, self.args)))
-
