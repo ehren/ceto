@@ -1,4 +1,6 @@
 include <map>
+include <cassert>
+
 include (ast)
 
 class (ClassDefinition:
@@ -55,8 +57,12 @@ def (contains, container, element: const:typename:std.remove_reference_t<decltyp
 )
 
 def (creates_new_variable_scope, e: Node:
-#    return isinstance(e, Call) and e.func.name and contains(["def", "lambda", "class", "struct"], e.func.name.value())
-    pass
+    call = dynamic_pointer_cast<const:Node.class>(e)
+    if (call:
+        name = call.func.name()
+        return name and contains(["def", "lambda", "class", "struct"], name.value())
+    )
+    return false
 )
 
 class (Scope:
@@ -74,25 +80,54 @@ class (Scope:
         return std.string(4*self.indent, char' ')
     )
 
-    def (add_variable_definition, defined_node: Identifier, defining_node: Node:
-#        assert isinstance(defined_node, Identifier)
+#    def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
+#        parent: mut = defined_node.parent()
+##        defn: mut:decltype(VariableDefinition(defined_node, defining_node)) = None  # this is unfortunate
+##        empty_const_defn: VariableDefinition = None
+##        defn: mut = empty_const_defn  # also pretty bad
+#        defn : mut:VariableDefinition = None  # having to work with mut instances (shared_ptr to non-const) also not great
 
-#        var_class = GlobalVariableDefinition
-#        _parent = defined_node._parent
-#        while _parent:
-#            if creates_new_variable_scope(_parent):
-#                if _parent.func.name in ["class", "struct"]:
-#                    var_class = FieldDefinition
-#                elif _parent.func.name in ["def", "lambda"]:
-#                    var_class = ParameterDefinition
-#                else:
-#                    var_class = LocalVariableDefinition
-#                break
-#            _parent = _parent._parent
+#        although to be fair, needing defn to be mutable is a bit silly anyway (below impl better)
 #
-#        self.variable_definitions.append(var_class(defined_node, defining_node))
+#        while (parent:
+#            if (creates_new_variable_scope(parent):
+#                name = parent.func.name()
+#                if (name == "class" or name == "struct":
+#                    defn = FieldDefinition(defined_node, defining_node) : mut
+#                elif name == "def" or name == "lambda":
+#                    defn = ParameterDefinition(defined_node, defining_node) : mut
+#                else:
+#                    defn = LocalVariableDefinition(defined_node, defining_node) : mut
+#                )
+#                break
+#            )
+#            parent = parent.parent()
+#        )
+#
+#        assert(defn != None)
+#        self.variable_definitions.push_back(defn)
+#    )
 
-        pass
+    def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
+        parent: mut = defined_node.parent()
+
+        while (parent:
+            if (creates_new_variable_scope(parent):
+                name = parent.func.name()
+                if (name == "class" or name == "struct":
+                    defn = FieldDefinition(defined_node, defining_node)
+                    self.variable_definitions.push_back(defn)
+                elif name == "def" or name == "lambda":
+                    defn = ParameterDefinition(defined_node, defining_node)
+                    self.variable_definitions.push_back(defn)
+                else:
+                    defn = LocalVariableDefinition(defined_node, defining_node)
+                    self.variable_definitions.push_back(defn)
+                )
+                return
+            )
+            parent = parent.parent()
+        )
     )
 
     def (lookup_class, class_node: Node:
@@ -129,10 +164,19 @@ class (Scope:
                     if (not find_all:
                         return [d]
                     )
-#                    if ((assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)) and (ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs)):
+                    # TODO doesn't produce parseable c++ code???
+#                    if ((assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)) and (ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())):
 #                        more: mut = self.find_defs(ident, find_all)
 #                        results.insert(results.end(), more.begin(), more.end())
 #                    )
+                    assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)
+                    if (assign:
+                        ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())
+                        if (ident:
+                            more: mut = self.find_defs(ident, find_all)
+                            results.insert(results.end(), more.begin(), more.end())
+                        )
+                    )
                 )
             )
         )
@@ -159,5 +203,3 @@ class (Scope:
         return s
     ) : Scope
 )
-
-
