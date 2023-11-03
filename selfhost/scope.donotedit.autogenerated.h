@@ -117,7 +117,7 @@ if (call) {
 
 struct Scope : ceto::shared_object {
 
-    std::remove_cvref_t<decltype(std::map<std::string,std::shared_ptr<const Node>>())> interfaces = std::map<std::string,std::shared_ptr<const Node>>();
+    std::remove_cvref_t<decltype(std::map<std::string,std::vector<std::shared_ptr<const Node>>>())> interfaces = std::map<std::string,std::vector<std::shared_ptr<const Node>>>();
 
     std::vector<std::shared_ptr<const ClassDefinition>> class_definitions = std::vector<std::shared_ptr<const ClassDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const ClassDefinition>>{}), std::remove_cvref_t<decltype(class_definitions)>>);
 
@@ -156,6 +156,14 @@ if ((name == std::string {"class"}) || (name == std::string {"struct"})) {
                     return;
                 }
                 parent = ceto::mado(parent)->parent();
+            }
+        }
+
+        inline auto add_interface(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
+if (ceto::mado(this -> interfaces)->contains(interface_name)) {
+                ceto::mado(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))->push_back(interface_method_def_node);
+            } else {
+                ceto::maybe_bounds_check_access(this -> interfaces,interface_name) = std::vector {interface_method_def_node};
             }
         }
 
@@ -211,7 +219,13 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
         template <typename T1>
 auto find_def(const T1& var_node) const -> auto {
             const auto find_all = false;
-            return this -> find_defs(var_node, find_all);
+            const auto found = this -> find_defs(var_node, find_all);
+            return [&]() {if (ceto::mado(found)->size() > 0) {
+                return ceto::maybe_bounds_check_access(found,0);
+            } else {
+                return nullptr;
+            }}()
+;
         }
 
         inline auto enter_scope() const -> std::shared_ptr<const Scope> {

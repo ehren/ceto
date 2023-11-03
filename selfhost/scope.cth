@@ -66,7 +66,7 @@ def (creates_new_variable_scope, e: Node:
 )
 
 class (Scope:
-    interfaces = std.map<std.string, Node>()
+    interfaces = std.map<std.string, std.vector<Node>>()
     class_definitions: [ClassDefinition] = []
     variable_definitions: [VariableDefinition] = []
     indent = 0
@@ -127,6 +127,14 @@ class (Scope:
                 return
             )
             parent = parent.parent()
+        )
+    )
+
+    def (add_interface: mut, interface_name: std.string, interface_method_def_node: Node:
+        if (self.interfaces.contains(interface_name):
+            self.interfaces[interface_name].push_back(interface_method_def_node)
+        else:
+            self.interfaces[interface_name] = [interface_method_def_node]
         )
     )
 
@@ -191,7 +199,12 @@ class (Scope:
 
     def (find_def, var_node:
         find_all = false
-        return self.find_defs(var_node, find_all)
+        found = self.find_defs(var_node, find_all)
+        return if (found.size() > 0:
+            found[0]
+        else:
+            None
+        )
     )
 
     def (enter_scope:
