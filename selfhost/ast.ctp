@@ -215,14 +215,15 @@ lambda(m : mut:auto:rref:
         c"in_class_body", &Scope.in_class_body).def_readwrite(
         c"in_decltype", &Scope.in_decltype).def(
         c"indent_str", &Scope.indent_str).def(
-        c"add_variable_definition", &Scope.add_variable_definition, c"defined_node"_a, c"defining_node"_a).def(
+        c"add_variable_definition", &Scope.add_variable_definition, py.kw_only(), py.arg(c"defined_node"), py.arg(c"defining_node")).def(
         c"add_interface_method", &Scope.add_interface_method).def(
         c"add_class_definition", &Scope.add_class_definition).def(
         c"lookup_class", &Scope.lookup_class).def(
         c"find_defs", &Scope.find_defs, py.arg(c"var_node"), py.arg(c"find_all") = true).def(
         c"find_def", &Scope.find_def).def(
         c"enter_scope", &Scope.enter_scope).def_property_readonly(
-        c"parent", &Scope.parent)
+        c"parent", &Scope.parent).def_property_readonly(
+        c"interfaces", &Scope.interfaces)
 
     m.def(c"creates_new_variable_scope", &creates_new_variable_scope)
 
