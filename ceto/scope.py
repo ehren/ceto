@@ -1,17 +1,12 @@
 import typing
 from collections import defaultdict
+from .abstractsyntaxtree import Identifier, Call, Node, Assign
 
 selfhost = True
 try:
     from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
-    # selfhost = False
 except ImportError:
-    # selfhost = False
     raise
-
-from .abstractsyntaxtree import Identifier, Call, Node, Assign
-
-if not selfhost:
 
     class ClassDefinition:
 

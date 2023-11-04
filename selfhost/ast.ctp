@@ -31,7 +31,7 @@ lambda(m : mut:auto:rref:
 #    node_scope_map : mut:static:std.map<Node:weak, py.object> = {}
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
-    node : mut = py.class_<Node.class, Node:mut>(m, c"Node", py.dynamic_attr()).def_readwrite(
+    node : mut = py.class_<Node.class, Node:mut>(m, c"Node").def_readwrite(
     c"func", &Node.func).def_readwrite(
     c"args", &Node.args).def_readwrite(
     c"declared_type", &Node.declared_type).def_readwrite(   #.def_property(
