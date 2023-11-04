@@ -2,7 +2,7 @@ import typing
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import *
+    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens_, ListLike_
     # selfhost = False
 
     # def _set_scope(self, o):

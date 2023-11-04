@@ -43,7 +43,7 @@ struct Node : ceto::shared_object {
 
 };
 
-struct Identifier : public std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}))> {
+struct Identifier : public Node {
 
     std::string name;
 
@@ -51,7 +51,7 @@ struct Identifier : public std::type_identity_t<decltype(Node(nullptr, std::vect
             return ((std::string {"identifier node with name: "} + (this -> name)) + std::string {"\n"});
         }
 
-    explicit Identifier(const std::string&  name) : std::type_identity_t<decltype(Node(nullptr, std::vector<std::shared_ptr<const Node>>{}))> (nullptr, std::vector<std::shared_ptr<const Node>>{}), name(name) {
+    explicit Identifier(const std::string&  name) : Node (nullptr, std::vector<std::shared_ptr<const Node>>{}), name(name) {
     }
 
     Identifier() = delete;
