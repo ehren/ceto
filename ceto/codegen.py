@@ -395,7 +395,8 @@ def codegen_class(node : Call, cx):
                     if methodname.name in ["init", "destruct"]:
                         raise CodeGenError("init or destruct can't defined as interface methods", b)
 
-                    if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
+                    #if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
+                    if interface_type.name in defined_interfaces or not isinstance(cx.lookup_class(interface_type), InterfaceDefinition):
                         defined_interfaces[interface_type.name].append(b)
 
                     cx.add_interface_method(interface_type.name, b)
@@ -1445,14 +1446,19 @@ def _decltype_maybe_wrapped_in_declval(node, cx):
 
 def _decltype_str(node, cx):
 
+    # import pdb
+    # pdb.set_trace()
+
     if isinstance(node, (IntegerLiteral, FloatLiteral, StringLiteral)):
         return True, codegen_node(node, cx)
 
     if isinstance(node, BinOp):
         binop = node
         if isinstance(node, AttributeAccess):
-            # TODO needs fixes for implicit scope resolution
+            # TODO needs fixes for implicit scope resolution / may be busted
             return True, "ceto::mad(" + _decltype_maybe_wrapped_in_declval(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+        elif isinstance(node, ArrowOp):
+            return True, _decltype_maybe_wrapped_in_declval(node.lhs, cx) + "->" + codegen_node(node.rhs, cx)
 
         return True, _decltype_maybe_wrapped_in_declval(binop.lhs, cx) + binop.op + _decltype_maybe_wrapped_in_declval(binop.rhs, cx)
 

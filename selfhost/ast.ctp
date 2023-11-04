@@ -222,8 +222,7 @@ lambda(m : mut:auto:rref:
         c"find_defs", &Scope.find_defs, py.arg(c"var_node"), py.arg(c"find_all") = true).def(
         c"find_def", &Scope.find_def).def(
         c"enter_scope", &Scope.enter_scope).def_property_readonly(
-        c"parent", &Scope.parent).def_property_readonly(
-        c"interfaces", &Scope.interfaces)
+        c"parent", &Scope.parent)
 
     m.def(c"creates_new_variable_scope", &creates_new_variable_scope)
 
