@@ -6,7 +6,8 @@ try:
     from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
     # selfhost = False
 except ImportError:
-    selfhost = False
+    # selfhost = False
+    raise
 
 from .abstractsyntaxtree import Identifier, Call, Node, Assign
 

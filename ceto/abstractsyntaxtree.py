@@ -2,7 +2,7 @@ import typing
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens_, ListLike_
+    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens, ListLike_
     # selfhost = False
 
     # def _set_scope(self, o):
@@ -10,7 +10,8 @@ try:
     # Node.scope = property(lambda n: n.__dict__["scope"], _set_scope)
 
 except ImportError:
-    selfhost = False
+    # selfhost = False
+    raise
 
 if not selfhost:
     # TODO should throw away the ladder soon

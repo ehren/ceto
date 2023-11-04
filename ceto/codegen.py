@@ -2683,6 +2683,8 @@ def codegen_node(node: Node, cx: Scope):
                     return "std::string {" + code + "}"
                 else:
                     return code
+        if node.prefix or node.suffix:
+            return str(node)
         return "std::string {" + str(node) + "}"
     # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
     #     return "(" + codegen_node(node.args[0]) + ")"
