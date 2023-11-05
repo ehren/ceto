@@ -4,10 +4,9 @@ from .abstractsyntaxtree import Identifier, Call, Node, Assign
 
 selfhost = True
 try:
-    # from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
-    raise ImportError()
+    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 except ImportError:
-    # raise
+    raise
 
     class ClassDefinition:
 
@@ -62,13 +61,6 @@ except ImportError:
 
     def creates_new_variable_scope(e: Node) -> bool:
         return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
-
-
-    def tree_height(node: Node):
-        if node.parent is None:
-            return 0
-        else:
-            return 1 + tree_height(node.parent)
 
 
     class Scope:
@@ -131,31 +123,10 @@ except ImportError:
 
             for d in self.variable_definitions:
                 if d.defined_node.name == var_node.name and d.defined_node is not var_node:
-                    # _ , defined_loc = d.defined_node.source
-                    # _ , var_loc = var_node.source
+                    _ , defined_loc = d.defined_node.source
+                    _ , var_loc = var_node.source
 
-                    # defined_line_col = d.defined_node.line_col
-                    # var_line_col = var_node.line_col
-                    # _, defined_loc = d.defined_node.source
-                    # _, var_loc = var_node.source
-
-                    # if defined_line_col[0] < var_line_col[0] or (
-                    #         defined_line_col[0] == var_line_col[0] and
-                    #         defined_line_col[1] < var_line_col[1]) or (
-                    #         defined_loc < var_loc and defined_line_col == var_line_col):
-
-                    # if defined_line_col[0] < var_line_col[0] or (
-                    #         defined_line_col[0] == var_line_col[0] and
-                    #         defined_line_col[1] < var_line_col[1]) or (
-                    #         defined_loc < var_loc ):
-
-                    # if defined_loc < var_loc:
-
-                    defined_height = tree_height(d.defined_node)
-                    var_height = tree_height(var_node)
-
-                    if defined_height <= var_height: # or (defined_height >= var_height and var_node in var_node.parent.args and d.defined_node in d.defining_node.parent.args and d.defined_node.parent.args.index(d.defining_node) <= var_node.parent.args.index(var_node)):
-
+                    if defined_loc < var_loc:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                             yield from self.find_defs(d.defining_node.rhs)

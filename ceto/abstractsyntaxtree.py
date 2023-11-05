@@ -2,11 +2,10 @@ import typing
 
 selfhost = True
 try:
-    # from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens, ListLike_
-    raise ImportError()
+    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens, ListLike_
 
 except ImportError:
-    # raise
+    raise
 
     # TODO should throw away the ladder soon
 
@@ -20,7 +19,6 @@ except ImportError:
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source
-            self.line_col: typing.Optional[typing.Tuple[int, int]] = None
             self.from_include = False
 
         def __repr__(self):

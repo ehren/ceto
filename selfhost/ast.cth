@@ -2,14 +2,10 @@
 
 include <map>
 include <typeinfo>
-include <pybind11/pybind11.h>
 
 
 include (string_utils)
 include (visitor)
-
-
-py: namespace = pybind11
 
 
 class (Node)
@@ -29,7 +25,6 @@ class (Node:
     func: Node
     args: [Node]
     source: (std.string, int)
-    line_col: py.object = py.none()
 
     def (init, func, args, source = ("", 0):
         self.func = func

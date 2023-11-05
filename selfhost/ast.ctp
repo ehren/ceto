@@ -49,8 +49,7 @@ lambda(m : mut:auto:rref:
 #        void()
 #    )).def_readwrite(
     c"scope", &Node.scope).def_readwrite(
-    c"source", &Node.source).def_readwrite(
-    c"line_col", &Node.line_col).def(
+    c"source", &Node.source).def(
     c"__repr__", &Node.repr).def(
     c"ast_repr", lambda(n: Node.class:
         vis: mut = EvalableAstReprVisitor()
