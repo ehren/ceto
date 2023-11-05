@@ -46,7 +46,7 @@ setup(
     ext_modules=ext_modules,
     extras_require={"test": "pytest"},
     install_requires=[
-        'pyparsing',
+        'cpyparsing',  # pyparsing also supported
     ],
     #cmdclass={"build_ext": build_ext},
     zip_safe=False,

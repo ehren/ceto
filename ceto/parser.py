@@ -4,13 +4,16 @@
 # 
 #
 import sys
-import pyparsing as pp
+# import pyparsing as pp
+import cPyparsing as pp
 import os
 
 # pp.ParserElement.enable_left_recursion()  # this works but packrat is faster
 import typing
 
-pp.ParserElement.enable_packrat(2**20)
+
+pp.ParserElement.enablePackrat(2**20)
+
 
 import io
 
@@ -25,7 +28,23 @@ class ParserError(Exception):
     pass
 
 
-def _parse_right_unop(s, l, t):
+last_location = 0
+
+
+def _parse_right_unop(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+
     source = s, l
     func = t[0][0]  # TODO should be an Identifier
     args = [t[0][1]]
@@ -33,7 +52,20 @@ def _parse_right_unop(s, l, t):
     return u
 
 
-def _parse_left_unop(s, l, t):
+def _parse_left_unop(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+
     func = t[0][1]  # TODO should be an Identifier
     args = [t[0][0]]
     source = s, l
@@ -41,7 +73,20 @@ def _parse_left_unop(s, l, t):
     return u
 
 
-def _parse_right_associative_bin_op(s, l, t):
+def _parse_right_associative_bin_op(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+
     args = t[0][::2]
     func = t[0][1]
     source = s, l
@@ -65,7 +110,20 @@ def _make_scope_resolution_op(func, args, source):
     return None
 
 
-def _parse_left_associative_bin_op(s, l, t):
+def _parse_left_associative_bin_op(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+
     t = t[0]
     last_arg = t[-1]
     last_op = t[-2]
@@ -87,8 +145,20 @@ def _parse_left_associative_bin_op(s, l, t):
 
 
 
-def _parse_maybe_scope_resolved_call_like(s, l, t):
-    tokens = t.as_list()
+def _parse_maybe_scope_resolved_call_like(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+    tokens = t.asList()
 
     if len(tokens) == 2:
         func = tokens[0]
@@ -122,64 +192,150 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
     return call
 
 
-def _parse_identifier(s, l, t):
+def _parse_identifier(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+
+
     name = str(t[0])
     source = s, l
     return Identifier(name, source)
 
 
-def _parse_integer_literal(s, l, t):
+def _parse_integer_literal(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
     integer = str(t[0])
     suffix = t[1] if len(t) > 1 else None
     source = s, l
     return IntegerLiteral(integer, suffix, source)
 
 
-def _parse_float_literal(s, l, t):
+def _parse_float_literal(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
     float_str = str(t[0])
     suffix = t[1] if len(t) > 1 else None
     source = s, l
     return FloatLiteral(float_str, suffix, source)
 
 
-def _parse_template(s, l, t):
-    lst = t.as_list()
+def _parse_template(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+    lst = t.asList()
     func = lst[0]
     args = lst[1:]
     source = s, l
     return Template(func, args, source)
 
 
-def _parse_string_literal(s, loc, tokens):
-    source = s, loc
+def _parse_string_literal(*args):
+    global last_location
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+    source = s, l
     prefix = None
     suffix = None
 
-    if len(tokens) == 3:
-        prefix, string, suffix = tokens
-    elif len(tokens) == 2:
-        prefix, string = tokens
+    if len(t) == 3:
+        prefix, string, suffix = t
+    elif len(t) == 2:
+        prefix, string = t
         if not isinstance(string, str):
             string, suffix = prefix, string
             prefix = None
     else:
-        assert len(tokens) == 1
-        string = tokens[0]
+        assert len(t) == 1
+        string = t[0]
 
     string = string.replace("CETO_PRIVATE_ESCAPED_ESCAPED", "\\")
     return StringLiteral(string, prefix, suffix, source)
 
 
 def _make_parse_action_list_like(clazz):
-    def parse_action(s, l, t):
-        args = t.as_list()
+    global last_location
+    def parse_action(*args):
+        if len(args) == 3:
+            s, l, t = args
+            last_location = l
+        elif len(args) == 2:
+            l, t = args
+            last_location = l
+            s = ""
+        else:
+            s = ""
+            l = last_location
+            t = args
+
+        args = t.asList()
         source = s, l
         return clazz(args, source)
     return parse_action
 
 
-def _parse_infix_wrapper(s, l, t):
-    args = [t.as_list()[0]]
+def _parse_infix_wrapper(*args):
+    if len(args) == 3:
+        s, l, t = args
+        last_location = l
+    elif len(args) == 2:
+        l, t = args
+        last_location = l
+        s = ""
+    else:
+        s = ""
+        l = last_location
+        t = args
+    args = [t.asList()[0]]
     source = s, l
     return InfixWrapper_(args, source)
 
@@ -200,10 +356,10 @@ def _build_grammar():
     and_op = pp.Keyword("and")
     or_op = pp.Keyword("or")
     reserved_words = not_op | and_op | or_op
-    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).set_parse_action(_parse_identifier)
+    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).setParseAction(_parse_identifier)
 
-    integer_literal = (pp.Regex(r"\d+") + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_integer_literal)
-    float_literal = (pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_float_literal)
+    integer_literal = (pp.Regex(r"\d+") + pp.Optional(ident).leaveWhitespace()).setParseAction(_parse_integer_literal)
+    float_literal = (pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leaveWhitespace()).setParseAction(_parse_float_literal)
     tuple_literal = pp.Forward()
     list_literal = pp.Forward()
     # dict_literal = pp.Forward()
@@ -213,8 +369,8 @@ def _build_grammar():
     scope_resolution = pp.Forward()
     infix_expr = pp.Forward()
 
-    quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
-    dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, esc_char="\\").leave_whitespace() + pp.Optional(ident).leave_whitespace()).set_parse_action(_parse_string_literal)
+    quoted_str = (pp.Optional(ident) + pp.QuotedString("'", multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace()).setParseAction(_parse_string_literal)
+    dblquoted_str = (pp.Optional(ident) + pp.QuotedString('"', multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace()).setParseAction(_parse_string_literal)
 
     non_numeric_atom = (
         dblquoted_str
@@ -227,15 +383,31 @@ def _build_grammar():
         | braced_literal
     )
 
+    # tuple_literal <<= (
+        # (lparen + pp.delimitedList(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
+
+
+      # (lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen) |
+
+            # (lparen + pp.delimitedList(infix_expr) + rparen) |
+        # (lparen + pp.Optional(infix_expr) + comma + rparen) |
+        # (lparen + rparen)
+
+
+        # lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
+
+    # ).setParseAction(_make_parse_action_list_like(TupleLiteral))
+
     tuple_literal <<= (
-        (lparen + pp.delimited_list(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
+        (lparen + infix_expr + comma + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rparen) |
         (lparen + pp.Optional(infix_expr) + comma + rparen) |
         (lparen + rparen)
-    ).set_parse_action(_make_parse_action_list_like(TupleLiteral))
+    ).setParseAction(_make_parse_action_list_like(TupleLiteral))
+    # return (expr + ZeroOrMore(Suppress(delim) + expr)).setName(dlName)
 
     list_literal <<= (
         lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-    ).set_parse_action(_make_parse_action_list_like(ListLiteral))
+    ).setParseAction(_make_parse_action_list_like(ListLiteral))
 
     bel = pp.Suppress('\x07')
 
@@ -244,19 +416,19 @@ def _build_grammar():
     # note: direct use of std.unordered_map is possible now: m : std.unordered_map = {{0,1}, {1,2}}  # ctad ftw
 
     # dict_entry = pp.Group(infix_expr + bel + infix_expr)
-    # dict_literal <<= (lbrace + pp.delimited_list(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
+    # dict_literal <<= (lbrace + pp.delimitedList(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
 
-    optional_infix_csv = pp.Optional(pp.delimited_list(infix_expr))
+    optional_infix_csv = pp.Optional(pp.delimitedList(infix_expr))
 
-    braced_literal <<= (lbrace + optional_infix_csv + rbrace).set_parse_action(_make_parse_action_list_like(BracedLiteral))
+    braced_literal <<= (lbrace + optional_infix_csv + rbrace).setParseAction(_make_parse_action_list_like(BracedLiteral))
 
     block_line_end = pp.Suppress(";")
-    block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).set_parse_action(_make_parse_action_list_like(Block))
+    block = pp.Suppress(":") + bel + pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)).setParseAction(_make_parse_action_list_like(Block))
 
     template_disambig_char = pp.Suppress("\x06")
-    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char)).set_parse_action(_parse_template)
+    template <<= ((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char)).setParseAction(_parse_template)
 
-    non_block_args = pp.Optional(pp.delimited_list(pp.Optional(infix_expr)))
+    non_block_args = pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))
 
     # no python slice syntax - but can be faked with TypeOp
     # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
@@ -271,12 +443,12 @@ def _build_grammar():
     scopeop = pp.Literal("::")
     dotop_or_arrowop = dotop|arrowop
 
-    scope_resolution <<= pp.infix_notation(non_numeric_atom|(lparen + infix_expr + rparen), [
+    scope_resolution <<= pp.infixNotation(non_numeric_atom|(lparen + infix_expr + rparen), [
     (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
         (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
 
-    maybe_scope_resolved_call_like <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).set_parse_action(_parse_maybe_scope_resolved_call_like)
+    maybe_scope_resolved_call_like <<= (scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution))))).setParseAction(_parse_maybe_scope_resolved_call_like)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -306,9 +478,9 @@ def _build_grammar():
     def andanderror(*t):
         raise ParserError("don't use '&&'. use 'and' instead.", *t)
 
-    ellipses_ident = pp.Literal("...").set_parse_action(_parse_identifier)
+    ellipses_ident = pp.Literal("...").setParseAction(_parse_identifier)
 
-    infix_expr <<= pp.infix_notation(
+    infix_expr <<= pp.infixNotation(
         maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal|ellipses_ident,
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
@@ -331,9 +503,9 @@ def _build_grammar():
             (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
             (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
         ],
-    ).set_parse_action(_parse_infix_wrapper)
+    ).setParseAction(_parse_infix_wrapper)
 
-    module = pp.OneOrMore(infix_expr + block_line_end).set_parse_action(_make_parse_action_list_like(Module))
+    module = pp.OneOrMore(infix_expr + block_line_end).setParseAction(_make_parse_action_list_like(Module))
 
     return module
 
@@ -346,25 +518,25 @@ def _parse(source: str):
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
     for p in patterns:
-        p = p.set_parse_action(lambda t: t[0] + ":")
+        p = p.setParseAction(lambda t: t[0] + ":")
         if pattern is None:
             pattern = p
         pattern |= p
 
-    qs = pp.QuotedString('"', multiline=True, esc_char="\\") | pp.QuotedString("'", multiline=True, esc_char="\\")
+    qs = pp.QuotedString('"', multiline=True, escChar="\\") | pp.QuotedString("'", multiline=True, escChar="\\")
     pattern = pattern.ignore(qs)
-    source = pattern.transform_string(source)
+    source = pattern.transformString(source)
 
     patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
     pattern = None
     for p in patterns:
-        p = p.set_parse_action(lambda t: "," + t[0])
+        p = p.setParseAction(lambda t: "," + t[0])
         if pattern is None:
             pattern = p
         pattern |= p
 
     pattern = pattern.ignore(qs)
-    source = pattern.transform_string(source)
+    source = pattern.transformString(source)
 
     print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 

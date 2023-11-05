@@ -1,2 +1,2 @@
-pyparsing
+cpyparsing  # pyparsing also supported
 pybind11
