@@ -6,9 +6,14 @@ import typing
 import sys
 import os
 
+import concurrent.futures
+from time import perf_counter
+
 try:
     import cPyparsing as pp
     from cPyparsing import ParseException
+
+    pp.ParserElement.enableIncremental()
 except ImportError:
     import pyparsing as pp
     from pyparsing import ParseException
@@ -19,7 +24,7 @@ pp.ParserElement.enablePackrat(2**20)
 
 import io
 
-from .preprocessor import preprocess
+from .indent_checker import build_blocks
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
@@ -150,6 +155,12 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
 
 def _parse_identifier(s, l, t):
     name = str(t[0])
+    if name in replaced_blocks:
+        block_holder = replaced_blocks[name]
+        if not block_holder.parsed_node:
+            raise ParserError()
+        block_holder.parsed_node.line_col = block_holder.line_col
+        return block_holder.parsed_node
     source = s, l
     return Identifier(name, source)
 
@@ -382,8 +393,15 @@ def _build_grammar():
 grammar = _build_grammar()
 
 
-def _parse(source: str):
 
+
+replaced_blocks = None
+
+
+_quoted_string = pp.QuotedString('"') | pp.QuotedString("'")
+
+
+def _build_elif_kludges_grammar():
     # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
     patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
     pattern = None
@@ -393,25 +411,96 @@ def _parse(source: str):
             pattern = p
         pattern |= p
 
-    qs = pp.QuotedString('"', multiline=True, escChar="\\") | pp.QuotedString("'", multiline=True, escChar="\\")
-    pattern = pattern.ignore(qs)
-    source = pattern.transformString(source)
-
-    patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
-    pattern = None
+    # removing this "," insertion (to make one liners more ergonomic) would require making elif/else sometimes BinOps too...
+    patterns = [pp.Keyword(k) for k in ["elif", "else"]]
     for p in patterns:
         p = p.setParseAction(lambda t: "," + t[0])
-        if pattern is None:
-            pattern = p
         pattern |= p
 
-    pattern = pattern.ignore(qs)
-    source = pattern.transformString(source)
+    pattern = pattern.ignore(_quoted_string)
+    return pattern
 
-    print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
-    res = grammar.parseString(source, parseAll=True)
+_grammar = _build_grammar()
+_elif_kludges = _build_elif_kludges_grammar()
+
+
+
+def _parse(source: str):
+    t = perf_counter()
+
+    source = _elif_kludges.transformString(source)
+
+    # print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
+
+    print(f"hacks preprocess time {perf_counter() - t}")
+
+    res = _grammar.parseString(source, parseAll=True)
+
+    print(f"pyparsing time {perf_counter() - t}")
     return res[0]
+
+
+def _propagate_line_col(e, line_col):
+    if not isinstance(e, Node):
+        return
+    if e.line_col is None:
+        e.line_col = line_col
+    elif e.line_col[0] < line_col[0] or (e.line_col[0] == line_col[0] and e.line_col[1] < line_col[1]):
+        print("hmm")
+    for arg in e.args:
+        _propagate_line_col(arg, line_col)
+    _propagate_line_col(e.func, line_col)
+
+
+def thread_parse(line_source, line_col, index):
+    expr = _parse(line_source)
+    assert isinstance(expr, Module)
+    _propagate_line_col(expr, line_col)
+    return expr, index
+
+
+def _parse_blocks(block_holder):
+    for subblock in block_holder.subblocks:
+        _parse_blocks(subblock)
+    block_args = []
+    # lineno, colno = block_holder.line_col
+    futures = []
+    results = {}
+
+    if False and len(block_holder.source) > 24:
+        # process in parallel
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for index, (line_source, line_col) in enumerate(block_holder.source):
+                if not line_source.strip():
+                    continue
+                futures.append(executor.submit(thread_parse, line_source, line_col, index))
+
+            for future in concurrent.futures.as_completed(futures):
+                expr, index = future.result()
+                results[index] = expr
+
+        # FIXME possible to use .map instead of .as_completed to avoid this?
+        for k in sorted(results.keys()):
+            expr = results[k]
+            assert isinstance(expr, Module)
+            block_args.extend(expr.args)
+    else:
+        # single process faster for a handful of lines
+
+        for line_source, line_col in block_holder.source:
+            if not line_source.strip():
+                continue
+            expr = _parse(line_source)
+            assert isinstance(expr, Module)
+            _propagate_line_col(expr, line_col)
+            block_args.extend(expr.args)
+
+    block_holder.parsed_node = Module(block_args)
+
+
+
 
 
 # TODO this will probably need a -I like include path mechanism in the future
@@ -439,55 +528,15 @@ def parse(source: str):
     source = source.replace("\\U", "CETO_PRIVATE_ESCAPED_UNICODE")
     source = source.replace("\\u", "CETO_PRIVATE_ESCAPED_UNICODE")
     sio = io.StringIO(source)
-    preprocessed, _, _ = preprocess(sio, reparse=False)
-    preprocessed = preprocessed.getvalue()
 
-    try:
-        res = _parse(preprocessed)
-    except pp.ParseException as orig:
-        # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
-        # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+    global replaced_blocks
+    t = perf_counter()
+    block_holder, replaced_blocks = build_blocks(sio)
+    print(f"preprocess time {perf_counter() - t}")
 
-        sio.seek(0)
-        reparse, replacements, subblocks = preprocess(sio, reparse=True)
-        reparse = reparse.getvalue()
-
-        try:
-            _parse(reparse)
-        except pp.ParseException:
-
-            # if a control structure defining a block (aka call with block arg)
-            # is responsible for the error find the first erroring subblock:
-
-            for (lineno, colno), block in subblocks:
-                # dedented = dedent(block)
-
-                try:
-                    # do_parse(dedented)
-                    _parse(block)
-                except pp.ParseException as blockerror:
-                    print("blockerr")
-                    blockerror._ceto_col = blockerror.col# + colno
-                    blockerror._ceto_lineno =   blockerror.lineno -  1
-                    raise blockerror
-
-        # otherwise if a single line (that doesn't begin an indented block) fails to parse:
-
-        for dummy, real in replacements.items():
-            # dedented = dedent(real)
-            try:
-                # do_parse(dedented)
-                _parse(real)
-            except pp.ParseException as lineerror:
-                print("lineerr")
-                dummy = dummy[len('ceto_priv_dummy'):-1]
-                line, col = dummy.split("c")
-                lineerror._ceto_col = int(col) + lineerror.col - 1
-                # lineerror._ceto_col = lineerror.col
-                lineerror._ceto_lineno = int(line)# + lineerror.lineno
-                raise lineerror
-
-        raise orig
+    _parse_blocks(block_holder)
+    print(f"block parse time {perf_counter() - t}")
+    res = block_holder.parsed_node
 
 
     def replacer(op):
@@ -505,6 +554,11 @@ def parse(source: str):
 
         op.args = [replacer(arg) for arg in op.args]
         op.func = replacer(op.func)
+
+        if isinstance(op, Block) and len(op.args) == 1 and isinstance(op.args[0], Module):
+            # FIXME remove 'Module' entirely from pyparsing grammar
+            op.args = op.args[0].args
+
         return op
 
     res = replacer(res)

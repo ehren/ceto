@@ -30,7 +30,7 @@ for xfailing in clang_xfailing_tests:
 for xfailing in msvc_xfailing_tests:
     test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
 
-# test_files = ["regression/if_expressions_lambdas.ctp"]
+# test_files = ["regression/string_join_capture_list.ctp"]
 _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS = False
 
 
