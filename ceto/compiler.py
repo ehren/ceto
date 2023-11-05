@@ -1,4 +1,5 @@
 from .parser import parse, Module
+from .parser import ParseException
 from .semanticanalysis import semantic_analysis
 from .codegen import codegen
 
@@ -95,7 +96,6 @@ def runtest(s, compile_cpp=True):
     return output
 
 
-from pyparsing import ParseException
 
 
 def report_error(e : ParseException, source : str):
