@@ -14,7 +14,7 @@ except ImportError:
     from pyparsing import ParseException
 
 
-pp.ParserElement.enablePackrat(2**20)
+pp.ParserElement.enablePackrat(None)
 
 
 import io
@@ -268,15 +268,17 @@ def _build_grammar():
 
     # ).setParseAction(_make_parse_action_list_like(TupleLiteral))
 
+    optional_infix_with_optional_trailing_comma = pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma))
+
     tuple_literal <<= set_parse_action(
-        (lparen + infix_expr + comma + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rparen) |
+        (lparen + infix_expr + comma + optional_infix_with_optional_trailing_comma + rparen) |
         (lparen + pp.Optional(infix_expr) + comma + rparen) |
         (lparen + rparen)
     , _make_parse_action_list_like(TupleLiteral))
     # return (expr + ZeroOrMore(Suppress(delim) + expr)).setName(dlName)
 
     list_literal <<= set_parse_action(
-        lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack,
+        lbrack + optional_infix_with_optional_trailing_comma + rbrack,
     _make_parse_action_list_like(ListLiteral))
 
     bel = pp.Suppress('\x07')
@@ -295,8 +297,10 @@ def _build_grammar():
     block_line_end = pp.Suppress(";")
     block = pp.Suppress(":") + bel + set_parse_action(pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)), _make_parse_action_list_like(Block))
 
+    parenthesized_infix = lparen + infix_expr + rparen
+
     template_disambig_char = pp.Suppress("\x06")
-    template <<= set_parse_action((ident | (lparen + infix_expr + rparen)) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char), _parse_template)
+    template <<= set_parse_action((ident | parenthesized_infix) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char), _parse_template)
 
     non_block_args = pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))
 
@@ -313,7 +317,7 @@ def _build_grammar():
     scopeop = pp.Literal("::")
     dotop_or_arrowop = dotop|arrowop
 
-    scope_resolution <<= pp.infixNotation(non_numeric_atom|(lparen + infix_expr + rparen), [
+    scope_resolution <<= pp.infixNotation(non_numeric_atom|parenthesized_infix, [
     (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
         (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
