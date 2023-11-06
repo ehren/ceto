@@ -69,11 +69,11 @@ class (UnOp(Node):
         super.init(None, args, source)
     )
 
-    def (repr:
+    def (repr: override:
         return "(" +  self.op + " " + self.args[0].repr() + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -86,11 +86,11 @@ class (LeftAssociativeUnOp(Node):
         super.init(None, args, source)
     )
 
-    def (repr:
+    def (repr: override:
         return "(" + self.args[0].repr() + " " + self.op + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -111,18 +111,18 @@ class (BinOp(Node):
         return self.args[1]
     )
 
-    def (repr:
+    def (repr: override:
         return "(" + self.lhs().repr() + " " + self.op + " " + self.rhs().repr() + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (TypeOp(BinOp):
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -130,46 +130,46 @@ class (TypeOp(BinOp):
 class (SyntaxTypeOp(TypeOp):
     synthetic_lambda_return_lambda : Node = None
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (AttributeAccess(BinOp):
 
-    def (repr:
+    def (repr: override:
         return self.lhs().repr() + "." + self.rhs().repr()
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (ArrowOp(BinOp):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (ScopeResolution(BinOp):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (Assign(BinOp):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (NamedParameter(Assign):
-    def (repr:
+    def (repr: override:
         return "NamedParameter(" + join(self.args, lambda(a, a.repr()), ", ")  + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -182,15 +182,15 @@ class (Identifier(Node):
         super.init(None, [] : Node, source)
     )
 
-    def (repr:
+    def (repr: override:
         return self._name
     ) : std.string
 
-    def (name:
+    def (name: override:
         return self._name
     ) : std.optional<std.string>
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -198,45 +198,45 @@ class (Identifier(Node):
 class (Call(Node):
     is_one_liner_if = false
 
-    def (repr:
+    def (repr: override:
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "(" + csv + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (ArrayAccess(Node):
-    def (repr:
+    def (repr: override:
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "[" + csv + "]"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (BracedCall(Node):
-    def (repr:
+    def (repr: override:
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "{" + csv + "}"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (Template(Node):
-    def (repr:
+    def (repr: override:
         csv = join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "<" + csv + ">"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -285,7 +285,7 @@ class (StringLiteral(Node):
 
     )
 
-    def (repr:
+    def (repr: override:
         return if (self.prefix:
             self.prefix.name().value()
         else:
@@ -297,7 +297,7 @@ class (StringLiteral(Node):
         )
     ) : string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -312,11 +312,11 @@ class (IntegerLiteral(Node):
         super.init(None, {}, source)
     )
 
-    def (repr:
+    def (repr: override:
         return self.integer_string + if (self.suffix: self.suffix.name().value() else: "")
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -331,11 +331,11 @@ class (FloatLiteral(Node):
         super.init(None, {}, source)
     )
 
-    def (repr:
+    def (repr: override:
         return self.float_string + if (self.suffix: self.suffix.name().value() else: "")
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -345,36 +345,36 @@ class (ListLike_(Node):
         super.init(None, args, source)
     )
 
-    def (repr:
+    def (repr: override:
         classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (ListLiteral(ListLike_):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (TupleLiteral(ListLike_):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (BracedLiteral(ListLike_):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
 
 class (Block(ListLike_):
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -382,7 +382,7 @@ class (Block(ListLike_):
 class (Module(Block):
     has_main_function = false
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -392,12 +392,12 @@ class (RedundantParens(Node):
         super.init(None, args, source)
     )
 
-    def (repr:
+    def (repr: override:
         classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )
@@ -407,12 +407,12 @@ class (InfixWrapper_(Node):
         super.init(None, args, source)
     )
 
-    def (repr:
+    def (repr: override:
         classname = class_name(this)
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
-    def (accept: virtual, visitor: Visitor:mut:ref:
+    def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 )

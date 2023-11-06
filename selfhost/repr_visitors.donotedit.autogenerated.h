@@ -31,7 +31,7 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     std::remove_cvref_t<decltype(std::string {""})> repr = std::string {""};
 
-         virtual inline auto visit(const Node&  node) -> void {
+        inline auto visit(const Node&  node) -> void override {
             (this -> repr) += (class_name((&node)) + std::string {"("});
 if (ceto::mado(node)->func) {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
@@ -48,19 +48,19 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
             (this -> repr) += std::string {")"};
         }
 
-         virtual inline auto visit(const UnOp&  node) -> void {
+        inline auto visit(const UnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
             (this -> repr) += std::string {"])"};
         }
 
-         virtual inline auto visit(const LeftAssociativeUnOp&  node) -> void {
+        inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
             (this -> repr) += std::string {"])"};
         }
 
-         virtual inline auto visit(const BinOp&  node) -> void {
+        inline auto visit(const BinOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             for(const auto& arg : ceto::mado(node)->args) {
                 ceto::mado(arg)->accept((*this));
@@ -69,11 +69,11 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
             (this -> repr) += std::string {"])"};
         }
 
-         virtual inline auto visit(const Identifier&  node) -> void {
+        inline auto visit(const Identifier&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->repr()) + std::string {"\")"});
         }
 
-         virtual inline auto visit(const StringLiteral&  node) -> void {
+        inline auto visit(const StringLiteral&  node) -> void override {
             (this -> repr) += ((class_name((&node)) + std::string {"("}) + ceto::mado(node)->escaped());
 if (ceto::mado(node)->prefix) {
                 ceto::mado(ceto::mado(node)->prefix)->accept((*this));

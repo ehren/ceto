@@ -135,111 +135,111 @@ template <class Derived>struct BaseVisitor : public Visitor {
 
 using Visitor::Visitor;
 
-         virtual inline auto visit(const Node&  node) -> void {
+        inline auto visit(const Node&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const UnOp&  node) -> void {
+        inline auto visit(const UnOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const LeftAssociativeUnOp&  node) -> void {
+        inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const BinOp&  node) -> void {
+        inline auto visit(const BinOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const TypeOp&  node) -> void {
+        inline auto visit(const TypeOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const SyntaxTypeOp&  node) -> void {
+        inline auto visit(const SyntaxTypeOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const AttributeAccess&  node) -> void {
+        inline auto visit(const AttributeAccess&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const ArrowOp&  node) -> void {
+        inline auto visit(const ArrowOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Assign&  node) -> void {
+        inline auto visit(const Assign&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const ScopeResolution&  node) -> void {
+        inline auto visit(const ScopeResolution&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const NamedParameter&  node) -> void {
+        inline auto visit(const NamedParameter&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Identifier&  node) -> void {
+        inline auto visit(const Identifier&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Call&  node) -> void {
+        inline auto visit(const Call&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const ArrayAccess&  node) -> void {
+        inline auto visit(const ArrayAccess&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const BracedCall&  node) -> void {
+        inline auto visit(const BracedCall&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Template&  node) -> void {
+        inline auto visit(const Template&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const StringLiteral&  node) -> void {
+        inline auto visit(const StringLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const IntegerLiteral&  node) -> void {
+        inline auto visit(const IntegerLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const FloatLiteral&  node) -> void {
+        inline auto visit(const FloatLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const ListLike_&  node) -> void {
+        inline auto visit(const ListLike_&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const ListLiteral&  node) -> void {
+        inline auto visit(const ListLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const TupleLiteral&  node) -> void {
+        inline auto visit(const TupleLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const BracedLiteral&  node) -> void {
+        inline auto visit(const BracedLiteral&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Block&  node) -> void {
+        inline auto visit(const Block&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const Module&  node) -> void {
+        inline auto visit(const Module&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const RedundantParens&  node) -> void {
+        inline auto visit(const RedundantParens&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
-         virtual inline auto visit(const InfixWrapper_&  node) -> void {
+        inline auto visit(const InfixWrapper_&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 

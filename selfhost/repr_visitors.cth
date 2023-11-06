@@ -10,7 +10,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
 
     repr = ""
 
-    def (visit: virtual:mut, node: Node.class:
+    def (visit: override:mut, node: Node.class:
         self.repr += class_name(&node) + "("
 
         if (node.func:
@@ -32,19 +32,19 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         self.repr += ")"
     )
 
-    def (visit: virtual:mut, node: UnOp.class:
+    def (visit: override:mut, node: UnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
         self.repr += "])"
     )
 
-    def (visit: virtual:mut, node: LeftAssociativeUnOp.class:
+    def (visit: override:mut, node: LeftAssociativeUnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
         self.repr += "])"
     )
 
-    def (visit: virtual:mut, node: BinOp.class:
+    def (visit: override:mut, node: BinOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         for (arg in node.args:
             arg.accept(*this)
@@ -53,11 +53,11 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         self.repr += "])"
     )
 
-    def (visit: virtual:mut, node: Identifier.class:
+    def (visit: override:mut, node: Identifier.class:
         self.repr += class_name(&node) + '("' +  node.repr() + '")'
     )
 
-    def (visit: virtual:mut, node: StringLiteral.class:
+    def (visit: override:mut, node: StringLiteral.class:
         self.repr += class_name(&node) + "(" +  node.escaped()
         if (node.prefix:
             node.prefix.accept(*this)

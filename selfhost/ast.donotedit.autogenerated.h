@@ -90,11 +90,11 @@ struct UnOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<st
 
     std::string op;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((((std::string {"("} + (this -> op)) + std::string {" "}) + ceto::mado(ceto::maybe_bounds_check_access(this -> args,0))->repr()) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -109,11 +109,11 @@ struct LeftAssociativeUnOp : public std::type_identity_t<decltype(Node(nullptr, 
 
     std::string op;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((((std::string {"("} + ceto::mado(ceto::maybe_bounds_check_access(this -> args,0))->repr()) + std::string {" "}) + (this -> op)) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -136,11 +136,11 @@ struct BinOp : public std::type_identity_t<decltype(Node(nullptr, std::declval<s
             return ceto::maybe_bounds_check_access(this -> args,1);
         }
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((((((std::string {"("} + ceto::mado(this -> lhs())->repr()) + std::string {" "}) + (this -> op)) + std::string {" "}) + ceto::mado(this -> rhs())->repr()) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -155,7 +155,7 @@ struct TypeOp : public BinOp {
 
 using BinOp::BinOp;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -167,7 +167,7 @@ using TypeOp::TypeOp;
 
     std::shared_ptr<const Node> synthetic_lambda_return_lambda = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(synthetic_lambda_return_lambda)>>);
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -177,11 +177,11 @@ struct AttributeAccess : public BinOp {
 
 using BinOp::BinOp;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((ceto::mado(this -> lhs())->repr() + std::string {"."}) + ceto::mado(this -> rhs())->repr());
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -191,7 +191,7 @@ struct ArrowOp : public BinOp {
 
 using BinOp::BinOp;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -201,7 +201,7 @@ struct ScopeResolution : public BinOp {
 
 using BinOp::BinOp;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -211,7 +211,7 @@ struct Assign : public BinOp {
 
 using BinOp::BinOp;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -221,13 +221,13 @@ struct NamedParameter : public Assign {
 
 using Assign::Assign;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((std::string {"NamedParameter("} + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -237,15 +237,15 @@ struct Identifier : public std::type_identity_t<decltype(Node(nullptr, std::vect
 
     std::string _name;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return (this -> _name);
         }
 
-        inline auto name() const -> std::optional<std::string> {
+        inline auto name() const -> std::optional<std::string> override {
             return (this -> _name);
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -262,14 +262,14 @@ using Node::Node;
 
     std::remove_cvref_t<decltype(false)> is_one_liner_if = false;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"("}) + csv) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -279,14 +279,14 @@ struct ArrayAccess : public Node {
 
 using Node::Node;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"["}) + csv) + std::string {"]"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -296,14 +296,14 @@ struct BracedCall : public Node {
 
 using Node::Node;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"{"}) + csv) + std::string {"}"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -313,14 +313,14 @@ struct Template : public Node {
 
 using Node::Node;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "});
             return (((ceto::mado(this -> func)->repr() + std::string {"<"}) + csv) + std::string {">"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -351,7 +351,7 @@ struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::v
             return s;
         }
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return (([&]() {if (this -> prefix) {
                 return ceto::mad(ceto::mado(this -> prefix)->name())->value();
             } else {
@@ -365,7 +365,7 @@ struct StringLiteral : public std::type_identity_t<decltype(Node(nullptr, std::v
 );
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -382,7 +382,7 @@ struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, s
 
     std::shared_ptr<const Identifier> suffix;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((this -> integer_string) + [&]() {if (this -> suffix) {
                 return ceto::mad(ceto::mado(this -> suffix)->name())->value();
             } else {
@@ -391,7 +391,7 @@ struct IntegerLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, s
 );
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -408,7 +408,7 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 
     std::shared_ptr<const Identifier> suffix;
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             return ((this -> float_string) + [&]() {if (this -> suffix) {
                 return ceto::mad(ceto::mado(this -> suffix)->name())->value();
             } else {
@@ -417,7 +417,7 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 );
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -430,14 +430,14 @@ struct FloatLiteral : public std::type_identity_t<decltype(Node(nullptr, {}, std
 
 struct ListLike_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -452,7 +452,7 @@ struct ListLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -462,7 +462,7 @@ struct TupleLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -472,7 +472,7 @@ struct BracedLiteral : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -482,7 +482,7 @@ struct Block : public ListLike_ {
 
 using ListLike_::ListLike_;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -494,7 +494,7 @@ using Block::Block;
 
     std::remove_cvref_t<decltype(false)> has_main_function = false;
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -502,14 +502,14 @@ using Block::Block;
 
 struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
@@ -522,14 +522,14 @@ struct RedundantParens : public std::type_identity_t<decltype(Node(nullptr, std:
 
 struct InfixWrapper_ : public std::type_identity_t<decltype(Node(nullptr, std::declval<std::remove_cvref_t<const std::vector<std::shared_ptr<const Node>>&>>(), std::declval<std::remove_cvref_t<const decltype(std::make_tuple(std::string {""}, 0))>>()))> {
 
-        inline auto repr() const -> std::string {
+        inline auto repr() const -> std::string override {
             const auto classname = class_name(this);
             return (((classname + std::string {"("}) + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, std::string {", "})) + std::string {")"});
         }
 
-         virtual inline auto accept( Visitor &  visitor) const -> void {
+        inline auto accept( Visitor &  visitor) const -> void override {
             ceto::mado(visitor)->visit((*this));
         }
 
