@@ -3,8 +3,15 @@
 #
 # 
 import typing
+import io
 import sys
 import os
+
+from .preprocessor import preprocess
+from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
+    Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
+    BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
+    Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_
 
 try:
     import cPyparsing as pp
@@ -17,13 +24,163 @@ except ImportError:
 pp.ParserElement.enablePackrat(None)
 
 
-import io
+def _build_grammar():
 
-from .preprocessor import preprocess
-from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
-    Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
-    BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
-    Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_
+    # define punctuation as suppressed literals
+    lparen, rparen, lbrack, rbrack, lbrace, rbrace, comma = map(
+        pp.Suppress, "()[]{},"
+    )
+
+    # don't pp.Suppress these to allow post-parse array vs call detection
+    lit_lparen, lit_rparen, lit_lbrack, lit_rbrack, lit_lbrace , lit_rbrace = map(
+        pp.Literal, "()[]{}"
+    )
+
+    not_op = pp.Keyword("not")
+    and_op = pp.Keyword("and")
+    or_op = pp.Keyword("or")
+    reserved_words = not_op | and_op | or_op
+    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).setParseAction(_parse_identifier)
+
+    integer_literal = set_parse_action(pp.Regex(r"\d+") + pp.Optional(ident).leaveWhitespace(), _parse_integer_literal)
+    float_literal = set_parse_action(pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leaveWhitespace(), _parse_float_literal)
+    tuple_literal = pp.Forward()
+    list_literal = pp.Forward()
+    # dict_literal = pp.Forward()
+    braced_literal = pp.Forward()
+    maybe_scope_resolved_call_like = pp.Forward()
+    template = pp.Forward()
+    scope_resolution = pp.Forward()
+    infix_expr = pp.Forward()
+
+    quoted_str = set_parse_action(pp.Optional(ident) + pp.QuotedString("'", multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace(), _parse_string_literal)
+    dblquoted_str = set_parse_action(pp.Optional(ident) + pp.QuotedString('"', multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace(), _parse_string_literal)
+
+    non_numeric_atom = (
+        dblquoted_str
+        | quoted_str
+        | template
+        | ident
+        | list_literal
+        | tuple_literal
+        # | dict_literal
+        | braced_literal
+    )
+
+    optional_infix = pp.Optional(infix_expr)
+    optional_infix_with_optional_trailing_comma = pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma))
+
+    tuple_literal <<= set_parse_action(
+        (lparen + infix_expr + comma + optional_infix_with_optional_trailing_comma + rparen) |
+        (lparen + optional_infix + comma + rparen) |
+        (lparen + rparen)
+    , _make_parse_action_list_like(TupleLiteral))
+
+    list_literal <<= set_parse_action(
+        lbrack + optional_infix_with_optional_trailing_comma + rbrack,
+    _make_parse_action_list_like(ListLiteral))
+
+    bel = pp.Suppress('\x07')
+
+    # just allow dict literals (TODO codegen) as braced_literals with all elements TypeOf ops
+    # can have complex rules to disambiguate dict literal from e.g. braced literal of class constructor calls with 'type' e.g. { Foo() : mut, Bar() : mut }
+    # note: direct use of std.unordered_map is possible now: m : std.unordered_map = {{0,1}, {1,2}}  # ctad ftw
+
+    # dict_entry = pp.Group(infix_expr + bel + infix_expr)
+    # dict_literal <<= (lbrace + pp.delimitedList(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
+
+    optional_infix_csv = pp.Optional(pp.delimitedList(infix_expr))
+
+    braced_literal <<= set_parse_action(lbrace + optional_infix_csv + rbrace, _make_parse_action_list_like(BracedLiteral))
+
+    block_line_end = pp.Suppress(";")
+    block = pp.Suppress(":") + bel + set_parse_action(pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)), _make_parse_action_list_like(Block))
+
+    parenthesized_infix = lparen + infix_expr + rparen
+
+    template_disambig_char = pp.Suppress("\x06")
+    template <<= set_parse_action((ident | parenthesized_infix) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char), _parse_template)
+
+    non_block_args = pp.Optional(pp.delimitedList(optional_infix))
+
+    # no python slice syntax - but can be faked with TypeOp
+    # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
+    array_access_args = lit_lbrack + optional_infix_csv + lit_rbrack
+
+    braced_args = lit_lbrace + optional_infix_csv + lit_rbrace
+
+    call_args = lit_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + lit_rparen
+
+    dotop = pp.Literal(".")
+    arrowop = pp.Literal("->")
+    scopeop = pp.Literal("::")
+    dotop_or_arrowop = dotop|arrowop
+
+    scope_resolution <<= pp.infixNotation(non_numeric_atom|parenthesized_infix, [
+    (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+        (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+    ])
+
+    maybe_scope_resolved_call_like <<= set_parse_action(scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution)))), _parse_maybe_scope_resolved_call_like)
+
+    signop = pp.oneOf("+ -")
+    multop = pp.oneOf("* / %")
+    plusop = pp.oneOf("+ -")
+    colon = pp.Literal(":")
+    star_op = pp.Literal("*")
+    amp_op = pp.Literal("&")
+    ellipsis_op = pp.Literal("...")
+    assign_op = pp.Literal("=")
+    plus_assign_op = pp.Literal("+=")
+    minus_assign_op = pp.Literal("-=")
+    times_assign_op = pp.Literal("*=")
+    div_assign_op = pp.Literal("/=")
+    mod_assign_op = pp.Literal("%=")
+    lshift_assign_op = pp.Literal("<<=")
+    rshift_assign_op = pp.Literal(">>=")
+    bitwise_and_assign_op = pp.Literal("&=")
+    bitwise_or_assign_op = pp.Literal("|=")
+    bitwise_xor_assign_op = pp.Literal("^=")
+
+    _compar_atoms = list(map(pp.Literal, ["<=",">=", "<" , ">", "!=", "=="]))
+    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
+    comparisons = _compar_atoms.pop()
+    for c in _compar_atoms:
+        comparisons |= c
+
+    def andanderror(*t):
+        raise ParserError("don't use '&&'. use 'and' instead.", *t)
+
+    ellipses_ident = set_parse_action(pp.Literal("..."), _parse_identifier)
+
+    infix_expr <<= set_parse_action(pp.infixNotation(
+        maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal|ellipses_ident,
+        [
+            (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
+            (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),
+            # (expop, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
+            (signop, 1, pp.opAssoc.RIGHT, _parse_right_unop),
+            (multop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (plusop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (comparisons, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
+            (amp_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (pp.Literal("^"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (pp.Literal("|"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (and_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (or_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
+            (assign_op | plus_assign_op | minus_assign_op | times_assign_op | div_assign_op | mod_assign_op | lshift_assign_op | rshift_assign_op | bitwise_and_assign_op | bitwise_or_assign_op | bitwise_xor_assign_op, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
+            (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
+            (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
+        ],
+    ), _parse_infix_wrapper)
+
+    module = set_parse_action(pp.OneOrMore(infix_expr + block_line_end), _make_parse_action_list_like(Module))
+
+    return module
 
 
 class ParserError(Exception):
@@ -210,186 +367,21 @@ def _parse_infix_wrapper(s, l, t):
     return InfixWrapper_(args, source)
 
 
-def _build_grammar():
+def _build_elif_kludges_grammar():
+    elif_kw, else_kw, except_kw = [pp.Keyword(k) for k in ["elif", "else", "except"]]
 
-    # define punctuation as suppressed literals
-    lparen, rparen, lbrack, rbrack, lbrace, rbrace, comma = map(
-        pp.Suppress, "()[]{},"
-    )
+    # officially an if stmt is of the form:
+    # if (condition:
+    #    pass
+    # elif: other_condition:
+    #    pass
+    # else:
+    #    pass
+    # )
+    # but the extra ":" after "elif" is annoying and unlike python (so we'll optionally insert it for you)
 
-    # don't pp.Suppress these to allow post-parse array vs call detection
-    lit_lparen, lit_rparen, lit_lbrack, lit_rbrack, lit_lbrace , lit_rbrace = map(
-        pp.Literal, "()[]{}"
-    )
-
-    not_op = pp.Keyword("not")
-    and_op = pp.Keyword("and")
-    or_op = pp.Keyword("or")
-    reserved_words = not_op | and_op | or_op
-    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).setParseAction(_parse_identifier)
-
-    integer_literal = set_parse_action(pp.Regex(r"\d+") + pp.Optional(ident).leaveWhitespace(), _parse_integer_literal)
-    float_literal = set_parse_action(pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leaveWhitespace(), _parse_float_literal)
-    tuple_literal = pp.Forward()
-    list_literal = pp.Forward()
-    # dict_literal = pp.Forward()
-    braced_literal = pp.Forward()
-    maybe_scope_resolved_call_like = pp.Forward()
-    template = pp.Forward()
-    scope_resolution = pp.Forward()
-    infix_expr = pp.Forward()
-
-    quoted_str = set_parse_action(pp.Optional(ident) + pp.QuotedString("'", multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace(), _parse_string_literal)
-    dblquoted_str = set_parse_action(pp.Optional(ident) + pp.QuotedString('"', multiline=True, escChar="\\").leaveWhitespace() + pp.Optional(ident).leaveWhitespace(), _parse_string_literal)
-
-    non_numeric_atom = (
-        dblquoted_str
-        | quoted_str
-        | template
-        | ident
-        | list_literal
-        | tuple_literal
-        # | dict_literal
-        | braced_literal
-    )
-
-    # tuple_literal <<= (
-        # (lparen + pp.delimitedList(infix_expr, min=2, allow_trailing_delim=True) + rparen) |
-
-
-      # (lparen + pp.delimitedList(infix_expr) + pp.Optional(comma) + rparen) |
-
-            # (lparen + pp.delimitedList(infix_expr) + rparen) |
-        # (lparen + pp.Optional(infix_expr) + comma + rparen) |
-        # (lparen + rparen)
-
-
-        # lbrack + pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma)) + rbrack
-
-    # ).setParseAction(_make_parse_action_list_like(TupleLiteral))
-
-    optional_infix_with_optional_trailing_comma = pp.Optional(pp.delimitedList(infix_expr) + pp.Optional(comma))
-
-    tuple_literal <<= set_parse_action(
-        (lparen + infix_expr + comma + optional_infix_with_optional_trailing_comma + rparen) |
-        (lparen + pp.Optional(infix_expr) + comma + rparen) |
-        (lparen + rparen)
-    , _make_parse_action_list_like(TupleLiteral))
-    # return (expr + ZeroOrMore(Suppress(delim) + expr)).setName(dlName)
-
-    list_literal <<= set_parse_action(
-        lbrack + optional_infix_with_optional_trailing_comma + rbrack,
-    _make_parse_action_list_like(ListLiteral))
-
-    bel = pp.Suppress('\x07')
-
-    # just allow dict literals (TODO codegen) as braced_literals with all elements TypeOf ops
-    # can have complex rules to disambiguate dict literal from e.g. braced literal of class constructor calls with 'type' e.g. { Foo() : mut, Bar() : mut }
-    # note: direct use of std.unordered_map is possible now: m : std.unordered_map = {{0,1}, {1,2}}  # ctad ftw
-
-    # dict_entry = pp.Group(infix_expr + bel + infix_expr)
-    # dict_literal <<= (lbrace + pp.delimitedList(dict_entry, min=1, allow_trailing_delim=True) + rbrace)
-
-    optional_infix_csv = pp.Optional(pp.delimitedList(infix_expr))
-
-    braced_literal <<= set_parse_action(lbrace + optional_infix_csv + rbrace, _make_parse_action_list_like(BracedLiteral))
-
-    block_line_end = pp.Suppress(";")
-    block = pp.Suppress(":") + bel + set_parse_action(pp.OneOrMore(infix_expr + pp.OneOrMore(block_line_end)), _make_parse_action_list_like(Block))
-
-    parenthesized_infix = lparen + infix_expr + rparen
-
-    template_disambig_char = pp.Suppress("\x06")
-    template <<= set_parse_action((ident | parenthesized_infix) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char), _parse_template)
-
-    non_block_args = pp.Optional(pp.delimitedList(pp.Optional(infix_expr)))
-
-    # no python slice syntax - but can be faked with TypeOp
-    # array_access_args = lit_lbrack + infix_expr + pp.Optional(bel + infix_expr) + pp.Optional(bel + infix_expr) + lit_rbrack
-    array_access_args = lit_lbrack + optional_infix_csv + lit_rbrack
-
-    braced_args = lit_lbrace + optional_infix_csv + lit_rbrace
-
-    call_args = lit_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + lit_rparen
-
-    dotop = pp.Literal(".")
-    arrowop = pp.Literal("->")
-    scopeop = pp.Literal("::")
-    dotop_or_arrowop = dotop|arrowop
-
-    scope_resolution <<= pp.infixNotation(non_numeric_atom|parenthesized_infix, [
-    (scopeop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-        (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-    ])
-
-    maybe_scope_resolved_call_like <<= set_parse_action(scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution)))), _parse_maybe_scope_resolved_call_like)
-
-    signop = pp.oneOf("+ -")
-    multop = pp.oneOf("* / %")
-    plusop = pp.oneOf("+ -")
-    colon = pp.Literal(":")
-    star_op = pp.Literal("*")
-    amp_op = pp.Literal("&")
-    ellipsis_op = pp.Literal("...")
-    assign_op = pp.Literal("=")
-    plus_assign_op = pp.Literal("+=")
-    minus_assign_op = pp.Literal("-=")
-    times_assign_op = pp.Literal("*=")
-    div_assign_op = pp.Literal("/=")
-    mod_assign_op = pp.Literal("%=")
-    lshift_assign_op = pp.Literal("<<=")
-    rshift_assign_op = pp.Literal(">>=")
-    bitwise_and_assign_op = pp.Literal("&=")
-    bitwise_or_assign_op = pp.Literal("|=")
-    bitwise_xor_assign_op = pp.Literal("^=")
-
-    _compar_atoms = list(map(pp.Literal, ["<=",">=", "<" , ">", "!=", "=="]))
-    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
-    comparisons = _compar_atoms.pop()
-    for c in _compar_atoms:
-        comparisons |= c
-
-    def andanderror(*t):
-        raise ParserError("don't use '&&'. use 'and' instead.", *t)
-
-    ellipses_ident = set_parse_action(pp.Literal("..."), _parse_identifier)
-
-    infix_expr <<= set_parse_action(pp.infixNotation(
-        maybe_scope_resolved_call_like|scope_resolution|float_literal|integer_literal|ellipses_ident,
-        [
-            (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
-            (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),
-            # (expop, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
-            (signop, 1, pp.opAssoc.RIGHT, _parse_right_unop),
-            (multop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (plusop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (comparisons, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
-            (amp_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (pp.Literal("^"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (pp.Literal("|"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (and_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (or_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
-            (assign_op | plus_assign_op | minus_assign_op | times_assign_op | div_assign_op | mod_assign_op | lshift_assign_op | rshift_assign_op | bitwise_and_assign_op | bitwise_or_assign_op | bitwise_xor_assign_op, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
-            (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
-            (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
-        ],
-    ), _parse_infix_wrapper)
-
-    module = set_parse_action(pp.OneOrMore(infix_expr + block_line_end), _make_parse_action_list_like(Module))
-
-    return module
-
-grammar = _build_grammar()
-
-
-def _parse(source: str):
-
-    # TODO consider making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case) rather than relying on ':' ',' insertion (to make one liners more ergonomic and remove need for extra semicolon in 'elif: x:'
-    patterns = [(pp.Keyword(k) + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in ["elif", "except"]]
+    # An alternative is making "elif" "else" and "except" genuine UnOps (sometimes identifiers in the 'else' case)
+    patterns = [(k + ~pp.FollowedBy(pp.Literal(":") | pp.Literal("\n"))) for k in [elif_kw, except_kw]]
     pattern = None
     for p in patterns:
         p = p.setParseAction(lambda t: t[0] + ":")
@@ -397,22 +389,30 @@ def _parse(source: str):
             pattern = p
         pattern |= p
 
+    # similarly for "if one liners"
+    # e.g. if (cond: pass else pass)
+    # the official syntax is if (cond: pass, else pass)
+    # but we want a multiline if to be convertedable to a one-liner simply by joining lines without inserting ","
     qs = pp.QuotedString('"', multiline=True, escChar="\\") | pp.QuotedString("'", multiline=True, escChar="\\")
-    pattern = pattern.ignore(qs)
-    source = pattern.transformString(source)
 
-    patterns = [pp.Keyword(k) for k in ["elif", "else", "except"]]
-    pattern = None
+    patterns = [elif_kw, else_kw]
     for p in patterns:
-        p = p.setParseAction(lambda t: "," + t[0])
-        if pattern is None:
-            pattern = p
+        p = p.addParseAction(lambda t: "," + t[0])
         pattern |= p
 
     pattern = pattern.ignore(qs)
-    source = pattern.transformString(source)
+    return pattern
 
-    print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
+
+grammar = _build_grammar()
+elif_kludges = _build_elif_kludges_grammar()
+
+
+def _parse(source: str):
+
+    source = elif_kludges.transformString(source)
+
+    # print(source.replace("\x07", "!!!").replace("\x06", "&&&"))
 
     res = grammar.parseString(source, parseAll=True)
     return res[0]
