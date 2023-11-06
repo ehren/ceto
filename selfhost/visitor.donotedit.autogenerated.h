@@ -131,3 +131,117 @@ struct Visitor : ceto::object {
 
 };
 
+template <class Derived>struct BaseVisitor : public Visitor {
+
+using Visitor::Visitor;
+
+         virtual inline auto visit(const Node&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const UnOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const LeftAssociativeUnOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const BinOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const TypeOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const SyntaxTypeOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const AttributeAccess&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const ArrowOp&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Assign&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const ScopeResolution&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const NamedParameter&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Identifier&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Call&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const ArrayAccess&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const BracedCall&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Template&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const StringLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const IntegerLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const FloatLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const ListLike_&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const ListLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const TupleLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const BracedLiteral&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Block&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const Module&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const RedundantParens&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+         virtual inline auto visit(const InfixWrapper_&  node) -> void {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+};
+

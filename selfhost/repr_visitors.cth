@@ -4,117 +4,6 @@ include (visitor)
 include (ast)
 include (string_utils)
 
-struct (BaseVisitor<class:Derived>(Visitor):
-    ### taken from https://github.com/symengine/symengine/blob/master/symengine/visitor.h
-
-    def (visit: virtual:mut, node: Node.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: UnOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: LeftAssociativeUnOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: BinOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: TypeOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: SyntaxTypeOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: AttributeAccess.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: ArrowOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Assign.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: ScopeResolution.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: NamedParameter.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Identifier.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Call.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: ArrayAccess.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: BracedCall.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Template.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: StringLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: IntegerLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: FloatLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: ListLike_.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: ListLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: TupleLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: BracedLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Block.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: Module.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: RedundantParens.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-
-    def (visit: virtual:mut, node: InfixWrapper_.class:
-        static_cast<Derived:ptr>(this)->visit(node)
-    )
-)
 
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     # This should really just be a few virtual methods on Node, but we want to keep the visitor infrastructure in place for the future
@@ -148,7 +37,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         node.args[0].accept(*this)
         self.repr += "])"
     )
-#
+
     def (visit: virtual:mut, node: LeftAssociativeUnOp.class:
         self.repr += class_name(&node) + "(" +  node.op + ", ["
         node.args[0].accept(*this)

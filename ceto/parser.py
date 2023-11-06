@@ -390,16 +390,16 @@ def _build_elif_kludges_grammar():
         pattern |= p
 
     # similarly for "if one liners"
-    # e.g. if (cond: pass else pass)
-    # the official syntax is if (cond: pass, else pass)
+    # e.g. if (cond: pass, else: pass)
+    # the official syntax is if (cond: pass, else: pass)
     # but we want a multiline if to be convertedable to a one-liner simply by joining lines without inserting ","
-    qs = pp.QuotedString('"', multiline=True, escChar="\\") | pp.QuotedString("'", multiline=True, escChar="\\")
 
     patterns = [elif_kw, else_kw]
     for p in patterns:
         p = p.addParseAction(lambda t: "," + t[0])
         pattern |= p
 
+    qs = pp.QuotedString('"', multiline=True, escChar="\\") | pp.QuotedString("'", multiline=True, escChar="\\")
     pattern = pattern.ignore(qs)
     return pattern
 
