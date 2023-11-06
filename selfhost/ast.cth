@@ -36,7 +36,7 @@ class (Node:
     macro_scope: MacroScope = None
     scope: Scope = None
     _parent: Node:weak = {}
-    from_include = false
+    file_path = ""
 
     def (repr: virtual:
         classname = class_name(this)

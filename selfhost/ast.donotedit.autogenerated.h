@@ -53,7 +53,7 @@ struct Node : ceto::shared_object {
 
     std::weak_ptr<const Node> _parent = {};
 
-    std::remove_cvref_t<decltype(false)> from_include = false;
+    std::remove_cvref_t<decltype(std::string {""})> file_path = std::string {""};
 
          virtual inline auto repr() const -> std::string {
             const auto classname = class_name(this);

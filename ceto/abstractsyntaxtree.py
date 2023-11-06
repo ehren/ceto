@@ -3,7 +3,6 @@ import typing
 selfhost = True
 try:
     from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens, ListLike_
-
 except ImportError:
     raise
 
@@ -19,7 +18,7 @@ except ImportError:
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source
-            self.from_include = False
+            self.file_path : str = None
 
         def __repr__(self):
             return "{}({})({!r})".format(self.__class__.__name__,

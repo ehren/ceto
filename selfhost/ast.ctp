@@ -58,7 +58,7 @@ lambda(m : mut:auto:rref:
     )).def_property_readonly(
     c"name", &Node.name).def_property(
     c"parent", &Node.parent, &Node.set_parent).def_readwrite(
-    c"from_include", &Node.from_include)
+    c"file_path", &Node.file_path)
 
     py.class_<UnOp.class, UnOp:mut>(m, c"UnOp", node).def(
         py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),

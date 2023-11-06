@@ -1,5 +1,6 @@
 import typing
 from typing import Union, Any
+from collections import defaultdict
 
 from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
@@ -1406,8 +1407,7 @@ def codegen_lambda(node, cx):
 def codegen(expr: Node):
     assert isinstance(expr, Module)
     cx = Scope()
-    s = codegen_node(expr, cx)
-    s = cpp_preamble + s
+    s = codegen_module(expr, cx)
     print(s)
     return s
 
@@ -2415,6 +2415,38 @@ def _is_unique_var(node: Identifier, cx: Scope):
     return False
 
 
+def codegen_module(module: Module, cx: Scope):
+    assert isinstance(module, Module)
+    modcpp = ""
+
+    included_module_code = defaultdict(str)
+
+    # import pdb
+    # pdb.set_trace()
+
+    for modarg in module.args:
+
+        if isinstance(modarg, Call) and modarg.func.name == "def":
+            funcx = cx.enter_scope()
+            funcx.in_function_param_list = True
+            modarg_code = codegen_def(modarg, funcx)
+        elif isinstance(modarg, Call) and modarg.func.name in ["class", "struct"]:
+            modarg_code = codegen_class(modarg, cx)
+        else:
+            modarg_code = codegen_node(modarg, cx) + ";\n"  # TODO: pass at global scope etc (this should maybe all be a call to codegen_block)
+
+        if modarg.file_path:
+            included_module_code[modarg.file_path] += modarg_code
+        else:
+            modcpp += modarg_code
+
+    for path, include_code in included_module_code.items():
+        with open(path, "w") as include_file:
+            include_file.write("#pragma once\n" + cpp_preamble + include_code)
+
+    return cpp_preamble + modcpp
+
+
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
@@ -2447,27 +2479,8 @@ def codegen_node(node: Node, cx: Scope):
         elif isinstance(node, Call) and node.func.name not in ["lambda", "def"] and node.declared_type.name not in ["const", "mut"]:
             raise CodeGenError("Unexpected typed call", node)
 
-    if isinstance(node, Module):
-        modcpp = ""
-
-        for modarg in node.args:
-
-            if isinstance(modarg, Call) and modarg.func.name == "def":
-                funcx = cx.enter_scope()
-                funcx.in_function_param_list = True
-                modarg_code = codegen_def(modarg, funcx)
-            elif isinstance(modarg, Call) and modarg.func.name in ["class", "struct"]:
-                modarg_code = codegen_class(modarg, cx)
-            else:
-                modarg_code = codegen_node(modarg, cx) + ";\n"  # TODO: pass at global scope etc (this should maybe all be a call to codegen_block)
-
-            if not modarg.from_include:
-                modcpp += modarg_code
-
-        return modcpp
-    elif isinstance(node, Call):
+    if isinstance(node, Call):
         return codegen_call(node, cx)
-
     elif isinstance(node, (IntegerLiteral, FloatLiteral)):
         return str(node)
     elif isinstance(node, Identifier):
