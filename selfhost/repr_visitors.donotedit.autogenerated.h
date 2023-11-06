@@ -49,24 +49,45 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
         }
 
          virtual inline auto visit(const UnOp&  node) -> void {
-            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
             (this -> repr) += std::string {"])"};
         }
 
          virtual inline auto visit(const LeftAssociativeUnOp&  node) -> void {
-            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
             (this -> repr) += std::string {"])"};
         }
 
          virtual inline auto visit(const BinOp&  node) -> void {
-            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->op) + std::string {", ["});
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             for(const auto& arg : ceto::mado(node)->args) {
                 ceto::mado(arg)->accept((*this));
                 (this -> repr) += std::string {", "};
             }
             (this -> repr) += std::string {"])"};
+        }
+
+         virtual inline auto visit(const Identifier&  node) -> void {
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->repr()) + std::string {"\")"});
+        }
+
+         virtual inline auto visit(const StringLiteral&  node) -> void {
+            (this -> repr) += ((class_name((&node)) + std::string {"("}) + ceto::mado(node)->escaped());
+if (ceto::mado(node)->prefix) {
+                ceto::mado(ceto::mado(node)->prefix)->accept((*this));
+                (this -> repr) += std::string {", "};
+            } else {
+                (this -> repr) += std::string {"None,"};
+            }
+if (ceto::mado(node)->suffix) {
+                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+                (this -> repr) += std::string {", "};
+            } else {
+                (this -> repr) += std::string {"None,"};
+            }
+            (this -> repr) += std::string {")"};
         }
 
 };

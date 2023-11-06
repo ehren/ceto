@@ -33,23 +33,44 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     )
 
     def (visit: virtual:mut, node: UnOp.class:
-        self.repr += class_name(&node) + "(" +  node.op + ", ["
+        self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
         self.repr += "])"
     )
 
     def (visit: virtual:mut, node: LeftAssociativeUnOp.class:
-        self.repr += class_name(&node) + "(" +  node.op + ", ["
+        self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
         self.repr += "])"
     )
 
     def (visit: virtual:mut, node: BinOp.class:
-        self.repr += class_name(&node) + "(" +  node.op + ", ["
+        self.repr += class_name(&node) + '("' +  node.op + '", ['
         for (arg in node.args:
             arg.accept(*this)
             self.repr += ", "
         )
         self.repr += "])"
+    )
+
+    def (visit: virtual:mut, node: Identifier.class:
+        self.repr += class_name(&node) + '("' +  node.repr() + '")'
+    )
+
+    def (visit: virtual:mut, node: StringLiteral.class:
+        self.repr += class_name(&node) + "(" +  node.escaped()
+        if (node.prefix:
+            node.prefix.accept(*this)
+            self.repr += ", "
+        else:
+            self.repr += "None,"
+        )
+        if (node.suffix:
+            node.suffix.accept(*this)
+            self.repr += ", "
+        else:
+            self.repr += "None,"
+        )
+        self.repr += ")"
     )
 )

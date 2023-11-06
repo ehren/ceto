@@ -553,6 +553,8 @@ def parse(source: str):
             break
 
     print("final parse:", res)
+    # print("repr", res.ast_repr())
+    # print("eval", eval(res.ast_repr()))
 
     return res
 

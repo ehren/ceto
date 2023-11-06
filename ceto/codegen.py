@@ -1128,6 +1128,8 @@ def codegen_def(defnode: Call, cx):
 
     template = ""
     inline = "inline "
+    override = ""
+    final = ""
     specifier = ""
     is_const = is_method and not mut_by_default
 
@@ -1141,6 +1143,26 @@ def codegen_def(defnode: Call, cx):
                 raise CodeGenError("Don't specify const/mut for a non-method", const_or_mut[0])
             is_const = const_or_mut[0].name == "const"
             specifier_types.remove(const_or_mut[0])
+
+        overrides = [t for t in specifier_types if t.name == "override"]
+        if overrides:
+            if len(overrides) > 1:
+                raise CodeGenError("too many overrides specified", defnode)
+            if not is_method:
+                raise CodeGenError("Don't specify 'override' for a non-method", defnode)
+            specifier_types.remove(overrides[0])
+
+        if overrides or interface:
+            override = " override"
+
+        finals = [t for t in specifier_types if t.name == "final"]
+        if finals:
+            if len(finals) > 1:
+                raise CodeGenError("too many 'final' specified", defnode)
+            if not is_method:
+                raise CodeGenError("Don't specify 'final' for a non-method", defnode)
+            specifier_types.remove(finals[0])
+            final = " final"
 
         if specifier_types:
             specifier_node = list_to_typed_node(specifier_types)
@@ -1208,17 +1230,12 @@ def codegen_def(defnode: Call, cx):
             return_type = "void"
 
     if is_destructor:
-        # TODO allow def (destruct:virtual:
-        #                pass
-        #            )
-        # TODO: 'virtual' if class is 'inheritable' ('overridable'? 'nonfinal'?) (c++ class marked 'final' otherwise)
         # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
-        funcdef = "~" + class_name + "()"
+        funcdef = specifier + "~" + class_name + "()" + override + final
     else:
         const = " const" if is_const else ""
-        funcdef = "{}{}{}auto {}({}){} -> {}".format(template, specifier, inline, name, ", ".join(params), const, return_type)
-        if interface:
-            funcdef += " override" # maybe later: use final if method not 'overridable'
+
+        funcdef = "{}{}{}auto {}({}){} -> {}{}{}".format(template, specifier, inline, name, ", ".join(params), const, return_type, override, final)
 
     indt = cx.indent_str()
 
