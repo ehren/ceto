@@ -1,4 +1,5 @@
 include <numeric>
+include <algorithm>
 
 
 def (join, v, to_string, sep="":
@@ -30,4 +31,9 @@ def (string_replace, source: std.string, from: std.string, to: std.string:
 
     # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
     return new_string
+)
+
+
+def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
+    return std.find(container.begin(), container.end(), element) != container.end()
 )

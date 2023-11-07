@@ -3,9 +3,8 @@
 include <map>
 include <typeinfo>
 
-
-include (string_utils)
 include (visitor)
+include (utility)
 
 
 class (Node)

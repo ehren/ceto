@@ -2,7 +2,6 @@ include <pybind11/pybind11.h>
 
 include (visitor)
 include (ast)
-include (string_utils)
 
 
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):

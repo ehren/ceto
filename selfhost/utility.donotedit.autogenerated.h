@@ -21,6 +21,8 @@
 
 #include <numeric>
 ;
+#include <algorithm>
+;
     template <typename T1, typename T2>
 auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
 if (ceto::mado(v)->empty()) {
@@ -42,5 +44,10 @@ while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos)
         }
         ceto::mado(new_string)->append(source, last_pos, ceto::mado(source)->length() - last_pos);
         return new_string;
+    }
+
+    template <typename T1>
+auto contains(const T1& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
+        return (std::find(ceto::mado(container)->begin(), ceto::mado(container)->end(), element) != ceto::mado(container)->end());
     }
 
