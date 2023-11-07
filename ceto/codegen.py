@@ -357,16 +357,19 @@ def codegen_class(node : Call, cx):
         if not isinstance(block, Block):
             raise CodeGenError("class missing block (bad second class arg)", node)
 
+    is_template = template_args is not None
+
     classdef = ClassDefinition(name, node, #is_generic_param_index={},
                                is_unique=node.declared_type and node.declared_type.name == "unique",
                                is_struct=node.func.name == "struct",
                                is_forward_declaration=is_forward_declaration)
+    classdef.is_concrete = not is_template
+
     cx.add_class_definition(classdef)
 
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
     typenames = []
-    is_template = template_args is not None
 
     indt = cx.indent_str()
 
@@ -564,6 +567,7 @@ def codegen_class(node : Call, cx):
             inherits_dfn = cx.lookup_class(inherits)
 
             if not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual and isinstance(inherits, Identifier):
+                # TODO lookup_class should maybe ignore forward_declarations when the full definition is available. Alt
                 # here CTAD takes care of the real type of the base class (in case the base class is a template)
                 # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
                 base_class_type = "decltype(" + inherits.name + "(" + ", ".join(super_init_fake_args) + "))"
@@ -1406,8 +1410,6 @@ def codegen_lambda(node, cx):
             elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
                 pass  # don't capture a lambda parameter
             elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
-                # import pdb
-                # pdb.set_trace()
                 defnode = d.defined_node
                 is_capture = True
                 while defnode is not None:
@@ -1470,9 +1472,6 @@ def _decltype_maybe_wrapped_in_declval(node, cx):
 
 
 def _decltype_str(node, cx):
-
-    # import pdb
-    # pdb.set_trace()
 
     if isinstance(node, (IntegerLiteral, FloatLiteral, StringLiteral)):
         return True, codegen_node(node, cx)
@@ -2447,9 +2446,6 @@ def codegen_module(module: Module, cx: Scope):
     modcpp = ""
 
     included_module_code = defaultdict(str)
-
-    # import pdb
-    # pdb.set_trace()
 
     for modarg in module.args:
 

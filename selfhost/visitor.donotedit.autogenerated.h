@@ -73,7 +73,7 @@ class RedundantParens;
 
 class InfixWrapper_;
 
-struct Visitor : ceto::object {
+struct Visitor : public ceto::object {
 
          virtual auto visit(const Node&  node) -> void = 0;
 
