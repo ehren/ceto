@@ -24,19 +24,26 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
                 self.repr += ", "
             )
         )
-        self.repr += "])"
+        self.repr += "], ("
+
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"  # preserve source location but don't worry about the source string for now
     )
 
     def (visit: override:mut, node: UnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "])"
+        self.repr += "], ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 
     def (visit: override:mut, node: LeftAssociativeUnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "])"
+        self.repr += "], ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 
     def (visit: override:mut, node: BinOp.class:
@@ -45,11 +52,16 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
             arg.accept(*this)
             self.repr += ", "
         )
-        self.repr += "])"
+        self.repr += "], ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 
     def (visit: override:mut, node: Identifier.class:
-        self.repr += class_name(&node) + '("' +  node.repr() + '")'
+        self.repr += class_name(&node) + '("' +  node.repr() + '"'
+        self.repr += ", ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 
     def (visit: override:mut, node: StringLiteral.class:
@@ -67,7 +79,9 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         else:
             self.repr += "None"
         )
-        self.repr += ")"
+        self.repr += ", ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 
     def (visit: override:mut, node: IntegerLiteral.class:
@@ -77,6 +91,8 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         else:
             self.repr += "None"
         )
-        self.repr += ")"
+        self.repr += ", ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
     )
 )

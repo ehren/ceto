@@ -42,19 +42,25 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
                     (this -> repr) += std::string {", "};
                 }
             }
-            (this -> repr) += std::string {"])"};
+            (this -> repr) += std::string {"], ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const UnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
-            (this -> repr) += std::string {"])"};
+            (this -> repr) += std::string {"], ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->op) + std::string {"\", ["});
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
-            (this -> repr) += std::string {"])"};
+            (this -> repr) += std::string {"], ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const BinOp&  node) -> void override {
@@ -63,11 +69,16 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
                 ceto::mado(arg)->accept((*this));
                 (this -> repr) += std::string {", "};
             }
-            (this -> repr) += std::string {"])"};
+            (this -> repr) += std::string {"], ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const Identifier&  node) -> void override {
-            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->repr()) + std::string {"\")"});
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->repr()) + std::string {"\""});
+            (this -> repr) += std::string {", ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const StringLiteral&  node) -> void override {
@@ -83,7 +94,9 @@ if (ceto::mado(node)->suffix) {
             } else {
                 (this -> repr) += std::string {"None"};
             }
-            (this -> repr) += std::string {")"};
+            (this -> repr) += std::string {", ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
         inline auto visit(const IntegerLiteral&  node) -> void override {
@@ -93,7 +106,9 @@ if (ceto::mado(node)->suffix) {
             } else {
                 (this -> repr) += std::string {"None"};
             }
-            (this -> repr) += std::string {")"};
+            (this -> repr) += std::string {", ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
 };
