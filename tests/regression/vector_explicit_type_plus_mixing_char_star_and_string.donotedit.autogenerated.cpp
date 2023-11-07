@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Blah : ceto::shared_object {
+struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Blah> {
 
         inline auto foo() const -> void {
             printf("in foo method\n");

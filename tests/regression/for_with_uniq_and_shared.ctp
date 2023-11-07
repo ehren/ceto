@@ -23,6 +23,10 @@ class (Shared:
     )
 )
 
+class (Shared2:
+    x
+)
+
 def (main:
     x = 5
     for (x:mut:auto:rref in [1, 2, 3]:
@@ -44,9 +48,11 @@ def (main:
     
     u : mut = []
     s : mut = []
+    s2 : mut = []
     for (x in [1, 2, 3, 4, 5]:
         u.append(Uniq() : mut)
         s.append(Shared())
+        s2.append(Shared2("blah"))
     )
     
     for (x in u:

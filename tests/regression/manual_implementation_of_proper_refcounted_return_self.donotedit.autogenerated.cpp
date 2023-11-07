@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct A : ceto::shared_object {
+template <typename _ceto_private_C1>struct A : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 a;
 
@@ -28,7 +28,7 @@ template <typename _ceto_private_C1>struct A : ceto::shared_object {
 
 };
 
-struct S : ceto::shared_object {
+struct S : public ceto::shared_object, public std::enable_shared_from_this<S> {
 
         inline auto foo() const -> auto {
             return std::static_pointer_cast<std::type_identity_t<std::shared_ptr<const S>> :: element_type>(shared_from_this());

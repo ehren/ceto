@@ -59,6 +59,14 @@ class (Node:
     def (set_parent: mut, p: Node:
         self._parent = p
     )
+
+    # we're never creating an instance with new (or using with make_unique)
+    # so the virtual destructor here is not strictly necessary (despite overzealous compiler warnings)
+    # HOWEVER https://github.com/pybind/pybind11/issues/1790 "Bug with inheritance, shared_ptr holder and enable_shared_from_this
+    # (pybind11 insists on creating a unique_ptr holding anything deriving from enable_shared_from_this for some reason)
+    def (destruct: virtual:
+        pass
+    )
 )
 
 class (UnOp(Node):

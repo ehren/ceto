@@ -19,7 +19,7 @@
 #include "ceto.h"
 
 constexpr const int g { 5 } ; static_assert(std::is_convertible_v<decltype(5), decltype(g)>);
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int a = []() {
             if constexpr (!std::is_void_v<decltype((5 + g))>) { return (5 + g); } else { static_cast<void>((5 + g)); };

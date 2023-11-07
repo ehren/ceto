@@ -218,7 +218,7 @@ def (main:
     #'''
     aa
 )
-    """), exc="Expected end of text, found 'if'  (at char 63), (line:12, col:5)")
+    """), exc="Expected end of text, found 'i'  (at char 63), (line:12, col:5)")  # in plain pyparsing (at least plain pyparsing 3) this is "found 'if'".
     # TODO all tests should be going through compiler.main
 
 

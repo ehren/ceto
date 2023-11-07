@@ -366,7 +366,7 @@ def codegen_class(node : Call, cx):
     defined_interfaces = defaultdict(list)
     local_interfaces = set()
     typenames = []
-    is_template = False
+    is_template = template_args is not None
 
     indt = cx.indent_str()
 
@@ -619,12 +619,20 @@ def codegen_class(node : Call, cx):
         default_inherits.append("public " + base_class_type)
 
     if not inherits:
+        # TODO non-class inheritance should still require deriving from ceto::[shared_]object
         if classdef.is_unique or classdef.is_struct:
             # no longer necessary for autoderef (but would be required for call_or_construct)
-            default_inherits += ["ceto::object"]
+            default_inherits += ["public ceto::object"]
         else:
-            # TODO stop doing this automatically (non-trivial self use ie ceto::shared_from will fail to compile without the explicit opt-in)
-            default_inherits += ["ceto::shared_object"]
+            # maybe TODO stop doing this automatically (non-trivial self use ie ceto::shared_from will fail to compile without the explicit opt-in)
+            # but regardless TODO need multiple-inheritance as long as 2nd+ base is not a ceto (shared) class
+
+            if is_template:
+                # For classes whose type depends on a single constructor call (via ctad) we could do better
+                # e.g std::enable_shared_from_this<decltype(Foo{std::declval<int>(), ...})>
+                default_inherits += ["public ceto::enable_shared_from_this_base_for_templates"]
+            else:
+                default_inherits += ["public ceto::shared_object", "public std::enable_shared_from_this<" + name.name + ">"]
 
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
@@ -1501,6 +1509,8 @@ def _decltype_str(node, cx):
             # instead of manual tracking like the above,
             # leave the matter of the desired class type up to C++ CTAD:
             args_str = "{" + ", ".join([_decltype_maybe_wrapped_in_declval(a, cx) for a in node.args]) + "}"
+            if not node.args:
+                args_str = "()"  # use round parens instead of curlies for default case
 
             const = "const " if _is_const_make(call) else ""
 

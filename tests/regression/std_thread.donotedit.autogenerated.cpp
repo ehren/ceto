@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Bar : ceto::shared_object {
+template <typename _ceto_private_C1>struct Bar : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 a;
 
@@ -28,7 +28,7 @@ template <typename _ceto_private_C1>struct Bar : ceto::shared_object {
 
 };
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::atomic<int> a { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(a)>);
 

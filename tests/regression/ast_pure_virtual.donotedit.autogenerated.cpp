@@ -20,7 +20,7 @@
 
 #include <map>
 ;
-struct Node : ceto::shared_object {
+struct Node : public ceto::shared_object, public std::enable_shared_from_this<Node> {
 
     std::shared_ptr<const Node> func;
 

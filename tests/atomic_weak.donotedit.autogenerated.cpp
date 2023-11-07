@@ -22,7 +22,7 @@
 ;
 #include <ranges>
 ;
-struct Task : ceto::shared_object {
+struct Task : public ceto::shared_object, public std::enable_shared_from_this<Task> {
 
     int _id;
 
@@ -46,7 +46,7 @@ struct Task : ceto::shared_object {
 
 };
 
-struct Executor : ceto::shared_object {
+struct Executor : public ceto::shared_object, public std::enable_shared_from_this<Executor> {
 
     std::atomic<std::weak_ptr<const Task>> last_submitted = {};
 

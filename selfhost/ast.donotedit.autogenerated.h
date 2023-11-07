@@ -31,13 +31,13 @@ class Node;
 
     auto class_name(const Node *  node) -> std::string;
 
-struct MacroScope : ceto::shared_object {
+struct MacroScope : ceto::shared_object, std::enable_shared_from_this<MacroScope> {
 
 };
 
 class Scope;
 
-struct Node : ceto::shared_object {
+struct Node : ceto::shared_object, std::enable_shared_from_this<Node> {
 
     std::shared_ptr<const Node> func;
 
@@ -77,6 +77,10 @@ struct Node : ceto::shared_object {
 
         inline auto set_parent(const std::shared_ptr<const Node>&  p) -> void {
             (this -> _parent) = p;
+        }
+
+         virtual ~Node() {
+            ; // pass
         }
 
     explicit Node(const std::shared_ptr<const Node>&  func, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : func(func), args(args), source(source) {

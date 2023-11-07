@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::vector<int> a;
 

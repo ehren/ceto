@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
         inline auto method() const -> void {
             std::cout << std::string {"method"};
@@ -30,7 +30,7 @@ struct Foo : ceto::shared_object {
 
 };
 
-struct Holder : ceto::shared_object {
+struct Holder : public ceto::shared_object, public std::enable_shared_from_this<Holder> {
 
     std::shared_ptr<const Foo> f;
 

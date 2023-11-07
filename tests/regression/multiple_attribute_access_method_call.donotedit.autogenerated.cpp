@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::shared_ptr<const Foo> f;
 
@@ -33,7 +33,7 @@ struct Foo : ceto::shared_object {
 
 };
 
-struct FooList : ceto::shared_object {
+struct FooList : public ceto::shared_object, public std::enable_shared_from_this<FooList> {
 
     std::vector<std::shared_ptr<const Foo>> l = std::vector<std::shared_ptr<const Foo>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Foo>>{}), std::remove_cvref_t<decltype(l)>>);
 

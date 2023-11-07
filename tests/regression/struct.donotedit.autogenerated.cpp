@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::object {
+struct Foo : public ceto::object {
 
     std::string x;
 

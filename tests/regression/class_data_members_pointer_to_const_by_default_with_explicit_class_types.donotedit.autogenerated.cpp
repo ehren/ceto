@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int a;
 
@@ -37,7 +37,7 @@ struct Foo : ceto::shared_object {
 
 };
 
-struct HolderMut : ceto::shared_object {
+struct HolderMut : public ceto::shared_object, public std::enable_shared_from_this<HolderMut> {
 
     std::shared_ptr<Foo> f;
 
@@ -47,7 +47,7 @@ struct HolderMut : ceto::shared_object {
 
 };
 
-struct HolderConst : ceto::shared_object {
+struct HolderConst : public ceto::shared_object, public std::enable_shared_from_this<HolderConst> {
 
     std::shared_ptr<const Foo> f;
 

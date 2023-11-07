@@ -21,7 +21,7 @@
 
 #include <chrono>
 ;
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int x { 1 } ; static_assert(std::is_convertible_v<decltype(1), decltype(x)>);
 
@@ -38,7 +38,7 @@ while (x <= 5) {                ((std::cout << std::string {"in Foo: "}) << (thi
 
 };
 
-struct Holder : ceto::shared_object {
+struct Holder : public ceto::shared_object, public std::enable_shared_from_this<Holder> {
 
     std::shared_ptr<Foo> f = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f)>>);
 

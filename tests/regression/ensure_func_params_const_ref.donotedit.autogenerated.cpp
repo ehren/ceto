@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct FooGeneric : ceto::shared_object {
+template <typename _ceto_private_C1>struct FooGeneric : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 a;
 
@@ -28,7 +28,7 @@ template <typename _ceto_private_C1>struct FooGeneric : ceto::shared_object {
 
 };
 
-struct FooConcrete : ceto::shared_object {
+struct FooConcrete : public ceto::shared_object, public std::enable_shared_from_this<FooConcrete> {
 
     std::string a;
 
@@ -38,7 +38,7 @@ struct FooConcrete : ceto::shared_object {
 
 };
 
-template <typename _ceto_private_C2>struct FooGenericUnique : ceto::object {
+template <typename _ceto_private_C2>struct FooGenericUnique : public ceto::object {
 
     _ceto_private_C2 a;
 
@@ -48,7 +48,7 @@ template <typename _ceto_private_C2>struct FooGenericUnique : ceto::object {
 
 };
 
-struct FooConcreteUnique : ceto::object {
+struct FooConcreteUnique : public ceto::object {
 
     std::string a;
 

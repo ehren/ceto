@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int x { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(x)>);
 

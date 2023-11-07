@@ -18,13 +18,13 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::atomic<int> a { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(a)>);
 
 };
 
-struct Foo2 : ceto::shared_object {
+struct Foo2 : public ceto::shared_object, public std::enable_shared_from_this<Foo2> {
 
     const std::atomic<int> a;
 

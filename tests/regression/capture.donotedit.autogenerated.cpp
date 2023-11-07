@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Foo : ceto::shared_object {
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
         template <typename T1>
 auto foo(const T1& x) const -> void {
@@ -33,7 +33,7 @@ auto foo(const T1& x) const -> void {
 };
 
     auto main() -> int {
-struct Inner : ceto::shared_object {
+struct Inner : public ceto::shared_object, public std::enable_shared_from_this<Inner> {
 
                     std::shared_ptr<const Foo> f;
 

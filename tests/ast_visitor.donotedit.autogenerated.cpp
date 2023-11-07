@@ -24,7 +24,7 @@ class Identifier;
 
 class ListLiteral;
 
-struct BaseVisitor : ceto::shared_object {
+struct BaseVisitor : public ceto::shared_object, public std::enable_shared_from_this<BaseVisitor> {
 
          virtual auto visit(const std::shared_ptr<const Node>&  node) -> void = 0;
 
@@ -34,7 +34,7 @@ struct BaseVisitor : ceto::shared_object {
 
 };
 
-struct Node : ceto::shared_object {
+struct Node : public ceto::shared_object, public std::enable_shared_from_this<Node> {
 
          virtual inline auto accept(const std::shared_ptr<BaseVisitor>&  visitor) const -> void {
             const auto self = ceto::shared_from(this);

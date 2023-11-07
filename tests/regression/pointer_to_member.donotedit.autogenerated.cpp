@@ -22,7 +22,7 @@
 #define MFPTR_DOT(a, b) (a.*b)
 #define MFPTR_ARROW(a, b) (a->*b)
 ;
-struct Testpm : ceto::shared_object {
+struct Testpm : public ceto::shared_object, public std::enable_shared_from_this<Testpm> {
 
     int num;
 

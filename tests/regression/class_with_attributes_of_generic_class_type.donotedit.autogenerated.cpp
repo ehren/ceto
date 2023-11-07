@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_private_C3>struct Foo : ceto::shared_object {
+template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_private_C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 a;
 
@@ -32,7 +32,7 @@ template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_p
 
 };
 
-template <typename _ceto_private_C4, typename _ceto_private_C5>struct Bar : ceto::shared_object {
+template <typename _ceto_private_C4, typename _ceto_private_C5>struct Bar : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C4 a;
 
@@ -46,7 +46,7 @@ template <typename _ceto_private_C4, typename _ceto_private_C5>struct Bar : ceto
 
 };
 
-template <typename _ceto_private_C6, typename _ceto_private_C7>struct Bar2 : ceto::shared_object {
+template <typename _ceto_private_C6, typename _ceto_private_C7>struct Bar2 : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C6 a;
 
@@ -60,7 +60,7 @@ template <typename _ceto_private_C6, typename _ceto_private_C7>struct Bar2 : cet
 
 };
 
-template <typename _ceto_private_C8>struct MixedGenericConcrete : ceto::shared_object {
+template <typename _ceto_private_C8>struct MixedGenericConcrete : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C8 a;
 
@@ -86,7 +86,7 @@ template <typename _ceto_private_C8>struct MixedGenericConcrete : ceto::shared_o
         ((std::cout << ceto::mado(m)->a) << ceto::mado(m)->b) << std::string {"\n"};
     }
 
-struct HasGenericList : ceto::shared_object {
+struct HasGenericList : public ceto::shared_object, public std::enable_shared_from_this<HasGenericList> {
 
 };
 

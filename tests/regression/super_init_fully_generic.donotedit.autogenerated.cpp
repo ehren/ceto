@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Generic : ceto::shared_object {
+template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 x;
 

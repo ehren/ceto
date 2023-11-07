@@ -27,28 +27,28 @@ struct A : ceto::object {
 
 };
 
-struct Blah1 : public A, ceto::shared_object {
+struct Blah1 : public A, public ceto::shared_object, public std::enable_shared_from_this<Blah1> {
 
-        auto foo(const std::shared_ptr<const A>&  x) const -> int override {
+        auto foo(const std::shared_ptr<const A>&  x) const -> int {
             printf("Blah1 foo\n");
             return ceto::mado(x)->huh();
         }
 
-        auto huh() const -> int override {
+        auto huh() const -> int {
             printf("huh 1\n");
             return 76;
         }
 
 };
 
-struct Blah2 : public A, ceto::shared_object {
+struct Blah2 : public A, public ceto::shared_object, public std::enable_shared_from_this<Blah2> {
 
-        auto foo(const std::shared_ptr<const A>&  x) const -> int override {
+        auto foo(const std::shared_ptr<const A>&  x) const -> int {
             printf("Blah2 foo\n");
             return ceto::mado(x)->huh();
         }
 
-        auto huh() const -> int override {
+        auto huh() const -> int {
             printf("huh 2\n");
             return 89;
         }

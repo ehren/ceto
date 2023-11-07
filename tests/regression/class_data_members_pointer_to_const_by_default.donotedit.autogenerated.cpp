@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Foo : ceto::shared_object {
+template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C1 a;
 
@@ -37,7 +37,7 @@ template <typename _ceto_private_C1>struct Foo : ceto::shared_object {
 
 };
 
-template <typename _ceto_private_C2>struct Holder : ceto::shared_object {
+template <typename _ceto_private_C2>struct Holder : public ceto::enable_shared_from_this_base_for_templates {
 
     _ceto_private_C2 f;
 

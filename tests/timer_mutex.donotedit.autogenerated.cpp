@@ -20,7 +20,7 @@
 
 #include <mutex>
 ;
-struct Delegate : ceto::shared_object {
+struct Delegate : public ceto::shared_object, public std::enable_shared_from_this<Delegate> {
 
         inline auto action() const -> void {
             std::cout << std::string {"action\n"};
@@ -32,7 +32,7 @@ struct Delegate : ceto::shared_object {
 
 };
 
-struct Timer : ceto::shared_object {
+struct Timer : public ceto::shared_object, public std::enable_shared_from_this<Timer> {
 
     std::shared_ptr<const Delegate> _delegate;
 

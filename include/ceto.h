@@ -22,10 +22,13 @@ namespace ceto {
 struct object {
 };
 
-struct shared_object : public std::enable_shared_from_this<shared_object>, object {
-    // shared_object should be managed by shared_ptr, a virtual destructor is not required (std::shared_ptr deleter does not polymorphically delete)
-    // HOWEVER: https://github.com/pybind/pybind11/issues/1790 "Bug with inheritance, shared_ptr holder and enable_shared_from_this"
-    virtual ~shared_object() = default;
+struct shared_object : object {
+};
+
+struct enable_shared_from_this_base_for_templates : public std::enable_shared_from_this<enable_shared_from_this_base_for_templates>, public shared_object  {
+    // want this for template classes (perhaps a bit dubious). For classes whose
+    // type depends on a single constructor call (via ctad) we could do better
+    // e.g std::enable_shared_from_this<decltype(Foo{std::declval<int>(), ...})>
 };
 
 // answer from https://stackoverflow.com/questions/657155/how-to-enable-shared-from-this-of-both-parent-and-derived/47789633#47789633

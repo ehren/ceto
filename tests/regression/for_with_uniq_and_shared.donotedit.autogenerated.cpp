@@ -18,7 +18,7 @@
 
 #include "ceto.h"
 
-struct Uniq : ceto::object {
+struct Uniq : public ceto::object {
 
     std::remove_cvref_t<decltype(0)> x = 0;
 
@@ -33,7 +33,7 @@ struct Uniq : ceto::object {
 
 };
 
-struct Shared : ceto::shared_object {
+struct Shared : public ceto::shared_object, public std::enable_shared_from_this<Shared> {
 
     std::remove_cvref_t<decltype(0)> x = 0;
 
@@ -41,6 +41,16 @@ struct Shared : ceto::shared_object {
             printf("foo\n");
             return 10;
         }
+
+};
+
+template <typename _ceto_private_C1>struct Shared2 : public ceto::enable_shared_from_this_base_for_templates {
+
+    _ceto_private_C1 x;
+
+    explicit Shared2(_ceto_private_C1 x) : x(x) {}
+
+    Shared2() = delete;
 
 };
 
@@ -60,11 +70,13 @@ struct Shared : ceto::shared_object {
             printf("%d\n", x);
             x = (x + 1);
         }
-        auto u { std::vector<std::unique_ptr<decltype(Uniq{})>>() } ;
-        auto s { std::vector<std::shared_ptr<const decltype(Shared{})>>() } ;
+        auto u { std::vector<std::unique_ptr<decltype(Uniq())>>() } ;
+        auto s { std::vector<std::shared_ptr<const decltype(Shared())>>() } ;
+        auto s2 { std::vector<std::shared_ptr<const decltype(Shared2{std::string {"blah"}})>>() } ;
         for(const auto& x : std::vector {{1, 2, 3, 4, 5}}) {
             ceto::mad(u)->push_back(std::make_unique<decltype(Uniq())>());
             ceto::mad(s)->push_back(std::make_shared<const decltype(Shared())>());
+            ceto::mad(s2)->push_back(std::make_shared<const decltype(Shared2{std::string {"blah"}})>(std::string {"blah"}));
         }
         for(const auto& x : u) {
             printf("%d\n", x -> bar());
