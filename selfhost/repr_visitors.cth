@@ -57,18 +57,29 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     )
 
     def (visit: override:mut, node: StringLiteral.class:
-        self.repr += class_name(&node) + "(" +  node.escaped()
+        self.repr += class_name(&node) + "(" +  node.escaped() + ", "
+
         if (node.prefix:
             node.prefix.accept(*this)
-            self.repr += ", "
         else:
-            self.repr += "None,"
+            self.repr += "None"
         )
+        self.repr += ", "
+
         if (node.suffix:
             node.suffix.accept(*this)
-            self.repr += ", "
         else:
-            self.repr += "None,"
+            self.repr += "None"
+        )
+        self.repr += ")"
+    )
+
+    def (visit: override:mut, node: IntegerLiteral.class:
+        self.repr += class_name(&node) + '("' + node.integer_string + '", '
+        if (node.suffix:
+            node.suffix.accept(*this)
+        else:
+            self.repr += "None"
         )
         self.repr += ")"
     )

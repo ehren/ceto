@@ -72,18 +72,27 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
         }
 
         inline auto visit(const StringLiteral&  node) -> void override {
-            (this -> repr) += ((class_name((&node)) + std::string {"("}) + ceto::mado(node)->escaped());
+            (this -> repr) += (((class_name((&node)) + std::string {"("}) + ceto::mado(node)->escaped()) + std::string {", "});
 if (ceto::mado(node)->prefix) {
                 ceto::mado(ceto::mado(node)->prefix)->accept((*this));
-                (this -> repr) += std::string {", "};
             } else {
-                (this -> repr) += std::string {"None,"};
+                (this -> repr) += std::string {"None"};
             }
+            (this -> repr) += std::string {", "};
 if (ceto::mado(node)->suffix) {
                 ceto::mado(ceto::mado(node)->suffix)->accept((*this));
-                (this -> repr) += std::string {", "};
             } else {
-                (this -> repr) += std::string {"None,"};
+                (this -> repr) += std::string {"None"};
+            }
+            (this -> repr) += std::string {")"};
+        }
+
+        inline auto visit(const IntegerLiteral&  node) -> void override {
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->integer_string) + std::string {"\", "});
+if (ceto::mado(node)->suffix) {
+                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+            } else {
+                (this -> repr) += std::string {"None"};
             }
             (this -> repr) += std::string {")"};
         }
