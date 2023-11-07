@@ -31,11 +31,10 @@ def safe_unique_filename(name, extension, basepath=""):
     return unique + extension
 
 
-def compile(cmdargs) -> (str, Module):
-    perf_messages = []
-    t = perf_counter()
-    node = parse_from_cmdargs(cmdargs)
-    perf_messages.append(f"parse time {perf_counter() - t}")
+perf_messages = []
+
+
+def compile_node(node) -> (str, Module):
     t = perf_counter()
     node = semantic_analysis(node)
     perf_messages.append(f"semantic time {perf_counter() - t}")
@@ -48,8 +47,19 @@ def compile(cmdargs) -> (str, Module):
     return code, node
 
 
+def compile(cmdargs):
+    t = perf_counter()
+    node = parse_from_cmdargs(cmdargs)
+    perf_messages.append(f"parse time {perf_counter() - t}")
+    return compile_node(node)
+
+
 def runtest(s, compile_cpp=True):
-    code, _ = compile(s)
+    perf_messages = []
+    t = perf_counter()
+    node = parse(s)
+    perf_messages.append(f"parse time {perf_counter() - t}")
+    code, _ = compile_node(node)
 
     output = None
 
