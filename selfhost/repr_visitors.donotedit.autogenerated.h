@@ -111,5 +111,17 @@ if (ceto::mado(node)->suffix) {
             (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
         }
 
+        inline auto visit(const FloatLiteral&  node) -> void override {
+            (this -> repr) += (((class_name((&node)) + std::string {"(\""}) + ceto::mado(node)->float_string) + std::string {"\", "});
+if (ceto::mado(node)->suffix) {
+                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+            } else {
+                (this -> repr) += std::string {"None"};
+            }
+            (this -> repr) += std::string {", ("};
+            const auto loc = std::get<1>(ceto::mado(node)->source);
+            (this -> repr) += ((std::string {"\"\", "} + std::to_string(loc)) + std::string {"))"});
+        }
+
 };
 

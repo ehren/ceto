@@ -95,4 +95,16 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         loc = std.get<1>(node.source)
         self.repr += '"", ' + std.to_string(loc) + "))"
     )
+
+    def (visit: override:mut, node: FloatLiteral.class:
+        self.repr += class_name(&node) + '("' + node.float_string + '", '
+        if (node.suffix:
+            node.suffix.accept(*this)
+        else:
+            self.repr += "None"
+        )
+        self.repr += ", ("
+        loc = std.get<1>(node.source)
+        self.repr += '"", ' + std.to_string(loc) + "))"
+    )
 )
