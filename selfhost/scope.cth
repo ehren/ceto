@@ -39,7 +39,7 @@ class (InterfaceDefinition(ClassDefinition):
         super.init(None, None, false, false, false)
     )
 
-    def (class_name: virtual:
+    def (class_name: override:
         return "InterfaceDefinition"
     ) : std.string
 )
@@ -58,25 +58,25 @@ class (VariableDefinition:
 )
 
 class (LocalVariableDefinition(VariableDefinition):
-    def (class_name: virtual:
+    def (class_name: override:
         return "LocalVariableDefinition"
     ) : std.string
 )
 
 class (GlobalVariableDefinition(VariableDefinition):
-    def (class_name: virtual:
+    def (class_name: override:
         return "GlobalVariableDefinition"
     ) : std.string
 )
 
 class (FieldDefinition(VariableDefinition):
-    def (class_name: virtual:
+    def (class_name: override:
         return "FieldDefinition"
     ) : std.string
 )
 
 class (ParameterDefinition(VariableDefinition):
-    def (class_name: virtual:
+    def (class_name: override:
         return "ParameterDefinition"
     ) : std.string
 )
@@ -107,9 +107,6 @@ class (Scope:
 
     def (add_variable_definition: mut, defined_node: Identifier, defining_node: Node:
         parent: mut = defined_node.parent()
-
-#        std.cout << defined_node.name().value() << std.endl
-#        std.cout << defining_node.name().value() << std.endl
 
         while (parent:
             if (creates_new_variable_scope(parent):
@@ -177,15 +174,9 @@ class (Scope:
 
                 if (defined_loc < var_loc:
                     if (not find_all:
-#                        std.cout << "find_defs (find_all=False): " << d.repr() << std.endl
                         return [d]
                     )
                     results.append(d)
-                    # TODO doesn't produce parseable c++ code???
-#                    if ((assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)) and (ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())):
-#                        more: mut = self.find_defs(ident, find_all)
-#                        results.insert(results.end(), more.begin(), more.end())
-#                    )
                     assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)
                     if (assign:
                         ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())
@@ -202,7 +193,6 @@ class (Scope:
             more = s.find_defs(var_node, find_all)
             results.insert(results.end(), more.begin(), more.end())
         )
-#        std.cout << "find_defs for " << var_node.repr() << ": " << join(results, lambda(a, a.repr()), ", ") << std.endl
 
         return results
     ) : [VariableDefinition]

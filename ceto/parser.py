@@ -520,7 +520,10 @@ def _parse_maybe_cached(filepath, repr_path):
         if repr_time > module_time:
             with open(repr_path) as f:
                 repr_file = f.read()
-            return expand_includes(eval(repr_file))
+            try:
+                return expand_includes(eval(repr_file))
+            except SyntaxError:
+                pass
 
     with open(filepath) as f:
         source = f.read()
@@ -528,7 +531,8 @@ def _parse_maybe_cached(filepath, repr_path):
     parsed_module = parse_string(source)
 
     with open(repr_path, "w") as f:
-        f.write(parsed_module.ast_repr())
+        if hasattr(parsed_module, "ast_repr"):
+            f.write(parsed_module.ast_repr())
 
     return expand_includes(parsed_module)
 
