@@ -35,15 +35,14 @@ if (ceto::mado(node)->func) {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
                 (this -> repr) += std::string {", "};
             }
+            (this -> repr) += std::string {"["};
 if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
-                (this -> repr) += std::string {"["};
                 for(const auto& arg : ceto::mado(node)->args) {
                     ceto::mado(arg)->accept((*this));
                     (this -> repr) += std::string {", "};
                 }
-                (this -> repr) += std::string {"]"};
             }
-            (this -> repr) += std::string {")"};
+            (this -> repr) += std::string {"])"};
         }
 
         inline auto visit(const UnOp&  node) -> void override {

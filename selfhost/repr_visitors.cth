@@ -17,18 +17,14 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
             self.repr += ", "
         )
 
+        self.repr += "["
         if (node.args.size() > 0:
-            self.repr += "["
-
             for (arg in node.args:
                 arg.accept(*this)
                 self.repr += ", "
             )
-
-            self.repr += "]"
         )
-
-        self.repr += ")"
+        self.repr += "])"
     )
 
     def (visit: override:mut, node: UnOp.class:
