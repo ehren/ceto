@@ -31,6 +31,13 @@ for xfailing in msvc_xfailing_tests:
     test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
 
 # test_files = ["regression/if_expressions_lambdas.ctp"]
+# test_files = ["regression/new_find_defs_list_problem.ctp"]
+# test_files = ["super_init.ctp"]
+# test_files = ["regression/proper_if_scopes.ctp"]#, "regression/proper_if_scopes_1.ctp"]
+# test_files = ["regression/proper_if_scopes.ctp", "regression/proper_if_scopes_1.ctp"]
+# test_files = ["tuples_for.ctp"]
+# test_files = ["atomic_weak.ctp"]
+# test_files = ["regression/multiple_attribute_access_method_call.ctp"]
 _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS = False
 
 
@@ -51,7 +58,7 @@ def test_file(file):
         expected_output = None
 
     if _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS:
-        runtest("\n".join(content))
+        runtest("\n".join(content), compile_cpp=False)
         return
     build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
     print(build_output)

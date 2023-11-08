@@ -1,13 +1,14 @@
+import pdb
 import typing
 from collections import defaultdict
-from .abstractsyntaxtree import Identifier, Call, Node, Assign
+from .abstractsyntaxtree import Identifier, Call, Node, Assign, Block, Module
 
 selfhost = True
 try:
-    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
-    # raise ImportError()
+    # from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
+    raise ImportError()
 except ImportError:
-    raise
+    # raise
 
     class ClassDefinition:
 
@@ -64,6 +65,16 @@ except ImportError:
         return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
 
 
+    def node_depth(node):
+        if node.parent:
+            if node in node.parent.args and isinstance(node.parent, Block):
+                return node.parent.args.index(node) + 1 + node_depth(node.parent)
+            else:
+                return node_depth(node.parent)
+        else:
+            return 0
+
+
     class Scope:
 
         def __init__(self):
@@ -86,8 +97,11 @@ except ImportError:
             assert isinstance(defining_node, Node)
 
             var_class = GlobalVariableDefinition
-            parent = defined_node.parent
+            parent = defined_node#.parent
             while parent:
+                # if isinstance(parent, Block):
+                #     var_class = LocalVariableDefinition
+                #     break
                 if creates_new_variable_scope(parent):
                     if parent.func.name in ["class", "struct"]:
                         var_class = FieldDefinition
@@ -96,6 +110,7 @@ except ImportError:
                     else:
                         var_class = LocalVariableDefinition
                     break
+
                 parent = parent.parent
 
             self.variable_definitions.append(var_class(defined_node, defining_node))
@@ -127,7 +142,12 @@ except ImportError:
                     _ , defined_loc = d.defined_node.source
                     _ , var_loc = var_node.source
 
-                    if defined_loc < var_loc:
+                    vd = node_depth(var_node)
+                    dd = node_depth(d.defined_node)
+
+                    # assert (dd < vd) == (defined_loc < var_loc)  # hmm not always true. why?
+
+                    if dd < vd:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                             yield from self.find_defs(d.defining_node.rhs)

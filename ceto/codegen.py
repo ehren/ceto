@@ -77,6 +77,7 @@ def codegen_if(ifcall : Call, cx):
                 last_statement = a.args[-1]
                 synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
                 last_statement.parent = synthetic_return
+                synthetic_return.parent = a
                 a.args = a.args[0:-1] + [synthetic_return]
 
     ifnode = IfWrapper(ifcall.func, ifcall.args)
@@ -485,10 +486,12 @@ def codegen_class(node : Call, cx):
                 # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
                 break
 
-        constructor_block.args = constructor_block.args[
-                                 len(initializerlist_assignments) + int(super_init_call is not None):]
+        # constructor_block.args = constructor_block.args[
+        #                          len(initializerlist_assignments) + int(super_init_call is not None):]
+        constructor_block_new = Block(constructor_block.args[len(initializerlist_assignments) + int(super_init_call is not None):])
+        # TODO ^ this doesn't set .parent. Otoh all of its args' parents point to the old block. Might be ok in practice or might be the cause of future/uncovered bugs (find_defs walks .parent)
 
-        if any(find_all(constructor_block, is_super_init)):
+        if any(find_all(constructor_block_new, is_super_init)):
             raise CodeGenError("A call to super.init must occur in the 'initializer list' (that is, any statements before super.init must be of the form self.field = val")
 
         init_params = []
@@ -583,7 +586,7 @@ def codegen_class(node : Call, cx):
             cpp += " : " + initializer_list + " "
 
         cpp += "{\n"
-        cpp += codegen_function_body(constructor_node, constructor_block, initcx)
+        cpp += codegen_function_body(constructor_node, constructor_block_new, initcx)
         cpp += inner_indt + "}\n\n"
 
     uninitialized_attributes = [u for u in uninitialized_attributes if u.name not in constructor_initialized_field_names]
@@ -2128,6 +2131,9 @@ def codegen_call(node: Call, cx: Scope):
 
                     # TODO don't do the silly mutation above in the first place!
                     new_attr_access = AttributeAccess(".", [node.func, method_name])
+                    new_attr_access.parent = node
+                    node.func.parent = new_attr_access
+                    method_name.parent = new_attr_access
                     func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
