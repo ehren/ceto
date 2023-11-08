@@ -164,15 +164,16 @@ except ImportError:
 
                     parent_block = d.defined_node.parent
                     while True:
-                        if isinstance(parent_block, Module):
-                            # it would probably be sufficient to invoke 'comes_before' twice with both var_node and defined_nodes parent Blocks (not just one though)
-                            # for now we'll just start at the top level Module (which is likely faster in a non-deeply nested scenario)
+                        if isinstance(parent_block, Block):
                             break
                         parent_block = parent_block.parent
 
                     defined_before = comes_before(parent_block, d.defined_node, var_node)
 
-                    assert (defined_loc < var_loc) == defined_before
+                    # this fires on invalid code 'test_requires_bad'
+                    if (defined_loc < var_loc) != defined_before:
+                        from .semanticanalysis import SemanticAnalysisError
+                        raise SemanticAnalysisError(f"broken defs / scoping. You likely have broken code somewhere involving the variable {var_node.name}.", var_node)
                     if defined_before:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
