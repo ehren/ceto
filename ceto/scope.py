@@ -65,14 +65,46 @@ except ImportError:
         return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
 
 
-    def node_depth(node):
+    def _node_depth(node):
         if node.parent:
-            if node in node.parent.args and isinstance(node.parent, Block):
-                return node.parent.args.index(node) + 1 + node_depth(node.parent)
+            # if node in node.parent.args and isinstance(node.parent, Block):
+            #if isinstance(node.parent, (Block, Call)) and node in node.parent.args:
+            if node in node.parent.args:
+                return node.parent.args.index(node) + 1+ _node_depth(node.parent)
+            # elif isinstance(node, Block) and isinstance(node.parent, Call) and node in node.parent.args:
+            #     return node.parent.args.index(node) + _node_depth(node.parent)
             else:
-                return node_depth(node.parent)
+                return _node_depth(node.parent)
         else:
             return 0
+
+    def node_depth(node):
+        parent = node.parent
+        child = node
+        while True:
+            if isinstance(parent, Block):
+                return _node_depth(child)
+            else:
+                child = parent
+                parent = parent.parent
+
+
+    def comes_before(root, before, after):
+        if root is before:
+            return True
+        elif root is after:
+            return False
+        for arg in root.args:
+            cb = comes_before(arg, before, after)
+            if cb is None:
+                continue
+            else:
+                return cb
+        if root.func:
+            cb = comes_before(root.func, before, after)
+            if cb is not None:
+                return cb
+        return None
 
 
     class Scope:
@@ -142,12 +174,37 @@ except ImportError:
                     _ , defined_loc = d.defined_node.source
                     _ , var_loc = var_node.source
 
-                    vd = node_depth(var_node)
-                    dd = node_depth(d.defined_node)
+                    # vd = node_depth(var_node)
+                    # dd = node_depth(d.defined_node)
 
-                    # assert (dd < vd) == (defined_loc < var_loc)  # hmm not always true. why?
+                    var_node_block = var_node.parent
+                    while True:
+                        if isinstance(var_node_block, Module):  # we should't have to go this far up.
+                            break
+                        var_node_block = var_node_block.parent
 
-                    if dd < vd:
+                    # cb = comes_before(var_node_block, d.defined_node, var_node)
+                    # cb1 = comes_before(var_node_block, var_node, d.defined_node)
+                    cb2 = comes_before(var_node_block, d.defined_node, var_node)
+
+                    # if (dd < vd) != (defined_loc < var_loc) and var_node.name == "defn":
+                    # if (defined_loc < var_loc) and var_node.name == "defn":
+
+                    # assert (defined_loc < var_loc) == (not cb1)
+                    #
+                    # # if (defined_loc < var_loc):
+                    # if not cb1:
+                    #     # import pdb
+                    #     # pdb.set_trace()
+                    #     print("argh\n"*50)
+                    #     print(f"{cb1, cb2}")
+                    #     # vd = node_depth(var_node)
+                    #     # dd = node_depth(d.defined_node)
+
+
+                    # if defined_loc < var_loc:
+                    if cb2:
+                    # if dd < vd:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                             yield from self.find_defs(d.defining_node.rhs)

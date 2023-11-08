@@ -135,6 +135,20 @@ if (call) {
         return false;
     }
 
+    inline auto node_depth(const std::shared_ptr<const Node>&  node) -> auto {
+if (!ceto::mado(node)->parent()) {
+            return 0;
+        }
+        auto const & args { ceto::mado(ceto::mado(node)->parent())->args } ;
+        const auto it = std::find(ceto::mado(args)->cbegin(), ceto::mado(args)->cend(), node);
+        return [&]() {if (it != ceto::mado(args)->cend()) {
+            return (std::distance(ceto::mado(args)->begin(), it) + node_depth(ceto::mado(node)->parent()));
+        } else {
+            return node_depth(ceto::mado(node)->parent());
+        }}()
+;
+    }
+
 struct Scope : public ceto::shared_object, public std::enable_shared_from_this<Scope> {
 
     std::remove_cvref_t<decltype(std::map<std::string,std::vector<std::shared_ptr<const Node>>>())> interfaces = std::map<std::string,std::vector<std::shared_ptr<const Node>>>();
