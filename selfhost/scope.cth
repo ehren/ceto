@@ -90,19 +90,19 @@ def (creates_new_variable_scope, e: Node:
     return false
 )
 
-def (node_depth, node: Node:
-    if (not node.parent():
-        return 0
-    )
-    args : auto:const:ref = node.parent().args
-    it = std.find(args.cbegin(), args.cend(), node)
-    return if (it != args.cend():
-        # node in parent.args
-        std.distance(args.begin(), it) + node_depth(node.parent())
-    else:
-        node_depth(node.parent())
-    )
-)
+#def (node_depth, node: Node:
+#    if (not node.parent():
+#        return 0
+#    )
+#    args : auto:const:ref = node.parent().args
+#    it = std.find(args.cbegin(), args.cend(), node)
+#    return if (it != args.cend():
+#        # node in parent.args
+#        std.distance(args.begin(), it) + node_depth(node.parent())
+#    else:
+#        node_depth(node.parent())
+#    )
+#)
 
 
 class (Scope:

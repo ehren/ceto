@@ -78,16 +78,6 @@ except ImportError:
         else:
             return 0
 
-    def node_depth(node):
-        parent = node.parent
-        child = node
-        while True:
-            if isinstance(parent, Block):
-                return _node_depth(child)
-            else:
-                child = parent
-                parent = parent.parent
-
 
     def comes_before(root, before, after):
         if root is before:
@@ -96,9 +86,7 @@ except ImportError:
             return False
         for arg in root.args:
             cb = comes_before(arg, before, after)
-            if cb is None:
-                continue
-            else:
+            if cb is not None:
                 return cb
         if root.func:
             cb = comes_before(root.func, before, after)
@@ -174,37 +162,18 @@ except ImportError:
                     _ , defined_loc = d.defined_node.source
                     _ , var_loc = var_node.source
 
-                    # vd = node_depth(var_node)
-                    # dd = node_depth(d.defined_node)
-
-                    var_node_block = var_node.parent
+                    parent_block = d.defined_node.parent
                     while True:
-                        if isinstance(var_node_block, Module):  # we should't have to go this far up.
+                        if isinstance(parent_block, Module):
+                            # it would probably be sufficient to invoke 'comes_before' twice with both var_node and defined_nodes parent Blocks (not just one though)
+                            # for now we'll just start at the top level Module (which is likely faster in a non-deeply nested scenario)
                             break
-                        var_node_block = var_node_block.parent
+                        parent_block = parent_block.parent
 
-                    # cb = comes_before(var_node_block, d.defined_node, var_node)
-                    # cb1 = comes_before(var_node_block, var_node, d.defined_node)
-                    cb2 = comes_before(var_node_block, d.defined_node, var_node)
+                    defined_before = comes_before(parent_block, d.defined_node, var_node)
 
-                    # if (dd < vd) != (defined_loc < var_loc) and var_node.name == "defn":
-                    # if (defined_loc < var_loc) and var_node.name == "defn":
-
-                    # assert (defined_loc < var_loc) == (not cb1)
-                    #
-                    # # if (defined_loc < var_loc):
-                    # if not cb1:
-                    #     # import pdb
-                    #     # pdb.set_trace()
-                    #     print("argh\n"*50)
-                    #     print(f"{cb1, cb2}")
-                    #     # vd = node_depth(var_node)
-                    #     # dd = node_depth(d.defined_node)
-
-
-                    # if defined_loc < var_loc:
-                    if cb2:
-                    # if dd < vd:
+                    assert (defined_loc < var_loc) == defined_before
+                    if defined_before:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):
                             yield from self.find_defs(d.defining_node.rhs)
