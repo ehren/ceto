@@ -164,7 +164,7 @@ except ImportError:
 
                     parent_block = d.defined_node.parent
                     while True:
-                        if isinstance(parent_block, Block):
+                        if isinstance(parent_block, Module):
                             break
                         parent_block = parent_block.parent
 
