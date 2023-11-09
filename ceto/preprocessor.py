@@ -48,7 +48,7 @@ def preprocess(file_object, reparse = False):
     replacements = {}
     began_indent = False
 
-    blocks = []
+    blocks = [[(0, 0), ""]]
 
     while parsing_stack:
 
@@ -91,9 +91,9 @@ def preprocess(file_object, reparse = False):
             rewritten.write("\n")
             rewritten.write(" " * indent)
 
-            if reparse and blocks:
-                blocks[-1][1] += "\n"
-                blocks[-1][1] += " " * indent
+            # if reparse and blocks:
+            #     blocks[-1][1] += "\n"
+            #     blocks[-1][1] += " " * indent
 
             # non whitespace char handling
 
@@ -112,8 +112,8 @@ def preprocess(file_object, reparse = False):
 
                 if (parsing_stack[-1] == SingleQuote and char != "'") or (parsing_stack[-1] == DoubleQuote and char != '"'):
                     line_to_write += char
-                    if reparse and blocks:
-                        blocks[-1][1] += char
+                    # if reparse and blocks:
+                    #     blocks[-1][1] += char
                     continue
 
                 if char == BEL:
@@ -206,8 +206,11 @@ def preprocess(file_object, reparse = False):
                                     line_to_write += "\x06"
                                 break
 
-                if reparse and blocks:# and parsing_stack[-1] == Indent and char not in '"\'':
-                    blocks[-1][1] += char
+                # if reparse and blocks:# and parsing_stack[-1] == Indent and char not in '"\'':
+                #     blocks[-1][1] += char
+
+            # if reparse:
+            block_to_write_index = -1
 
             if parsing_stack[-1] == OpenParen and colon_eol:
                 parsing_stack.append(Indent)
@@ -215,24 +218,29 @@ def preprocess(file_object, reparse = False):
                 line_to_write += BEL
                 began_indent = True
                 ok_to_hide = False
-                if reparse:
-                    blocks.append([(line_number, n), "\n" * rewritten.getvalue().count("\n")])
             else:
                 began_indent = False
 
                 if parsing_stack[-1] == Indent and line_to_write.strip():
                     # block_line_end
                     line_to_write += ";"
+
+                    if len(parsing_stack) == 1:
+                        # blocks.append([(line_number, 0), "\n" * rewritten.getvalue().count("\n")])
+                        blocks.append([(line_number, 0), "\n" * rewritten.getvalue().count("\n")])
+                        block_to_write_index = -2
+
                     while len(is_it_a_template_stack) > 0:
                         assert is_it_a_template_stack[-1] == OpenAngle
                         is_it_a_template_stack.pop()
 
-                    if reparse and blocks:
-                        blocks[-1][1] += ";"
                 else:
                     ok_to_hide = False
 
             line_to_write += comment_to_write
+
+            # if reparse:
+            blocks[block_to_write_index][1] += line_to_write
 
             if ok_to_hide:
                 d = "ceto_priv_dummy{}c{};".format(line_number, n + indent)

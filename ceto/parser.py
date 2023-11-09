@@ -1,12 +1,13 @@
 #
 # Based on the pyparsing example parsePythonValue.py
 #
-# 
+#
 import typing
 import io
 import sys
 import os
 import pathlib
+import concurrent.futures
 from time import perf_counter
 
 from .preprocessor import preprocess
@@ -18,6 +19,7 @@ from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, 
 try:
     import cPyparsing as pp
     from cPyparsing import ParseException
+    # pp.ParserElement.enableIncremental()
 except ImportError:
     import pyparsing as pp
     from pyparsing import ParseException
@@ -418,6 +420,10 @@ def _parse_preprocessed(source: str):
     res = grammar.parseString(source, parseAll=True)
     return res[0]
 
+def _thread_parse(source, index):
+    expr = _parse_preprocessed(source)
+    assert isinstance(expr, Module)
+    return expr.ast_repr(), index
 
 def parse_string(source: str):
     from textwrap import dedent
@@ -426,55 +432,87 @@ def parse_string(source: str):
     source = source.replace("\\U", "CETO_PRIVATE_ESCAPED_UNICODE")
     source = source.replace("\\u", "CETO_PRIVATE_ESCAPED_UNICODE")
     sio = io.StringIO(source)
-    preprocessed, _, _ = preprocess(sio, reparse=False)
-    preprocessed = preprocessed.getvalue()
+    preprocessed, _, subblocks = preprocess(sio, reparse=True)
 
-    try:
-        res = _parse_preprocessed(preprocessed)
-    except pp.ParseException as orig:
-        # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
-        # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+    parsed_nodes = []
 
-        sio.seek(0)
-        reparse, replacements, subblocks = preprocess(sio, reparse=True)
-        reparse = reparse.getvalue()
+    futures = []
+    results = {}
 
-        try:
-            _parse_preprocessed(reparse)
-        except pp.ParseException:
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for index, block in enumerate(subblocks):
+            block_source = block[-1]
+            if not block_source.strip():
+                continue
+            futures.append(
+                executor.submit(_thread_parse, block_source, index))
 
-            # if a control structure defining a block (aka call with block arg)
-            # is responsible for the error find the first erroring subblock:
+        for future in concurrent.futures.as_completed(futures):
+            expr, index = future.result()
+            expr = eval(expr)
+            results[index] = expr
 
-            for (lineno, colno), block in subblocks:
-                # dedented = dedent(block)
+    for k in sorted(results.keys()):
+        expr = results[k]
+        assert isinstance(expr, Module)
+        parsed_nodes.extend(expr.args)
 
-                try:
-                    # do_parse(dedented)
-                    _parse_preprocessed(block)
-                except pp.ParseException as blockerror:
-                    print("blockerr")
-                    blockerror._ceto_col = blockerror.col  # + colno
-                    blockerror._ceto_lineno = blockerror.lineno - 1
-                    raise blockerror
+# for block in subblocks:
+#     block_source = block[-1]
+#     if not block_source.strip():
+#         continue
+#     m = _parse_preprocessed(block[1].strip())
+#     assert isinstance(m, Module)
+#     parsed_nodes.extend(m.args)
 
-        # otherwise if a single line (that doesn't begin an indented block) fails to parse:
+    res = Module(parsed_nodes)
 
-        for dummy, real in replacements.items():
-            # dedented = dedent(real)
-            try:
-                # do_parse(dedented)
-                _parse_preprocessed(real)
-            except pp.ParseException as lineerror:
-                print("lineerr")
-                dummy = dummy[len('ceto_priv_dummy'):-1]
-                line, col = dummy.split("c")
-                lineerror._ceto_col = int(col) + lineerror.col - 1
-                # lineerror._ceto_col = lineerror.col
-                lineerror._ceto_lineno = int(line)  # + lineerror.lineno
-                raise lineerror
-
-        raise orig
+    # try:
+    #     res = _parse_preprocessed(preprocessed)
+    # except pp.ParseException as orig:
+    #     # try to improve upon the initial error from pyparsing (often backtracked too far to be helpful
+    #     # especially with current "keywords as identifiers" treatment of "def", "class", "if", etc)
+    #
+    #     sio.seek(0)
+    #     reparse, replacements, subblocks = preprocess(sio, reparse=True)
+    #     reparse = reparse.getvalue()
+    #
+    #     try:
+    #         _parse_preprocessed(reparse)
+    #     except pp.ParseException:
+    #
+    #         # if a control structure defining a block (aka call with block arg)
+    #         # is responsible for the error find the first erroring subblock:
+    #
+    #         for (lineno, colno), block in subblocks:
+    #             # dedented = dedent(block)
+    #
+    #             try:
+    #                 # do_parse(dedented)
+    #                 _parse_preprocessed(block)
+    #             except pp.ParseException as blockerror:
+    #                 print("blockerr")
+    #                 blockerror._ceto_col = blockerror.col  # + colno
+    #                 blockerror._ceto_lineno = blockerror.lineno - 1
+    #                 raise blockerror
+    #
+    #     # otherwise if a single line (that doesn't begin an indented block) fails to parse:
+    #
+    #     for dummy, real in replacements.items():
+    #         # dedented = dedent(real)
+    #         try:
+    #             # do_parse(dedented)
+    #             _parse_preprocessed(real)
+    #         except pp.ParseException as lineerror:
+    #             print("lineerr")
+    #             dummy = dummy[len('ceto_priv_dummy'):-1]
+    #             line, col = dummy.split("c")
+    #             lineerror._ceto_col = int(col) + lineerror.col - 1
+    #             # lineerror._ceto_col = lineerror.col
+    #             lineerror._ceto_lineno = int(line)  # + lineerror.lineno
+    #             raise lineerror
+    #
+    #     raise orig
 
     def replacer(op):
         if not isinstance(op, Node):
