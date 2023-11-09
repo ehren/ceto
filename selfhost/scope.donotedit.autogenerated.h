@@ -225,10 +225,8 @@ if (!find_all) {
                             return std::vector {d};
                         }
                         ceto::mad(results)->push_back(d);
-                        const auto assign = dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node);
-if (assign) {
-                            const auto ident = dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs());
-if (ident) {
+if (const auto assign = dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node)) {
+if (const auto ident = dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs())) {
                                 const auto more = this -> find_defs(ident, find_all);
                                 ceto::mado(results)->insert(ceto::mado(results)->end(), ceto::mado(more)->begin(), ceto::mado(more)->end());
                             }

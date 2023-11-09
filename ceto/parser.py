@@ -531,7 +531,7 @@ def _parse_maybe_cached(filepath, repr_path):
     parsed_module = parse_string(source)
 
     with open(repr_path, "w") as f:
-        if hasattr(parsed_module, "ast_repr"):
+        if hasattr(parsed_module, "ast_repr"):  # not implemented in pure python ast
             f.write(parsed_module.ast_repr())
 
     return expand_includes(parsed_module)
@@ -541,9 +541,10 @@ seen_modules = set()
 
 def expand_includes(node: Module):
     def set_file_path(node, path):
-        if not node.file_path:
+        if node.file_path:
             # avoid setting include path for nodes from a sub-include
-            node.file_path = path
+            return
+        node.file_path = path
         for a in node.args:
             set_file_path(a, path)
         if node.func:

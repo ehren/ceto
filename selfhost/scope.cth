@@ -192,10 +192,8 @@ class (Scope:
                         return [d]
                     )
                     results.append(d)
-                    assign = dynamic_pointer_cast<const:Assign.class>(d.defining_node)
-                    if (assign:
-                        ident = dynamic_pointer_cast<const:Identifier.class>(assign.rhs())
-                        if (ident:
+                    if ((assign = asinstance(d.defining_node, Assign)):
+                        if ((ident = asinstance(assign.rhs(), Identifier)):
                             more = self.find_defs(ident, find_all)
                             results.insert(results.end(), more.begin(), more.end())
                         )
