@@ -90,6 +90,8 @@ def preprocess(file_object, reparse = False):
 
             rewritten.write("\n")
             rewritten.write(" " * indent)
+            blocks[-1][1] += "\n"
+            blocks[-1][1] += " " * indent
 
             # if reparse and blocks:
             #     blocks[-1][1] += "\n"

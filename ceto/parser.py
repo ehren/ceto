@@ -424,6 +424,7 @@ def _thread_parse(source, index):
     expr = _parse_preprocessed(source)
     assert isinstance(expr, Module)
     return expr.ast_repr(), index
+    # return expr, index
 
 def parse_string(source: str):
     from textwrap import dedent
@@ -432,12 +433,16 @@ def parse_string(source: str):
     source = source.replace("\\U", "CETO_PRIVATE_ESCAPED_UNICODE")
     source = source.replace("\\u", "CETO_PRIVATE_ESCAPED_UNICODE")
     sio = io.StringIO(source)
-    preprocessed, _, subblocks = preprocess(sio, reparse=True)
+    preprocessed, _, subblocks = preprocess(sio, reparse=False)
 
     parsed_nodes = []
 
     futures = []
     results = {}
+
+    # blocks = []
+    # for s in subblocks:
+    #     blocks.append(s[-1])
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for index, block in enumerate(subblocks):
@@ -457,15 +462,17 @@ def parse_string(source: str):
         assert isinstance(expr, Module)
         parsed_nodes.extend(expr.args)
 
-# for block in subblocks:
-#     block_source = block[-1]
-#     if not block_source.strip():
-#         continue
-#     m = _parse_preprocessed(block[1].strip())
-#     assert isinstance(m, Module)
-#     parsed_nodes.extend(m.args)
+    # for block in subblocks:
+    #     block_source = block[-1]
+    #     if not block_source.strip():
+    #         continue
+    #     m = _parse_preprocessed(block[1].strip())
+    #     assert isinstance(m, Module)
+    #     parsed_nodes.extend(m.args)
 
     res = Module(parsed_nodes)
+    # preprocessed = preprocessed.getvalue()
+    # res = _parse_preprocessed(preprocessed)
 
     # try:
     #     res = _parse_preprocessed(preprocessed)
