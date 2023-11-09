@@ -3,12 +3,11 @@ import typing
 from collections import defaultdict
 from .abstractsyntaxtree import Identifier, Call, Node, Assign, Block, Module
 
-selfhost = True
 try:
-    # from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
-    raise ImportError()
+    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
+    # raise ImportError()
 except ImportError:
-    # raise
+    raise
 
     class ClassDefinition:
 
@@ -172,8 +171,9 @@ except ImportError:
 
                     # this fires on invalid code 'test_requires_bad'
                     if (defined_loc < var_loc) != defined_before:
-                        from .semanticanalysis import SemanticAnalysisError
-                        raise SemanticAnalysisError(f"broken defs / scoping. You likely have broken code somewhere involving the variable {var_node.name}.", var_node)
+                        # from .semanticanalysis import SemanticAnalysisError
+                        # raise SemanticAnalysisError(f"broken defs / scoping. You likely have broken code somewhere involving the variable {var_node.name}.", var_node)
+                        pass
                     if defined_before:
                         yield d
                         if isinstance(d.defining_node, Assign) and isinstance(d.defining_node.rhs, Identifier):

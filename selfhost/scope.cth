@@ -3,7 +3,6 @@ include <map>
 include (ast)
 include (utility)
 
-
 class (ClassDefinition:
     name_node : Identifier
     class_def_node : Call
@@ -82,27 +81,34 @@ class (ParameterDefinition(VariableDefinition):
 )
 
 def (creates_new_variable_scope, e: Node:
-    call = dynamic_pointer_cast<const:Call.class>(e)
-    if (call:
-        name = call.func.name()
+    if (isinstance(e, Call):
+        name = e.func.name()
         return name and contains(["def", "lambda", "class", "struct"], name.value())
     )
     return false
 )
 
-#def (node_depth, node: Node:
-#    if (not node.parent():
-#        return 0
-#    )
-#    args : auto:const:ref = node.parent().args
-#    it = std.find(args.cbegin(), args.cend(), node)
-#    return if (it != args.cend():
-#        # node in parent.args
-#        std.distance(args.begin(), it) + node_depth(node.parent())
-#    else:
-#        node_depth(node.parent())
-#    )
-#)
+
+def (comes_before, root, before, after:
+    if (root == before:
+        return true
+    elif root == after:
+        return false
+    )
+    for (arg in root.args:
+        cb = comes_before(arg, before, after)
+        if (cb.has_value():
+            return cb
+        )
+    )
+    if (root.func:
+        cb = comes_before(root.func, before, after)
+        if (cb.has_value():
+            return cb
+        )
+    )
+    return {}
+) : std.optional<bool>
 
 
 class (Scope:
@@ -145,11 +151,7 @@ class (Scope:
     )
 
     def (add_interface_method: mut, interface_name: std.string, interface_method_def_node: Node:
-        if (self.interfaces.contains(interface_name):
-            self.interfaces[interface_name].push_back(interface_method_def_node)
-        else:
-            self.interfaces[interface_name] = [interface_method_def_node]
-        )
+        self.interfaces[interface_name].push_back(interface_method_def_node)
     )
 
     def (add_class_definition: mut, class_definition: ClassDefinition:
@@ -157,7 +159,7 @@ class (Scope:
     )
 
     def (lookup_class, class_node: Node:
-        if (not dynamic_pointer_cast<const:Identifier.class>(class_node):
+        if (not isinstance(class_node, Identifier):
             return None
         )
         for (c in self.class_definitions:
@@ -176,7 +178,7 @@ class (Scope:
 
     def (find_defs, var_node: Node, find_all=true:
 
-        if (not dynamic_pointer_cast<const:Identifier.class>(var_node):
+        if (not isinstance(var_node, Identifier):
             return {}
         )
 
@@ -187,7 +189,19 @@ class (Scope:
                 defined_loc = std.get<1>(d.defined_node.source)
                 var_loc = std.get<1>(var_node.source)
 
-                if (defined_loc < var_loc:
+                # we should just compute a 'node_loc' in a previous pass
+                parent_block: mut = d.defined_node.parent()
+                while (true:
+                    if (isinstance(parent_block, Module):
+                        break
+                    )
+                    parent_block = parent_block.parent()
+                )
+
+                defined_before = comes_before(parent_block, d.defined_node, var_node)
+
+#                if (defined_loc < var_loc:
+                if (defined_before and defined_before.value():
                     if (not find_all:
                         return [d]
                     )

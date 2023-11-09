@@ -1995,12 +1995,9 @@ def codegen_call(node: Call, cx: Scope):
             class_name = node.args[1]
             const_specifier = "const "
             if extracted := extract_mut_or_const(class_name):
-                mc, rest = extracted
+                mc, class_name = extracted
                 if mc.name == "mut":
                     const_specifier = ""
-                if not len(rest) == 1:
-                    raise CodeGenError("bad is/asinstance class arg (too many specifiers)", node)
-                class_name = rest[0]
             if not isinstance(class_name, Identifier):
                 raise CodeGenError("bad is/asinstance class arg", node)
             if not (classdef := cx.lookup_class(class_name)) or classdef.is_struct or not classdef.is_concrete:

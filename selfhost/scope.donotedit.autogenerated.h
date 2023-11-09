@@ -127,12 +127,33 @@ using VariableDefinition::VariableDefinition;
 };
 
     inline auto creates_new_variable_scope(const std::shared_ptr<const Node>&  e) -> auto {
-        const auto call = dynamic_pointer_cast<const Call>(e);
-if (call) {
-            const auto name = ceto::mado(ceto::mado(call)->func)->name();
+if ((dynamic_pointer_cast<const Call>(e) != nullptr)) {
+            const auto name = ceto::mado(ceto::mado(e)->func)->name();
             return (name && contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, ceto::mad(name)->value()));
         }
         return false;
+    }
+
+    template <typename T1, typename T2, typename T3>
+auto comes_before(const T1& root, const T2& before, const T3& after) -> std::optional<bool> {
+if (root == before) {
+            return true;
+        } else if ((root == after)) {
+            return false;
+        }
+        for(const auto& arg : ceto::mado(root)->args) {
+            const auto cb = comes_before(arg, before, after);
+if (ceto::mad(cb)->has_value()) {
+                return cb;
+            }
+        }
+if (ceto::mado(root)->func) {
+            const auto cb = comes_before(ceto::mado(root)->func, before, after);
+if (ceto::mad(cb)->has_value()) {
+                return cb;
+            }
+        }
+        return {};
     }
 
 struct Scope : public ceto::shared_object, public std::enable_shared_from_this<Scope> {
@@ -182,11 +203,7 @@ if ((name == std::string {"class"}) || (name == std::string {"struct"})) {
         }
 
         inline auto add_interface_method(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
-if (ceto::mado(this -> interfaces)->contains(interface_name)) {
-                ceto::mado(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))->push_back(interface_method_def_node);
-            } else {
-                ceto::maybe_bounds_check_access(this -> interfaces,interface_name) = std::vector {interface_method_def_node};
-            }
+            ceto::mado(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))->push_back(interface_method_def_node);
         }
 
         inline auto add_class_definition(const std::shared_ptr<const ClassDefinition>&  class_definition) -> void {
@@ -194,7 +211,7 @@ if (ceto::mado(this -> interfaces)->contains(interface_name)) {
         }
 
         inline auto lookup_class(const std::shared_ptr<const Node>&  class_node) const -> std::shared_ptr<const ClassDefinition> {
-if (!dynamic_pointer_cast<const Identifier>(class_node)) {
+if (!(dynamic_pointer_cast<const Identifier>(class_node) != nullptr)) {
                 return nullptr;
             }
             for(const auto& c : (this -> class_definitions)) {
@@ -212,7 +229,7 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
         }
 
         inline auto find_defs(const std::shared_ptr<const Node>&  var_node, const decltype(true) find_all = true) const -> std::vector<std::shared_ptr<const VariableDefinition>> {
-if (!dynamic_pointer_cast<const Identifier>(var_node)) {
+if (!(dynamic_pointer_cast<const Identifier>(var_node) != nullptr)) {
                 return {};
             }
             auto results { std::vector<std::ranges::range_value_t<decltype(this->variable_definitions)>>() } ;
@@ -220,7 +237,14 @@ if (!dynamic_pointer_cast<const Identifier>(var_node)) {
 if ((ceto::mado(ceto::mado(d)->defined_node)->name() == ceto::mado(var_node)->name()) && (ceto::mado(d)->defined_node != var_node)) {
                     const auto defined_loc = std::get<1>(ceto::mado(ceto::mado(d)->defined_node)->source);
                     const auto var_loc = std::get<1>(ceto::mado(var_node)->source);
-if (defined_loc < var_loc) {
+                    auto parent_block { ceto::mado(ceto::mado(d)->defined_node)->parent() } ;
+while (true) {if ((dynamic_pointer_cast<const Module>(parent_block) != nullptr)) {
+                            break;
+                        }
+                        parent_block = ceto::mado(parent_block)->parent();
+                    }
+                    const auto defined_before = comes_before(parent_block, ceto::mado(d)->defined_node, var_node);
+if (defined_before && ceto::mad(defined_before)->value()) {
 if (!find_all) {
                             return std::vector {d};
                         }

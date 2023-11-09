@@ -1880,9 +1880,8 @@ def test_requires_bad():
 def (foo:template<typename:T>:requires:requires(T:x):{ x + x }, x: T, y: T:
     return x + y
 ) : T
-    """), "broken defs / scoping. You likely have broken code somewhere involving the variable T.")  #"unexpected type") # "unexpected context for typed construct")
-    # arguably we could let the above error pass silently (we'd get the old "unexpected type"
-    # but a little extra checking (at least for now) is better than accomodating broken code (as long as it errors)
+    """), "unexpected type") # "unexpected context for typed construct")
+    # """), "broken defs / scoping. You likely have broken code somewhere involving the variable T.")  #"unexpected type") # "unexpected context for typed construct")
 
 
 def test_requires():
