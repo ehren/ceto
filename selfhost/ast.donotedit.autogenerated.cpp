@@ -40,7 +40,9 @@ namespace py = pybind11;
         return std::string(py::str(ceto::mado(ceto::mado(selph)->attr("__class__"))->attr("__name__")));
     }
 
-PYBIND11_MODULE(_abstractsyntaxtree, m) {;
+
+PYBIND11_MODULE(_abstractsyntaxtree, m) {
+;
 []( auto &&  m) {
 using namespace pybind11::literals;
         auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("ast_repr", [](const Node&  n) {
