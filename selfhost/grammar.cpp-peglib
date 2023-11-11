@@ -1,0 +1,43 @@
+DotDotDotExpression <- (Expression) "..."*
+
+Expression <- ReturnLikeExpression / BinaryExpression
+
+ReturnLikeExpression <- ("yield"/"return") BinaryExpression { no_ast_opt }
+
+BinaryExpression  <- UnaryExpression (Operator UnaryExpression)* {
+                         precedence
+                           L - +
+                           L * / %
+                           L << >>
+                           L "==" "!=" "<=" ">=" "in" "is" "<" ">"
+                           L "&"
+                           L "|"
+                           L "and"
+                           L "or"
+                           L ":"
+                           L "=" "+=" "-=" "*=" "/=" "%=" "<<=" ">>=" "&=" "|=" "^="
+                    }
+
+UnaryExpression <- (PlusOp / MinusOp / NotOp / StarOp / AmpOp)* Atom
+
+Atom <- Ident / Number / '(' Expression ')'
+
+Operator <-  <"==" / AndOp / OrOp / "in" / "not in" / "is" / "is not" / "<" / ">" / AmpOp / "^" / "|" / "<==>" / "=" / "<=" / "<<=" / ">=" / "+=" / "-=" / "*=" / "/=" / "%=" / "&=" / "|=" / "^=" / "=" / ":" / PlusOp / MinusOp / StarOp >
+
+PlusOp <- "+"
+MinusOp <- "-"
+StarOp <- "*"
+AmpOp <- "&"
+
+Ident <- !ReservedWords < [a-zA-Z_]+ [a-zA-Z0-9_]* >
+
+ReservedWords  <- NotOp / AndOp / OrOp
+
+NotOp           <- "not"
+AndOp           <- "and"
+OrOp            <- "or"
+
+Number <- < [0-9]+ >
+
+%word <-  [a-zA-Z_]+ [a-zA-Z0-9_]*
+%whitespace <-  [ \t\r]*
