@@ -33,7 +33,7 @@ auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  s
                 };
         const auto csv = join(std::vector {{1, 2, 3, 4, 5}}, [&](const auto &a) {
                 if constexpr (!std::is_void_v<decltype(l(a))>) { return l(a); } else { static_cast<void>(l(a)); };
-                }, std::string {", "});
+                }, ", ");
         const auto b = std::string {"blah"};
         const auto csv2 = join(std::vector {0}, [=](const auto &a) {
                 if constexpr (!std::is_void_v<decltype((b + std::to_string(a)))>) { return (b + std::to_string(a)); } else { static_cast<void>((b + std::to_string(a))); };

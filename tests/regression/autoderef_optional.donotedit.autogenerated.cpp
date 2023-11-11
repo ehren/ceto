@@ -26,6 +26,6 @@
         ((((std::cout << ceto::mado(x)->size()) << ceto::mado(ceto::mad(x)->value())->size()) << ceto::mad(x)->value()) << ceto::mado(x)->c_str()) << ceto::mado(ceto::mad(x)->value())->c_str();
         ((((std::cout << ceto::mado(xm)->size()) << ceto::mado(ceto::mad(xm)->value())->size()) << ceto::mad(xm)->value()) << ceto::mado(xm)->c_str()) << ceto::mado(ceto::mad(xm)->value())->c_str();
         xm = std::nullopt;
-        std::cout << ceto::mad(xm)->value_or(std::string {"or"});
+        std::cout << ceto::mad(xm)->value_or("or");
     }
 

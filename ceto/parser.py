@@ -423,8 +423,9 @@ def _parse_preprocessed(source: str):
 def _thread_parse(source, index):
     expr = _parse_preprocessed(source)
     assert isinstance(expr, Module)
-    return expr.ast_repr(), index
-    # return expr, index
+    if hasattr(expr, "ast_repr"):
+        return expr.ast_repr(), index
+    return expr, index
 
 def parse_string(source: str):
     from textwrap import dedent
@@ -454,7 +455,8 @@ def parse_string(source: str):
 
         for future in concurrent.futures.as_completed(futures):
             expr, index = future.result()
-            expr = eval(expr)
+            if isinstance(expr, str):
+                expr = eval(expr)
             results[index] = expr
 
     for k in sorted(results.keys()):

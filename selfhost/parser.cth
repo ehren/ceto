@@ -1,0 +1,18 @@
+include <peglib.h>
+include <iostream>
+include (ast)
+
+
+def (parse_test, grammar_path: std.string, str: std.string:
+    grammar_file = std.ifstream(grammar_path)
+    grammar_buffer : mut = std.stringstream()
+    grammar_buffer << grammar_file.rdbuf()
+    grammar_string = grammar_buffer.str()
+
+    parser : mut = peg.parser()
+    ok = parser.load_grammar(grammar_string.c_str())
+    if (not ok:
+        throw (std.runtime_error("failed to load grammar"))
+    )
+    parser.parse(str)
+)
