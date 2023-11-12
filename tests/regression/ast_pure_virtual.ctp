@@ -44,7 +44,7 @@ def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
     # ^ debatable if needs fix for this case (all current post-parse lambda precedence hacks are dubious and at the least TODO should be moved out of codegen to prevent future breakage)
 
     # use extra parenthesese for correct precedence (because a return type is specified)
-    f = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(fptr)  # that fptr had a previous def unsurfaced a seemingly now fixed lambda capture bug.
+    f = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(fptr)  # that fptr had a previous def uncovered a seemingly now fixed lambda capture bug.
     f2 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(0)
     f3 = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(glob)
     f4 = &example_macro_body_workaround_no_fptr_syntax_yet

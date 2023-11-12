@@ -20,6 +20,8 @@
 
     inline auto f(const std::vector<std::vector<int>>&  a) -> void {
         std::cout << ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(a,0),0);
+        static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
+        static_assert(std::is_reference_v<decltype(a)>);
     }
 
     inline auto f2(const std::vector<std::vector<int>>& a = std::vector<std::vector<int>>{std::vector {{0, 1}}}) -> void {
@@ -36,6 +38,8 @@
         const std::vector<std::vector<int>> l7 = std::vector<std::vector<int>>{std::vector {0}, std::vector {1}}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<int>>{std::vector {0}, std::vector {1}}), std::remove_cvref_t<decltype(l7)>>);
         const std::vector<std::remove_const_t<const std::vector<int>>> l9 = l7; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(l7), std::remove_cvref_t<decltype(l9)>>);
         const auto f2 = [](const std::vector<std::vector<int>>&  a) {
+                static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
+                static_assert(std::is_reference_v<decltype(a)>);
                 if constexpr (!std::is_void_v<decltype(f(a))>) { return f(a); } else { static_cast<void>(f(a)); };
                 };
 struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
@@ -52,6 +56,8 @@ struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
 struct C2 : public ceto::shared_object, public std::enable_shared_from_this<C2> {
 
                     std::vector<std::vector<int>> a = std::vector<std::vector<int>>{std::vector {0}}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<int>>{std::vector {0}}), std::remove_cvref_t<decltype(a)>>);
+
+            std::remove_cvref_t<decltype(std::vector {{std::vector {{1, 0}}}})> b = std::vector {{std::vector {{1, 0}}}};
 
         };
 

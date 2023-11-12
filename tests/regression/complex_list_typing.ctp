@@ -3,9 +3,8 @@
 # TODO: anything of explicit array type in a function param list should be const& by default
 def (f, a : [[int]]:
     std.cout << a[0][0]
-    # FIXME:
-    # static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
-    # static_assert(std.is_reference_v<decltype(a)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
+    static_assert(std.is_reference_v<decltype(a)>)
 )
 
 # should also be const ref by default
@@ -35,11 +34,10 @@ def (main:
     # otoh TODO: treat anything on lhs of : (even a subexpression) as a type. Use of decltype on lhs of : should pop back to expression evaluation context.
     # Though a simple typechecker that handles 'int' correctly wouldn't be the worst thing!
     
-    f2 = lambda(a : [[int]]:
+    f2 = lambda(a: [[int]]:
+        static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
+        static_assert(std.is_reference_v<decltype(a)>)
         f(a)
-        # FIXME:
-        # static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
-        # static_assert(std.is_reference_v<decltype(a)>)
     )
     
     class (C:
@@ -50,7 +48,7 @@ def (main:
     
     class (C2:
         a: [[int]] = [[0]]
-        # b = [[1, 0]]  # TODO simple untyped assignemt in class scope needs fix
+        b = [[1, 0]]
     )
     
     c2 = C2()
