@@ -8,6 +8,8 @@ TAB_WIDTH = 4
 
 BEL = '\x07'
 
+_USE_SELFHOST_PARSER = False
+
 # Tokens
 Indent = 0
 OpenParen = 1
@@ -131,16 +133,16 @@ def preprocess(file_object, reparse = False):
                     break
 
                 if char != ":":
-                    c = char
+                    char_to_write = char
 
                     if not char.isspace():
                         colon_eol = False
                 else:
-                    c = colon_replacement_char(parsing_stack[-1])
+                    char_to_write = colon_replacement_char(parsing_stack[-1])
                     if not char.isspace():
                         colon_eol = True
 
-                line_to_write += c
+                write_template_end = False
 
                 if char == "(":
                     parsing_stack.append(OpenParen)
@@ -201,15 +203,29 @@ def preprocess(file_object, reparse = False):
                         if len(is_it_a_template_stack) > 0:
                             assert is_it_a_template_stack[-1] == OpenAngle
                             is_it_a_template_stack.pop()
-                            for c in line[n + 1:]:
-                                if c.isspace():
+                            ambiguous_chars_after_template_close = False
+                            for lookahead in line[n + 1:]:
+                                if lookahead.isspace():
                                     continue
-                                if c in ["(", "[", "{"]:
-                                    line_to_write += "\x06"
+                                if lookahead == "#":  # unreachable currently but not when comment stashing re-enabled
+                                    break
+                                if lookahead in ["(", "[", "{"]:
+                                    write_template_end = True
+                                ambiguous_chars_after_template_close = True
                                 break
+                            if not ambiguous_chars_after_template_close:
+                                write_template_end = True
 
                 # if reparse and blocks:# and parsing_stack[-1] == Indent and char not in '"\'':
                 #     blocks[-1][1] += char
+
+                if not write_template_end:
+                    line_to_write += char_to_write
+                else:
+                    if _USE_SELFHOST_PARSER:
+                        line_to_write += "\x06"
+                    else:
+                        line_to_write += ">\x06"
 
             # if reparse:
             block_to_write_index = -1
