@@ -19,59 +19,59 @@
 
 #include "ceto.h"
 
-class Node;
+struct Node;
 
-class UnOp;
+struct UnOp;
 
-class LeftAssociativeUnOp;
+struct LeftAssociativeUnOp;
 
-class BinOp;
+struct BinOp;
 
-class TypeOp;
+struct TypeOp;
 
-class SyntaxTypeOp;
+struct SyntaxTypeOp;
 
-class AttributeAccess;
+struct AttributeAccess;
 
-class ArrowOp;
+struct ArrowOp;
 
-class ScopeResolution;
+struct ScopeResolution;
 
-class Assign;
+struct Assign;
 
-class NamedParameter;
+struct NamedParameter;
 
-class Identifier;
+struct Identifier;
 
-class Call;
+struct Call;
 
-class ArrayAccess;
+struct ArrayAccess;
 
-class BracedCall;
+struct BracedCall;
 
-class Template;
+struct Template;
 
-class StringLiteral;
+struct StringLiteral;
 
-class IntegerLiteral;
+struct IntegerLiteral;
 
-class FloatLiteral;
+struct FloatLiteral;
 
-class ListLike_;
+struct ListLike_;
 
-class ListLiteral;
+struct ListLiteral;
 
-class TupleLiteral;
+struct TupleLiteral;
 
-class BracedLiteral;
+struct BracedLiteral;
 
-class Block;
+struct Block;
 
-class Module;
+struct Module;
 
-class RedundantParens;
+struct RedundantParens;
 
-class InfixWrapper_;
+struct InfixWrapper_;
 
 struct Visitor : public ceto::object {
 

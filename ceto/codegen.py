@@ -375,7 +375,7 @@ def codegen_class(node : Call, cx):
     indt = cx.indent_str()
 
     if is_forward_declaration:
-        return indt + "class " + name.name + ";\n\n"
+        return indt + "struct " + name.name + ";\n\n"
 
     inner_cx = cx.enter_scope()
     inner_cx.in_class_body = True
