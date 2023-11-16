@@ -60,7 +60,10 @@ def test_file(file):
     if _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS:
         runtest("\n".join(content), compile_cpp=False)
         return
-    build_output = subprocess.check_output(f"python3 -m ceto -o a.exe --donotexecute {path}", shell=True).decode("utf8")
+
+    build_command = f"{sys.executable} -m ceto -o a.exe --donotexecute {path}"
+    build_output = subprocess.check_output(build_command, shell=True).decode("utf8")
+
     print(build_output)
 
     output = subprocess.check_output(os.path.join(os.path.curdir, "a.exe"), shell=True).decode("utf8")
