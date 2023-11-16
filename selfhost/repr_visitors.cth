@@ -7,7 +7,7 @@ include (ast)
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     # This should really just be a few virtual methods on Node, but we want to keep the visitor infrastructure in place for the future
 
-    repr = ""
+    repr = ""s
 
     def (generate_loc: mut, node:
         # preserve source location but don't worry about the source string for now

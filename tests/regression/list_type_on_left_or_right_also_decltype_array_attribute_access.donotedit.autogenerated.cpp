@@ -24,9 +24,9 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     std::vector<int> b = std::vector<int>{1, 2, 3}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<int>{1, 2, 3}), std::remove_cvref_t<decltype(b)>>);
 
-    std::remove_cvref_t<decltype(std::vector<int>{1, 2, 3})> c = std::vector<int>{1, 2, 3};
+    decltype(std::vector<int>{1, 2, 3}) c = std::vector<int>{1, 2, 3};
 
-    std::remove_cvref_t<decltype(std::vector {{1, 2, 3}})> d = std::vector {{1, 2, 3}};
+    decltype(std::vector {{1, 2, 3}}) d = std::vector {{1, 2, 3}};
 
     explicit Foo(std::vector<int> a) : a(std::move(a)) {}
 

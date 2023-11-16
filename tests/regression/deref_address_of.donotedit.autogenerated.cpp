@@ -21,7 +21,7 @@
 struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Blah> {
 
         inline auto huh() const -> void {
-            (std::cout << std::string {"huh"}) << std::string {"\n"};
+            (std::cout << "huh") << "\n";
         }
 
 };

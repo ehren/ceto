@@ -22,7 +22,7 @@ template <typename _ceto_private_C1>struct Bar : public ceto::enable_shared_from
 
     _ceto_private_C1 a;
 
-    explicit Bar(_ceto_private_C1 a) : a(a) {}
+    explicit Bar(const _ceto_private_C1& a) : a(a) {}
 
     Bar() = delete;
 
@@ -41,7 +41,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
     auto main() -> int {
         auto f { std::make_shared<decltype(Foo())>() } ;
         auto t { std::thread([f = ceto::default_capture(f)]() {
-while (ceto::mado(f)->a < 100000) {                    (std::cout << ceto::mado(f)->a) << std::string {"\n"};
+while (ceto::mado(f)->a < 100000) {                    (std::cout << ceto::mado(f)->a) << "\n";
                 }
                 if constexpr (!std::is_void_v<decltype(ceto::mado(f)->go = false)>) { return ceto::mado(f)->go = false; } else { static_cast<void>(ceto::mado(f)->go = false); };
                 }) } ;

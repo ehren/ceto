@@ -84,7 +84,7 @@ def (main, argc: int, argv: char:ptr:ptr:
     printf("argc %d\n", argc)
     assert(std.string(argv.unsafe_at(0)).length() > 0)
     
-    lst = ["hello", "world"] 
+    lst = [s"hello", s"world"]
     foo(lst)
     bar(lst.size())
 )

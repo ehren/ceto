@@ -57,7 +57,7 @@ struct C2 : public ceto::shared_object, public std::enable_shared_from_this<C2> 
 
                     std::vector<std::vector<int>> a = std::vector<std::vector<int>>{std::vector {0}}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<int>>{std::vector {0}}), std::remove_cvref_t<decltype(a)>>);
 
-            std::remove_cvref_t<decltype(std::vector {{std::vector {{1, 0}}}})> b = std::vector {{std::vector {{1, 0}}}};
+            decltype(std::vector {{std::vector {{1, 0}}}}) b = std::vector {{std::vector {{1, 0}}}};
 
         };
 

@@ -1,3 +1,4 @@
+# Test Output: 5A
 
 class (Generic:
     x
@@ -11,7 +12,7 @@ class (GenericChild(Generic):
 
 def (main:
     f = Generic(5)
-    f2 = GenericChild("A")
+    f2 = GenericChild(s"A")
     std.cout << f.x << f2.x
 )
     

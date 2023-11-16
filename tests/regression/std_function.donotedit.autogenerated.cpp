@@ -45,17 +45,17 @@
 
     auto main() -> int {
         const auto l = [](const int  x) {
-                std::cout << (std::string {"hi"} + std::to_string(x));
+                std::cout << ("hi" + std::to_string(x));
                 if constexpr (!std::is_void_v<decltype(5)>) { return 5; } else { static_cast<void>(5); };
                 };
         const std::function f = l; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(l), std::remove_cvref_t<decltype(f)>>);
         const auto v = std::vector {f};
-        (std::cout << ceto::maybe_bounds_check_access(v,0)(5)) << std::string {"\n"};
-        (std::cout << foo()) << std::string {"\n"};
-        (std::cout << foo(l)) << std::string {"\n"};
-        (std::cout << foo2()) << std::string {"\n"};
-        (std::cout << foo2(l)) << std::string {"\n"};
-        (std::cout << foo3()) << std::string {"\n"};
+        (std::cout << ceto::maybe_bounds_check_access(v,0)(5)) << "\n";
+        (std::cout << foo()) << "\n";
+        (std::cout << foo(l)) << "\n";
+        (std::cout << foo2()) << "\n";
+        (std::cout << foo2(l)) << "\n";
+        (std::cout << foo3()) << "\n";
         std::cout << foo3(l);
     }
 

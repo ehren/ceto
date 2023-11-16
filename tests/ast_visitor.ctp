@@ -60,7 +60,7 @@ class (SimpleVisitor(BaseVisitor):
 )
 
 class (RecordingVisitor(BaseVisitor):
-    record = ""
+    record = s""
 
     def (visit: virtual:mut, node: Node:
         self.record += "RecordingVisitor visiting Node\n"

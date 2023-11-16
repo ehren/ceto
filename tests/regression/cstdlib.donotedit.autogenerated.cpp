@@ -28,6 +28,6 @@
         auto buffer { std::stringstream() } ;
         buffer << ceto::mado(t)->rdbuf();
         const auto s = ceto::mado(buffer)->str();
-        (std::cout << s) << std::string {"\n"};
+        (std::cout << s) << "\n";
     }
 

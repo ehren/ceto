@@ -16,6 +16,6 @@ def (main:
         void()
     )
     
-    f("hi".c_str(), 5)
+    f("hi", 5)
 )
     

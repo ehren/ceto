@@ -1,3 +1,4 @@
+# Test Output: 555
 
 class (Generic:
     x

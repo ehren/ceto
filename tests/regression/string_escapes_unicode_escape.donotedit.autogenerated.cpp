@@ -19,6 +19,6 @@
 #include "ceto.h"
 
     auto main() -> int {
-        ((std::cout << std::string {"\u2200"}) << std::string {"\u2200"}) << std::string {"\u2200\u2200"};
+        ((std::cout << "\u2200") << "\u2200") << "\u2200\u2200";
     }
 

@@ -20,7 +20,7 @@
 
 struct Uniq : public ceto::object {
 
-    std::remove_cvref_t<decltype(0)> x = 0;
+    decltype(0) x = 0;
 
         inline auto bar() -> auto {
             (this -> x) = ((this -> x) + 1);
@@ -35,7 +35,7 @@ struct Uniq : public ceto::object {
 
 struct Shared : public ceto::shared_object, public std::enable_shared_from_this<Shared> {
 
-    std::remove_cvref_t<decltype(0)> x = 0;
+    decltype(0) x = 0;
 
         inline auto foo() const -> auto {
             printf("foo\n");
@@ -48,7 +48,7 @@ template <typename _ceto_private_C1>struct Shared2 : public ceto::enable_shared_
 
     _ceto_private_C1 x;
 
-    explicit Shared2(_ceto_private_C1 x) : x(x) {}
+    explicit Shared2(const _ceto_private_C1& x) : x(x) {}
 
     Shared2() = delete;
 
@@ -105,7 +105,7 @@ if ((n % 2) == 0) {
         const auto s1 = std::make_shared<decltype(Shared())>();
         for(const auto& v1 : v) {
             ceto::mado(v1)->x = 55;
-            (std::cout << std::string {"v:"}) << ceto::mado(v1)->foo();
+            (std::cout << "v:") << ceto::mado(v1)->foo();
         }
     }
 

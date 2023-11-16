@@ -2,9 +2,9 @@ include <numeric>
 include <algorithm>
 
 
-def (join, v, to_string, sep="":
+def (join, v, to_string, sep=""s:
     if (v.empty():
-        return ""
+        return ""s
     )
     return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
         lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))

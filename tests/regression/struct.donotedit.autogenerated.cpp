@@ -53,7 +53,7 @@ struct Foo : public ceto::object {
         static_assert(std::is_same_v<decltype(f),Foo &>);
         static_assert(std::is_reference_v<decltype(f)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(f)>>);
-        ceto::mado(f)->x += std::string {"hi"};
+        ceto::mado(f)->x += "hi";
         std::cout << ceto::mado(f)->x;
     }
 
@@ -77,12 +77,12 @@ struct Foo : public ceto::object {
         static_assert(!std::is_reference_v<decltype(f)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(*f)>>);
-        (f -> x) += std::string {"viaptr"};
+        (f -> x) += "viaptr";
         std::cout << (f -> x);
     }
 
     auto main() -> int {
-        const auto f = decltype(Foo{std::string {"blah"}})(std::string {"blah"});
+        const auto f = decltype(Foo{"blah"})("blah");
         by_const_ref(f);
         by_val(f);
         by_const_val(f);

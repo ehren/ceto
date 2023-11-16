@@ -1,4 +1,14 @@
-
+# Test Output: yo
+# Test Output: in f:2
+# Test Output: dead
+# Test Output: yo
+# Test Output: in f2:2
+# Test Output: in lambda1:3
+# Test Output: yo
+# Test Output: in lambda2:4
+# Test Output: in f2:3
+# Test Output: dead
+ 
 
 class (Foo:
     a  # template class
@@ -41,7 +51,8 @@ class (Foo:
 )
 
 def (main:
-    Foo("yo").f()
-    Foo("yo").f2()
+    # TODO should work with c-string
+    Foo(s"yo").f()
+    Foo(s"yo").f2()
 )
     

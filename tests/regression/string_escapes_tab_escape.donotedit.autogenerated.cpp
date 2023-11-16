@@ -19,6 +19,6 @@
 #include "ceto.h"
 
     auto main() -> int {
-        std::cout << std::string {"\\t"};
+        std::cout << "\\t";
     }
 

@@ -28,10 +28,10 @@ template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_p
 
         template <typename T1>
 auto bar(const T1& x) const -> void {
-            ((std::cout << std::string {"bar: "}) << x) << std::endl;
+            ((std::cout << "bar: ") << x) << std::endl;
         }
 
-    explicit Foo(_ceto_private_C1 a, _ceto_private_C2 b, _ceto_private_C3 c) : a(a), b(b), c(c) {}
+    explicit Foo(const _ceto_private_C1& a, const _ceto_private_C2& b, const _ceto_private_C3& c) : a(a), b(b), c(c) {}
 
     Foo() = delete;
 

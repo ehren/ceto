@@ -21,11 +21,11 @@
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
         inline auto method() const -> void {
-            std::cout << std::string {"method"};
+            std::cout << "method";
         }
 
         ~Foo() {
-            std::cout << std::string {"Foo destruct"};
+            std::cout << "Foo destruct";
         }
 
 };

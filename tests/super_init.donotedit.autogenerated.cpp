@@ -22,26 +22,26 @@ template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_
 
     _ceto_private_C1 x;
 
-    explicit Generic(_ceto_private_C1 x) : x(x) {}
+    explicit Generic(const _ceto_private_C1& x) : x(x) {}
 
     Generic() = delete;
 
 };
 
-struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<const int>>()))> {
+struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<const int>()))> {
 
-    explicit GenericChild(const int  x) : std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<const int>>()))> (x) {
+    explicit GenericChild(const int  x) : std::type_identity_t<decltype(Generic(std::declval<const int>()))> (x) {
     }
 
     GenericChild() = delete;
 
 };
 
-template <typename _ceto_private_C2>struct GenericChild2 : public std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<_ceto_private_C2>>()))> {
+template <typename _ceto_private_C2>struct GenericChild2 : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> {
 
     _ceto_private_C2 y;
 
-    explicit GenericChild2(const _ceto_private_C2& p) : std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<_ceto_private_C2>>()))> (p), y(p) {
+    explicit GenericChild2(const _ceto_private_C2& p) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (p), y(p) {
     }
 
     GenericChild2() = delete;

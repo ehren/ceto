@@ -37,16 +37,16 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
 
     bool is_forward_declaration;
 
-    std::remove_cvref_t<decltype(false)> is_pure_virtual = false;
+    decltype(false) is_pure_virtual = false;
 
-    std::remove_cvref_t<decltype(false)> is_concrete = false;
+    decltype(false) is_concrete = false;
 
         inline auto repr() const -> auto {
-            return ((((((((((this -> class_name() + std::string {"("}) + ceto::mado(this -> name_node)->repr()) + std::string {", "}) + ceto::mado(this -> class_def_node)->repr()) + std::to_string(this -> is_unique)) + std::string {", "}) + std::to_string(this -> is_struct)) + std::string {", "}) + std::to_string(this -> is_forward_declaration)) + std::string {")"});
+            return ((((((((((this -> class_name() + "(") + ceto::mado(this -> name_node)->repr()) + ", ") + ceto::mado(this -> class_def_node)->repr()) + std::to_string(this -> is_unique)) + ", ") + std::to_string(this -> is_struct)) + ", ") + std::to_string(this -> is_forward_declaration)) + ")");
         }
 
          virtual inline auto class_name() const -> std::string {
-            return std::string {"ClassDefinition"};
+            return "ClassDefinition";
         }
 
     explicit ClassDefinition(std::shared_ptr<const Identifier> name_node, std::shared_ptr<const Call> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(std::move(name_node)), class_def_node(std::move(class_def_node)), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
@@ -58,7 +58,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
 struct InterfaceDefinition : public ClassDefinition {
 
         inline auto class_name() const -> std::string override {
-            return std::string {"InterfaceDefinition"};
+            return "InterfaceDefinition";
         }
 
     explicit InterfaceDefinition() : ClassDefinition (nullptr, nullptr, false, false, false) {
@@ -73,11 +73,11 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
     std::shared_ptr<const Node> defining_node;
 
         inline auto repr() const -> auto {
-            return (((((this -> class_name() + std::string {"("}) + ceto::mado(this -> defined_node)->repr()) + std::string {", "}) + ceto::mado(this -> defining_node)->repr()) + std::string {")"});
+            return (((((this -> class_name() + "(") + ceto::mado(this -> defined_node)->repr()) + ", ") + ceto::mado(this -> defining_node)->repr()) + ")");
         }
 
          virtual inline auto class_name() const -> std::string {
-            return std::string {"VariableDefinition"};
+            return "VariableDefinition";
         }
 
     explicit VariableDefinition(std::shared_ptr<const Identifier> defined_node, std::shared_ptr<const Node> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
@@ -91,7 +91,7 @@ struct LocalVariableDefinition : public VariableDefinition {
 using VariableDefinition::VariableDefinition;
 
         inline auto class_name() const -> std::string override {
-            return std::string {"LocalVariableDefinition"};
+            return "LocalVariableDefinition";
         }
 
 };
@@ -101,7 +101,7 @@ struct GlobalVariableDefinition : public VariableDefinition {
 using VariableDefinition::VariableDefinition;
 
         inline auto class_name() const -> std::string override {
-            return std::string {"GlobalVariableDefinition"};
+            return "GlobalVariableDefinition";
         }
 
 };
@@ -111,7 +111,7 @@ struct FieldDefinition : public VariableDefinition {
 using VariableDefinition::VariableDefinition;
 
         inline auto class_name() const -> std::string override {
-            return std::string {"FieldDefinition"};
+            return "FieldDefinition";
         }
 
 };
@@ -121,7 +121,7 @@ struct ParameterDefinition : public VariableDefinition {
 using VariableDefinition::VariableDefinition;
 
         inline auto class_name() const -> std::string override {
-            return std::string {"ParameterDefinition"};
+            return "ParameterDefinition";
         }
 
 };
@@ -158,23 +158,23 @@ if (ceto::mad(cb)->has_value()) {
 
 struct Scope : public ceto::shared_object, public std::enable_shared_from_this<Scope> {
 
-    std::remove_cvref_t<decltype(std::map<std::string,std::vector<std::shared_ptr<const Node>>>())> interfaces = std::map<std::string,std::vector<std::shared_ptr<const Node>>>();
+    decltype(std::map<std::string,std::vector<std::shared_ptr<const Node>>>()) interfaces = std::map<std::string,std::vector<std::shared_ptr<const Node>>>();
 
     std::vector<std::shared_ptr<const ClassDefinition>> class_definitions = std::vector<std::shared_ptr<const ClassDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const ClassDefinition>>{}), std::remove_cvref_t<decltype(class_definitions)>>);
 
     std::vector<std::shared_ptr<const VariableDefinition>> variable_definitions = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(variable_definitions)>>);
 
-    std::remove_cvref_t<decltype(0)> indent = 0;
+    decltype(0) indent = 0;
 
     std::weak_ptr<const Scope> _parent = {};
 
-    std::remove_cvref_t<decltype(false)> in_function_body = false;
+    decltype(false) in_function_body = false;
 
-    std::remove_cvref_t<decltype(false)> in_function_param_list = false;
+    decltype(false) in_function_param_list = false;
 
-    std::remove_cvref_t<decltype(false)> in_class_body = false;
+    decltype(false) in_class_body = false;
 
-    std::remove_cvref_t<decltype(false)> in_decltype = false;
+    decltype(false) in_decltype = false;
 
         inline auto indent_str() const -> auto {
             return std::string(4 * (this -> indent), ' ');

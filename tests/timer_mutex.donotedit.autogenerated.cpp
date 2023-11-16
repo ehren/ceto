@@ -23,11 +23,11 @@
 struct Delegate : public ceto::shared_object, public std::enable_shared_from_this<Delegate> {
 
         inline auto action() const -> void {
-            std::cout << std::string {"action\n"};
+            std::cout << "action\n";
         }
 
         ~Delegate() {
-            std::cout << std::string {"Delegate destruct\n"};
+            std::cout << "Delegate destruct\n";
         }
 
 };
@@ -36,7 +36,7 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
 
     std::shared_ptr<const Delegate> _delegate;
 
-    std::remove_cvref_t<decltype(std::mutex())> _delegate_mutex = std::mutex();
+    decltype(std::mutex()) _delegate_mutex = std::mutex();
 
     std::thread _thread = {};
 
@@ -65,7 +65,7 @@ if (ceto::mado(self)->_delegate) {
         }
 
         ~Timer() {
-            std::cout << std::string {"Timer destruct\n"};
+            std::cout << "Timer destruct\n";
         }
 
     explicit Timer(std::shared_ptr<const Delegate> _delegate) : _delegate(std::move(_delegate)) {}

@@ -28,7 +28,7 @@
             ceto::mad(tuples)->push_back(std::make_tuple(i, i + 1));
         }
         for(  const auto& [x, y] : tuples) {
-            ((std::cout << x) << y) << std::string {"\n"};
+            ((std::cout << x) << y) << "\n";
         }
         for(  auto & [x, y] : tuples) {
             static_assert(std::is_same_v<decltype((x)),int &>);
@@ -39,7 +39,7 @@
         for(  const auto& [x, y] : tuples) {
             static_assert(std::is_same_v<decltype((x)),const int &>);
             static_assert(std::is_same_v<decltype((y)),const int &>);
-            ((std::cout << x) << y) << std::string {"\n"};
+            ((std::cout << x) << y) << "\n";
         }
         for(  auto [x, y] : tuples) {
             static_assert(std::is_same_v<decltype(x),int>);

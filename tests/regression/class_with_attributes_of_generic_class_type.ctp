@@ -1,3 +1,7 @@
+# Test Output: 3001
+# Test Output: 12123
+# Test Output: hi2234
+# Test Output: e2
 
 class (Foo:
     a

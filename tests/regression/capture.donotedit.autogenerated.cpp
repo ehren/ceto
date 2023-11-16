@@ -23,11 +23,11 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
         template <typename T1>
 auto foo(const T1& x) const -> void {
             const auto self = ceto::shared_from(this);
-            ((std::cout << std::string {"hi"}) << x) << (&self) -> use_count();
+            ((std::cout << "hi") << x) << (&self) -> use_count();
         }
 
         ~Foo() {
-            std::cout << std::string {"dead"};
+            std::cout << "dead";
         }
 
 };
@@ -38,7 +38,7 @@ struct Inner : public ceto::shared_object, public std::enable_shared_from_this<I
                     std::shared_ptr<const Foo> f;
 
                 inline auto foo(const int  x) const -> void {
-                    std::cout << std::string {"hi"};
+                    std::cout << "hi";
                     ceto::mado(f)->foo(x);
                 }
 

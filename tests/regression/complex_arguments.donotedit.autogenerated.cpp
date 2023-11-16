@@ -20,34 +20,34 @@
 
     template <typename T1>
 auto moretest2(const T1& p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
         const auto l = std::vector {{1, 2, 3}};
         const std::vector<int> a = l; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(l), std::remove_cvref_t<decltype(a)>>);
         const auto b = std::vector {{1, 2, 3, 4}};
     }
 
     inline auto moretest( int const * const * const *  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto test( int const *  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto test( int * const  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto test2( int const * const  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto test( int * const *  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto test3( const int * const  p) -> void {
-        (std::cout << p) << std::string {"\n"};
+        (std::cout << p) << "\n";
     }
 
     inline auto bar( int const &  x) -> void {
@@ -55,9 +55,9 @@ auto moretest2(const T1& p) -> void {
     }
 
     inline auto foo(const std::vector<std::string>&  items) -> void {
-        ((std::cout << std::string {"size: "}) << ceto::mado(items)->size()) << std::string {"\n"};
+        ((std::cout << "size: ") << ceto::mado(items)->size()) << "\n";
         for(const auto& s : items) {
-            (std::cout << s) << std::string {"\n"};
+            (std::cout << s) << "\n";
         }
     }
 

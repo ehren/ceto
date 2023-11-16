@@ -48,6 +48,6 @@ constexpr const auto cg = "it's a global, no need to capture";
         const auto l2 = []() {
                 if constexpr (!std::is_void_v<decltype(cg)>) { return cg; } else { static_cast<void>(cg); };
                 };
-        ((((std::cout << ceto::mado(f)->f) << ceto::mado(f)->a) << l()) << std::string {"\n"}) << l2();
+        ((((std::cout << ceto::mado(f)->f) << ceto::mado(f)->a) << l()) << "\n") << l2();
     }
 

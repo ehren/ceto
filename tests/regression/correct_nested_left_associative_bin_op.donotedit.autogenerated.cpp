@@ -20,7 +20,7 @@
 
     template <typename T1>
 auto list_size(const T1& lst) -> void {
-        (((std::cout << std::string {"list size: "}) << ceto::mado(lst)->size()) << std::string {" uh huh"}) << std::endl;
+        (((std::cout << "list size: ") << ceto::mado(lst)->size()) << " uh huh") << std::endl;
         printf("add: %d", ((1 + 2) + 3) + 4);
     }
 

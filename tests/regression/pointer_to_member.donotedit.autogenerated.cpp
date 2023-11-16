@@ -27,7 +27,7 @@ struct Testpm : public ceto::shared_object, public std::enable_shared_from_this<
     int num;
 
         inline auto func1() const -> void {
-            std::cout << std::string {"func1"};
+            std::cout << "func1";
         }
 
     explicit Testpm(int num) : num(num) {}

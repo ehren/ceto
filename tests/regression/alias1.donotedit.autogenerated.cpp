@@ -21,14 +21,14 @@
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
         ~Foo() {
-            std::cout << std::string {"Foo destruct"};
+            std::cout << "Foo destruct";
         }
 
 };
 
     template <typename T2>
 auto aliaser( auto &  f, const T2& g) -> void {
-        std::cout << std::string {"in aliaser"};
+        std::cout << "in aliaser";
         f = nullptr;
         std::cout << (&g) -> use_count();
         std::cout << ((&g) -> get() == nullptr);

@@ -26,7 +26,7 @@ template <typename _ceto_private_C1>struct Blah : public ceto::enable_shared_fro
             (this -> x) = ((this -> x) + 1);
         }
 
-    explicit Blah(_ceto_private_C1 x) : x(x) {}
+    explicit Blah(const _ceto_private_C1& x) : x(x) {}
 
     Blah() = delete;
 

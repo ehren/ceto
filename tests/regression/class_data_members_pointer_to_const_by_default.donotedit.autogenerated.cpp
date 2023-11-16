@@ -28,10 +28,10 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
         }
 
         inline auto constmethod() const -> auto {
-            return std::string {"i'm const by default"};
+            return "i'm const by default";
         }
 
-    explicit Foo(_ceto_private_C1 a) : a(a) {}
+    explicit Foo(const _ceto_private_C1& a) : a(a) {}
 
     Foo() = delete;
 
@@ -41,7 +41,7 @@ template <typename _ceto_private_C2>struct Holder : public ceto::enable_shared_f
 
     _ceto_private_C2 f;
 
-    explicit Holder(_ceto_private_C2 f) : f(f) {}
+    explicit Holder(const _ceto_private_C2& f) : f(f) {}
 
     Holder() = delete;
 

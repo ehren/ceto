@@ -31,13 +31,13 @@ struct Task : public ceto::shared_object, public std::enable_shared_from_this<Ta
         }
 
         inline auto action() const -> void {
-            ((std::cout << std::string {"action: "}) << (this -> _id)) << std::string {"\n"};
+            ((std::cout << "action: ") << (this -> _id)) << "\n";
             std::this_thread::sleep_for(std::chrono::milliseconds((this -> _id) * 100));
-            ((std::cout << std::string {"finished: "}) << (this -> _id)) << std::string {"\n"};
+            ((std::cout << "finished: ") << (this -> _id)) << "\n";
         }
 
         ~Task() {
-            ((std::cout << std::string {"Task "}) << (this -> _id)) << std::string {" dead\n"};
+            ((std::cout << "Task ") << (this -> _id)) << " dead\n";
         }
 
     explicit Task(int _id) : _id(_id) {}
@@ -59,17 +59,17 @@ struct Executor : public ceto::shared_object, public std::enable_shared_from_thi
         }
 
         ~Executor() {
-            ((((std::cout << std::string {"Last task submitted: "}) << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_submitted)->load())->lock()) {
+            ((((std::cout << "Last task submitted: ") << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_submitted)->load())->lock()) {
                 return std::to_string(ceto::mado(strong)->id());
             } else {
                 return std::string {"Last submitted task not found"};
             }}()
-) << std::string {"\nLast task finished: "}) << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_finished)->load())->lock()) {
+) << "\nLast task finished: ") << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_finished)->load())->lock()) {
                 return std::to_string(ceto::mado(strong)->id());
             } else {
                 return std::string {"Last finished task not found"};
             }}()
-) << std::string {"\n"};
+) << "\n";
         }
 
 };

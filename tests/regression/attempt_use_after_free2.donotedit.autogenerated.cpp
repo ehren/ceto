@@ -26,14 +26,14 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
     int x { 1 } ; static_assert(std::is_convertible_v<decltype(1), decltype(x)>);
 
         inline auto long_running_method() -> void {
-while (x <= 5) {                ((std::cout << std::string {"in Foo: "}) << (this -> x)) << std::string {"\n"};
+while (x <= 5) {                ((std::cout << "in Foo: ") << (this -> x)) << "\n";
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 (this -> x) += 1;
             }
         }
 
         ~Foo() {
-            std::cout << std::string {"Foo destruct\n"};
+            std::cout << "Foo destruct\n";
         }
 
 };
@@ -57,6 +57,6 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         ceto::mado(g)->f = nullptr;
         ceto::mado(t)->join();
-        std::cout << std::string {"ub has occured\n"};
+        std::cout << "ub has occured\n";
     }
 

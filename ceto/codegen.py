@@ -428,20 +428,24 @@ def codegen_class(node : Call, cx):
                 t = gensym("C")
                 typenames.append(t)
                 field_types[b.name] = t
-                decl_const_part = ""
-                decl = decl_const_part + t + " " + b.name
-                cpp += inner_indt + decl + ";\n\n"
+                decl_param = "const " + t + "& " + b.name
+                decl_member = t + " " + b.name
+                cpp += inner_indt + decl_member + ";\n\n"
                 # classdef.is_generic_param_index[block_index] = True
                 is_template = True
             else:
                 field_type = b.declared_type
-                decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
+                decl_type = codegen_type(b, b.declared_type, inner_cx)
+                # typed_arg_str_lhs, typed_arg_str_rhs = _codegen_typed_def_param_as_tuple(b, inner_cx)
+                decl_member = decl_type + " " + b.name
+                # decl_param = typed_arg_str_lhs + " " + typed_arg_str_rhs
+                decl_param = decl_member
                 field_types[b.name] = field_type
-                cpp += inner_indt + decl + ";\n\n"
+                cpp += inner_indt + decl_member + ";\n\n"
                 # classdef.is_generic_param_index[block_index] = False
 
             uninitialized_attributes.append(b)
-            uninitialized_attribute_declarations.append(decl)
+            uninitialized_attribute_declarations.append(decl_param)
         elif isinstance(b, Assign):
             cpp += inner_indt + codegen_assign(b, inner_cx) + ";\n\n"
         elif is_comment(b):
@@ -558,8 +562,7 @@ def codegen_class(node : Call, cx):
             for arg in super_init_call.args:
                 if isinstance(arg, Identifier) and arg.name in init_param_type_from_name:
                     # forward the type of the constructor arg to the base class constructor call
-                    # TODO we could be smarter about not adding const ref to the types in the below map in the first place (that is make _codegen_typed_def_param_as_tuple return the non const ref unadorned type too)
-                    super_init_fake_args.append("std::declval<std::remove_cvref_t<" + init_param_type_from_name[arg.name] +  ">>()")
+                    super_init_fake_args.append("std::declval<" + init_param_type_from_name[arg.name] +  ">()")
                 elif is_self_field_access(arg):  # this would fail in C++
                     raise CodeGenError("no reads from self in super.init call", arg)
                 else:
@@ -2438,7 +2441,7 @@ def codegen_assign(node: Assign, cx: Scope):
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
-            assign_str = "std::remove_cvref_t<decltype(" + rhs_str + ")> " + lhs_str + " = " + rhs_str
+            assign_str = "decltype(" + rhs_str + ") " + lhs_str + " = " + rhs_str
         else:
             assign_str = "const auto " + assign_str
 
@@ -2714,11 +2717,8 @@ def codegen_node(node: Node, cx: Scope):
         opername = node.op
         return codegen_node(node.args[0], cx) + opername
     elif isinstance(node, StringLiteral):
-        if not (node.prefix or node.suffix) and isinstance(node.parent, Call) and node in node.parent.args and not cx.lookup_class(node.parent.func):
-            # debatable whether we should silently convert to std::string for
-            # the class constructor call case - "useful" or at least excerised
-            # in testsuite for constructing "generic" objects (template class instances) with std.string params
-            return node.escaped()
+        if not (node.prefix or node.suffix): # and isinstance(node.parent, Call) and node in node.parent.args and not cx.lookup_class(node.parent.func):
+            return node.escaped()  # c-string by default
         ffixes = [f.name for f in [node.prefix, node.suffix] if f]
         if "c" in ffixes and "s" in ffixes:
             raise CodeGenError("string literal cannot be both c-string and std::string", node)

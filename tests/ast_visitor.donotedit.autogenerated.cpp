@@ -18,11 +18,11 @@
 
 #include "ceto.h"
 
-class Node;
+struct Node;
 
-class Identifier;
+struct Identifier;
 
-class ListLiteral;
+struct ListLiteral;
 
 struct BaseVisitor : public ceto::shared_object, public std::enable_shared_from_this<BaseVisitor> {
 
@@ -82,15 +82,15 @@ struct SimpleVisitor : public BaseVisitor {
 using BaseVisitor::BaseVisitor;
 
          virtual inline auto visit(const std::shared_ptr<const Node>&  node) -> void {
-            std::cout << std::string {"SimpleVisitor visiting Node\n"};
+            std::cout << "SimpleVisitor visiting Node\n";
         }
 
          virtual inline auto visit(const std::shared_ptr<const Identifier>&  ident) -> void {
-            std::cout << std::string {"SimpleVisitor visiting Identifier\n"};
+            std::cout << "SimpleVisitor visiting Identifier\n";
         }
 
          virtual inline auto visit(const std::shared_ptr<const ListLiteral>&  list_literal) -> void {
-            std::cout << std::string {"SimpleVisitor visiting ListLiteral\n"};
+            std::cout << "SimpleVisitor visiting ListLiteral\n";
         }
 
 };
@@ -99,19 +99,19 @@ struct RecordingVisitor : public BaseVisitor {
 
 using BaseVisitor::BaseVisitor;
 
-    std::remove_cvref_t<decltype(std::string {""})> record = std::string {""};
+    decltype(std::string {""}) record = std::string {""};
 
          virtual inline auto visit(const std::shared_ptr<const Node>&  node) -> void {
-            (this -> record) += std::string {"RecordingVisitor visiting Node\n"};
+            (this -> record) += "RecordingVisitor visiting Node\n";
         }
 
          virtual inline auto visit(const std::shared_ptr<const Identifier>&  ident) -> void {
-            (this -> record) += std::string {"RecordingVisitor visiting Identifier\n"};
+            (this -> record) += "RecordingVisitor visiting Identifier\n";
         }
 
          virtual inline auto visit(const std::shared_ptr<const ListLiteral>&  list_literal) -> void {
             const auto self = ceto::shared_from(this);
-            (this -> record) += std::string {"RecordingVisitor visiting ListLiteral\n"};
+            (this -> record) += "RecordingVisitor visiting ListLiteral\n";
             for(const auto& arg : ceto::mado(list_literal)->args) {
                 ceto::mado(arg)->accept(self);
             }
@@ -121,7 +121,7 @@ using BaseVisitor::BaseVisitor;
 
     auto main() -> int {
         const auto node = std::make_shared<const decltype(Node())>();
-        const auto ident = std::make_shared<const decltype(Identifier{std::string {"a"}})>(std::string {"a"});
+        const auto ident = std::make_shared<const decltype(Identifier{"a"})>("a");
         auto simple_visitor { std::make_shared<decltype(SimpleVisitor())>() } ;
         ceto::mado(ident)->accept(simple_visitor);
         ceto::mado(node)->accept(simple_visitor);

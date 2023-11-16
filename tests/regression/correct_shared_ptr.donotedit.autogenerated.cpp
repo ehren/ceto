@@ -20,7 +20,7 @@
 
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
-    std::remove_cvref_t<decltype(0)> x = 0;
+    decltype(0) x = 0;
 
         ~Foo() {
             printf("dead %p\n", static_cast<const void *>(this));

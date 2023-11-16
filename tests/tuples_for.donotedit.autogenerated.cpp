@@ -36,7 +36,7 @@
         std::tie(ceto::maybe_bounds_check_access(tuples,4), ceto::maybe_bounds_check_access(tuples,6)) = std::make_tuple(std::make_tuple(0, 0), b);
         std::tie(std::get<0>(ceto::maybe_bounds_check_access(tuples,7)), std::get<1>(ceto::maybe_bounds_check_access(tuples,7))) = foo(ceto::maybe_bounds_check_access(tuples,7));
         for(  const auto& [x, y] : tuples) {
-            ((std::cout << x) << y) << std::string {"\n"};
+            ((std::cout << x) << y) << "\n";
         }
     }
 

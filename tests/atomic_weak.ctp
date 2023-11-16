@@ -44,11 +44,11 @@ class (Executor:
         std.cout << "Last task submitted: " << if ((strong = self.last_submitted.load().lock()): 
             std.to_string(strong.id())
         else:
-            "Last submitted task not found"
+            s"Last submitted task not found"
         ) << "\nLast task finished: " << if ((strong = self.last_finished.load().lock()):
             std.to_string(strong.id())
         else:
-            "Last finished task not found"
+            s"Last finished task not found"
         ) << "\n"
     )
 )

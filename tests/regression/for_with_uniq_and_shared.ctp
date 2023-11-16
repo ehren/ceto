@@ -52,7 +52,7 @@ def (main:
     for (x in [1, 2, 3, 4, 5]:
         u.append(Uniq() : mut)
         s.append(Shared())
-        s2.append(Shared2("blah"))
+        s2.append(Shared2("blah"s))
     )
     
     for (x in u:

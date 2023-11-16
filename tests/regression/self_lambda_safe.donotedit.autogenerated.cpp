@@ -24,33 +24,33 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
 
         inline auto f() const -> void {
             const auto self = ceto::shared_from(this);
-            (std::cout << (this -> a)) << std::string {"\n"};
-            ((std::cout << std::string {"in f:"}) << (&self) -> use_count()) << std::string {"\n"};
+            (std::cout << (this -> a)) << "\n";
+            ((std::cout << "in f:") << (&self) -> use_count()) << "\n";
         }
 
         inline auto f2() const -> void {
             const auto self = ceto::shared_from(this);
-            (std::cout << (this -> a)) << std::string {"\n"};
-            ((std::cout << std::string {"in f2:"}) << (&self) -> use_count()) << std::string {"\n"};
+            (std::cout << (this -> a)) << "\n";
+            ((std::cout << "in f2:") << (&self) -> use_count()) << "\n";
             const auto outer = [self = ceto::default_capture(self)]() {
-                    ((std::cout << std::string {"in lambda1:"}) << (&self) -> use_count()) << std::string {"\n"};
+                    ((std::cout << "in lambda1:") << (&self) -> use_count()) << "\n";
                     const auto l = [self = ceto::default_capture(self)]() {
-                            (std::cout << ceto::mado(self)->a) << std::string {"\n"};
+                            (std::cout << ceto::mado(self)->a) << "\n";
                             return;
                             };
                     l();
-                    ((std::cout << std::string {"in lambda2:"}) << (&self) -> use_count()) << std::string {"\n"};
+                    ((std::cout << "in lambda2:") << (&self) -> use_count()) << "\n";
                     return;
                     };
             outer();
-            ((std::cout << std::string {"in f2:"}) << (&self) -> use_count()) << std::string {"\n"};
+            ((std::cout << "in f2:") << (&self) -> use_count()) << "\n";
         }
 
         ~Foo() {
-            std::cout << std::string {"dead\n"};
+            std::cout << "dead\n";
         }
 
-    explicit Foo(_ceto_private_C1 a) : a(a) {}
+    explicit Foo(const _ceto_private_C1& a) : a(a) {}
 
     Foo() = delete;
 

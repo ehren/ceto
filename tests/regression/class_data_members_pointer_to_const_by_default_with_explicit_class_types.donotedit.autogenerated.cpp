@@ -28,7 +28,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
         }
 
         inline auto constmethod() const -> auto {
-            return std::string {"i'm const by default"};
+            return "i'm const by default";
         }
 
     explicit Foo(int a) : a(a) {}

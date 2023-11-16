@@ -22,7 +22,7 @@
 if (0) {
             const auto x = 5;
         } else {
-            const auto x = std::string {"1"};
+            const auto x = "1";
         }
         const auto x = std::vector {{0, 1}};
     }

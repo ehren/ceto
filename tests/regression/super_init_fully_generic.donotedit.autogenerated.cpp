@@ -22,15 +22,15 @@ template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_
 
     _ceto_private_C1 x;
 
-    explicit Generic(_ceto_private_C1 x) : x(x) {}
+    explicit Generic(const _ceto_private_C1& x) : x(x) {}
 
     Generic() = delete;
 
 };
 
-template <typename _ceto_private_C2>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<_ceto_private_C2>>()))> {
+template <typename _ceto_private_C2>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> {
 
-    explicit GenericChild(const _ceto_private_C2& x) : std::type_identity_t<decltype(Generic(std::declval<std::remove_cvref_t<_ceto_private_C2>>()))> (x) {
+    explicit GenericChild(const _ceto_private_C2& x) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (x) {
     }
 
     GenericChild() = delete;

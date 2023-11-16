@@ -19,11 +19,11 @@
 #include "ceto.h"
 
     auto main() -> int {
-        std::cout << std::string {"	\n"};
-        ((std::cout << std::endl) << std::string {"\""}) << std::endl;
-        (std::cout << std::string {"\""}) << std::endl;
-        (std::cout << std::string {"\""}) << std::endl;
-        (std::cout << std::string {"\\\""}) << std::endl;
-        (std::cout << std::string {"\\\""}) << std::endl;
+        std::cout << "	\n";
+        ((std::cout << std::endl) << "\"") << std::endl;
+        (std::cout << "\"") << std::endl;
+        (std::cout << "\"") << std::endl;
+        (std::cout << "\\\"") << std::endl;
+        (std::cout << "\\\"") << std::endl;
     }
 

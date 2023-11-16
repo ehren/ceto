@@ -31,6 +31,6 @@ typedef int t;
                 (cout << z) << endl;
                 if constexpr (!std::is_void_v<decltype(void())>) { return void(); } else { static_cast<void>(void()); };
                 };
-        f(ceto::mado(std::string {"hi"})->c_str(), 5);
+        f("hi", 5);
     }
 

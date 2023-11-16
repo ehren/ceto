@@ -80,7 +80,7 @@ constexpr const auto glob = 0;
     }
 
     auto main() -> int {
-        const auto id = std::make_shared<const decltype(Identifier{std::string {"a"}})>(std::string {"a"});
+        const auto id = std::make_shared<const decltype(Identifier{"a"})>("a");
         std::cout << ceto::mad(ceto::mado(id)->name())->value();
     }
 
