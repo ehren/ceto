@@ -18,17 +18,26 @@
 
 #include "ceto.h"
 
+#include <ranges>
+;
+#include <iostream>
+;
+     template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
+if constexpr (sizeof...(Args) == 1) {
+            return std::ranges::iota_view(0, std::forward<Args>(args)...);
+        } else {
+            return std::ranges::iota_view(std::forward<Args>(args)...);
+        }
+    }
+
     auto main() -> int {
-        static_assert(std::is_same_v<std::remove_cvref_t<decltype(0)>, std::remove_cvref_t<decltype(10)>>);
-        for (std::remove_cvref_t<decltype(0)> i = 0; i < 10; ++i) {
+        for(const auto& i : range(10)) {
             std::cout << i;
         }
-        static_assert(std::is_same_v<std::remove_cvref_t<decltype(0)>, std::remove_cvref_t<decltype(10)>>);
-        for (std::remove_cvref_t<decltype(0)> i = 0; i < 10; ++i) {
+        for(const auto& i : range(0, 10)) {
             std::cout << i;
         }
-        static_assert(std::is_same_v<std::remove_cvref_t<decltype((-10))>, std::remove_cvref_t<decltype(10)>>);
-        for (std::remove_cvref_t<decltype((-10))> i = (-10); i < 10; ++i) {
+        for(const auto& i : range((-10), 10)) {
             std::cout << i;
         }
     }

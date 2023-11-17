@@ -15,6 +15,8 @@ def compile(s, compile_cpp=True):
 clang_xfailing_tests = ["atomic_weak.ctp",
                         "tuples_for.ctp",
                         "regression/tuples_for_typed.ctp",
+                        "regression/range_iota.ctp",
+                        "regression/contains_helper.ctp",
                         "regression/attempt_use_after_free2.ctp",  # something about constexpr / std::chrono. This works on debian clang++ 14.0.6 but fails to compile on ci
                         "regression/list_type_on_left_or_right_also_decltype_array_attribute_access.ctp"]
 
@@ -2542,39 +2544,6 @@ def (main:
     assert c == "yesokhihiyo"
 
 
-def test_range_signedness():
-    # apparently "int unsigned" is actually valid c++
-    # we do want to ensure that e.g. "unsigned:int" (resulting in codegen of "unsigned int") is never required to be written as "int: unsigned"
-    c = compile(r"""
-    
-def (main:
-    for (i in range(10):
-        static_assert(std.is_same_v<decltype(i), int>)
-        std.cout << i
-    )
-    u : unsigned:int = 10
-    # for (i in range(u):  # TODO probably should fix
-    z : unsigned:int = 0  # workaround
-    for (i in range(z, u):
-        static_assert(std.is_same_v<decltype(i), int:unsigned>)
-        static_assert(std.is_same_v<decltype(i), unsigned:int>)
-        std.cout << i
-    )
-)
-
-    """)
-
-    raises(lambda: compile(r"""
-
-def (main:
-    u : unsigned:int = 10
-    for (i in range(u, -10):
-        pass
-    )
-)
-    """))
-
-
 def test_ptr_not_simple_type_context():
     c = compile(r"""
 def (main:
@@ -3211,27 +3180,6 @@ def (main:
     foo(1)
 )
     """)
-
-
-def test_range_iota():
-    c = compile("""
-
-def (main:
-    for (i in range(10):
-        std.cout << i
-    )
-    for (i in range(0, 10):
-        std.cout << i
-    )
-    for (i in range(-10, 10):
-        std.cout << i
-    )
-)
-
-""")
-
-    assert c.strip() == "01234567890123456789-10-9-8-7-6-5-4-3-2-10123456789"
-
 
 
 def _alternate_syntax():

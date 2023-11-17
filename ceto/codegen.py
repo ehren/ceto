@@ -246,60 +246,10 @@ def codegen_for(node, cx):
 
     # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
 
-    # TODO: remove 'range' as a builtin entirely? (needs testsuite fixes) or maybe still keep simple for x in range(x, y) as a built-in macro (but remove printing of std.views.iota in other contexts?)
-    if isinstance(iterable, Call) and iterable.func.name == "range":
-        if not 0 <= len(iterable.args) <= 2:
-            raise CodeGenError("unsupported range args", iterable)
+    if type_str is None:
+        type_str = "const auto&"
 
-        # use of types with range untested
-        # if not isinstance(var, Identifier) or var.declared_type is not None or type_str is not None:
-        #     raise CodeGenError("no complex iteration type declarations with 'range' builtin", var)
-
-        start = iterable.args[0]
-        if len(iterable.args) == 2:
-            end = iterable.args[1]
-        else:
-            end = start
-            start = IntegerLiteral("0", None)
-            start.parent = end.parent
-        # sub = BinOp(func="-", args=[end, start], source=None)
-        # sub.parent = start.parent
-        # ds = decltype_str(sub, cx)
-        # ds = "decltype(" + codegen_node(sub, cx) + ")"
-        startstr = codegen_node(start, cx)
-        if type_str is None:
-            type_str = f"std::remove_cvref_t<decltype({startstr})>"
-        endstr = codegen_node(end, cx)
-        forstr = f"{indt}static_assert(std::is_same_v<std::remove_cvref_t<decltype({startstr})>, std::remove_cvref_t<decltype({endstr})>>);\n"
-        forstr += f"{indt}for ({type_str} {var_str} = {startstr}; {var_str} < {endstr}; ++{var_str}) {{\n"
-        #     start_str = codegen_node(start, cx)
-        #     end_str = codegen_node(end, cx)
-        #     preamble = "{\n"
-        #     # constexpr = indt + "if constexpr (is_signed(" + start_str + ") {\n"
-        #     # constexpr += indt + decltype_str(start) + ";\n"
-        #     # constexpr += indt + "else {"
-        #     # constexpr += indt + decltype_str(end_str) + ";\n"
-        #     # constexpr +=  indt + f"for ({decliter} {i})"
-        # else:
-        #     end = start
-        #     start = 0
-        # itertype = "decltype("
-        # forstr +=
-    else:
-        # if var.declared_type is not None:
-        #     # TODO this is awkward
-        #     typed_var_str = codegen_type(var, var.declared_type, cx)
-        #     vartype = var.declared_type
-        #     var.declared_type = None
-        #     typed_var = typed_var_str + " " + codegen_node(var, cx)
-        #     var.declared_type = vartype
-        #
-        #     # varnode =
-
-        if type_str is None:
-            type_str = "const auto&"
-
-        forstr = indt + 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
+    forstr = indt + 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
 
     block_cx = cx.enter_scope()
     forstr += codegen_block(block, block_cx)
@@ -2005,18 +1955,6 @@ def codegen_call(node: Call, cx: Scope):
             return codegen_if(node, cx)
         elif func_name == "def":
             return codegen_def(node, cx)
-        elif func_name == "range":
-            if len(node.args) == 1:
-                return "std::views::iota(0, " + codegen_node(node.args[0],
-                                                             cx) + ")"
-                # return "std::ranges:iota_view(0, " + codegen_node(node.args[0], cx) + ")"
-            elif len(node.args) == 2:
-                return "std::views::iota(" + codegen_node(node.args[0],
-                                                          cx) + ", " + codegen_node(
-                    node.args[1], cx) + ")"
-                # return "std::ranges:iota_view(" + codegen_node(node.args[0], cx) + ", " + codegen_node(node.args[1], cx) + ")"
-            else:
-                raise CodeGenError("range args not supported:", node)
         elif func_name == "operator" and len(node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
             return "operator" + operator_name_node.str
