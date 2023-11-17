@@ -15,8 +15,8 @@ def compile(s, compile_cpp=True):
 clang_xfailing_tests = ["atomic_weak.ctp",
                         "regression/list_type_on_left_or_right_also_decltype_array_attribute_access.ctp"]
 
-msvc_xfailing_tests = ["regression/simple_unicode.ctp",
-                       "regression/string_escapes_unicode_escape.ctp"]
+msvc_xfailing_tests = ["regression\\string_escapes_unicode_escape.ctp",
+                       "regression\\class_with_attributes_of_generic_class_type.ctp"]
 
 test_file_dir = os.path.dirname(__file__)
 test_files = [f for f in os.listdir(test_file_dir) if f.endswith("ctp")]
@@ -25,10 +25,13 @@ regression_dir = os.path.join(test_file_dir, "regression")
 test_files += [os.path.join("regression", f) for f in os.listdir(regression_dir) if f.endswith("ctp")]
 
 test_files = [f for f in test_files if f not in clang_xfailing_tests and f not in msvc_xfailing_tests]
+
 for xfailing in clang_xfailing_tests:
     test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
-for xfailing in msvc_xfailing_tests:
-    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
+
+if sys.platform == "win32":
+    for xfailing in msvc_xfailing_tests:
+        test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "win32", reason="-")))
 
 
 # test_files = ["regression/if_expressions_lambdas.ctp"]
