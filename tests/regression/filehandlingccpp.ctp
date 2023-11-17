@@ -1,3 +1,4 @@
+# Test Output: hello world
 
 def (main:
     fp = fopen("file.txt", "w+")

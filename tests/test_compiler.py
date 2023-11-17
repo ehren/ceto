@@ -888,28 +888,6 @@ def (main:
     assert c == "2"
 
 
-def test_constructors_with_atomic_attributes():
-    c = compile(r"""
-class (Foo:
-    a : std.atomic<int> = 0  # this is a test of our 'diy no narrowing conversion initialization' at class scope
-)
-
-class (Foo2:
-    a : const:std.atomic<int>  # const data members are problematic but we allow it if you specify the full type (though e.g. a : const = 0 is an error)
-    def (init, p:int:
-        self.a = p
-    )
-)
-
-def (main:
-    f = Foo()
-    f2 = Foo2(1)
-    static_assert(not std.is_const_v<decltype(f.a)>)
-    static_assert(std.is_const_v<decltype(f2.a)>)
-)
-    """)
-
-
 def test_init_with_generic_params():
     # fully generic case:
     c = compile(r"""
@@ -3793,40 +3771,6 @@ def (main:
     """)
 
     assert "list size: 1" in c
-
-def test_correct_nested_left_associative_bin_op():
-    # prev implementation was just ('ignore all args except first two')
-    c = compile(r"""
-
-def (list_size, lst:
-    std.cout << "list size: " << lst.size() << " uh huh" << std.endl
-    printf("add: %d", 1+2+3+4)
-)
-
-def (main:
-    list_size([1,2,3,4])
-)
-    """)
-
-    assert "list size: 4 uh huh\nadd: 10" in c
-
-def test_cstdlib():
-    c = compile(r"""
-def (main:
-    fp = fopen("file.txt", "w+")
-    fprintf(fp, "hello %s", "world\n")
-    fclose(fp)
-    fp2 = fopen("file.txt", "r")
-    fclose(fp2)
-    
-    t = std.ifstream(c"file.txt")
-    buffer : mut = std.stringstream()
-    buffer << t.rdbuf()
-    s = buffer.str()
-    std.cout << s << "\n"
-)
-    """)
-    assert "hello world\n" in c
 
 
 def test_vector_explicit_type_plus_mixing_char_star_and_string():
