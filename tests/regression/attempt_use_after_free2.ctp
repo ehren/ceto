@@ -1,7 +1,14 @@
+# Test Output: in Foo: 1
+# Test Output: in Foo: 2
+# Test Output: in Foo: 3
+# Test Output: Foo destruct
+# Test Output: in Foo: 4
+# Test Output: in Foo: 5
+# Test Output: ub has occured
 
-cpp'
-#include <chrono>
-'
+# no plans to address - be careful with multithreaded code!
+
+include <chrono>
 
 class (Foo:
     x : int = 1

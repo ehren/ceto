@@ -11,9 +11,17 @@ from ceto.parser import parse
 def compile(s, compile_cpp=True):
     return runtest(s, compile_cpp)
 
-
+# these require range_value_t for untyped / forward typed vectors (not worth adding #ifdefs to fallback to using ::value_type - just upgrade your clang)
 clang_xfailing_tests = ["atomic_weak.ctp",
+                        "tuples_for.ctp",
+                        "regression/tuples_for_typed.ctp",
+                        "regression/attempt_use_after_free2.ctp",  # something about constexpr / std::chrono. This works on debian clang++ 14.0.6 but fails to compile on ci
                         "regression/list_type_on_left_or_right_also_decltype_array_attribute_access.ctp"]
+
+apple_clang_xfailing_tests = [
+    "py14_map_example.ctp",  # not sure why this doesn't fail on clang14/15 on linux ci
+    "regression/empty_list_append_simple_vector_iterate.ctp"  # same
+]
 
 msvc_xfailing_tests = ["regression\\string_escapes_unicode_escape.ctp",
                        "regression\\class_with_attributes_of_generic_class_type.ctp"]
@@ -24,10 +32,14 @@ test_files = [f for f in os.listdir(test_file_dir) if f.endswith("ctp")]
 regression_dir = os.path.join(test_file_dir, "regression")
 test_files += [os.path.join("regression", f) for f in os.listdir(regression_dir) if f.endswith("ctp")]
 
-test_files = [f for f in test_files if f not in clang_xfailing_tests and f not in msvc_xfailing_tests]
+test_files = [f for f in test_files if f not in clang_xfailing_tests and f not in msvc_xfailing_tests and not (sys.platform == "darwin" and f in apple_clang_xfailing_tests)]
 
 for xfailing in clang_xfailing_tests:
-    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
+    test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"], stderr=subprocess.STDOUT).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
+
+if sys.platform == "darwin":
+    for xfailing in apple_clang_xfailing_tests:
+        test_files.append(pytest.param(xfailing, marks=pytest.mark.xfail(sys.platform == "darwin" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"], stderr=subprocess.STDOUT).decode("utf8")) or "clang version 15." in cv), reason="not supported with this clang version")))
 
 if sys.platform == "win32":
     for xfailing in msvc_xfailing_tests:
@@ -408,67 +420,6 @@ def (main:
     """)
 
     assert c == "555"
-
-
-def test_attempt_use_after_free2():
-
-    # no plans to address - be careful with multithreaded code!
-    c = compile(r"""
-cpp'
-#include <chrono>
-'
-
-class (Foo:
-    x : int = 1
-
-    def (long_running_method: mut:
-        while (x <= 5:
-            std.cout << "in Foo: " << self.x << "\n"
-            std.this_thread.sleep_for(std.chrono.seconds(1))
-            self.x += 1
-        )
-    )
-
-    def (destruct:
-        std.cout << "Foo destruct\n"
-    )
-)
-
-class (Holder:
-    f : Foo:mut = None
-    
-    def (getter:
-        return f
-    )
-)
-
-def (main:
-    g = Holder() : mut
-    g.f = Foo() : mut
-    
-    t: mut = std.thread(lambda(:
-        # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) although still a race condition plus UB due to no atomics
-        g.f.long_running_method()  # this is a definite use after free
-    ))
-    
-    std.this_thread.sleep_for(std.chrono.milliseconds(2500))
-    g.f = None
-    
-    t.join()
-    
-    std.cout << "ub has occured\n"
-)
-    """)
-
-    assert c.strip() == r"""
-in Foo: 1
-in Foo: 2
-in Foo: 3
-Foo destruct
-in Foo: 4
-in Foo: 5
-ub has occured
-    """.strip()
 
 
 def test_alias1():
@@ -3282,47 +3233,6 @@ def (main:
     foo(1)
 )
     """)
-
-
-@pytest.mark.xfail(sys.platform != "win32" and ("clang version 14." in (cv := subprocess.check_output([os.environ.get("CXX", "c++"), "-v"]).decode("utf8")) or "clang version 15." in cv), reason="")
-def test_py14_map_example():
-    c = compile(r"""
-def (map, values, fun:
-    results : mut = []
-    for (v in values:
-        results.append(fun(v))
-    )
-    return results
-)
-
-def (foo, x:int:
-    std.cout << x
-    return x
-)
-
-def (foo_generic, x:
-    std.cout << x
-    return x
-)
-
-def (main:
-    l = [1, 2, 3, 4]
-    map(map(l, lambda (x:
-        std.cout << x
-        x*2
-    )), lambda (x:
-        std.cout << x
-        x
-    ))
-    map(l, foo)
-    # map(l, foo_generic)  # error
-    map(l, lambda (x:int, foo_generic(x)))  # when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
-    map(l, lambda (x, foo_generic(x)))  # Although we can trick c++ into deducing the correct type for x here clang 14 -O3 produces seemingly worse code than passing foo_generic<int> directly. 
-    map(l, foo_generic<int>)  # explicit template syntax
-)
-	""")
-
-    assert c == "123424681234123412341234"
 
 
 def test_range_iota():
