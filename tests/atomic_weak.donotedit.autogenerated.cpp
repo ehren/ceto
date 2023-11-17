@@ -76,7 +76,7 @@ struct Executor : public ceto::shared_object, public std::enable_shared_from_thi
 
     inline auto launch(const std::vector<std::shared_ptr<const Task>>&  tasks) -> void {
         auto executor { std::make_shared<decltype(Executor())>() } ;
-        auto threads { std::vector<std::thread>{} } ;
+        std::vector<std::thread> threads = std::vector<std::thread>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::thread>{}), std::remove_cvref_t<decltype(threads)>>);
         for(const auto& task : tasks) {
             ceto::mad(threads)->push_back(std::thread([task = ceto::default_capture(task), executor = ceto::default_capture(executor)]() {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(executor)->do_something(task))>) { return ceto::mado(executor)->do_something(task); } else { static_cast<void>(ceto::mado(executor)->do_something(task)); };

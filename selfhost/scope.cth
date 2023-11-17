@@ -31,6 +31,11 @@ class (ClassDefinition:
     def (class_name: virtual:
         return "ClassDefinition"
     ) : std.string
+
+    # just for pybind11 (see comments in Node destructor)
+    def (destruct: virtual:
+        pass
+    )
 )
 
 class (InterfaceDefinition(ClassDefinition):
@@ -54,6 +59,11 @@ class (VariableDefinition:
     def (class_name: virtual:
         return "VariableDefinition"
     ) : std.string
+
+    # just for pybind11
+    def (destruct: virtual:
+        pass
+    )
 )
 
 class (LocalVariableDefinition(VariableDefinition):
@@ -182,7 +192,8 @@ class (Scope:
             return {}
         )
 
-        results: mut = []
+        # results: mut = []  # untyped lists (implemented using range_value_t) not supported in clang 14/15
+        results: mut:[VariableDefinition] = []
 
         for (d in self.variable_definitions:
             if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:

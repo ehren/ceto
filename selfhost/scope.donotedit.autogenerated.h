@@ -49,6 +49,10 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
             return "ClassDefinition";
         }
 
+         virtual ~ClassDefinition() {
+            ; // pass
+        }
+
     explicit ClassDefinition(std::shared_ptr<const Identifier> name_node, std::shared_ptr<const Call> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(std::move(name_node)), class_def_node(std::move(class_def_node)), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
 
     ClassDefinition() = delete;
@@ -78,6 +82,10 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
 
          virtual inline auto class_name() const -> std::string {
             return "VariableDefinition";
+        }
+
+         virtual ~VariableDefinition() {
+            ; // pass
         }
 
     explicit VariableDefinition(std::shared_ptr<const Identifier> defined_node, std::shared_ptr<const Node> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
@@ -232,7 +240,7 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
 if (!(dynamic_pointer_cast<const Identifier>(var_node) != nullptr)) {
                 return {};
             }
-            auto results { std::vector<std::ranges::range_value_t<decltype(this->variable_definitions)>>() } ;
+            std::vector<std::shared_ptr<const VariableDefinition>> results = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(results)>>);
             for(const auto& d : (this -> variable_definitions)) {
 if ((ceto::mado(ceto::mado(d)->defined_node)->name() == ceto::mado(var_node)->name()) && (ceto::mado(d)->defined_node != var_node)) {
                     const auto defined_loc = std::get<1>(ceto::mado(ceto::mado(d)->defined_node)->source);

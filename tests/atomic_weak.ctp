@@ -55,8 +55,7 @@ class (Executor:
 
 def (launch, tasks : [Task]:
     executor : mut = Executor()
-    # threads: mut:[std.thread] = []  # TODO should work
-    threads: mut = [] : std.thread
+    threads: mut:[std.thread] = []
     # threads: mut = []  # TODO should work (we don't handle the captured var 'task' well when building the type upon encountering the lambda)
     
     for (task in tasks:

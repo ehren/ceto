@@ -2371,7 +2371,7 @@ def codegen_assign(node: Assign, cx: Scope):
         newcx.in_function_param_list = True
         rhs_str = codegen_lambda(lambdaliteral, newcx)
     #elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
-    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and not node.rhs.declared_type and (not node.lhs.declared_type or not isinstance(node.lhs.declared_type, ListLiteral)) and (vds := vector_decltype_str(node, cx)) is not None:  # TODO const/mut specifier for list type on lhs
+    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and not node.rhs.declared_type and (not node.lhs.declared_type or not isinstance(strip_mut_or_const(node.lhs.declared_type), ListLiteral)) and (vds := vector_decltype_str(node, cx)) is not None:  # TODO const/mut specifier for list type on lhs
         # handle untyped empty list literal by searching for uses
         rhs_str = "std::vector<" + vds + ">()"
     else:
