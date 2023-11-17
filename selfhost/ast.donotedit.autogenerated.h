@@ -102,7 +102,7 @@ struct UnOp : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit UnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source), op(op) {
+    explicit UnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)), op(op) {
     }
 
     UnOp() = delete;
@@ -121,7 +121,7 @@ struct LeftAssociativeUnOp : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source), op(op) {
+    explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)), op(op) {
     }
 
     LeftAssociativeUnOp() = delete;
@@ -148,7 +148,7 @@ struct BinOp : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source), op(op) {
+    explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)), op(op) {
     }
 
     BinOp() = delete;
@@ -253,7 +253,7 @@ struct Identifier : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit Identifier(const std::string&  name, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), _name(name) {
+    explicit Identifier(const std::string&  name, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::vector<std::shared_ptr<const Node>>{}, std::move(source)), _name(name) {
     }
 
     Identifier() = delete;
@@ -373,7 +373,7 @@ struct StringLiteral : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit StringLiteral(const std::string&  str, const std::shared_ptr<const Identifier>& prefix = nullptr, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, std::vector<std::shared_ptr<const Node>>{}, source), str(str), prefix(prefix), suffix(suffix) {
+    explicit StringLiteral(const std::string&  str, const std::shared_ptr<const Identifier>& prefix = nullptr, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::vector<std::shared_ptr<const Node>>{}, std::move(source)), str(str), prefix(prefix), suffix(suffix) {
     }
 
     StringLiteral() = delete;
@@ -399,7 +399,7 @@ struct IntegerLiteral : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit IntegerLiteral(const std::string&  integer_string, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, {}, source), integer_string(integer_string), suffix(suffix) {
+    explicit IntegerLiteral(const std::string&  integer_string, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), {}, std::move(source)), integer_string(integer_string), suffix(suffix) {
     }
 
     IntegerLiteral() = delete;
@@ -425,7 +425,7 @@ struct FloatLiteral : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit FloatLiteral(const std::string&  float_string, const std::shared_ptr<const Identifier>&  suffix, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, {}, source), float_string(float_string), suffix(suffix) {
+    explicit FloatLiteral(const std::string&  float_string, const std::shared_ptr<const Identifier>&  suffix, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), {}, std::move(source)), float_string(float_string), suffix(suffix) {
     }
 
     FloatLiteral() = delete;
@@ -445,7 +445,7 @@ struct ListLike_ : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit ListLike_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source) {
+    explicit ListLike_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)) {
     }
 
     ListLike_() = delete;
@@ -517,7 +517,7 @@ struct RedundantParens : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit RedundantParens(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source) {
+    explicit RedundantParens(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)) {
     }
 
     RedundantParens() = delete;
@@ -537,7 +537,7 @@ struct InfixWrapper_ : public Node {
             ceto::mado(visitor)->visit((*this));
         }
 
-    explicit InfixWrapper_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (nullptr, args, source) {
+    explicit InfixWrapper_(const std::vector<std::shared_ptr<const Node>>&  args, const decltype(std::make_tuple(std::string {""}, 0)) source = std::make_tuple(std::string {""}, 0)) : Node (std::move(nullptr), std::move(args), std::move(source)) {
     }
 
     InfixWrapper_() = delete;
