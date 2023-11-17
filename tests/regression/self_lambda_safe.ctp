@@ -51,8 +51,7 @@ class (Foo:
 )
 
 def (main:
-    # TODO should work with c-string
-    Foo(s"yo").f()
-    Foo(s"yo").f2()
+    Foo("yo").f()
+    Foo("yo").f2()
 )
     

@@ -53,9 +53,9 @@ def (main:
     std.cout << f5.c.b.c.c << "\n"
     b = Bar(1, 2, f)
     std.cout << b.a << b.b << b.f.a << b.f.b << b.f.c << "\n"
-    b2 = Bar2("hi", 2, Foo(2,3,4))  # should work
+    b2 = Bar2(s"hi", 2, Foo(2,3,4))  # should work
     std.cout << b2.a << b2.b << b2.f.a << b2.f.b << b2.f.c << "\n"
-    m = MixedGenericConcrete("e", 2)
+    m = MixedGenericConcrete(s"e", 2)
     std.cout << m.a << m.b << "\n"
 )
 
@@ -66,7 +66,7 @@ class (HasGenericList:
     # h.a.append(1)
     # is it really useful? (when the `append` must occur in same scope as construction)
     
-    pass # FIXME: shouldn't create attribute named pass.
+    pass
 )
 
         

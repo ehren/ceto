@@ -22,7 +22,7 @@ template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_
 
     _ceto_private_C1 x;
 
-    explicit Generic(const _ceto_private_C1& x) : x(x) {}
+    explicit Generic(_ceto_private_C1 x) : x(std::move(x)) {}
 
     Generic() = delete;
 
@@ -30,7 +30,7 @@ template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_
 
 struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<const int>()))> {
 
-    explicit GenericChild(const int  x) : std::type_identity_t<decltype(Generic(std::declval<const int>()))> (x) {
+    explicit GenericChild(const int  x) : std::type_identity_t<decltype(Generic(std::declval<const int>()))> (std::move(x)) {
     }
 
     GenericChild() = delete;
@@ -41,7 +41,7 @@ template <typename _ceto_private_C2>struct GenericChild2 : public std::type_iden
 
     _ceto_private_C2 y;
 
-    explicit GenericChild2(const _ceto_private_C2& p) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (p), y(p) {
+    explicit GenericChild2(const _ceto_private_C2 p) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (std::move(p)), y(p) {
     }
 
     GenericChild2() = delete;

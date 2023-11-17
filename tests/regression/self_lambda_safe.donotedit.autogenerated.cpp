@@ -50,14 +50,14 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
             std::cout << "dead\n";
         }
 
-    explicit Foo(const _ceto_private_C1& a) : a(a) {}
+    explicit Foo(_ceto_private_C1 a) : a(std::move(a)) {}
 
     Foo() = delete;
 
 };
 
     auto main() -> int {
-        ceto::mado(std::make_shared<const decltype(Foo{std::string {"yo"}})>(std::string {"yo"}))->f();
-        ceto::mado(std::make_shared<const decltype(Foo{std::string {"yo"}})>(std::string {"yo"}))->f2();
+        ceto::mado(std::make_shared<const decltype(Foo{"yo"})>("yo"))->f();
+        ceto::mado(std::make_shared<const decltype(Foo{"yo"})>("yo"))->f2();
     }
 

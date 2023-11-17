@@ -428,24 +428,20 @@ def codegen_class(node : Call, cx):
                 t = gensym("C")
                 typenames.append(t)
                 field_types[b.name] = t
-                decl_param = "const " + t + "& " + b.name
-                decl_member = t + " " + b.name
-                cpp += inner_indt + decl_member + ";\n\n"
+                decl_const_part = ""
+                decl = decl_const_part + t + " " + b.name
+                cpp += inner_indt + decl + ";\n\n"
                 # classdef.is_generic_param_index[block_index] = True
                 is_template = True
             else:
                 field_type = b.declared_type
-                decl_type = codegen_type(b, b.declared_type, inner_cx)
-                # typed_arg_str_lhs, typed_arg_str_rhs = _codegen_typed_def_param_as_tuple(b, inner_cx)
-                decl_member = decl_type + " " + b.name
-                # decl_param = typed_arg_str_lhs + " " + typed_arg_str_rhs
-                decl_param = decl_member
+                decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
-                cpp += inner_indt + decl_member + ";\n\n"
+                cpp += inner_indt + decl + ";\n\n"
                 # classdef.is_generic_param_index[block_index] = False
 
             uninitialized_attributes.append(b)
-            uninitialized_attribute_declarations.append(decl_param)
+            uninitialized_attribute_declarations.append(decl)
         elif isinstance(b, Assign):
             cpp += inner_indt + codegen_assign(b, inner_cx) + ";\n\n"
         elif is_comment(b):
@@ -461,6 +457,9 @@ def codegen_class(node : Call, cx):
 
     # classdef.is_concrete = not classdef.is_generic_param_index
     classdef.is_concrete = not is_template
+
+    fields_used_only_in_initializer_list = set()
+    args_only_passed_to_super_init = set()
 
     if constructor_node is not None:
         constructor_args = constructor_node.args[1:-1]
@@ -482,10 +481,15 @@ def codegen_class(node : Call, cx):
                 params_initializing_fields.extend(
                     (a, field.name) for a in constructor_args if
                     a.name == stmt.rhs.name)
+                if isinstance(stmt.rhs, Identifier) and is_last_use_of_identifier(stmt.rhs):
+                    fields_used_only_in_initializer_list.add(field.name)
             elif is_super_init(stmt):
                 if super_init_call is not None:
                     raise CodeGenError("only one call to super.init allowed", stmt)
                 super_init_call = stmt
+                for a in super_init_call.args:
+                    if isinstance(a, Identifier) and is_last_use_of_identifier(a):
+                        args_only_passed_to_super_init.add(a.name)
             else:
                 # anything that follows won't be printed as an initializer-list assignment/base-class-constructor-call
                 break
@@ -500,6 +504,7 @@ def codegen_class(node : Call, cx):
 
         init_params = []
         init_param_type_from_name = {}
+        should_std_move_constructor_param_names = set()
 
         for arg in constructor_args:
             if not isinstance(arg, Assign):
@@ -532,7 +537,12 @@ def codegen_class(node : Call, cx):
                             init_param_type_from_name[arg.name] = typed_arg_str_lhs
                         else:
                             # generic field case
-                            init_params.append("const " + field_type + "& " + arg.name)
+                            init_param = field_type + " " + arg.name
+                            if field_name in fields_used_only_in_initializer_list:
+                                should_std_move_constructor_param_names.add(arg.name)
+                            else:
+                                init_param = "const " + init_param
+                            init_params.append(init_param)
                             init_param_type_from_name[arg.name] = field_type
 
                 if not found_type:
@@ -541,16 +551,25 @@ def codegen_class(node : Call, cx):
 
                     t = gensym("C")
                     typenames.append(t)
-                    init_params.append("const " + t + "& " + arg.name)
                     init_param_type_from_name[arg.name] = t
+                    if arg.name in args_only_passed_to_super_init:
+                        init_params.append(t + " " + arg.name)
+                    else:
+                        init_params.append("const " + t + "& " + arg.name)
             else:
                 raise CodeGenError("unexpected constructor arg", b)
 
-        cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(
-            init_params) + ")"
+        cpp += inner_indt + "explicit " + name.name + "(" + ", ".join(init_params) + ")"
+
+        def initializer_list_initializer_from_field_param(field, param):
+            field_code = codegen_node(field, initcx)
+            rhs_code = codegen_node(param, initcx)
+            if param.name in should_std_move_constructor_param_names:
+                rhs_code = "std::move(" + rhs_code + ")"
+            return field_code + "(" + rhs_code + ")"
 
         initializer_list_items = [
-            codegen_node(field, initcx) + "(" + codegen_node(rhs, initcx) + ")"
+            initializer_list_initializer_from_field_param(field, rhs)
             for field, rhs in initializerlist_assignments]
 
         if super_init_call is not None:
@@ -568,7 +587,12 @@ def codegen_class(node : Call, cx):
                 else:
                     super_init_fake_args.append(codegen_node(arg, inner_cx))
 
-            super_init_args = [codegen_node(a, inner_cx) for a in super_init_call.args]
+            super_init_args = []
+            for a in super_init_call.args:
+                arg_code = codegen_node(a, inner_cx)
+                if a.name in args_only_passed_to_super_init:
+                    arg_code = "std::move(" + arg_code + ")"
+                super_init_args.append(arg_code)
 
             inherits_dfn = cx.lookup_class(inherits)
 
@@ -598,8 +622,16 @@ def codegen_class(node : Call, cx):
         if constructor_node is not None:
             raise CodeGenError("class {} defines a constructor (init method) but does not initialize these attributes: {}".format(name.name, ", ".join(str(u) for u in uninitialized_attributes)))
 
+        # TODO this should also be used in the case of a typed constructor param
+        def should_std_move_constructor_param(a):
+            if not a.declared_type or (
+                    _should_add_const_ref_to_typed_param(a, cx) or (
+                    cd := _class_def_from_typed_param(a, cx)) and cd.is_unique):
+                return True
+            return False
+
         def initializer_list_initializer(a):
-            if a.declared_type and (_should_add_const_ref_to_typed_param(a, cx) or (cd := _class_def_from_typed_param(a, cx)) and cd.is_unique):
+            if should_std_move_constructor_param(a):
                 return a.name + "(std::move(" + a.name + "))"
             else:
                 return a.name + "(" + a.name + ")"
@@ -2502,6 +2534,44 @@ def codegen_module(module: Module, cx: Scope):
     return cpp_preamble + modcpp
 
 
+def is_last_use_of_identifier(node: Identifier):
+    assert isinstance(node, Identifier)
+    name = node.name
+    ident_ancestor = node.parent
+    prev_ancestor = node
+    is_last_use = True
+    if isinstance(node.parent,
+                  (ScopeResolution, AttributeAccess, ArrowOp, Template)):
+        is_last_use = False
+    elif isinstance(node.parent, (BinOp, UnOp)):
+        is_last_use = isinstance(node.parent,
+                                 Assign)  # maybe a bit strict but e.g. we don't want to transform &x to &(std::move(x))
+    elif isinstance(node.parent, Call) and node.parent.func is node:
+        is_last_use = False
+
+    while is_last_use and ident_ancestor and not creates_new_variable_scope(
+            ident_ancestor):
+        if isinstance(ident_ancestor,
+                      Block) and prev_ancestor in ident_ancestor.args:
+            # TODO 'find_uses' in sema should work with Identifier not just Assign too
+            # try:
+            for b in ident_ancestor.args[
+                     ident_ancestor.args.index(prev_ancestor):]:
+                if any(find_all(b, lambda n: (n is not node) and (
+                        n.name == name))):
+                    is_last_use = False
+                    break
+            # except ValueError:
+            #     pass
+        if any(n and n is not node and isinstance(n, Node) and name == n.name
+               for n in ident_ancestor.args + [ident_ancestor.func]):
+            is_last_use = False
+            break
+        prev_ancestor = ident_ancestor
+        ident_ancestor = ident_ancestor.parent
+    return is_last_use
+
+
 def codegen_node(node: Node, cx: Scope):
     assert isinstance(node, Node)
 
@@ -2559,31 +2629,7 @@ def codegen_node(node: Node, cx: Scope):
            ptr_name := _shared_ptr_str_for_type(node, cx)):
             return ptr_name + "<" + ("const " if not mut_by_default else "") + name + ">"
 
-        ident_ancestor = node.parent
-        prev_ancestor = node
-        is_last_use = True
-        if isinstance(node.parent, (ScopeResolution, AttributeAccess, ArrowOp, Template)):
-            is_last_use = False
-        elif isinstance(node.parent, (BinOp, UnOp)):
-            is_last_use = isinstance(node.parent, Assign)  # maybe a bit strict but e.g. we don't want to transform &x to &(std::move(x))
-        elif isinstance(node.parent, Call) and node.parent.func is node:
-            is_last_use = False
-
-        while is_last_use and ident_ancestor and not creates_new_variable_scope(ident_ancestor):
-            if isinstance(ident_ancestor, Block) and prev_ancestor in ident_ancestor.args:
-                # TODO 'find_uses' in sema should work with Identifier not just Assign too
-                # try:
-                for b in ident_ancestor.args[ident_ancestor.args.index(prev_ancestor):]:
-                    if any(find_all(b, lambda n: (n is not node) and (n.name == name))):
-                        is_last_use = False
-                        break
-                # except ValueError:
-                #     pass
-            if any(n and n is not node and isinstance (n, Node) and name == n.name for n in ident_ancestor.args + [ident_ancestor.func]):
-                is_last_use = False
-                break
-            prev_ancestor = ident_ancestor
-            ident_ancestor = ident_ancestor.parent
+        is_last_use = is_last_use_of_identifier(node)
 
         if is_last_use and _is_unique_var(node, cx):
             return "std::move(" + name + ")"

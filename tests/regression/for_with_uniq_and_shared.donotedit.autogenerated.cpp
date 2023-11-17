@@ -48,7 +48,7 @@ template <typename _ceto_private_C1>struct Shared2 : public ceto::enable_shared_
 
     _ceto_private_C1 x;
 
-    explicit Shared2(const _ceto_private_C1& x) : x(x) {}
+    explicit Shared2(_ceto_private_C1 x) : x(std::move(x)) {}
 
     Shared2() = delete;
 

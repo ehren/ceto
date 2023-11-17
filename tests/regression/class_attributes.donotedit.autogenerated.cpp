@@ -31,7 +31,7 @@ auto bar(const T1& x) const -> void {
             ((std::cout << "bar: ") << x) << std::endl;
         }
 
-    explicit Foo(const _ceto_private_C1& a, const _ceto_private_C2& b, const _ceto_private_C3& c) : a(a), b(b), c(c) {}
+    explicit Foo(_ceto_private_C1 a, _ceto_private_C2 b, _ceto_private_C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
 
     Foo() = delete;
 
@@ -39,7 +39,7 @@ auto bar(const T1& x) const -> void {
 
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo{1, 2, 3})>(1, 2, 3);
-        const auto f2 = std::make_shared<const decltype(Foo{std::string {"a"}, 2, nullptr})>(std::string {"a"}, 2, nullptr);
+        const auto f2 = std::make_shared<const decltype(Foo{"a", 2, nullptr})>("a", 2, nullptr);
         const auto f5 = std::make_shared<const decltype(Foo{1, 2, std::make_shared<const decltype(Foo{1, std::make_shared<const decltype(Foo{1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)})>(1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)), std::make_shared<const decltype(Foo{1, 2, 3})>(1, 2, 3)})>(1, std::make_shared<const decltype(Foo{1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)})>(1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)), std::make_shared<const decltype(Foo{1, 2, 3})>(1, 2, 3))})>(1, 2, std::make_shared<const decltype(Foo{1, std::make_shared<const decltype(Foo{1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)})>(1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)), std::make_shared<const decltype(Foo{1, 2, 3})>(1, 2, 3)})>(1, std::make_shared<const decltype(Foo{1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)})>(1, 2, std::make_shared<const decltype(Foo{1, 2, 3001})>(1, 2, 3001)), std::make_shared<const decltype(Foo{1, 2, 3})>(1, 2, 3)));
         (std::cout << ceto::mado(f)->a) << ceto::mado(f2)->a;
     }

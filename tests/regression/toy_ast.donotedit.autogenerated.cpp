@@ -51,7 +51,7 @@ struct Identifier : public Node {
             return ((std::string {"identifier node with name: "} + (this -> name)) + "\n");
         }
 
-    explicit Identifier(const std::string&  name) : Node (nullptr, std::vector<std::shared_ptr<const Node>>{}), name(name) {
+    explicit Identifier(const std::string&  name) : Node (std::move(nullptr), std::vector<std::shared_ptr<const Node>>{}), name(name) {
     }
 
     Identifier() = delete;

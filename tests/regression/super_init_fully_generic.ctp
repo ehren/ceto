@@ -12,7 +12,6 @@ class (GenericChild(Generic):
 
 def (main:
     f = Generic(5)
-    f2 = GenericChild(s"A")
+    f2 = GenericChild("A")
     std.cout << f.x << f2.x
 )
-    

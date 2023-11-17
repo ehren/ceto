@@ -26,7 +26,7 @@ template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_p
 
     _ceto_private_C3 c;
 
-    explicit Foo(const _ceto_private_C1& a, const _ceto_private_C2& b, const _ceto_private_C3& c) : a(a), b(b), c(c) {}
+    explicit Foo(_ceto_private_C1 a, _ceto_private_C2 b, _ceto_private_C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
 
     Foo() = delete;
 

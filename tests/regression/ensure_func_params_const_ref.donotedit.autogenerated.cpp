@@ -22,7 +22,7 @@ template <typename _ceto_private_C1>struct FooGeneric : public ceto::enable_shar
 
     _ceto_private_C1 a;
 
-    explicit FooGeneric(const _ceto_private_C1& a) : a(a) {}
+    explicit FooGeneric(_ceto_private_C1 a) : a(std::move(a)) {}
 
     FooGeneric() = delete;
 
@@ -42,7 +42,7 @@ template <typename _ceto_private_C2>struct FooGenericUnique : public ceto::objec
 
     _ceto_private_C2 a;
 
-    explicit FooGenericUnique(const _ceto_private_C2& a) : a(a) {}
+    explicit FooGenericUnique(_ceto_private_C2 a) : a(std::move(a)) {}
 
     FooGenericUnique() = delete;
 

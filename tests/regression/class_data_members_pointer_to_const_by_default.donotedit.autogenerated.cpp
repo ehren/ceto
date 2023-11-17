@@ -31,7 +31,7 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
             return "i'm const by default";
         }
 
-    explicit Foo(const _ceto_private_C1& a) : a(a) {}
+    explicit Foo(_ceto_private_C1 a) : a(std::move(a)) {}
 
     Foo() = delete;
 
@@ -41,7 +41,7 @@ template <typename _ceto_private_C2>struct Holder : public ceto::enable_shared_f
 
     _ceto_private_C2 f;
 
-    explicit Holder(const _ceto_private_C2& f) : f(f) {}
+    explicit Holder(_ceto_private_C2 f) : f(std::move(f)) {}
 
     Holder() = delete;
 

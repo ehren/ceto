@@ -26,7 +26,7 @@ template <typename _ceto_private_C1, typename _ceto_private_C2>struct Generic : 
 
     _ceto_private_C2 z;
 
-    explicit Generic(const _ceto_private_C2& z, const _ceto_private_C1& y) : x(y), y(99), z(z) {
+    explicit Generic(const _ceto_private_C2 z, const _ceto_private_C1 y) : x(y), y(99), z(z) {
     }
 
     Generic() = delete;
@@ -35,7 +35,7 @@ template <typename _ceto_private_C1, typename _ceto_private_C2>struct Generic : 
 
 template <typename _ceto_private_C3>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C3>(), std::vector {{1, 2, 3}}))> {
 
-    explicit GenericChild(const _ceto_private_C3& x) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C3>(), std::vector {{1, 2, 3}}))> (x, std::vector {{1, 2, 3}}) {
+    explicit GenericChild(_ceto_private_C3 x) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C3>(), std::vector {{1, 2, 3}}))> (std::move(x), std::vector {{1, 2, 3}}) {
     }
 
     GenericChild() = delete;

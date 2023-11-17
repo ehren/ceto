@@ -22,7 +22,7 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
 
     _ceto_private_C1 x;
 
-    explicit Foo(const _ceto_private_C1& p) : x(p) {
+    explicit Foo(_ceto_private_C1 p) : x(std::move(p)) {
     }
 
     Foo() = delete;
