@@ -1657,7 +1657,7 @@ def _codegen_extern_C(lhs, rhs):
     return None
 
 
-def _indices_if_all_elements_form_contiguous_sublist(sublist, lst : typing.List):
+def _sublist_indices(sublist, lst : typing.List):
     list_set = set(lst)
     subset = set(sublist)
     if subset <= list_set:
@@ -1678,30 +1678,43 @@ def _codegen_compound_class_type(types, cx):
     if len(class_types) > 1:
         raise CodeGenError("too many class types in type", class_type)
     typenames = [t.name for t in types]
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["shared", "mut", class_name], typenames):
+    if class_def.is_unique:
+        if indices := _sublist_indices(["const", class_name, "ref"], typenames):
+            return "const std::unique_ptr<const " + class_name + ">&", indices
+        if indices := _sublist_indices([class_name, "const", "ref"], typenames):
+            return "const std::unique_ptr<const " + class_name + ">&", indices
+    if not class_def.is_struct and ("ref" in typenames or "ptr" in typenames or "rref" in typenames):
+        raise CodeGenError("no ref/ptr specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
+    if indices := _sublist_indices(["shared", "mut", class_name], typenames):
         return "std::shared_ptr<" + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["shared", "const", class_name], typenames):
+    if indices := _sublist_indices(["shared", "const", class_name], typenames):
         return "std::shared_ptr<const " + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["unique", "mut", class_name], typenames):
+    if indices := _sublist_indices(["unique", "mut", class_name], typenames):
         return "std::unique_ptr< " + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["unique", "const", class_name], typenames):
+    if indices := _sublist_indices(["unique", "const", class_name], typenames):
         return "std::unique_ptr<const " + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", "mut", class_name], typenames):
+    if indices := _sublist_indices(["weak", "mut", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
         return "std::weak_ptr<" + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", "const", class_name], typenames):
+    if indices := _sublist_indices(["weak", "const", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
         return "std::weak_ptr<const " + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["weak", class_name], typenames):
+    if indices := _sublist_indices(["weak", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
         if mut_by_default:
             return "std::weak_ptr<" + class_name + ">", indices
         return "std::weak_ptr<const " + class_name + ">", indices
     if class_def.is_struct:
         # let the defaults of codegen_type handle this
         return None
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["mut", class_name], typenames):
+    if indices := _sublist_indices(["mut", class_name], typenames):
         if class_def.is_unique:
             return "std::unique_ptr<" + class_name + ">", indices
         return "std::shared_ptr<" + class_name + ">", indices
-    if indices := _indices_if_all_elements_form_contiguous_sublist(["const", class_name], typenames):
+    if indices := _sublist_indices(["const", class_name], typenames):
         if class_def.is_unique:
             return "std::unique_ptr<const " + class_name + ">", indices
         return "std::shared_ptr<const " + class_name + ">", indices
@@ -1786,10 +1799,10 @@ def codegen_type(expr_node, type_node, cx):
             type_code.append(extern_c)
             i += 2
             continue
-        # elif i < len(types) - 1 and (s := _codegen_compound_class_type_old(types[i], types[i + 1], cx)):
-        #     type_code.append(s)
-        #     i += 2
-        #     continue
+        elif i < len(types) - 1 and types[i] == "ref" == types[i + 1]:
+            type_code.append("&&")
+            i += 2
+            continue
         elif isinstance(t, ListLiteral):
             if len(t.args) != 1:
                 raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
