@@ -42,7 +42,6 @@ if (node_class_name == ceto::mad(ceto::mado(ceto::mado(typeop)->rhs())->name())-
                     }
                 }
             }
-            return {};
         }
 if (typeid((*node)) != typeid((*pattern))) {
             return {};

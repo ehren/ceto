@@ -5,8 +5,12 @@ include <typeinfo>
 include <numeric>
 include <pybind11/pybind11.h>
 include <pybind11/stl.h>
+include <pybind11/stl_bind.h>
 
 include(ast)
+
+#PYBIND11_MAKE_OPAQUE(std.map<std.string, Node>)
+
 include(repr_visitors)
 include(scope)
 include(parser)
@@ -224,6 +228,8 @@ lambda(m : mut:auto:rref:
 
     # this will need its own module - just for testing for now
     m.def("parse_test", &parse_test)
+
+    py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
 
     m.def("macro_matches", &macro_matches)
 

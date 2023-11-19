@@ -28,8 +28,6 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
                 )
             )
         )
-
-        return {}
     )
 
     if (typeid(*node) != typeid(*pattern):
