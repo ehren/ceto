@@ -8,16 +8,8 @@ include (utility)
 
 
 class (Node)
-
-def (class_name, node: Node.class:ptr) : std.string
-
-
-class (MacroScope:
-    pass
-)
-
-
 class (Scope)
+def (class_name, node: const:Node.class:ptr:const) : std.string
 
 
 class (Node:
@@ -32,7 +24,6 @@ class (Node:
     )
 
     declared_type: Node = None
-    macro_scope: MacroScope = None
     scope: Scope = None
     _parent: Node:weak = {}
     file_path = ""s

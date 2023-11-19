@@ -20,7 +20,7 @@ include(macro_matcher)
 py: namespace = pybind11
 
 
-def (class_name, node: Node.class:ptr:
+def (class_name, node: const:Node.class:ptr:const:
     selph : py.object = py.cast(node)
     return std.string(py.str(selph.attr("__class__").attr("__name__")))
 ) : std.string

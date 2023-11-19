@@ -90,6 +90,13 @@ class (ParameterDefinition(VariableDefinition):
     ) : std.string
 )
 
+class (MacroDefinition:
+    pattern: Node
+    parameters: std.map<string, Node>
+    dll_path: std.string
+    action_name : std.string
+)
+
 def (creates_new_variable_scope, e: Node:
     if (isinstance(e, Call):
         name = e.func.name()
@@ -125,6 +132,8 @@ class (Scope:
     interfaces = std.map<std.string, std.vector<Node>>()
     class_definitions: [ClassDefinition] = []
     variable_definitions: [VariableDefinition] = []
+    macro_definitions: [MacroDefinition] = []
+
     indent = 0
     _parent: weak:Scope = {}
     in_function_body = false

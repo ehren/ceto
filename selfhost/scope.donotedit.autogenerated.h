@@ -134,6 +134,22 @@ using VariableDefinition::VariableDefinition;
 
 };
 
+struct MacroDefinition : public ceto::shared_object, public std::enable_shared_from_this<MacroDefinition> {
+
+    std::shared_ptr<const Node> pattern;
+
+    std::map<std::string,std::shared_ptr<const Node>> parameters;
+
+    std::string dll_path;
+
+    std::string action_name;
+
+    explicit MacroDefinition(std::shared_ptr<const Node> pattern, std::map<std::string,std::shared_ptr<const Node>> parameters, std::string dll_path, std::string action_name) : pattern(std::move(pattern)), parameters(parameters), dll_path(std::move(dll_path)), action_name(std::move(action_name)) {}
+
+    MacroDefinition() = delete;
+
+};
+
     inline auto creates_new_variable_scope(const std::shared_ptr<const Node>&  e) -> auto {
 if ((std::dynamic_pointer_cast<const Call>(e) != nullptr)) {
             const auto name = ceto::mado(ceto::mado(e)->func)->name();
@@ -171,6 +187,8 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
     std::vector<std::shared_ptr<const ClassDefinition>> class_definitions = std::vector<std::shared_ptr<const ClassDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const ClassDefinition>>{}), std::remove_cvref_t<decltype(class_definitions)>>);
 
     std::vector<std::shared_ptr<const VariableDefinition>> variable_definitions = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(variable_definitions)>>);
+
+    std::vector<std::shared_ptr<const MacroDefinition>> macro_definitions = std::vector<std::shared_ptr<const MacroDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const MacroDefinition>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
 
     decltype(0) indent = 0;
 
