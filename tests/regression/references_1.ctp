@@ -2,7 +2,8 @@
 def (main:
     x : const:auto:ref = 1
     y : const:int:ref = x
-    z : auto:ref = y
+    # z : auto:ref = y  # error: you must specify mut/const
+    z : auto:const:ref = y
     static_assert(std.is_reference_v<decltype(x)>)
     static_assert(std.is_reference_v<decltype(y)>)
     static_assert(std.is_reference_v<decltype(z)>)

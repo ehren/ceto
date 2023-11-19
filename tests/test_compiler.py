@@ -731,26 +731,6 @@ def (main:
     """), "do you have the args wrong? [ it's lambda(x, 5) not lambda(x: 5) ] ")
 
 
-def test_const_lambda_var():
-    c = compile(r"""
-# include"blah.ct"
-# include <blah.ct>
-
-def (main:
-    l : const:auto = lambda(x, x+1)
-    l2 : auto = lambda(x, x*2) : int  # just "auto" now means "const auto"
-    l3 = lambda(x, x*3)
-    lmut : mut = lambda(x, x*4)       # "mut" is the real "auto"
-    std.cout << l(2) << l2(2)
-    std.cout << std.is_const_v<decltype(l)>
-    std.cout << std.is_const_v<decltype(l2)>
-    std.cout << std.is_const_v<decltype(l3)>
-    std.cout << not std.is_const_v<decltype(lmut)>
-)
-    """)
-    assert c == "341111"
-
-
 def test_lambda_return_type_immediately_invoked():
     c = compile(r"""
 def (main:
@@ -1058,23 +1038,7 @@ def (main:
     assert c == "2223"
 
 
-def test_diy_none():
-    c = compile(r"""
 
-# all definitions at global scope constexpr by default:
-None2 = nullptr
-None3:auto = nullptr  # even ones with an explicit 'type'
-
-def (main:
-    std.cout << None2 << None3
-    
-    static_assert(std.is_const_v<decltype(None2)>)
-    static_assert(std.is_const_v<decltype(None3)>)
-    static_assert(std.is_same_v<decltype(None2), const:std.nullptr_t>)
-)
-    """)
-
-    assert c == "nullptrnullptr"
 
 
 def test_non_indexable_thing():
@@ -3138,48 +3102,6 @@ def (main, argc:int, argv:char:ptr:ptr:
     """)
 
     assert c == "5"
-
-
-def test_generic_refs_etc():
-    c = compile(r"""
-    
-# def (foo, x: auto: ref:  #  error: 'auto' not allowed in function prototype
-# def (foo, x: ref:  # should work (stay in template generation mode)
-def (foo, x:
-    return x
-)
-    
-def (main:
-    x = 1
-    xref:auto:ref = x # TODO auto inject auto in the local var case
-    y: const : auto = 2 
-    z : const : auto : ref = 3
-    # w : const : ref : auto = 4#   const & auto w = 4;   # not valid c++ syntax
-    
-    r : const : int : ref = xref
-    r2 : int : const : ref = xref
-    # r : ref = xref
-    
-    # p : ptr = 0 # generating "*p = 0;" is bad
-    p:const:auto:ptr = &x
-    p2: const:auto:ptr:ptr = &p
-    p3: int:const:ptr = &x
-    # p4 : const:ptr:int = &x #  const * int p4 = (&x);  error expected unqualifief id
-    
-    
-    # These are all bad ideas (we don't / no plans to support these 'conveniences')  (ptr and ref will eventually
-    # w1 : ref = x # really auto:ref
-    # w2 : const:ref = x # const:auto:ref
-    # w3 : ptr = &x # auto:ptr
-    # w4 : const:ptr = &x # const:auto:ptr
-    
-    # rules:  # have to look at outer expression node...
-    # see ptr - output auto*
-    # see const:ptr - output const auto* 
-    
-    foo(1)
-)
-    """)
 
 
 def _alternate_syntax():

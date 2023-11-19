@@ -19,7 +19,7 @@
 #include "ceto.h"
 
 constexpr const auto None2 = nullptr;
-constexpr const auto None3 { nullptr } ;
+constexpr auto const None3 { nullptr } ;
     auto main() -> int {
         (std::cout << None2) << None3;
         static_assert(std::is_const_v<decltype(None2)>);

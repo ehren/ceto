@@ -40,12 +40,12 @@ def (func, f : FooConcreteUnique:
     std.cout << "FooConcreteUnique " << f.a << std.endl
 )
 
-# now raises: CodeGenError: Invalid specifier for class type (although maybe this case should be allowed)
-# def (func2, f : const: FooConcreteUnique: ref:
-#     static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
-#     static_assert(std.is_reference_v<decltype(f)>)
-#     std.cout << "FooConcreteUnique " << f.a << std.endl
-# )
+def (func2, f : const:FooConcreteUnique:ref:
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    static_assert(std.is_same_v<decltype(f), const:std.unique_ptr<const:FooConcreteUnique.class>:ref>)
+    std.cout << "FooConcreteUnique " << f.a << std.endl
+)
 
 def (byval, f : auto:
     static_assert(not std.is_reference_v<decltype(f)>)  # when this is the last use, arguably bad insertion of std::move here? maybe it's expected (comment no longer relevant: we no longer apply std::move willy nilly to the last use of all vars, just those known to be :unique local/funcparm ceto class instances)
@@ -69,4 +69,3 @@ def (main:
     byval(f4)
     # byval(f3)  # error call to deleted blah blah (f3 is const)
 )
-    

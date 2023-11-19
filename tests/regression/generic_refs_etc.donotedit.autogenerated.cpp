@@ -18,11 +18,6 @@
 
 #include "ceto.h"
 
-    template <typename T1>
-auto foo(const T1& x) -> auto {
-        return x;
-    }
-
     auto main() -> int {
         const auto x = 1;
         const auto & xref { x } ;
@@ -33,6 +28,5 @@ auto foo(const T1& x) -> auto {
         const auto * p { (&x) } ;
         const auto * * p2 { (&p) } ;
         int const * const p3 = (&x); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype((&x)), std::remove_cvref_t<decltype(p3)>>);
-        foo(1);
     }
 

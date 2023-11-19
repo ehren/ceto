@@ -860,6 +860,11 @@ def _mutate_strip_non_class_non_plain_mut(node : Node, cx):
     return False
 
 
+def _ensure_auto_or_ref_specifies_mut_const(type_nodes):
+    if ("auto" in type_nodes or "ref" in type_nodes) and not ("const" in type_nodes or "mut" in type_nodes):
+        raise CodeGenError("you must specify const/mut", type_nodes[0])
+
+
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
     should_add_outer_const = not mut_by_default
@@ -869,6 +874,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
+            _ensure_auto_or_ref_specifies_mut_const(type_node_to_list_of_types(arg))
 
             if _mutate_strip_non_class_non_plain_mut(arg, cx) or \
                     any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
@@ -907,6 +913,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
                 "Non identifier left hand side in def arg", arg)
 
         if arg.lhs.declared_type is not None:
+            _ensure_auto_or_ref_specifies_mut_const(type_node_to_list_of_types(arg.lhs.declared_type))
 
             if _mutate_strip_non_class_non_plain_mut(arg.lhs, cx) or \
                     any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):  # TODO this needs to follow same logic as local vars (we're not adding add_const_t for a non-const pointer to const). ??? don't understand previous TODO but does this work with const:Foo meaning shared_ptr<const Foo> ? (seems to given that this logic previously incorrectly stripped 'mut' from mut:Foo)
@@ -1773,9 +1780,16 @@ def codegen_type(expr_node, type_node, cx):
         raise CodeGenError("unexpected typed call", expr_node)
 
     types = type_node_to_list_of_types(type_node)
+    type_names = [t.name for t in types]
 
-    if types[0].name in ["ptr", "ref", "rref"]:
+    if type_names[0] in ["ptr", "ref", "rref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
+
+    # TODO better ptr handling - 'same behavior as add_const_t' not workable.
+    # maybe just require 'unsafe' as a type keyword (not precluding 'unsafe' blocks) but
+    # leave the ptr type as mut by default (needs fixes elsewhere unfortunately)
+
+    # TODO don't make ref:ref const by default - gotcha (ideally error on a const ref:ref but not a mut ref:ref of a ptr to const etc)
 
     type_code = []
 
@@ -1799,7 +1813,7 @@ def codegen_type(expr_node, type_node, cx):
             type_code.append(extern_c)
             i += 2
             continue
-        elif i < len(types) - 1 and types[i] == "ref" == types[i + 1]:
+        elif i < len(types) - 1 and type_names[i] == "ref" == type_names[i + 1]:
             type_code.append("&&")
             i += 2
             continue
@@ -2196,13 +2210,12 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
     const_specifier = ""
 
     if isinstance(node.declared_type, Identifier):
-        # this should really be handled by codegen_assign
         if node.declared_type.name == "auto":
-            # just "auto" means "const auto"
-            # TODO this should take mut_by_default (or planned const/mut scopes) into account
-            lhs_type_str = "const auto"
+            raise CodeGenError("must specify const/mut for auto", node)
     elif isinstance(node.declared_type, TypeOp):
         type_list = type_node_to_list_of_types(node.declared_type)
+
+        _ensure_auto_or_ref_specifies_mut_const(type_list)
 
         classes = [t for t in type_list if cx.lookup_class(t)]
 
@@ -2279,9 +2292,8 @@ def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, 
             # plain const means by const value unless it's a for iter unpacking (const ref)
             return "const auto" + ref_part + structured_binding
         binding_types = type_node_to_list_of_types(node.declared_type)
+        _ensure_auto_or_ref_specifies_mut_const(binding_types)
         binding_type_names = [t.name for t in binding_types]
-        if "const" not in binding_type_names and "mut" not in binding_type_names:
-            binding_types.insert(0, Identifier("const"))
         # we don't have to worry about stripping out a mut/const that belongs to
         # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
         # allowed in structured bindings, otherwise C++ error).
@@ -2338,7 +2350,11 @@ def codegen_assign(node: Assign, cx: Scope):
 
             if node.lhs.declared_type.name == "weak":
                 is_weak_const = True
-            type_names = [t.name for t in type_node_to_list_of_types(node.lhs.declared_type)]
+
+            types = type_node_to_list_of_types(node.lhs.declared_type)
+            type_names = [t.name for t in types]
+            _ensure_auto_or_ref_specifies_mut_const(types)
+
             adjacent_type_names = zip(type_names, type_names[1:])
             if ("const", "weak") in adjacent_type_names:
                 pass

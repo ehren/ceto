@@ -1,8 +1,8 @@
-
+# TestOutput: nullptrnullptr
 
 # all definitions at global scope constexpr by default:
 None2 = nullptr
-None3:auto = nullptr  # even ones with an explicit 'type'
+None3: auto:const = nullptr  # even ones with an explicit 'type'
 
 def (main:
     std.cout << None2 << None3
