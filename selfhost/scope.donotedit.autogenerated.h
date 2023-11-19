@@ -135,7 +135,7 @@ using VariableDefinition::VariableDefinition;
 };
 
     inline auto creates_new_variable_scope(const std::shared_ptr<const Node>&  e) -> auto {
-if ((dynamic_pointer_cast<const Call>(e) != nullptr)) {
+if ((std::dynamic_pointer_cast<const Call>(e) != nullptr)) {
             const auto name = ceto::mado(ceto::mado(e)->func)->name();
             return (name && contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, ceto::mad(name)->value()));
         }
@@ -219,7 +219,7 @@ if ((name == std::string {"class"}) || (name == std::string {"struct"})) {
         }
 
         inline auto lookup_class(const std::shared_ptr<const Node>&  class_node) const -> std::shared_ptr<const ClassDefinition> {
-if (!(dynamic_pointer_cast<const Identifier>(class_node) != nullptr)) {
+if (!(std::dynamic_pointer_cast<const Identifier>(class_node) != nullptr)) {
                 return nullptr;
             }
             for(const auto& c : (this -> class_definitions)) {
@@ -237,7 +237,7 @@ if (const auto s = ceto::mado(this -> _parent)->lock()) {
         }
 
         inline auto find_defs(const std::shared_ptr<const Node>&  var_node, const decltype(true) find_all = true) const -> std::vector<std::shared_ptr<const VariableDefinition>> {
-if (!(dynamic_pointer_cast<const Identifier>(var_node) != nullptr)) {
+if (!(std::dynamic_pointer_cast<const Identifier>(var_node) != nullptr)) {
                 return {};
             }
             std::vector<std::shared_ptr<const VariableDefinition>> results = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(results)>>);
@@ -246,7 +246,7 @@ if ((ceto::mado(ceto::mado(d)->defined_node)->name() == ceto::mado(var_node)->na
                     const auto defined_loc = std::get<1>(ceto::mado(ceto::mado(d)->defined_node)->source);
                     const auto var_loc = std::get<1>(ceto::mado(var_node)->source);
                     auto parent_block { ceto::mado(ceto::mado(d)->defined_node)->parent() } ;
-while (true) {if ((dynamic_pointer_cast<const Module>(parent_block) != nullptr)) {
+while (true) {if ((std::dynamic_pointer_cast<const Module>(parent_block) != nullptr)) {
                             break;
                         }
                         parent_block = ceto::mado(parent_block)->parent();
@@ -257,8 +257,8 @@ if (!find_all) {
                             return std::vector {d};
                         }
                         ceto::mad(results)->push_back(d);
-if (const auto assign = dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node)) {
-if (const auto ident = dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs())) {
+if (const auto assign = std::dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node)) {
+if (const auto ident = std::dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs())) {
                                 const auto more = this -> find_defs(ident, find_all);
                                 ceto::mado(results)->insert(ceto::mado(results)->end(), ceto::mado(more)->begin(), ceto::mado(more)->end());
                             }

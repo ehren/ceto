@@ -2008,7 +2008,7 @@ def codegen_call(node: Call, cx: Scope):
                 if classdef.is_concrete:
                     raise CodeGenError("is/asinstance arg can't be a template", classdef)
                 raise CodeGenError("is/asinstance arg must be a class", node)
-            cast_string = "dynamic_pointer_cast<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
+            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
             if func_name == "isinstance":
                 cast_string = "(" + cast_string + " != nullptr)"
             return cast_string

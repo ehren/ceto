@@ -1,0 +1,74 @@
+include (ast)
+
+include <typeinfo>
+include <ranges>
+
+# defmacro (x: std.function = lambda(b), x: Identifier, b: ...:
+#     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
+# )
+
+def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>:
+    if (isinstance(pattern, Identifier):
+        # matched_param = params[pattern.name().value()]  # error from using maybe_bounds_check with const map is highly confusing (and maybe requires clause is too constraining)
+        search = params.find(pattern.name().value())
+        if (search == params.end():
+            return {}
+        )
+
+        matched_param = search->second
+        if (isinstance(matched_param, Identifier):
+            # wildcard match
+            return std.map<Node, Node>{{pattern, node}}
+        elif (typeop = asinstance(matched_param, TypeOp)):
+            # constrained wildcard / match by type
+            if (isinstance(typeop.rhs(), Identifier):
+                node_class_name = class_name((&node)->get())
+                if (node_class_name == typeop.rhs().name().value():
+                    return std.map<Node, Node>{{pattern, node}}
+                )
+            )
+        )
+
+        return {}
+    )
+
+    if (typeid(*node) != typeid(*pattern):
+        return {}
+    )
+
+    if (node.args.size() != pattern.args.size():
+        return {}
+    )
+
+    if ((node.func == None) != (pattern.func == None):
+        return {}
+    )
+
+    if (node.args.size() == 0 and node.func == None and pattern.func == None:
+        if (node.repr() == pattern.repr():
+            # leaf match
+            return std.map<Node, Node>{}
+        )
+        return {}
+    )
+
+    submatches: mut = std.map<Node, Node> {}
+
+    for (i in std.ranges.iota_view(0u, node.args.size()):
+        m = macro_matches(node.args[i], pattern.args[i], params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())
+    )
+
+    if (node.func:
+        m = macro_matches(node.func, pattern.func, params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())
+    )
+
+    return submatches
+) : std.optional<std.map<Node, Node>>

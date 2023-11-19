@@ -10,6 +10,7 @@ include(ast)
 include(repr_visitors)
 include(scope)
 include(parser)
+include(macro_matcher)
 
 
 py: namespace = pybind11
@@ -221,8 +222,10 @@ lambda(m : mut:auto:rref:
 
     m.def("creates_new_variable_scope", &creates_new_variable_scope)
 
-    # this will need it's own module - just for testing for now
+    # this will need its own module - just for testing for now
     m.def("parse_test", &parse_test)
+
+    m.def("macro_matches", &macro_matches)
 
     return
 )(m)
