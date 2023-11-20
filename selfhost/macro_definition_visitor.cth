@@ -1,0 +1,110 @@
+include <unordered_map>
+include <ranges>
+include <span>
+
+include (ast)
+include (visitor)
+
+
+struct (MacroDefinition:
+    defmacro_node: Node
+    pattern_node: Node
+    parameters: std.map<string, Node>
+    dll_name: std.string
+    action_name : std.string
+)
+
+class (MacroScope:
+    _parent: weak:MacroScope = {}
+    macro_definitions: [MacroDefinition] = []
+
+    def (parent:
+        return self._parent.lock()
+    )
+
+    def (enter_scope:
+        m: mut = MacroScope()
+        m._parent = self  # should really be using weak_from_this
+        return m
+    )
+)
+
+struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
+
+    macro_scopes: std.unordered_map<Node, MacroScope> = {}
+
+    current_scope: MacroScope = None
+
+    def (visit: override:mut, node: Node.class:
+        self.macro_scopes[ceto.shared_from(&node)] = self.current_scope
+
+        if (node.func:
+            node.func.accept(*this)
+        )
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+    )
+
+    def (visit: override:mut, node: Call.class:
+        if (node.func.name() != "defmacro":
+            node.func.accept(*this)
+
+            for (arg in node.args:
+                arg.accept(*this)
+            )
+            return
+        )
+
+        if (node.args.size() < 2:
+            throw (std.runtime_error("bad defmacro args"))  # TODO define a std.runtime_error derived class
+        )
+
+        pattern = node.args[0]
+
+        parameters: mut = std.map<std.string, Node>{}
+
+        rest = std.span(node.args.cbegin() + 2, node.args.cend())
+        for (arg in rest:
+            name = if (isinstance(arg, Identifier):
+                arg.name().value()
+            else:
+                if (not isinstance(arg, TypeOp):
+                    throw (std.runtime_error("bad defmacro param type"))
+                )
+                if (not isinstance(arg.args[0], Identifier):
+                    throw (std.runtime_error("bad typed defmacro param"))
+                )
+                arg.args[0].name().value()
+            )
+            i = parameters.find(name)
+            if (i != parameters.end():
+                throw (std.runtime_error("duplicate defmacro params"))
+            )
+
+            parameters.emplace(name, arg)
+        )
+    )
+
+    def (visit: override:mut, node: Module.class:
+        s = MacroScope()
+        self.macro_scopes[ceto.shared_from(&node)] = s
+        self.current_scope = s
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+    )
+
+    def (visit: override:mut, node: Block.class:
+        outer = self.current_scope
+        inner = outer.enter_scope()
+        self.macro_scopes[ceto.shared_from(&node)] = outer
+        self.current_scope = inner
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+        self.current_scope = outer
+    )
+)

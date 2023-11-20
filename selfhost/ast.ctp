@@ -15,6 +15,7 @@ include(repr_visitors)
 include(scope)
 include(parser)
 include(macro_matcher)
+include(macro_definition_visitor)
 
 
 py: namespace = pybind11

@@ -3,7 +3,7 @@ include (ast)
 include <typeinfo>
 include <ranges>
 
-# defmacro (x: std.function = lambda(b), x: Identifier, b: ...:
+# def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
 #     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
 # )
 

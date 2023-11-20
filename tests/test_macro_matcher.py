@@ -18,7 +18,6 @@ def matches(node, pattern, parameters):
     return submatches
 
 
-
 def test_constrained_wildcard_match():
 
     pattern = parse("x").args[0]
