@@ -76,6 +76,13 @@ auto func(const T1& f) -> void {
         ((std::cout << "FooConcreteUnique ") << ceto::mado(f)->a) << std::endl;
     }
 
+    inline auto func2( const std::unique_ptr<const FooConcreteUnique>&  f) -> void {
+        static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
+        static_assert(std::is_reference_v<decltype(f)>);
+        static_assert(std::is_same_v<decltype(f),const std::unique_ptr<const FooConcreteUnique> &>);
+        ((std::cout << "FooConcreteUnique ") << ceto::mado(f)->a) << std::endl;
+    }
+
     inline auto byval(const auto  f) -> void {
         static_assert(!std::is_reference_v<decltype(f)>);
         ((std::cout << "byval ") << ceto::mado(f)->a) << "\n";

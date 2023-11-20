@@ -6,7 +6,8 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
-    list_to_typed_node, list_to_attribute_access_node, is_call_lambda
+    list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
+    nested_same_binop_to_list
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 from collections import defaultdict
@@ -401,7 +402,12 @@ def codegen_class(node : Call, cx):
 
     base_class_type : typing.Optional[str] = None
     if isinstance(inherits, Identifier):
+        # TODO this avoids some error checking (many uses of 'name' have the same issue)
         base_class_type = inherits.name
+    if isinstance(inherits, (AttributeAccess, ScopeResolution)):
+        # when ceto defined namespaces implemented this will have to evaluate
+        # inherits without adding shared_ptr etc like in the Identifier case
+        base_class_type = codegen_node(inherits, cx)
     elif isinstance(inherits, Template):
         base_class_type = inherits.func.name + "<" + ", ".join(codegen_node(t, cx) for t in inherits.args) + ">"
 
@@ -546,7 +552,7 @@ def codegen_class(node : Call, cx):
 
             inherits_dfn = cx.lookup_class(inherits)
 
-            if not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual and isinstance(inherits, Identifier):
+            if inherits_dfn and not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual and isinstance(inherits, Identifier):
                 # TODO lookup_class should maybe ignore forward_declarations when the full definition is available. Alt
                 # here CTAD takes care of the real type of the base class (in case the base class is a template)
                 # see https://stackoverflow.com/questions/74998572/calling-base-class-constructor-using-decltype-to-get-more-out-of-ctad-works-in
@@ -629,8 +635,19 @@ def codegen_class(node : Call, cx):
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
-    if inherits and not constructor_node and isinstance(inherits, Identifier):
-        class_header += "using " + base_class_type + "::" + base_class_type + ";\n\n"
+    if inherits and not constructor_node:
+        # There may be gotchas inheriting the base class constructors automatically especially for
+        # external C++ defined classes (also will need fixes for multiple inheritance!).
+        # Though can be avoided by defining an explicit init method.
+
+        if isinstance(inherits, Identifier):
+            class_header += "using " + base_class_type + "::" + base_class_type + ";\n\n"
+        elif isinstance(inherits, (ScopeResolution, AttributeAccess)):
+            flattened = nested_same_binop_to_list(inherits)
+            if isinstance(flattened[-1], (ScopeResolution, AttributeAccess)):
+                raise CodeGenError("mix of ScopeResolution and AttributeAccess in inherits list - pick one or the other", inherits)
+            if isinstance(flattened[-1], Identifier):
+                class_header += "using " + base_class_type + "::" + codegen_node(flattened[-1], cx) + ";\n\n"
 
     if typenames:
         template_header = "template <" + ", ".join(["typename " + t for t in typenames]) + ">"
@@ -2030,13 +2047,12 @@ def codegen_call(node: Call, cx: Scope):
                 #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
                 #          class_def.is_generic_param_index[i]]) + ">"
 
-                const_part = "const " if _is_const_make(node) else ""
-
                 if class_def.is_struct:
                     func_str = class_name
                     args_str = curly_args
                 else:
                     class_name = "decltype(" + class_name + curly_args + ")"
+                    const_part = "const " if _is_const_make(node) else ""
 
                     if class_def.is_unique:
                         func_str = "std::make_unique<" + const_part + class_name + ">"

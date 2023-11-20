@@ -58,7 +58,7 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
         if (not m:
             return {}
         )
-        submatches.insert(m.begin(), m.end())
+        submatches.insert(m.begin(), m.end())  # std::optional autoderef
     )
 
     if (node.func:

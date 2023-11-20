@@ -6,6 +6,10 @@ include (ast)
 include (visitor)
 
 
+struct (SemanticAnalysisError(std.runtime_error):
+    pass
+)
+
 struct (MacroDefinition:
     defmacro_node: Node
     pattern_node: Node
@@ -62,7 +66,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         )
 
         if (node.args.size() < 2:
-            throw (std.runtime_error("bad defmacro args"))  # TODO define a std.runtime_error derived class
+            throw (SemanticAnalysisError("bad defmacro args"))
         )
 
         pattern = node.args[0]
@@ -75,21 +79,22 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
                 arg.name().value()
             else:
                 if (not isinstance(arg, TypeOp):
-                    throw (std.runtime_error("bad defmacro param type"))
+                    throw (SemanticAnalysisError("bad defmacro param type"))
                 )
                 if (not isinstance(arg.args[0], Identifier):
-                    throw (std.runtime_error("bad typed defmacro param"))
+                    throw (SemanticAnalysisError("bad typed defmacro param"))
                 )
                 arg.args[0].name().value()
             )
             i = parameters.find(name)
             if (i != parameters.end():
-                throw (std.runtime_error("duplicate defmacro params"))
+                throw (SemanticAnalysisError("duplicate defmacro params"))
             )
             parameters.emplace(name, arg)
         )
 
-        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters, "some_dll.so", "some_name_for_macro_body")
+        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters,
+                               "some_dll.so", "some_name_for_macro_body")
         self.current_scope.add_definition(defn)
     )
 

@@ -82,7 +82,7 @@ struct Foo : public ceto::object {
     }
 
     auto main() -> int {
-        const auto f = decltype(Foo{"blah"})("blah");
+        const auto f = Foo{"blah"};
         by_const_ref(f);
         by_val(f);
         by_const_val(f);

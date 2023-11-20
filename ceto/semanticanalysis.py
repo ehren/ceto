@@ -120,6 +120,37 @@ def type_node_to_list_of_types(typenode: Node):
     return types
 
 
+def _same_binop_inorder_traversal(binop: Node, binop_class, func):
+    assert issubclass(binop_class, BinOp)
+
+    if isinstance(binop, binop_class):
+        if not _same_binop_inorder_traversal(binop.lhs, binop_class, func):
+            return False
+        if not _same_binop_inorder_traversal(binop.rhs, binop_class, func):
+            return False
+        return True
+    else:
+        return func(binop)
+
+def same_binop_inorder_traversal(binop: Node, func):
+    return _same_binop_inorder_traversal(binop, binop.__class__, func)
+
+
+def nested_same_binop_to_list(binop: Node):
+    elements = []
+
+    if binop is None:
+        return elements
+
+    def callback(e):
+        elements.append(e)
+        return True
+
+    same_binop_inorder_traversal(binop, callback)
+
+    return elements
+
+
 def list_to_typed_node(lst):
     op = None
     first = None

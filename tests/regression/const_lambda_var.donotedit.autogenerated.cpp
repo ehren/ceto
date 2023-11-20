@@ -18,11 +18,13 @@
 
 #include "ceto.h"
 
+#include <iostream>
+;
     auto main() -> int {
         const auto l { [](const auto &x) {
                 if constexpr (!std::is_void_v<decltype((x + 1))>) { return (x + 1); } else { static_cast<void>((x + 1)); };
                 } } ;
-        const auto l2 { [](const auto &x) -> int {
+        auto const l2 { [](const auto &x) -> int {
                 if constexpr (!std::is_void_v<decltype((x * 2))>&& !std::is_void_v<int>) { return (x * 2); } else { static_cast<void>((x * 2)); };
                 } } ;
         const auto l3 = [](const auto &x) {
