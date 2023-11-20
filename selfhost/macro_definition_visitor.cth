@@ -22,18 +22,22 @@ class (MacroScope:
         return self._parent.lock()
     )
 
+    def (add_definition: mut, defn: MacroDefinition:
+        self.macro_definitions.push_back(defn)
+    )
+
     def (enter_scope:
         m: mut = MacroScope()
         m._parent = self  # should really be using weak_from_this
         return m
-    )
+    ) : MacroScope:mut
 )
 
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
     macro_scopes: std.unordered_map<Node, MacroScope> = {}
 
-    current_scope: MacroScope = None
+    current_scope: MacroScope:mut = None
 
     def (visit: override:mut, node: Node.class:
         self.macro_scopes[ceto.shared_from(&node)] = self.current_scope
@@ -82,13 +86,15 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             if (i != parameters.end():
                 throw (std.runtime_error("duplicate defmacro params"))
             )
-
             parameters.emplace(name, arg)
         )
+
+        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters, "some_dll.so", "some_name_for_macro_body")
+        self.current_scope.add_definition(defn)
     )
 
     def (visit: override:mut, node: Module.class:
-        s = MacroScope()
+        s: mut = MacroScope()
         self.macro_scopes[ceto.shared_from(&node)] = s
         self.current_scope = s
 

@@ -2029,16 +2029,19 @@ def codegen_call(node: Call, cx: Scope):
                 #     class_name += "<" + ", ".join(
                 #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
                 #          class_def.is_generic_param_index[i]]) + ">"
-                class_name = "decltype(" + class_name + curly_args + ")"
 
                 const_part = "const " if _is_const_make(node) else ""
 
                 if class_def.is_struct:
                     func_str = class_name
-                elif class_def.is_unique:
-                    func_str = "std::make_unique<" + const_part + class_name + ">"
+                    args_str = curly_args
                 else:
-                    func_str = "std::make_shared<" + const_part + class_name + ">"
+                    class_name = "decltype(" + class_name + curly_args + ")"
+
+                    if class_def.is_unique:
+                        func_str = "std::make_unique<" + const_part + class_name + ">"
+                    else:
+                        func_str = "std::make_shared<" + const_part + class_name + ">"
 
                 return func_str + args_str
 
