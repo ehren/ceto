@@ -8,66 +8,89 @@ include <ranges>
 # )
 
 def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>:
+    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr()
     if (isinstance(pattern, Identifier):
+        std.cout << 1 << "\n"
         # matched_param = params[pattern.name().value()]  # error from using maybe_bounds_check with const map is highly confusing (and maybe requires clause is too constraining)
         search = params.find(pattern.name().value())
-        if (search == params.end():
-            return {}
-        )
+        if (search != params.end():
+            std.cout << 2 << "\n"
 
-        matched_param = search->second
-        if (isinstance(matched_param, Identifier):
-            # wildcard match
-            return std.map<Node, Node>{{pattern, node}}
-        elif (typeop = asinstance(matched_param, TypeOp)):
-            # constrained wildcard / match by type
-            if (isinstance(typeop.rhs(), Identifier):
-                node_class_name = class_name((&node)->get())
-                if (node_class_name == typeop.rhs().name().value():
-                    return std.map<Node, Node>{{pattern, node}}
+            std.cout << 3 << "\n"
+            matched_param = search->second
+            if (isinstance(matched_param, Identifier):
+                # wildcard match
+                std.cout << 4 << "\n"
+                return std.map<Node, Node>{{pattern, node}}
+            elif (typeop = asinstance(matched_param, TypeOp)):
+                std.cout << 5 << "\n"
+                # constrained wildcard / match by type
+                if (isinstance(typeop.rhs(), Identifier):
+                    std.cout << 6 << "\n"
+                    node_class_name = class_name((&node)->get())
+                    if (node_class_name == typeop.rhs().name().value():
+                        std.cout << 7 << "\n"
+                        return std.map<Node, Node>{{pattern, node}}
+                    )
                 )
             )
         )
         # return {}
+        std.cout << 8 << "\n"
     )
 
+    std.cout << 9 << "\n"
     if (typeid(*node) != typeid(*pattern):
+        std.cout << 10 << "\n"
         return {}
     )
 
     if (node.args.size() != pattern.args.size():
+        std.cout << 11 << "\n"
         return {}
     )
 
     if ((node.func == None) != (pattern.func == None):
+        std.cout << 12 << "\n"
         return {}
     )
+    std.cout << 13 << "\n"
 
     if (node.args.size() == 0 and node.func == None and pattern.func == None:
+        std.cout << 14 << "\n"
         if (node.repr() == pattern.repr():
+            std.cout << 15 << "\n"
             # leaf match
             return std.map<Node, Node>{}
         )
         return {}
     )
 
+    std.cout << 16 << "\n"
     submatches: mut = std.map<Node, Node> {}
 
+    std.cout << 17 << "\n"
     for (i in std.ranges.iota_view(0u, node.args.size()):
         m = macro_matches(node.args[i], pattern.args[i], params)
+        std.cout << 18 << "\n"
         if (not m:
+            std.cout << 19 << "\n"
             return {}
         )
         submatches.insert(m.begin(), m.end())  # std::optional autoderef
     )
 
+    std.cout << 20 << "\n"
     if (node.func:
+        std.cout << 21 << "\n"
         m = macro_matches(node.func, pattern.func, params)
         if (not m:
+            std.cout << 22 << "\n"
             return {}
         )
         submatches.insert(m.begin(), m.end())
     )
+    std.cout << 23 << "\n"
 
     return submatches
 ) : std.optional<std.map<Node, Node>>

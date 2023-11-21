@@ -28,9 +28,17 @@ def test_constrained_wildcard_match():
     assert str(macro_matches(node1, pattern, parameters)) == "{x: 1}"
 
     node2 = parse("2 + 3").args[0]
-    print(str(matches(node2, pattern, parameters)))# == "{x: 2}"  # returns first match only. might have to rethink
-    print(str(macro_matches(node2, pattern, parameters)))# == "{x: 2}"  # returns first match only. might have to rethink
+    assert str(matches(node2, pattern, parameters))  == "[{x: 2}, {x: 3}]"
+    # print(str(macro_matches(node2, pattern, parameters)))  # None
 
+def test_add_pattern_match():
 
+    param = parse("y : IntegerLiteral").args[0]
+    parameters = dict()
+    parameters["y"] = param
+    add_node = parse("0 + x + 1 + 2 + 3").args[0]
+    add_pattern = parse("y + x + 1 + 2 + 3").args[0]
+    assert str(matches(add_node, add_pattern, parameters)) == "{y: 0}"
 
 test_constrained_wildcard_match()
+test_add_pattern_match()
