@@ -40,5 +40,37 @@ def test_add_pattern_match():
     add_pattern = parse("y + x + 1 + 2 + 3").args[0]
     assert str(matches(add_node, add_pattern, parameters)) == "{y: 0}"
 
-test_constrained_wildcard_match()
-test_add_pattern_match()
+
+def test_binop_wildcard():
+
+    param = parse("y : BinOp").args[0]
+    parameters = dict()
+    parameters["y"] = param
+    add_node = parse("0 + (x + 1 + 2) + 3").args[0]
+    add_pattern = parse("0 + y + 3").args[0]
+    print( str(matches(add_node, add_pattern, parameters)))
+
+def test_binop_wildcard2():
+
+    param = parse("y : BinOp").args[0]
+    parameters = dict()
+    parameters["y"] = param
+    add_node = parse("0 + x + 1 + 2 + 3").args[0]
+    add_pattern = parse("y + 2 + 3").args[0]
+    assert str(matches(add_node, add_pattern, parameters)) == "{y: ((0 + x) + 1)}"
+
+def test_binop_wildcard3():
+
+    param = parse("y : BinOp").args[0]
+    parameters = dict()
+    parameters["y"] = param
+    add_node = parse("0 + x + 1 + 2 + 3").args[0]
+    # add_pattern = parse("(0 + x) + 1 + y").args[0]
+    add_pattern = parse("y + 3").args[0]
+    print(str(matches(add_node, add_pattern, parameters)))
+
+# test_constrained_wildcard_match()
+# test_add_pattern_match()
+test_binop_wildcard()
+test_binop_wildcard2()
+test_binop_wildcard3()

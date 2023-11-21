@@ -23,10 +23,21 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
                 std.cout << 4 << "\n"
                 return std.map<Node, Node>{{pattern, node}}
             elif (typeop = asinstance(matched_param, TypeOp)):
+                ast_name = typeop.rhs()
                 std.cout << 5 << "\n"
+
                 # constrained wildcard / match by type
-                if (isinstance(typeop.rhs(), Identifier):
+                if (isinstance(ast_name, Identifier):
                     std.cout << 6 << "\n"
+                    # handle base class wild cards specially:
+                    if (ast_name.name() == "BinOp" and isinstance(node, BinOp):
+                        std.cout << 6 << "a\n"
+                        return std.map<Node, Node>{{pattern, node}}
+                    elif ast_name.name() == "UnOp" and isinstance(node, UnOp):
+                        std.cout << 6 << "b\n"
+                        return std.map<Node, Node>{{pattern, node}}
+                    )
+
                     node_class_name = class_name((&node)->get())
                     if (node_class_name == typeop.rhs().name().value():
                         std.cout << 7 << "\n"

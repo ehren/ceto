@@ -38,9 +38,17 @@ if ((std::dynamic_pointer_cast<const Identifier>(matched_param) != nullptr)) {
                     (std::cout << 4) << "\n";
                     return std::map<std::shared_ptr<const Node>,std::shared_ptr<const Node>>{{pattern, node}};
                 } else if (const auto typeop = std::dynamic_pointer_cast<const TypeOp>(matched_param)) {
+                    const auto ast_name = ceto::mado(typeop)->rhs();
                     (std::cout << 5) << "\n";
-if ((std::dynamic_pointer_cast<const Identifier>(ceto::mado(typeop)->rhs()) != nullptr)) {
+if ((std::dynamic_pointer_cast<const Identifier>(ast_name) != nullptr)) {
                         (std::cout << 6) << "\n";
+if ((ceto::mado(ast_name)->name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) {
+                            (std::cout << 6) << "a\n";
+                            return std::map<std::shared_ptr<const Node>,std::shared_ptr<const Node>>{{pattern, node}};
+                        } else if (((ceto::mado(ast_name)->name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) {
+                            (std::cout << 6) << "b\n";
+                            return std::map<std::shared_ptr<const Node>,std::shared_ptr<const Node>>{{pattern, node}};
+                        }
                         const auto node_class_name = class_name((&node) -> get());
 if (node_class_name == ceto::mad(ceto::mado(ceto::mado(typeop)->rhs())->name())->value()) {
                             (std::cout << 7) << "\n";
