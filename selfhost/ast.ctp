@@ -6,6 +6,7 @@ include <numeric>
 include <pybind11/pybind11.h>
 include <pybind11/stl.h>
 include <pybind11/stl_bind.h>
+include <pybind11/functional.h>
 
 include(ast)
 
@@ -233,6 +234,8 @@ lambda(m : mut:auto:rref:
     py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
 
     m.def("macro_matches", &macro_matches)
+
+    m.def("visit_macro_definitions", &visit_macro_definitions)
 
     return
 )(m)

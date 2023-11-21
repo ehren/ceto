@@ -1,6 +1,7 @@
 include <unordered_map>
 include <ranges>
 include <span>
+include <functional>
 
 include (ast)
 include (visitor)
@@ -14,8 +15,8 @@ struct (MacroDefinition:
     defmacro_node: Node
     pattern_node: Node
     parameters: std.map<string, Node>
-    dll_name: std.string
-    action_name : std.string
+    dll_path: std.string = {}
+    impl_function_name: std.string = {}
 )
 
 class (MacroScope:
@@ -38,9 +39,9 @@ class (MacroScope:
 )
 
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
+    on_visit_definition: std.function<void(MacroDefinition)>
 
     macro_scopes: std.unordered_map<Node, MacroScope> = {}
-
     current_scope: MacroScope:mut = None
 
     def (visit: override:mut, node: Node.class:
@@ -93,9 +94,9 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             parameters.emplace(name, arg)
         )
 
-        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters,
-                               "some_dll.so", "some_name_for_macro_body")
+        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters)
         self.current_scope.add_definition(defn)
+        self.on_visit_definition(defn)
     )
 
     def (visit: override:mut, node: Module.class:
@@ -118,4 +119,10 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         )
         self.current_scope = outer
     )
+)
+
+def (visit_macro_definitions, node: Module, on_visit: std.function<void(MacroDefinition)>:
+    visitor: mut = MacroDefinitionVisitor(on_visit)
+    node.accept(visitor)
+    return visitor.macro_scopes
 )

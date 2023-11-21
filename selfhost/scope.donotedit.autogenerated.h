@@ -192,10 +192,10 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             auto parent { ceto::mado(defined_node)->parent() } ;
 while (parent) {if (creates_new_variable_scope(parent)) {
                     const auto name = ceto::mado(ceto::mado(parent)->func)->name();
-if ((name == std::string {"class"}) || (name == std::string {"struct"})) {
+if ((name == "class") || (name == "struct")) {
                         const auto defn = std::make_shared<const decltype(FieldDefinition{defined_node, defining_node})>(defined_node, defining_node);
                         ceto::mado(this -> variable_definitions)->push_back(defn);
-                    } else if (((name == std::string {"def"}) || (name == std::string {"lambda"}))) {
+                    } else if (((name == "def") || (name == "lambda"))) {
                         const auto defn = std::make_shared<const decltype(ParameterDefinition{defined_node, defining_node})>(defined_node, defining_node);
                         ceto::mado(this -> variable_definitions)->push_back(defn);
                     } else {

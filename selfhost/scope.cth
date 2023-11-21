@@ -144,10 +144,10 @@ class (Scope:
         while (parent:
             if (creates_new_variable_scope(parent):
                 name = parent.func.name()
-                if (name == "class"s or name == "struct"s:
+                if (name == "class" or name == "struct":
                     defn = FieldDefinition(defined_node, defining_node)
                     self.variable_definitions.push_back(defn)
-                elif name == "def"s or name == "lambda"s:
+                elif name == "def" or name == "lambda":
                     defn = ParameterDefinition(defined_node, defining_node)
                     self.variable_definitions.push_back(defn)
                 else:
