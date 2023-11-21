@@ -110,6 +110,8 @@ using namespace pybind11::literals;
         ceto::mado(m)->def("creates_new_variable_scope", (&creates_new_variable_scope));
         ceto::mado(m)->def("parse_test", (&parse_test));
         py::bind_map<std::map<std::string,std::shared_ptr<const Node>>>(m, "StringNodeMap");
+        ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<MacroDefinition>(m, "MacroDefinition"))->def(py::init<std::shared_ptr<const Call>,std::shared_ptr<const Node>,std::map<std::string,std::shared_ptr<const Node>>>()))->def_readonly("defmacro_node", (&MacroDefinition::defmacro_node)))->def_readonly("pattern_node", (&MacroDefinition::pattern_node)))->def_readonly("parameters", (&MacroDefinition::parameters)))->def_readwrite("dll_path", (&MacroDefinition::dll_path)))->def_readwrite("impl_function_name", (&MacroDefinition::impl_function_name));
+        ceto::mado(ceto::mado(ceto::mado(py::class_<MacroScope,std::shared_ptr<MacroScope>>(m, "MacroScope"))->def(py::init<>()))->def_property_readonly("parent", (&MacroScope::parent)))->def_property_readonly("macro_definitions", (&MacroScope::parent));
         ceto::mado(m)->def("macro_matches", (&macro_matches));
         ceto::mado(m)->def("visit_macro_definitions", (&visit_macro_definitions));
         return;

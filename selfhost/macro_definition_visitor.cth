@@ -12,7 +12,7 @@ struct (SemanticAnalysisError(std.runtime_error):
 )
 
 struct (MacroDefinition:
-    defmacro_node: Node
+    defmacro_node: Call
     pattern_node: Node
     parameters: std.map<string, Node>
     dll_path: std.string = {}

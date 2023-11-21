@@ -233,8 +233,20 @@ lambda(m : mut:auto:rref:
 
     py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
 
-    m.def("macro_matches", &macro_matches)
+    py.class_<MacroDefinition>(m, "MacroDefinition").def(
+        py.init<Call, Node, std.map<string, Node>>()).def_readonly(
+        "defmacro_node", &MacroDefinition.defmacro_node).def_readonly(
+        "pattern_node", &MacroDefinition.pattern_node).def_readonly(
+        "parameters", &MacroDefinition.parameters).def_readwrite(
+        "dll_path", &MacroDefinition.dll_path).def_readwrite(
+        "impl_function_name", &MacroDefinition.impl_function_name)
 
+    py.class_<MacroScope.class, MacroScope:mut>(m, "MacroScope").def(
+        py.init<>()).def_property_readonly(
+        "parent", &MacroScope.parent).def_property_readonly(
+        "macro_definitions", &MacroScope.parent)
+
+    m.def("macro_matches", &macro_matches)
     m.def("visit_macro_definitions", &visit_macro_definitions)
 
     return

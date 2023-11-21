@@ -6,6 +6,8 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
+from ._abstractsyntaxtree import visit_macro_definitions
+
 
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
@@ -601,11 +603,12 @@ def semantic_analysis(expr: Module):
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
+    macro_scopes = visit_macro_definitions(expr, lambda macro_def: None)
+    print(macro_scopes)
+
     expr = build_types(expr)
     expr = build_parents(expr)
     expr = apply_replacers(expr, [ScopeVisitor()])
-
-    print("after lowering", expr)
 
     def defs(node):
         if not isinstance(node, Node):
@@ -628,6 +631,6 @@ def semantic_analysis(expr: Module):
             defs(a)
             defs(a.func)
 
-    defs(expr)
+    # defs(expr)
 
     return expr

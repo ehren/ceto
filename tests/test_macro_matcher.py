@@ -31,6 +31,7 @@ def test_constrained_wildcard_match():
     assert str(matches(node2, pattern, parameters))  == "[{x: 2}, {x: 3}]"
     # print(str(macro_matches(node2, pattern, parameters)))  # None
 
+
 def test_add_pattern_match():
 
     param = parse("y : IntegerLiteral").args[0]

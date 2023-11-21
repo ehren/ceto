@@ -39,7 +39,7 @@ using std::runtime_error::runtime_error;
 
 struct MacroDefinition : public ceto::object {
 
-    std::shared_ptr<const Node> defmacro_node;
+    std::shared_ptr<const Call> defmacro_node;
 
     std::shared_ptr<const Node> pattern_node;
 
@@ -49,7 +49,7 @@ struct MacroDefinition : public ceto::object {
 
     std::string impl_function_name = {};
 
-    explicit MacroDefinition(std::shared_ptr<const Node> defmacro_node, std::shared_ptr<const Node> pattern_node, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
+    explicit MacroDefinition(std::shared_ptr<const Call> defmacro_node, std::shared_ptr<const Node> pattern_node, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
 
     MacroDefinition() = delete;
 

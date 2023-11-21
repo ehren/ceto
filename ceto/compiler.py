@@ -1,7 +1,7 @@
-from .parser import parse, parse_from_cmdargs, Module
+from .parser import parse, parse_from_cmdargs, Node, Module
 from .parser import ParseException
-from .semanticanalysis import semantic_analysis
-from .codegen import codegen
+from .semanticanalysis import semantic_analysis, SemanticAnalysisError
+from .codegen import codegen, CodeGenError
 
 import os
 import subprocess
@@ -108,26 +108,47 @@ def runtest(s, compile_cpp=True):
 
 
 
-def report_error(e : ParseException):
+def report_error(e):
     with open(cmdargs.filename) as f:
         source = f.read()
-    msg = str(e)
-    msg = msg.replace("';'", "[end-of-line]")
-    msg = msg[:msg.rindex("(at")]
-    if hasattr(e, "_ceto_lineno"):
-        line = e._ceto_lineno
-    else:
-        line = e.lineno
-    if hasattr(e, "_ceto_col"):
-        col = e._ceto_col
-    else:
-        col = e.col
 
-    print("Syntax Error. Line {} Column {}:".format(line, col), file=sys.stderr)
-    # print(msg, file=sys.stderr)
-    # print(e.line, file=sys.stderr)
-    print(source.splitlines()[line - 1], file=sys.stderr)
-    print(" " * (col) + "^", file=sys.stderr)
+    if isinstance(e, ParseException):
+        msg = str(e)
+        msg = msg.replace("';'", "[end-of-line]")
+        msg = msg[:msg.rindex("(at")]
+        if hasattr(e, "_ceto_lineno"):
+            line = e._ceto_lineno
+        else:
+            line = e.lineno
+        if hasattr(e, "_ceto_col"):
+            col = e._ceto_col
+        else:
+            col = e.col
+
+        print("Syntax Error. Line {} Column {}:".format(line, col), file=sys.stderr)
+        # print(msg, file=sys.stderr)
+        # print(e.line, file=sys.stderr)
+        print(source.splitlines()[line - 1], file=sys.stderr)
+        print(" " * (col) + "^", file=sys.stderr)
+        return
+    elif isinstance(e, (SemanticAnalysisError, CodeGenError)):
+        try:
+            msg, node = e.args
+        except ValueError:
+            pass
+        else:
+            if isinstance(node, Node):
+                loc = node.source[1]
+                # # lineindex = source.count("\n", 0, loc)
+                # beg = source.rfind("\n", loc)
+                # end = source.find("\n", loc)
+                # print(source[beg:end], file=sys.stderr)
+                # print(" " * (beg) + "^", file=sys.stderr)
+                print(source[loc:loc+10], file=sys.stderr)
+                # print(" " * (beg) + "^", file=sys.stderr)
+                print(msg, file=sys.stderr)
+                return
+    raise e
 
 
 def main():
@@ -152,7 +173,7 @@ def main():
 
     try:
         code, module = compile(cmdargs)
-    except ParseException as e:
+    except (ParseException, SemanticAnalysisError, CodeGenError) as e:
         report_error(e)
         sys.exit(-1)
 
