@@ -108,18 +108,20 @@ if (ceto::mado(ceto::mado(node)->args)->size() < 2) {
                 throw SemanticAnalysisError{"bad defmacro args"};
             }
             const auto pattern = ceto::maybe_bounds_check_access(ceto::mado(node)->args,0);
+            const auto block = ceto::mado(ceto::mado(node)->args)->back();
+if (!(std::dynamic_pointer_cast<const Block>(block) != nullptr)) {
+                throw SemanticAnalysisError{"last defmacro arg must be a Block"};
+            }
             auto parameters { std::map<std::string,std::shared_ptr<const Node>>{} } ;
-            const auto rest = std::span(ceto::mado(ceto::mado(node)->args)->cbegin() + 2, ceto::mado(ceto::mado(node)->args)->cend());
-            for(const auto& arg : rest) {
+            const auto match_args = std::span(ceto::mado(ceto::mado(node)->args)->cbegin() + 1, ceto::mado(ceto::mado(node)->args)->cend() - 1);
+            for(const auto& arg : match_args) {
                 const auto name = [&]() {if ((std::dynamic_pointer_cast<const Identifier>(arg) != nullptr)) {
                     return ceto::mad(ceto::mado(arg)->name())->value();
+                } else if (!(std::dynamic_pointer_cast<const TypeOp>(arg) != nullptr)) {
+                    throw SemanticAnalysisError{"bad defmacro param type"};
+                } else if (!(std::dynamic_pointer_cast<const Identifier>(ceto::maybe_bounds_check_access(ceto::mado(arg)->args,0)) != nullptr)) {
+                    throw SemanticAnalysisError{"bad typed defmacro param"};
                 } else {
-if (!(std::dynamic_pointer_cast<const TypeOp>(arg) != nullptr)) {
-                        throw SemanticAnalysisError{"bad defmacro param type"};
-                    }
-if (!(std::dynamic_pointer_cast<const Identifier>(ceto::maybe_bounds_check_access(ceto::mado(arg)->args,0)) != nullptr)) {
-                        throw SemanticAnalysisError{"bad typed defmacro param"};
-                    }
                     return ceto::mad(ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(arg)->args,0))->name())->value();
                 }}()
 ;

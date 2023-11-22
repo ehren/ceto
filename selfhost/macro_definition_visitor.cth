@@ -72,19 +72,22 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
         pattern = node.args[0]
 
+        block = node.args.back()
+        if (not isinstance(block, Block):
+            throw (SemanticAnalysisError("last defmacro arg must be a Block"))
+        )
+
         parameters: mut = std.map<std.string, Node>{}
 
-        rest = std.span(node.args.cbegin() + 2, node.args.cend())
-        for (arg in rest:
+        match_args = std.span(node.args.cbegin() + 1, node.args.cend() - 1)
+        for (arg in match_args:
             name = if (isinstance(arg, Identifier):
                 arg.name().value()
+            elif not isinstance(arg, TypeOp):
+                throw (SemanticAnalysisError("bad defmacro param type"))
+            elif not isinstance(arg.args[0], Identifier):
+                throw (SemanticAnalysisError("bad typed defmacro param"))
             else:
-                if (not isinstance(arg, TypeOp):
-                    throw (SemanticAnalysisError("bad defmacro param type"))
-                )
-                if (not isinstance(arg.args[0], Identifier):
-                    throw (SemanticAnalysisError("bad typed defmacro param"))
-                )
                 arg.args[0].name().value()
             )
             i = parameters.find(name)

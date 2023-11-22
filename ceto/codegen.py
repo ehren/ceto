@@ -76,10 +76,11 @@ def codegen_if(ifcall : Call, cx):
         for a in ifcall.args:
             if isinstance(a, Block):
                 last_statement = a.args[-1]
-                synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
-                last_statement.parent = synthetic_return
-                synthetic_return.parent = a
-                a.args = a.args[0:-1] + [synthetic_return]
+                if not (isinstance(last_statement, Call) and last_statement.func.name == "throw"):
+                    synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
+                    last_statement.parent = synthetic_return
+                    synthetic_return.parent = a
+                    a.args = a.args[0:-1] + [synthetic_return]
 
     ifnode = IfWrapper(ifcall.func, ifcall.args)
 
@@ -2010,6 +2011,8 @@ def codegen_call(node: Call, cx: Scope):
             if not len(node.args) == 1:
                 raise CodeGenError("throw takes 1 arg", node)
             return "throw " + codegen_node(node.args[0], cx)
+        elif func_name == "defmacro":
+            return ""
         elif func_name in ["asinstance", "isinstance"]:
             if not len(node.args) == 2:
                 raise CodeGenError("asinstance takes 2 args", node)

@@ -6,7 +6,7 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
-from ._abstractsyntaxtree import visit_macro_definitions
+from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -519,9 +519,8 @@ class ScopeVisitor:
 
             if isinstance(a, Block) and not is_def_or_class_like(call):
                 index = call.args.index(a)
-                if index > 0:
-                    # e.g. the "then" block of an if-stmt is a child scope of the if-condition scope
-                    a.scope = call.args[index - 1].scope.enter_scope()
+                if index > 0 and (thenscope := call.args[index - 1].scope):
+                    a.scope = thenscope.enter_scope()
                 else:
                     a.scope = call.scope.enter_scope()
             elif call.func.name in ["if", "for", "while"]:
@@ -596,6 +595,10 @@ def apply_replacers(module: Module, visitors):
     return replace(module)
 
 
+def on_macro_def(mcd: MacroDefinition):
+    print("mcd", mcd.defmacro_node)
+
+
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
 
@@ -603,7 +606,7 @@ def semantic_analysis(expr: Module):
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
-    macro_scopes = visit_macro_definitions(expr, lambda macro_def: None)
+    macro_scopes = visit_macro_definitions(expr, on_macro_def)
     print(macro_scopes)
 
     expr = build_types(expr)
