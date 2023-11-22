@@ -14,6 +14,7 @@ struct (SemanticAnalysisError(std.runtime_error):
 struct (MacroDefinition:
     defmacro_node: Call
     pattern_node: Node
+    body: Block
     parameters: std.map<string, Node>
     dll_path: std.string = {}
     impl_function_name: std.string = {}
@@ -72,8 +73,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
         pattern = node.args[0]
 
-        block = node.args.back()
-        if (not isinstance(block, Block):
+        body = asinstance(node.args.back(), Block)
+        if (not body:
             throw (SemanticAnalysisError("last defmacro arg must be a Block"))
         )
 
@@ -97,7 +98,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             parameters.emplace(name, arg)
         )
 
-        defn = MacroDefinition(ceto.shared_from(&node), pattern, parameters)
+        defn = MacroDefinition(ceto.shared_from(&node), pattern, body, parameters)
         self.current_scope.add_definition(defn)
         self.on_visit_definition(defn)
     )

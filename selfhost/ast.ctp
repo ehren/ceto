@@ -234,9 +234,10 @@ lambda(m : mut:auto:rref:
     py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
 
     py.class_<MacroDefinition>(m, "MacroDefinition").def(
-        py.init<Call, Node, std.map<string, Node>>()).def_readonly(
+        py.init<Call, Node, Block, std.map<string, Node>>()).def_readonly(
         "defmacro_node", &MacroDefinition.defmacro_node).def_readonly(
         "pattern_node", &MacroDefinition.pattern_node).def_readonly(
+        "body", &MacroDefinition.body).def_readonly(
         "parameters", &MacroDefinition.parameters).def_readwrite(
         "dll_path", &MacroDefinition.dll_path).def_readwrite(
         "impl_function_name", &MacroDefinition.impl_function_name)

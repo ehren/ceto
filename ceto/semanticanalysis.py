@@ -1,6 +1,7 @@
 import typing
 from collections import defaultdict
 import sys
+from hashlib import sha256
 
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
@@ -595,8 +596,33 @@ def apply_replacers(module: Module, visitors):
     return replace(module)
 
 
-def on_macro_def(mcd: MacroDefinition):
-    print("mcd", mcd.defmacro_node)
+def prepare_macro_ready_callback(module_path):
+    def on_macro_def(mcd: MacroDefinition):
+        from .parser import parse
+        from .codegen import codegen
+        print("mcd", mcd.defmacro_node)
+
+        macro_impl = "def (macro_impl, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n"
+        indt = "    "
+        for param_name in mcd.parameters:
+            macro_impl += indt + param_name + ' = CETO_PRIVATE_params["' + param_name + '"]\n'
+        macro_impl += indt + "BODY\n)"
+
+        macro_impl_module = parse(macro_impl)
+        macro_impl = macro_impl_module.args[0]
+        assert isinstance(macro_impl, Call)
+        impl_block = macro_impl.args[-1]
+        assert isinstance(impl_block, Block)
+        assert isinstance(mcd.body, Block)
+        new_args = impl_block.args[:-1] + mcd.body.args
+        impl_block.args = new_args
+
+        macro_impl_module = semantic_analysis(macro_impl_module)
+        macro_impl_code = codegen(macro_impl_module)
+        print(macro_impl_code)
+
+
+    return on_macro_def
 
 
 def semantic_analysis(expr: Module):
@@ -606,7 +632,13 @@ def semantic_analysis(expr: Module):
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
-    macro_scopes = visit_macro_definitions(expr, on_macro_def)
+    if expr.file_path:
+        module_path = expr.file_path
+    else:
+        from .compiler import cmdargs
+        module_path = cmdargs.filename
+    assert module_path
+    macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(module_path))
     print(macro_scopes)
 
     expr = build_types(expr)

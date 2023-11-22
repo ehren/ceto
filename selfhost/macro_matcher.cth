@@ -17,11 +17,12 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
             std.cout << 2 << "\n"
 
             std.cout << 3 << "\n"
+            param_name = search->first
             matched_param = search->second
             if (isinstance(matched_param, Identifier):
                 # wildcard match
                 std.cout << 4 << "\n"
-                return std.map<Node, Node>{{pattern, node}}
+                return std.map<std.string, Node>{{param_name, node}}
             elif (typeop = asinstance(matched_param, TypeOp)):
                 ast_name = typeop.rhs()
                 std.cout << 5 << "\n"
@@ -32,16 +33,16 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
                     # handle base class wild cards specially:
                     if (ast_name.name() == "BinOp" and isinstance(node, BinOp):
                         std.cout << 6 << "a\n"
-                        return std.map<Node, Node>{{pattern, node}}
+                        return std.map<string, Node>{{param_name, node}}
                     elif ast_name.name() == "UnOp" and isinstance(node, UnOp):
                         std.cout << 6 << "b\n"
-                        return std.map<Node, Node>{{pattern, node}}
+                        return std.map<std.string, Node>{{param_name, node}}
                     )
 
                     node_class_name = class_name((&node)->get())
                     if (node_class_name == typeop.rhs().name().value():
                         std.cout << 7 << "\n"
-                        return std.map<Node, Node>{{pattern, node}}
+                        return std.map<std.string, Node>{{param_name, node}}
                     )
                 )
             )
@@ -72,13 +73,13 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
         if (node.repr() == pattern.repr():
             std.cout << 15 << "\n"
             # leaf match
-            return std.map<Node, Node>{}
+            return std.map<std.string, Node>{}
         )
         return {}
     )
 
     std.cout << 16 << "\n"
-    submatches: mut = std.map<Node, Node> {}
+    submatches: mut = std.map<std.string, Node> {}
 
     std.cout << 17 << "\n"
     for (i in std.ranges.iota_view(0u, node.args.size()):
@@ -104,4 +105,4 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
     std.cout << 23 << "\n"
 
     return submatches
-) : std.optional<std.map<Node, Node>>
+) : std.optional<std.map<std.string, Node>>

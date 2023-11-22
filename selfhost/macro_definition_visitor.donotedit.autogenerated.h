@@ -43,13 +43,15 @@ struct MacroDefinition : public ceto::object {
 
     std::shared_ptr<const Node> pattern_node;
 
+    std::shared_ptr<const Block> body;
+
     std::map<std::string,std::shared_ptr<const Node>> parameters;
 
     std::string dll_path = {};
 
     std::string impl_function_name = {};
 
-    explicit MacroDefinition(std::shared_ptr<const Call> defmacro_node, std::shared_ptr<const Node> pattern_node, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
+    explicit MacroDefinition(std::shared_ptr<const Call> defmacro_node, std::shared_ptr<const Node> pattern_node, std::shared_ptr<const Block> body, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), body(std::move(body)), parameters(parameters) {}
 
     MacroDefinition() = delete;
 
@@ -108,8 +110,8 @@ if (ceto::mado(ceto::mado(node)->args)->size() < 2) {
                 throw SemanticAnalysisError{"bad defmacro args"};
             }
             const auto pattern = ceto::maybe_bounds_check_access(ceto::mado(node)->args,0);
-            const auto block = ceto::mado(ceto::mado(node)->args)->back();
-if (!(std::dynamic_pointer_cast<const Block>(block) != nullptr)) {
+            const auto body = std::dynamic_pointer_cast<const Block>(ceto::mado(ceto::mado(node)->args)->back());
+if (!body) {
                 throw SemanticAnalysisError{"last defmacro arg must be a Block"};
             }
             auto parameters { std::map<std::string,std::shared_ptr<const Node>>{} } ;
@@ -131,7 +133,7 @@ if (i != ceto::mado(parameters)->end()) {
                 }
                 ceto::mad(parameters)->emplace(name, arg);
             }
-            const auto defn = MacroDefinition{ceto::shared_from((&node)), pattern, parameters};
+            const auto defn = MacroDefinition{ceto::shared_from((&node)), pattern, body, parameters};
             ceto::mado(this -> current_scope)->add_definition(defn);
             this -> on_visit_definition(defn);
         }
