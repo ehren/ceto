@@ -2,6 +2,25 @@ include <numeric>
 include <algorithm>
 
 
+cpp'
+#ifdef WIN32
+
+#define CETO_EXPORT __declspec(dllexport)
+#define CETO_DLSYM GetProcAddress
+#define CETO_DLOPEN LoadLibraryA
+#define CETO_DLCLOSE FreeLibrary
+
+#else
+
+#define CETO_EXPORT __attribute__((visibility("default")))
+#define CETO_DLSYM dlsym
+#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+#define CETO_DLCLOSE dlclose
+
+#endif
+'
+
+
 def (join, v, to_string, sep=""s:
     if (v.empty():
         return ""s

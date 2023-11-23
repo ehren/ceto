@@ -18,6 +18,14 @@
 
 #include "ceto.h"
 
+
+// TODO these shouldn't be in all code - only for macro impls
+#if _MSC_VER
+#define CETO_EXPORT __declspec(dllexport)
+#else
+#define CETO_EXPORT __attribute__((visibility("default")))
+#endif
+
 #include <iostream>
 ;
 ;
