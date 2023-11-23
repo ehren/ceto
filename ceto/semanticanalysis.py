@@ -1,6 +1,8 @@
 import typing
 from collections import defaultdict
 import sys
+import os
+import subprocess
 from hashlib import sha256
 
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
@@ -683,14 +685,16 @@ def prepare_macro_ready_callback(module_path):
         from .codegen import codegen
         print("mcd", mcd.defmacro_node)
 
-        impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
+        impl_str = """
+include (ast)
+def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n"""
         indt = "    "
         for param_name in mcd.parameters:
-            impl_str += indt + param_name + ' = CETO_PRIVATE_params["' + param_name + '"]\n'
+            impl_str += indt + param_name + ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
         impl_str += indt + "BODY\n)"
 
         macro_impl_module = parse(impl_str)
-        macro_impl = macro_impl_module.args[0]
+        macro_impl = macro_impl_module.args[-1]
         assert isinstance(macro_impl, Call)
         impl_block = macro_impl.args[-1]
         assert isinstance(impl_block, Block)
@@ -702,7 +706,20 @@ def prepare_macro_ready_callback(module_path):
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
 
-        print(macro_impl_code)
+        module_dir = os.path.dirname(module_path)
+        module_name = os.path.basename(module_path)
+        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_code.encode('utf-8')).hexdigest())
+        dll_path = impl_path + ".so"
+        dll_cpp = impl_path + ".cpp"
+        if not os.path.isfile(dll_cpp) or True:
+            with open(dll_cpp, "w") as f:
+                f.write(macro_impl_code)
+
+            project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+
+            build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -o{dll_path} {dll_cpp}"
+            print(build_command)
+            subprocess.check_output(build_command, shell=True)
 
     return on_macro_def
 
@@ -719,9 +736,11 @@ def semantic_analysis(expr: Module):
     else:
         from .compiler import cmdargs
         module_path = cmdargs.filename
-    assert module_path
-    macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(module_path))
-    print(macro_scopes)
+
+    if module_path:
+        # no module path with direct compilation of string (test suite only)
+        macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(module_path))
+        print(macro_scopes)
 
     expr = build_types(expr)
     expr = build_parents(expr)
