@@ -4,6 +4,9 @@ include (ast)
 
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     preserve_source_loc: bool
+    ceto_evalable: bool
+    # unless we start defining combatibility shims like node_list(Identifier("x"), IntegerLiteral("1")),
+    # a python evalable ast is not necessarily a ceto evalable one (e.g. ceto/c++ ctad must specify the type of the args)
 
     repr = ""s
 
@@ -31,7 +34,8 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
                 self.repr += ", "
             )
         )
-        self.repr += "], "
+
+        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
 
         self.generate_loc(node)
         self.repr += ")"
@@ -40,7 +44,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     def (visit: override:mut, node: UnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "], "
+        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )
@@ -48,7 +52,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     def (visit: override:mut, node: LeftAssociativeUnOp.class:
         self.repr += class_name(&node) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "], "
+        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )
@@ -59,7 +63,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
             arg.accept(*this)
             self.repr += ", "
         )
-        self.repr += "], "
+        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )

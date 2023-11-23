@@ -28,6 +28,8 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     bool preserve_source_loc;
 
+    bool ceto_evalable;
+
     decltype(std::string {""}) repr = std::string {""};
 
         template <typename T1>
@@ -52,7 +54,12 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
                     (this -> repr) += ", ";
                 }
             }
-            (this -> repr) += "], ";
+            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+                return ": Node";
+            } else {
+                return "";
+            }}()
+) + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
@@ -60,7 +67,12 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
         inline auto visit(const UnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + "(\"") + ceto::mado(node)->op) + "\", [");
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
-            (this -> repr) += "], ";
+            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+                return ": Node";
+            } else {
+                return "";
+            }}()
+) + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
@@ -68,7 +80,12 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             (this -> repr) += (((class_name((&node)) + "(\"") + ceto::mado(node)->op) + "\", [");
             ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
-            (this -> repr) += "], ";
+            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+                return ": Node";
+            } else {
+                return "";
+            }}()
+) + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
@@ -79,7 +96,12 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
                 ceto::mado(arg)->accept((*this));
                 (this -> repr) += ", ";
             }
-            (this -> repr) += "], ";
+            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+                return ": Node";
+            } else {
+                return "";
+            }}()
+) + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
@@ -133,7 +155,7 @@ if (ceto::mado(node)->suffix) {
             (this -> repr) += ")";
         }
 
-    explicit EvalableAstReprVisitor(bool preserve_source_loc) : preserve_source_loc(preserve_source_loc) {}
+    explicit EvalableAstReprVisitor(bool preserve_source_loc, bool ceto_evalable) : preserve_source_loc(preserve_source_loc), ceto_evalable(ceto_evalable) {}
 
     EvalableAstReprVisitor() = delete;
 
