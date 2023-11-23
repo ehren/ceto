@@ -53,11 +53,11 @@ lambda(m : mut:auto:rref:
     "scope", &Node.scope).def_readwrite(
     "source", &Node.source).def(
     "__repr__", &Node.repr).def(
-    "ast_repr", lambda(n: Node.class:
-        vis: mut = EvalableAstReprVisitor()
+    "ast_repr", lambda(n: Node.class, preserve_source_loc: bool:
+        vis: mut = EvalableAstReprVisitor(preserve_source_loc)
         n.accept(vis)
         vis.repr
-    )).def_property_readonly(
+    ), py.arg("preserve_source_loc") = true).def_property_readonly(
     "name", &Node.name).def_property(
     "parent", &Node.parent, &Node.set_parent).def_readwrite(
     "file_path", &Node.file_path)

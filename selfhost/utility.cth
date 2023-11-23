@@ -3,7 +3,8 @@ include <algorithm>
 
 
 cpp'
-#ifdef WIN32
+
+#if _MSC_VER
 
 #define CETO_EXPORT __declspec(dllexport)
 #define CETO_DLSYM GetProcAddress

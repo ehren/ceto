@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 #include <map>
 ;
 #include <typeinfo>
@@ -64,11 +65,11 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
 ;
 []( auto &&  m) {
 using namespace pybind11::literals;
-        auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("ast_repr", [](const Node&  n) {
-                auto vis { EvalableAstReprVisitor() } ;
+        auto node { ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(py::class_<Node,std::shared_ptr<Node>>(m, "Node"))->def_readwrite("func", (&Node::func)))->def_readwrite("args", (&Node::args)))->def_readwrite("declared_type", (&Node::declared_type)))->def_readwrite("scope", (&Node::scope)))->def_readwrite("source", (&Node::source)))->def("__repr__", (&Node::repr)))->def("ast_repr", [](const Node&  n, const bool  preserve_source_loc) {
+                auto vis { EvalableAstReprVisitor{preserve_source_loc} } ;
                 ceto::mado(n)->accept(vis);
                 if constexpr (!std::is_void_v<decltype(ceto::mado(vis)->repr)>) { return ceto::mado(vis)->repr; } else { static_cast<void>(ceto::mado(vis)->repr); };
-                }))->def_property_readonly("name", (&Node::name)))->def_property("parent", (&Node::parent), (&Node::set_parent)))->def_readwrite("file_path", (&Node::file_path)) } ;
+                }, py::arg("preserve_source_loc") = true))->def_property_readonly("name", (&Node::name)))->def_property("parent", (&Node::parent), (&Node::set_parent)))->def_readwrite("file_path", (&Node::file_path)) } ;
         ceto::mado(ceto::mado(py::class_<UnOp,std::shared_ptr<UnOp>>(m, "UnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0)))->def_readwrite("op", (&UnOp::op));
         ceto::mado(ceto::mado(py::class_<LeftAssociativeUnOp,std::shared_ptr<LeftAssociativeUnOp>>(m, "LeftAssociativeUnOp", node))->def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0)))->def_readwrite("op", (&LeftAssociativeUnOp::op));
         auto binop { py::class_<BinOp,std::shared_ptr<BinOp>>(m, "BinOp", node) } ;

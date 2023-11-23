@@ -652,10 +652,10 @@ def quote_expander(node):
             if len(quote.args) != 1:
                 raise SemanticAnalysisError("quote takes a single arg", quote)
             replacements, quote_arg = unquote_remover(quote.args[0])
-            repr = quote_arg.ast_repr()
+            repr = quote_arg.ast_repr(preserve_source_loc=False)
             for r in replacements:
                 # should be improved to work with non-Identifier unquote args
-                repr.replace(r.ast_repr(), str(replacements[r]))
+                repr.replace(r.ast_repr(preserve_source_loc=False), str(replacements[r]))
             expanded = parse(repr).args[0]
             return expanded
         return None

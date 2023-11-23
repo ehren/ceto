@@ -3,9 +3,14 @@ include (ast)
 
 
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
+    preserve_source_loc: bool
+
     repr = ""s
 
     def (generate_loc: mut, node:
+        if (not preserve_source_loc:
+            return
+        )
         # preserve source location but don't worry about the source string for now
         loc = std.get<1>(node.source)
         self.repr += '("", ' + std.to_string(loc) + ")"
