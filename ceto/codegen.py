@@ -7,7 +7,7 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
-    nested_same_binop_to_list
+    nested_same_binop_to_list, gensym
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 from collections import defaultdict
@@ -45,19 +45,6 @@ cpp_preamble = r"""
 
 
 # Uses code and ideas from https://github.com/lukasmartinelli/py14
-
-# method_declarations = []
-cstdlib_functions = ["printf", "fprintf", "fopen", "fclose"]
-counter = 0
-
-
-def gensym(prefix=None):
-    global counter
-    counter += 1
-    pre = "_ceto_private_"
-    if prefix is not None:
-        pre += prefix
-    return pre + str(counter)
 
 
 def codegen_if(ifcall : Call, cx):

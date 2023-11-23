@@ -596,31 +596,112 @@ def apply_replacers(module: Module, visitors):
     return replace(module)
 
 
+counter = 0
+
+def gensym(prefix=None):
+    global counter
+    counter += 1
+    pre = "ceto__private__"
+    if prefix is not None:
+        pre += prefix
+    return pre + str(counter)
+
+
+def unquote_remover(node):
+    def _replace(unquote):
+        if isinstance(unquote, Call) and unquote.func.name == "unquote":
+            if len(unquote.args) != 1:
+                raise SemanticAnalysisError("unquote takes a single arg", unquote)
+            if not isinstance(unquote.args[0], Identifier):
+                # don't worry about nested quote/unquote at least for now
+                raise SemanticAnalysisError("unquote must be called on an Identifier", unquote.args[0])
+            return Identifier(gensym())
+        return None
+
+    replacements = {}
+    new_args = []
+
+    for arg in node.args:
+        if stand_in := _replace(arg):
+            replacements[stand_in] = arg
+            new_args.append(stand_in)
+        else:
+            subreplacements, arg = unquote_remover(arg)
+            replacements.update(subreplacements)
+            new_args.append(arg)
+
+    node.args = new_args
+
+    if stand_in := _replace(node.func):
+        replacements[stand_in] = node.func
+        node.func = stand_in
+    elif node.func:
+        subreplacements, node.func = unquote_remover(node.func)
+        replacements.update(subreplacements)
+
+    return replacements, node
+
+
+def quote_expander(node):
+    from .parser import parse
+
+    def _expand(quote):
+        if isinstance(quote, Call) and quote.func.name == "quote":
+            if len(quote.args) != 1:
+                raise SemanticAnalysisError("quote takes a single arg", quote)
+            replacements, quote_arg = unquote_remover(quote.args[0])
+            repr = quote_arg.ast_repr()
+            for r in replacements:
+                # should be improved to work with non-Identifier unquote args
+                repr.replace(r.ast_repr(), str(replacements[r]))
+            expanded = parse(repr).args[0]
+            return expanded
+        return None
+
+    new_args = []
+
+    for arg in node.args:
+        if expanded := _expand(arg):
+            new_args.append(expanded)
+        else:
+            arg = quote_expander(arg)
+            new_args.append(arg)
+
+    node.args = new_args
+
+    if expanded := _expand(node.func):
+        node.func = expanded
+    elif node.func:
+        node.func = quote_expander(node.func)
+
+    return node
+
+
 def prepare_macro_ready_callback(module_path):
     def on_macro_def(mcd: MacroDefinition):
         from .parser import parse
         from .codegen import codegen
         print("mcd", mcd.defmacro_node)
 
-        macro_impl = "def (macro_impl, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n"
+        impl_str = "def (macro_impl, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n"
         indt = "    "
         for param_name in mcd.parameters:
-            macro_impl += indt + param_name + ' = CETO_PRIVATE_params["' + param_name + '"]\n'
-        macro_impl += indt + "BODY\n)"
+            impl_str += indt + param_name + ' = CETO_PRIVATE_params["' + param_name + '"]\n'
+        impl_str += indt + "BODY\n)"
 
-        macro_impl_module = parse(macro_impl)
+        macro_impl_module = parse(impl_str)
         macro_impl = macro_impl_module.args[0]
         assert isinstance(macro_impl, Call)
         impl_block = macro_impl.args[-1]
         assert isinstance(impl_block, Block)
         assert isinstance(mcd.body, Block)
-        new_args = impl_block.args[:-1] + mcd.body.args
-        impl_block.args = new_args
+
+        expanded = quote_expander(mcd.body)
+        impl_block.args = impl_block.args[:-1] + expanded.args
 
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
         print(macro_impl_code)
-
 
     return on_macro_def
 
