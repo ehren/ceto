@@ -625,7 +625,7 @@ def unquote_remover(node):
 
     for arg in node.args:
         if stand_in := _replace(arg):
-            replacements[stand_in] = arg
+            replacements[stand_in] = arg.args[0]
             new_args.append(stand_in)
         else:
             subreplacements, arg = unquote_remover(arg)
@@ -635,7 +635,7 @@ def unquote_remover(node):
     node.args = new_args
 
     if stand_in := _replace(node.func):
-        replacements[stand_in] = node.func
+        replacements[stand_in] = node.func.args[0]
         node.func = stand_in
     elif node.func:
         subreplacements, node.func = unquote_remover(node.func)
@@ -655,7 +655,7 @@ def quote_expander(node):
             repr = quote_arg.ast_repr(preserve_source_loc=False, ceto_evalable=True)
             for r in replacements:
                 # should be improved to work with non-Identifier unquote args
-                repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), str(replacements[r]))
+                repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), str(replacements[r]))
             expanded = parse(repr).args[0]
             return expanded
         return None
@@ -731,11 +731,13 @@ def semantic_analysis(expr: Module):
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parens(expr)
 
+    module_path = None
     if expr.file_path:
         module_path = expr.file_path
     else:
         from .compiler import cmdargs
-        module_path = cmdargs.filename
+        if cmdargs:
+            module_path = cmdargs.filename
 
     if module_path:
         # no module path with direct compilation of string (test suite only)
