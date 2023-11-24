@@ -100,6 +100,7 @@ if (ceto::mado(node)->func) {
         }
 
         inline auto visit(const Call&  node) -> void override {
+            ceto::maybe_bounds_check_access(this -> macro_scopes,ceto::shared_from((&node))) = (this -> current_scope);
 if (ceto::mado(ceto::mado(node)->func)->name() != "defmacro") {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
                 for(const auto& arg : ceto::mado(node)->args) {

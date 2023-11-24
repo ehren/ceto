@@ -58,6 +58,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 
     def (visit: override:mut, node: Call.class:
+        self.macro_scopes[ceto.shared_from(&node)] = self.current_scope
+
         if (node.func.name() != "defmacro":
             node.func.accept(*this)
 
