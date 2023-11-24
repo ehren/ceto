@@ -165,7 +165,7 @@ if (i != ceto::mado(parameters)->end()) {
 
 };
 
-    inline auto visit_macro_definitions(const std::shared_ptr<const Module>&  node, const std::function<void(MacroDefinition)>  on_visit) -> auto {
+    inline auto visit_macro_definitions(const std::shared_ptr<const Module>&  node, const std::function<void(MacroDefinition)>  on_visit) -> std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const MacroScope>> {
         auto visitor { MacroDefinitionVisitor{on_visit} } ;
         ceto::mado(node)->accept(visitor);
         return ceto::mado(visitor)->macro_scopes;

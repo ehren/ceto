@@ -129,4 +129,4 @@ def (visit_macro_definitions, node: Module, on_visit: std.function<void(MacroDef
     visitor: mut = MacroDefinitionVisitor(on_visit)
     node.accept(visitor)
     return visitor.macro_scopes
-)
+) : std.unordered_map<Node, MacroScope>

@@ -244,8 +244,8 @@ lambda(m : mut:auto:rref:
 
     py.class_<MacroScope.class, MacroScope:mut>(m, "MacroScope").def(
         py.init<>()).def_property_readonly(
-        "parent", &MacroScope.parent).def_property_readonly(
-        "macro_definitions", &MacroScope.parent)
+        "parent", &MacroScope.parent).def_readwrite(
+        "macro_definitions", &MacroScope.macro_definitions)
 
     m.def("macro_matches", &macro_matches)
     m.def("visit_macro_definitions", &visit_macro_definitions)
