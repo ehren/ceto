@@ -679,22 +679,36 @@ def quote_expander(node):
     return node
 
 
-def prepare_macro_ready_callback(module_path):
+def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macro_impl: Call):
+    new = None
+    if isinstance(node, Module):
+        new = Module([])
+    elif isinstance(node, Block):
+        new = Block([])
+    new_args = [macro_impl if a is macro_definition.defmacro_node else create_macro_impl_module(a, macro_definition, macro_impl)
+                for a in node.args]
+    if isinstance(new, Module):
+        new_args = [a for a in new_args if not (isinstance(a, Call) and a.func.name == "def" and a.args[0].name == "main")]
+    if new is not None:
+        new.args = new_args
+    else:
+        new = node
+    return new
+
+
+def prepare_macro_ready_callback(module, module_path):
     def on_macro_def(mcd: MacroDefinition):
         from .parser import parse
         from .codegen import codegen
         print("mcd", mcd.defmacro_node)
 
-        impl_str = """
-include (ast)
-def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n"""
+        impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
             impl_str += indt + param_name + ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
-        impl_str += indt + "BODY\n)"
+        impl_str += indt + "pass\n)"
 
-        macro_impl_module = parse(impl_str)
-        macro_impl = macro_impl_module.args[-1]
+        macro_impl = parse(impl_str).args[0]
         assert isinstance(macro_impl, Call)
         impl_block = macro_impl.args[-1]
         assert isinstance(impl_block, Block)
@@ -703,12 +717,17 @@ def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.
         expanded = quote_expander(mcd.body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
+        # allow constant evaluation of any other code in module (or included by module)
+        include_ast = parse("include (ast)")
+        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
+        macro_impl_module.args = include_ast.args + macro_impl_module.args
+
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
 
         module_dir = os.path.dirname(module_path)
         module_name = os.path.basename(module_path)
-        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_code.encode('utf-8')).hexdigest())
+        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
         dll_cpp = impl_path + ".cpp"
         if not os.path.isfile(dll_cpp) or True:
@@ -741,7 +760,7 @@ def semantic_analysis(expr: Module):
 
     if module_path:
         # no module path with direct compilation of string (test suite only)
-        macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(module_path))
+        macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(expr, module_path))
         print(macro_scopes)
 
     expr = build_types(expr)
