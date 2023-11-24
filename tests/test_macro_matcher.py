@@ -58,7 +58,8 @@ def test_binop_wildcard2():
     parameters["y"] = param
     add_node = parse("0 + x + 1 + 2 + 3").args[0]
     add_pattern = parse("y + 2 + 3").args[0]
-    assert str(matches(add_node, add_pattern, parameters)) == "{'y': ((0 + x) + 1)}"
+    m = matches(add_node, add_pattern, parameters)
+    assert str(m) == "{'y': ((0 + x) + 1)}"
 
 def test_binop_wildcard3():
 

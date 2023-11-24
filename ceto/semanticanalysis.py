@@ -10,6 +10,7 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
 from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
+from ceto._abstractsyntaxtree import macro_matches
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -680,20 +681,15 @@ def quote_expander(node):
 
 
 def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macro_impl: Call):
-    new = None
-    if isinstance(node, Module):
-        new = Module([])
-    elif isinstance(node, Block):
-        new = Block([])
-    new_args = [macro_impl if a is macro_definition.defmacro_node else create_macro_impl_module(a, macro_definition, macro_impl)
+    new_args = [macro_impl if a is macro_definition.defmacro_node
+                           else create_macro_impl_module(a, macro_definition, macro_impl)
                 for a in node.args]
-    if isinstance(new, Module):
+    if isinstance(node, Module):
         new_args = [a for a in new_args if not (isinstance(a, Call) and a.func.name == "def" and a.args[0].name == "main")]
-    if new is not None:
-        new.args = new_args
-    else:
-        new = node
-    return new
+        return Module(new_args)
+    elif isinstance(node, Block):
+        return Block(new_args)
+    return node
 
 
 def prepare_macro_ready_callback(module, module_path):
@@ -739,8 +735,42 @@ def prepare_macro_ready_callback(module, module_path):
             build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -o{dll_path} {dll_cpp}"
             print(build_command)
             subprocess.check_output(build_command, shell=True)
+        mcd.dll_path = dll_path
+        mcd.impl_function_name = "macro_impl"
 
     return on_macro_def
+
+
+def expand_macros(node: Node, macro_scopes):
+    if not node in macro_scopes:
+        return node
+
+    macro_scope = macro_scopes[node]
+
+    definitions = []
+    if macro_scope.macro_definitions:
+        definitions.extend(reversed(macro_scope.macro_definitions))
+    p = macro_scope.parent
+    while p:
+        if p.macro_definitions:
+            definitions.extend(reversed(p.macro_definitions))
+        p = p.parent
+
+    for macro_definition in definitions:
+        pattern: Node = macro_definition.pattern_node
+        parameters = macro_definition.parameters
+        assert isinstance(pattern, Node)
+        match = macro_matches(node, pattern, parameters)
+        if match:
+            macro_dll_path = macro_definition.dll_path
+            macro_impl_name = macro_definition.impl_function_name
+            # new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
+            # if new_node:
+            #     node = new_node
+    node.args = [expand_macros(a, macro_scopes) for a in node.args]
+    if node.func:
+        node.func = expand_macros(node.func, macro_scopes)
+    return node
 
 
 def semantic_analysis(expr: Module):
@@ -762,6 +792,7 @@ def semantic_analysis(expr: Module):
         # no module path with direct compilation of string (test suite only)
         macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(expr, module_path))
         print(macro_scopes)
+        expr = expand_macros(expr, macro_scopes)
 
     expr = build_types(expr)
     expr = build_parents(expr)
