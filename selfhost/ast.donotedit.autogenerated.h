@@ -32,8 +32,6 @@ struct Node;
 
 struct Scope;
 
-    auto class_name( const Node * const  node) -> std::string;
-
 struct Node : public ceto::shared_object, public std::enable_shared_from_this<Node> {
 
     std::shared_ptr<const Node> func;
@@ -50,8 +48,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
 
     decltype(std::string {""}) file_path = std::string {""};
 
+         virtual inline auto classname() const -> std::string {
+            return typeid_name((*this));
+        }
+
          virtual inline auto repr() const -> std::string {
-            const auto classname = class_name(this);
+            const auto classname = this -> classname();
             const auto csv = join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, ", ");
@@ -430,7 +432,7 @@ struct FloatLiteral : public Node {
 struct ListLike_ : public Node {
 
         inline auto repr() const -> std::string override {
-            const auto classname = class_name(this);
+            const auto classname = this -> classname();
             return (((classname + "(") + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, ", ")) + ")");
@@ -502,7 +504,7 @@ using Block::Block;
 struct RedundantParens : public Node {
 
         inline auto repr() const -> std::string override {
-            const auto classname = class_name(this);
+            const auto classname = this -> classname();
             return (((classname + "(") + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, ", ")) + ")");
@@ -522,7 +524,7 @@ struct RedundantParens : public Node {
 struct InfixWrapper_ : public Node {
 
         inline auto repr() const -> std::string override {
-            const auto classname = class_name(this);
+            const auto classname = this -> classname();
             return (((classname + "(") + join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype(ceto::mado(a)->repr())>) { return ceto::mado(a)->repr(); } else { static_cast<void>(ceto::mado(a)->repr()); };
                     }, ", ")) + ")");

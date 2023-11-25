@@ -1,5 +1,6 @@
 include <numeric>
 include <algorithm>
+include <cxxabi.h>
 
 cpp'
 #if _MSC_VER
@@ -45,4 +46,8 @@ def (string_replace, source: std.string, from: std.string, to: std.string:
 
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
     return std.find(container.begin(), container.end(), element) != container.end()
+)
+
+def (typeid_name, object:
+    return abi.__cxa_demangle(typeid(object).name(), 0, 0, 0)
 )

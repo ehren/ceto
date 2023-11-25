@@ -29,10 +29,9 @@ class (ClassDefinition:
     )
 
     def (class_name: virtual:
-        return "ClassDefinition"
+        return typeid_name(*this)
     ) : std.string
 
-    # just for pybind11 (see comments in Node destructor)
     def (destruct: virtual:
         pass
     )
@@ -42,10 +41,6 @@ class (InterfaceDefinition(ClassDefinition):
     def (init:
         super.init(None, None, false, false, false)
     )
-
-    def (class_name: override:
-        return "InterfaceDefinition"
-    ) : std.string
 )
 
 class (VariableDefinition:
@@ -57,37 +52,28 @@ class (VariableDefinition:
     )
 
     def (class_name: virtual:
-        return "VariableDefinition"
+        return typeid_name(*this)
     ) : std.string
 
-    # just for pybind11
     def (destruct: virtual:
         pass
     )
 )
 
 class (LocalVariableDefinition(VariableDefinition):
-    def (class_name: override:
-        return "LocalVariableDefinition"
-    ) : std.string
+    pass
 )
 
 class (GlobalVariableDefinition(VariableDefinition):
-    def (class_name: override:
-        return "GlobalVariableDefinition"
-    ) : std.string
+    pass
 )
 
 class (FieldDefinition(VariableDefinition):
-    def (class_name: override:
-        return "FieldDefinition"
-    ) : std.string
+    pass
 )
 
 class (ParameterDefinition(VariableDefinition):
-    def (class_name: override:
-        return "ParameterDefinition"
-    ) : std.string
+    pass
 )
 
 

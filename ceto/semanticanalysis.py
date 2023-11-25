@@ -716,11 +716,7 @@ def prepare_macro_ready_callback(module, module_path):
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         # allow constant evaluation of any other code in module (or included by module)
-        include_ast = parse("""include (ast)
-def (class_name, node: const:Node.class:ptr:const:
-    return "kludge"  # TODO - better fix
-) : std.string
-        """)
+        include_ast = parse("include (ast)")
         macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 
@@ -732,7 +728,7 @@ def (class_name, node: const:Node.class:ptr:const:
         impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
         dll_cpp = impl_path + ".cpp"
-        if not os.path.isfile(dll_cpp) or True:
+        if not os.path.isfile(dll_cpp):
             with open(dll_cpp, "w") as f:
                 f.write(macro_impl_code)
 

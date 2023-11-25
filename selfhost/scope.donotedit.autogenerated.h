@@ -47,7 +47,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
         }
 
          virtual inline auto class_name() const -> std::string {
-            return "ClassDefinition";
+            return typeid_name((*this));
         }
 
          virtual ~ClassDefinition() {
@@ -61,10 +61,6 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
 };
 
 struct InterfaceDefinition : public ClassDefinition {
-
-        inline auto class_name() const -> std::string override {
-            return "InterfaceDefinition";
-        }
 
     explicit InterfaceDefinition() : ClassDefinition (nullptr, nullptr, false, false, false) {
     }
@@ -82,7 +78,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
         }
 
          virtual inline auto class_name() const -> std::string {
-            return "VariableDefinition";
+            return typeid_name((*this));
         }
 
          virtual ~VariableDefinition() {
@@ -99,19 +95,11 @@ struct LocalVariableDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
 
-        inline auto class_name() const -> std::string override {
-            return "LocalVariableDefinition";
-        }
-
 };
 
 struct GlobalVariableDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
-
-        inline auto class_name() const -> std::string override {
-            return "GlobalVariableDefinition";
-        }
 
 };
 
@@ -119,19 +107,11 @@ struct FieldDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
 
-        inline auto class_name() const -> std::string override {
-            return "FieldDefinition";
-        }
-
 };
 
 struct ParameterDefinition : public VariableDefinition {
 
 using VariableDefinition::VariableDefinition;
-
-        inline auto class_name() const -> std::string override {
-            return "ParameterDefinition";
-        }
 
 };
 

@@ -9,7 +9,6 @@ include (utility)
 
 class (Node)
 class (Scope)
-def (class_name, node: const:Node.class:ptr:const) : std.string
 
 
 class (Node:
@@ -28,8 +27,12 @@ class (Node:
     _parent: Node:weak = {}
     file_path = ""s
 
+    def (classname: virtual:
+        return typeid_name(*this)
+    ) : std.string
+
     def (repr: virtual:
-        classname = class_name(this)
+        classname = self.classname()
         csv = join(self.args, lambda(a, a.repr()), ", ")
         return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
@@ -50,10 +53,6 @@ class (Node:
         self._parent = p
     )
 
-    # we're never creating an instance with new (or using with make_unique)
-    # so the virtual destructor here is not strictly necessary (despite overzealous compiler warnings)
-    # HOWEVER https://github.com/pybind/pybind11/issues/1790 "Bug with inheritance, shared_ptr holder and enable_shared_from_this
-    # (pybind11 insists on creating a unique_ptr holding anything deriving from enable_shared_from_this for some reason)
     def (destruct: virtual:
         pass
     )
@@ -344,7 +343,7 @@ class (ListLike_(Node):
     )
 
     def (repr: override:
-        classname = class_name(this)
+        classname = self.classname()
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
@@ -391,7 +390,7 @@ class (RedundantParens(Node):
     )
 
     def (repr: override:
-        classname = class_name(this)
+        classname = self.classname()
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
@@ -406,7 +405,7 @@ class (InfixWrapper_(Node):
     )
 
     def (repr: override:
-        classname = class_name(this)
+        classname = self.classname()
         return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 

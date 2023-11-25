@@ -22,11 +22,6 @@ include(macro_definition_visitor)
 py: namespace = pybind11
 
 
-def (class_name, node: const:Node.class:ptr:const:
-    selph : py.object = py.cast(node)
-    return std.string(py.str(selph.attr("__class__").attr("__name__")))
-) : std.string
-
 def (module_path:
     acquire = py.gil_scoped_acquire()
     module: py.object = py.module.import("ceto");

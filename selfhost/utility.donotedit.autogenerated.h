@@ -24,11 +24,14 @@
 ;
 #include <algorithm>
 ;
+#include <cxxabi.h>
+;
 
 #if _MSC_VER
 #define CETO_EXPORT __declspec(dllexport)
 #else
 #define CETO_EXPORT __attribute__((visibility("default")))
+//#define CETO_EXPORT __attribute__((visibility("default"))) __attribute__((dll_export))
 #endif
 ;
     template <typename T1, typename T2>
@@ -57,5 +60,10 @@ while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos)
     template <typename T1>
 auto contains(const T1& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
         return (std::find(ceto::mado(container)->begin(), ceto::mado(container)->end(), element) != ceto::mado(container)->end());
+    }
+
+    template <typename T1>
+auto typeid_name(const T1& object) -> auto {
+        return abi::__cxa_demangle(ceto::mado(typeid(object))->name(), 0, 0, 0);
     }
 
