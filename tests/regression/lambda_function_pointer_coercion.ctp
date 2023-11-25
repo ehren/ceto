@@ -20,13 +20,13 @@ def (main:
         l6 = lambda(x:int, lambda(y, y + x):int)(2)(3)
     else:
         l6 = lambda(x:int, return lambda(y, y + x):int)(2)(3)  # something about the double use of 'is void?' constexpr if (for implicit return in lambda) doesn't even parse in msvc (their bug)
-    ) : pre
+    ) : preprocessor
     std.cout << l6
     if (not defined(_MSC_VER):
         l7 = lambda(x:int, lambda(y, y + x):decltype(1))(3)(4)
     else:
         l7 = lambda(x:int, return lambda(y, y + x):decltype(1))(3)(4)
-    ) : pre
+    ) : preprocessor
     std.cout << l7
     # l8 = lambda(x:int, lambda(y, y + x)):decltype(lambda(x:int, 0))(0)(0)  # still an error
     # std.cout << l8

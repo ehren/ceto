@@ -4,19 +4,21 @@ include (utility)
 include <typeinfo>
 include <ranges>
 
-cpp'
-#if _MSC_VER
-#include <windows.h>
-#define CETO_DLSYM GetProcAddress
-#define CETO_DLOPEN LoadLibraryA
-#define CETO_DLCLOSE FreeLibrary
-#else
-#include <dlfcn.h>
-#define CETO_DLSYM dlsym
-#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
-#define CETO_DLCLOSE dlclose
-#endif
-'
+if (_MSC_VER:
+    include <windows.h>
+    cpp'
+    #define CETO_DLSYM GetProcAddress
+    #define CETO_DLOPEN LoadLibraryA
+    #define CETO_DLCLOSE FreeLibrary
+    '
+else:
+    include <dlfcn.h>
+    cpp'
+    #define CETO_DLSYM dlsym
+    #define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+    #define CETO_DLCLOSE dlclose
+    '
+) : preprocessor
 
 # def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
 #     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))

@@ -1,15 +1,17 @@
 include <numeric>
 include <algorithm>
-include <cxxabi.h>
 
-cpp'
-#if _MSC_VER
-#define CETO_EXPORT __declspec(dllexport)
-#else
-#define CETO_EXPORT __attribute__((visibility("default")))
-//#define CETO_EXPORT __attribute__((visibility("default"))) __attribute__((dll_export))
-#endif
-'
+
+if (_MSC_VER:
+    cpp'
+    #define CETO_EXPORT __declspec(dllexport)
+    '
+else:
+    include <cxxabi.h>
+    cpp'
+    #define CETO_EXPORT __attribute__((visibility("default")))
+    '
+): preprocessor
 
 
 def (join, v, to_string, sep=""s:
@@ -49,5 +51,10 @@ def (contains, container, element: const:typename:std.remove_reference_t<decltyp
 )
 
 def (typeid_name, object:
-    return abi.__cxa_demangle(typeid(object).name(), 0, 0, 0)
+    if (_MSC_VER:
+        # already demangled
+        return typeid(object).name()
+    else:
+        return abi.__cxa_demangle(typeid(object).name(), 0, 0, 0)
+    ) : preprocessor
 )

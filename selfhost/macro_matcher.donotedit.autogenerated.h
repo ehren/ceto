@@ -28,55 +28,60 @@
 ;
 #include <ranges>
 ;
-
 #if _MSC_VER
-#include <windows.h>
-#define CETO_DLSYM GetProcAddress
-#define CETO_DLOPEN LoadLibraryA
-#define CETO_DLCLOSE FreeLibrary
-#else
-#include <dlfcn.h>
-#define CETO_DLSYM dlsym
-#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
-#define CETO_DLCLOSE dlclose
-#endif
+    #include <windows.h>
 ;
+    
+    #define CETO_DLSYM GetProcAddress
+    #define CETO_DLOPEN LoadLibraryA
+    #define CETO_DLCLOSE FreeLibrary
+    ;
+#else
+    #include <dlfcn.h>
+;
+    
+    #define CETO_DLSYM dlsym
+    #define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+    #define CETO_DLCLOSE dlclose
+    ;
+#endif
+
     inline auto macro_matches(const std::shared_ptr<const Node>&  node, const std::shared_ptr<const Node>&  pattern, const std::map<std::string,std::shared_ptr<const Node>>  params) -> std::optional<std::map<std::string,std::shared_ptr<const Node>>> {
         (((std::cout << "node: ") << ceto::mado(node)->repr()) << " pattern: ") << ceto::mado(pattern)->repr();
-if ((std::dynamic_pointer_cast<const Identifier>(pattern) != nullptr)) {
+        if ((std::dynamic_pointer_cast<const Identifier>(pattern) != nullptr)) {
             const auto search = ceto::mado(params)->find(ceto::mad(ceto::mado(pattern)->name())->value());
-if (search != ceto::mado(params)->end()) {
+            if (search != ceto::mado(params)->end()) {
                 const auto param_name = (search -> first);
                 const auto matched_param = (search -> second);
-if ((std::dynamic_pointer_cast<const Identifier>(matched_param) != nullptr)) {
+                if ((std::dynamic_pointer_cast<const Identifier>(matched_param) != nullptr)) {
                     return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                 } else if (const auto typeop = std::dynamic_pointer_cast<const TypeOp>(matched_param)) {
                     const auto ast_name = ceto::mado(typeop)->rhs();
-if ((std::dynamic_pointer_cast<const Identifier>(ast_name) != nullptr)) {
-if ((ceto::mado(ast_name)->name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) {
+                    if ((std::dynamic_pointer_cast<const Identifier>(ast_name) != nullptr)) {
+                        if ((ceto::mado(ast_name)->name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         } else if (((ceto::mado(ast_name)->name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         }
                         const auto node_class_name = ceto::mado(node)->classname();
-if (node_class_name == ceto::mad(ceto::mado(ceto::mado(typeop)->rhs())->name())->value()) {
+                        if (node_class_name == ceto::mad(ceto::mado(ceto::mado(typeop)->rhs())->name())->value()) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         }
                     }
                 }
             }
         }
-if (typeid((*node)) != typeid((*pattern))) {
+        if (typeid((*node)) != typeid((*pattern))) {
             return {};
         }
-if (ceto::mado(ceto::mado(node)->args)->size() != ceto::mado(ceto::mado(pattern)->args)->size()) {
+        if (ceto::mado(ceto::mado(node)->args)->size() != ceto::mado(ceto::mado(pattern)->args)->size()) {
             return {};
         }
-if ((ceto::mado(node)->func == nullptr) != (ceto::mado(pattern)->func == nullptr)) {
+        if ((ceto::mado(node)->func == nullptr) != (ceto::mado(pattern)->func == nullptr)) {
             return {};
         }
-if (((ceto::mado(ceto::mado(node)->args)->size() == 0) && (ceto::mado(node)->func == nullptr)) && (ceto::mado(pattern)->func == nullptr)) {
-if (ceto::mado(node)->repr() == ceto::mado(pattern)->repr()) {
+        if (((ceto::mado(ceto::mado(node)->args)->size() == 0) && (ceto::mado(node)->func == nullptr)) && (ceto::mado(pattern)->func == nullptr)) {
+            if (ceto::mado(node)->repr() == ceto::mado(pattern)->repr()) {
                 return std::map<std::string,std::shared_ptr<const Node>>{};
             }
             return {};
@@ -84,14 +89,14 @@ if (ceto::mado(node)->repr() == ceto::mado(pattern)->repr()) {
         auto submatches { std::map<std::string,std::shared_ptr<const Node>>{} } ;
         for(const auto& i : std::ranges::iota_view(0u, ceto::mado(ceto::mado(node)->args)->size())) {
             const auto m = macro_matches(ceto::maybe_bounds_check_access(ceto::mado(node)->args,i), ceto::maybe_bounds_check_access(ceto::mado(pattern)->args,i), params);
-if (!m) {
+            if (!m) {
                 return {};
             }
             ceto::mado(submatches)->insert(ceto::mado(m)->begin(), ceto::mado(m)->end());
         }
-if (ceto::mado(node)->func) {
+        if (ceto::mado(node)->func) {
             const auto m = macro_matches(ceto::mado(node)->func, ceto::mado(pattern)->func, params);
-if (!m) {
+            if (!m) {
                 return {};
             }
             ceto::mado(submatches)->insert(ceto::mado(m)->begin(), ceto::mado(m)->end());
@@ -101,7 +106,7 @@ if (!m) {
 
     inline auto macro_trampoline(const std::string&  macro_impl_name, const std::string&  macro_dll_path, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
         const auto handle = CETO_DLOPEN(ceto::mado(macro_dll_path)->c_str());
-if (!handle) {
+        if (!handle) {
             throw std::runtime_error(std::string {"Failed to open macro dll: "} + macro_dll_path);
         }
         const auto fptr = CETO_DLSYM(handle, ceto::mado(macro_impl_name)->c_str());

@@ -24,19 +24,21 @@
 ;
 #include <algorithm>
 ;
-#include <cxxabi.h>
-;
-
 #if _MSC_VER
-#define CETO_EXPORT __declspec(dllexport)
+    
+    #define CETO_EXPORT __declspec(dllexport)
+    ;
 #else
-#define CETO_EXPORT __attribute__((visibility("default")))
-//#define CETO_EXPORT __attribute__((visibility("default"))) __attribute__((dll_export))
-#endif
+    #include <cxxabi.h>
 ;
+    
+    #define CETO_EXPORT __attribute__((visibility("default")))
+    ;
+#endif
+
     template <typename T1, typename T2>
 auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
-if (ceto::mado(v)->empty()) {
+        if (ceto::mado(v)->empty()) {
             return std::string {""};
         }
         return std::accumulate(ceto::mado(v)->cbegin() + 1, ceto::mado(v)->cend(), to_string(ceto::maybe_bounds_check_access(v,0)), [&to_string, &sep](const auto &a, const auto &el) {
@@ -49,7 +51,7 @@ if (ceto::mado(v)->empty()) {
         ceto::mado(new_string)->reserve(ceto::mado(source)->length());
         std::string::size_type last_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(last_pos)>);
         std::string::size_type find_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(find_pos)>);
-while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos))) {            ceto::mado(new_string)->append(source, last_pos, find_pos - last_pos);
+        while (std::string::npos != (find_pos = ceto::mado(source)->find(from, last_pos))) {            ceto::mado(new_string)->append(source, last_pos, find_pos - last_pos);
             new_string += to;
             last_pos = (find_pos + ceto::mado(from)->length());
         }
@@ -64,6 +66,11 @@ auto contains(const T1& container,  const typename std::remove_reference_t<declt
 
     template <typename T1>
 auto typeid_name(const T1& object) -> auto {
-        return abi::__cxa_demangle(ceto::mado(typeid(object))->name(), 0, 0, 0);
+        #if _MSC_VER
+            return ceto::mado(typeid(object))->name();
+        #else
+            return abi::__cxa_demangle(ceto::mado(typeid(object))->name(), 0, 0, 0);
+        #endif
+
     }
 

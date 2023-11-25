@@ -137,7 +137,7 @@ def codegen_if(ifcall : Call, cx):
             raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
 
     # TODO should these be disallowed with expression ifs?
-    elif ifkind == "pre":
+    elif ifkind == "preprocessor":
         if_start = "#if "
         block_opening = "\n"
         elif_start = "#elif "
@@ -232,15 +232,12 @@ def codegen_for(node, cx):
         var_str = codegen_node(var, cx)
         type_str = None
 
-    indt = cx.indent_str()
-
-    # forstr = indt + 'for(const auto& {} : {}) {{\n'.format(codegen_node(var), codegen_node(iterable))
-
     if type_str is None:
         type_str = "const auto&"
 
-    forstr = indt + 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
+    forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
 
+    indt = cx.indent_str()
     block_cx = cx.enter_scope()
     forstr += codegen_block(block, block_cx)
     forstr += indt + "}\n"
@@ -663,55 +660,54 @@ def codegen_while(whilecall, cx):
     return cpp
 
 
+def codegen_block_item(b : Node, cx):
+    assert isinstance(b, Node)
+
+    if isinstance(b, Identifier):
+        if b.name == "pass":
+            return "; // pass\n"
+
+    if isinstance(b, Call):
+        if b.func.name == "for":
+            return codegen_for(b, cx)
+        elif b.func.name in ["class", "struct"]:
+            return codegen_class(b, cx)
+        elif b.func.name == "if":
+            return codegen_if(b, cx)
+        elif b.func.name == "while":
+            return codegen_while(b, cx)
+
+    if b.declared_type is not None:
+        # typed declaration
+
+        types = type_node_to_list_of_types(b.declared_type)
+        if any(t.name in ["typedef", "using"] for t in types):
+            # TODO more error checking here
+            # we might just want to ban 'using' altogether (dangerous in combination with _ceto_ defined classes (not structs)
+            declared_type = b.declared_type
+            cpp = codegen_type(b, b.declared_type, cx)
+            b.declared_type = None
+            cpp += " " + codegen_node(b, cx) + ";\n"
+            b.declared_type = declared_type
+            return cpp
+
+        field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
+        decl = field_type_const_part + field_type_str + " " + b.name
+        return " " + decl + ";\n"
+
+    cpp = codegen_node(b, cx)
+    if not is_comment(b):
+        cpp += ";\n"
+    return cpp
+
+
 def codegen_block(block: Block, cx):
     assert isinstance(block, Block)
-    assert not isinstance(block, Module)  # handled elsewhere
     cpp = ""
     indent_str = cx.indent_str()
 
     for b in block.args:
-        if isinstance(b, Identifier):
-            if b.name == "pass":
-                cpp += indent_str + "; // pass\n"
-                continue
-
-        if isinstance(b, Call):
-            if b.func.name == "for":
-                cpp += codegen_for(b, cx)
-                continue
-            elif b.func.name in ["class", "struct"]:
-                cpp += codegen_class(b, cx)
-                continue
-            elif b.func.name == "if":
-                cpp += codegen_if(b, cx)
-                continue
-            elif b.func.name == "while":
-                cpp += codegen_while(b, cx)
-                continue
-
-        if b.declared_type is not None:
-            # typed declaration
-
-            types = type_node_to_list_of_types(b.declared_type)
-            if any(t.name in ["typedef", "using"] for t in types):
-                # TODO more error checking here
-                # we might just want to ban 'using' altogether (dangerous in combination with _ceto_ defined classes (not structs)
-                declared_type = b.declared_type
-                cpp += codegen_type(b, b.declared_type, cx)
-                b.declared_type = None
-                cpp += " " + codegen_node(b, cx) + ";\n"
-                b.declared_type = declared_type
-                continue
-
-            field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
-            decl = field_type_const_part + field_type_str + " " + b.name
-            cpp += " " + decl + ";\n"
-
-            continue
-
-        cpp += indent_str + codegen_node(b, cx)
-        if not is_comment(b):
-            cpp += ";\n"
+        cpp += indent_str + codegen_block_item(b, cx)
 
     return cpp
 
@@ -2502,10 +2498,8 @@ def codegen_module(module: Module, cx: Scope):
             funcx = cx.enter_scope()
             funcx.in_function_param_list = True
             modarg_code = codegen_def(modarg, funcx)
-        elif isinstance(modarg, Call) and modarg.func.name in ["class", "struct"]:
-            modarg_code = codegen_class(modarg, cx)
         else:
-            modarg_code = codegen_node(modarg, cx) + ";\n"  # TODO: pass at global scope etc (this should maybe all be a call to codegen_block)
+            modarg_code = codegen_block_item(modarg, cx)
 
         if modarg.file_path:
             included_module_code[modarg.file_path] += modarg_code

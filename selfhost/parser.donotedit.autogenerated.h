@@ -33,7 +33,7 @@
         const auto grammar_string = ceto::mado(grammar_buffer)->str();
         auto parser { peg::parser() } ;
         const auto ok = ceto::mado(parser)->load_grammar(ceto::mado(grammar_string)->c_str());
-if (!ok) {
+        if (!ok) {
             throw std::runtime_error("failed to load grammar");
         }
         ceto::mado(parser)->parse(str);

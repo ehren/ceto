@@ -36,7 +36,7 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
         template <typename T1>
 auto generate_loc(const T1& node) -> void {
-if (!preserve_source_loc) {
+            if (!preserve_source_loc) {
                 return;
             }
             const auto loc = std::get<1>(ceto::mado(node)->source);
@@ -45,12 +45,12 @@ if (!preserve_source_loc) {
 
         inline auto visit(const Node&  node) -> void override {
             (this -> repr) += (std::string(typeid_name(node)) + "(");
-if (ceto::mado(node)->func) {
+            if (ceto::mado(node)->func) {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
                 (this -> repr) += ", ";
             }
             (this -> repr) += "[";
-if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
+            if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
                 for(const auto& arg : ceto::mado(node)->args) {
                     ceto::mado(arg)->accept((*this));
                     (this -> repr) += ", ";
@@ -117,13 +117,13 @@ if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
 
         inline auto visit(const StringLiteral&  node) -> void override {
             (this -> repr) += (((std::string(typeid_name(node)) + "(") + ceto::mado(node)->escaped()) + ", ");
-if (ceto::mado(node)->prefix) {
+            if (ceto::mado(node)->prefix) {
                 ceto::mado(ceto::mado(node)->prefix)->accept((*this));
             } else {
                 (this -> repr) += "None";
             }
             (this -> repr) += ", ";
-if (ceto::mado(node)->suffix) {
+            if (ceto::mado(node)->suffix) {
                 ceto::mado(ceto::mado(node)->suffix)->accept((*this));
             } else {
                 (this -> repr) += "None";
@@ -135,7 +135,7 @@ if (ceto::mado(node)->suffix) {
 
         inline auto visit(const IntegerLiteral&  node) -> void override {
             (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->integer_string) + "\", ");
-if (ceto::mado(node)->suffix) {
+            if (ceto::mado(node)->suffix) {
                 ceto::mado(ceto::mado(node)->suffix)->accept((*this));
             } else {
                 (this -> repr) += "None";
@@ -147,7 +147,7 @@ if (ceto::mado(node)->suffix) {
 
         inline auto visit(const FloatLiteral&  node) -> void override {
             (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->float_string) + "\", ");
-if (ceto::mado(node)->suffix) {
+            if (ceto::mado(node)->suffix) {
                 ceto::mado(ceto::mado(node)->suffix)->accept((*this));
             } else {
                 (this -> repr) += "None";

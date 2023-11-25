@@ -91,7 +91,7 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
         inline auto visit(const Node&  node) -> void override {
             ceto::maybe_bounds_check_access(this -> macro_scopes,ceto::shared_from((&node))) = (this -> current_scope);
-if (ceto::mado(node)->func) {
+            if (ceto::mado(node)->func) {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
             }
             for(const auto& arg : ceto::mado(node)->args) {
@@ -101,19 +101,19 @@ if (ceto::mado(node)->func) {
 
         inline auto visit(const Call&  node) -> void override {
             ceto::maybe_bounds_check_access(this -> macro_scopes,ceto::shared_from((&node))) = (this -> current_scope);
-if (ceto::mado(ceto::mado(node)->func)->name() != "defmacro") {
+            if (ceto::mado(ceto::mado(node)->func)->name() != "defmacro") {
                 ceto::mado(ceto::mado(node)->func)->accept((*this));
                 for(const auto& arg : ceto::mado(node)->args) {
                     ceto::mado(arg)->accept((*this));
                 }
                 return;
             }
-if (ceto::mado(ceto::mado(node)->args)->size() < 2) {
+            if (ceto::mado(ceto::mado(node)->args)->size() < 2) {
                 throw SemanticAnalysisError{"bad defmacro args"};
             }
             const auto pattern = ceto::maybe_bounds_check_access(ceto::mado(node)->args,0);
             const auto body = std::dynamic_pointer_cast<const Block>(ceto::mado(ceto::mado(node)->args)->back());
-if (!body) {
+            if (!body) {
                 throw SemanticAnalysisError{"last defmacro arg must be a Block"};
             }
             auto parameters { std::map<std::string,std::shared_ptr<const Node>>{} } ;
@@ -130,7 +130,7 @@ if (!body) {
                 }}()
 ;
                 const auto i = ceto::mado(parameters)->find(name);
-if (i != ceto::mado(parameters)->end()) {
+                if (i != ceto::mado(parameters)->end()) {
                     throw SemanticAnalysisError{"duplicate defmacro params"};
                 }
                 ceto::mad(parameters)->emplace(name, arg);
