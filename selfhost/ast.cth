@@ -502,9 +502,9 @@ class (InfixWrapper_(Node):
 #)
 
 # this should probably take an index into an already dlsymed table of fptrs
-def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
-    # writing a wrapper type for pybind11 around the correct function pointer would be better (fine for now)
-    # note that extra parens required around '+' to specify lambda return type (precedence of ':' vs '+') TODO(?) remove the dubious post-parse hacks for immediatelly invoked lambdas with a return type (just require parens)
-    f = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
-    return (*f)(matches)
-)
+#def (macro_trampoline, fptr : uintptr_t, matches: std.map<string, Node>:
+#    # writing a wrapper type for pybind11 around the correct function pointer would be better (fine for now)
+#    # note that extra parens required around '+' to specify lambda return type (precedence of ':' vs '+') TODO(?) remove the dubious post-parse hacks for immediatelly invoked lambdas with a return type (just require parens)
+#    f = reinterpret_cast<decltype(+(lambda(matches:std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+#    return (*f)(matches)
+#)

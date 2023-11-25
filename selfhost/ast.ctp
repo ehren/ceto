@@ -232,6 +232,7 @@ lambda(m : mut:auto:rref:
     m.def("parse_test", &parse_test)
 
     py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
+    #py.bind_map<std.map<Node, MacroDefinition>>(m, "NodeMacroDefinitionMap");
 
     py.class_<MacroDefinition>(m, "MacroDefinition").def(
         py.init<Call, Node, Block, std.map<string, Node>>()).def_readonly(
@@ -249,6 +250,7 @@ lambda(m : mut:auto:rref:
 
     m.def("macro_matches", &macro_matches)
     m.def("visit_macro_definitions", &visit_macro_definitions)
+    m.def("macro_trampoline", &macro_trampoline)
 
     return
 )(m)

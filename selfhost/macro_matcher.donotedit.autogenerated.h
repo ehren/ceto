@@ -26,6 +26,19 @@
 ;
 #include <ranges>
 ;
+
+#if _MSC_VER
+#include <windows.h>
+#define CETO_DLSYM GetProcAddress
+#define CETO_DLOPEN LoadLibraryA
+#define CETO_DLCLOSE FreeLibrary
+#else
+#include <dlfcn.h>
+#define CETO_DLSYM dlsym
+#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+#define CETO_DLCLOSE dlclose
+#endif
+;
     inline auto macro_matches(const std::shared_ptr<const Node>&  node, const std::shared_ptr<const Node>&  pattern, const std::map<std::string,std::shared_ptr<const Node>>  params) -> std::optional<std::map<std::string,std::shared_ptr<const Node>>> {
         (((std::cout << "node: ") << ceto::mado(node)->repr()) << " pattern: ") << ceto::mado(pattern)->repr();
 if ((std::dynamic_pointer_cast<const Identifier>(pattern) != nullptr)) {
@@ -107,5 +120,17 @@ if (!m) {
         }
         (std::cout << 23) << "\n";
         return submatches;
+    }
+
+    inline auto macro_trampoline(const std::string&  macro_impl_name, const std::string&  macro_dll_path, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
+        const auto handle = CETO_DLOPEN(ceto::mado(macro_dll_path)->c_str());
+if (!handle) {
+            throw std::runtime_error(std::string {"Failed to open macro dll: "} + macro_dll_path);
+        }
+        const auto fptr = CETO_DLSYM(handle, ceto::mado(macro_impl_name)->c_str());
+        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  m) -> std::shared_ptr<const Node> {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
+                })>(fptr);
+        return (*f)(match);
     }
 

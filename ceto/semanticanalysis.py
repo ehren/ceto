@@ -10,7 +10,7 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
 from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
-from ceto._abstractsyntaxtree import macro_matches
+from ._abstractsyntaxtree import macro_matches, macro_trampoline
 
 
 def isa_or_wrapped(node, NodeClass):
@@ -732,7 +732,7 @@ def prepare_macro_ready_callback(module, module_path):
 
             project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 
-            build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -o{dll_path} {dll_cpp}"
+            build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
             print(build_command)
             subprocess.check_output(build_command, shell=True)
         mcd.dll_path = dll_path
@@ -764,9 +764,9 @@ def expand_macros(node: Node, macro_scopes):
         if match:
             macro_dll_path = macro_definition.dll_path
             macro_impl_name = macro_definition.impl_function_name
-            # new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
-            # if new_node:
-            #     node = new_node
+            new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
+            if new_node:
+                node = new_node
     node.args = [expand_macros(a, macro_scopes) for a in node.args]
     if node.func:
         node.func = expand_macros(node.func, macro_scopes)

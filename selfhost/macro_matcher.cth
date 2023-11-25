@@ -3,6 +3,20 @@ include (ast)
 include <typeinfo>
 include <ranges>
 
+cpp'
+#if _MSC_VER
+#include <windows.h>
+#define CETO_DLSYM GetProcAddress
+#define CETO_DLOPEN LoadLibraryA
+#define CETO_DLCLOSE FreeLibrary
+#else
+#include <dlfcn.h>
+#define CETO_DLSYM dlsym
+#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+#define CETO_DLCLOSE dlclose
+#endif
+'
+
 # def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
 #     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
 # )
@@ -106,3 +120,15 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
 
     return submatches
 ) : std.optional<std.map<std.string, Node>>
+
+
+def (macro_trampoline, macro_impl_name: std.string, macro_dll_path: std.string, match: std.map<std.string, Node>:
+    # new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
+    handle = CETO_DLOPEN(macro_dll_path.c_str())  # just leak it for now
+    if (not handle:
+        throw (std.runtime_error("Failed to open macro dll: "s + macro_dll_path))
+    )
+    fptr = CETO_DLSYM(handle, macro_impl_name.c_str())
+    f = reinterpret_cast<decltype(+(lambda(m: std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    return (*f)(match)
+) : Node

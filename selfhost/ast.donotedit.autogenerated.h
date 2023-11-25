@@ -539,10 +539,3 @@ struct InfixWrapper_ : public Node {
 
 };
 
-    inline auto macro_trampoline(const uintptr_t  fptr, const std::map<std::string,std::shared_ptr<const Node>>  matches) -> auto {
-        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  matches) -> std::shared_ptr<const Node> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
-                })>(fptr);
-        return (*f)(matches);
-    }
-

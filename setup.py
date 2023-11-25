@@ -19,6 +19,9 @@ __version__ = "0.1.2"
 _extra_compile_args = [] #["-O0", "-g3"]
 if sys.platform == "win32":
     _extra_compile_args = ["/Zc:__cplusplus", "/Wall", "/permissive-"]
+    _extra_link_args = []
+else:
+    _extra_link_args = ["-Wl,-ldl"]
 
 ext_modules = [
     Pybind11Extension("ceto._abstractsyntaxtree",
@@ -26,7 +29,8 @@ ext_modules = [
         #define_macros = [('VERSION_INFO', __version__)],
         cxx_std=20,
         include_dirs=["include", "selfhost/thirdparty"],
-        extra_compile_args=_extra_compile_args
+        extra_compile_args=_extra_compile_args,
+        extra_link_args=_extra_link_args
     ),
 ]
 

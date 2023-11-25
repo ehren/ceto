@@ -115,6 +115,7 @@ using namespace pybind11::literals;
         ceto::mado(ceto::mado(ceto::mado(py::class_<MacroScope,std::shared_ptr<MacroScope>>(m, "MacroScope"))->def(py::init<>()))->def_property_readonly("parent", (&MacroScope::parent)))->def_readwrite("macro_definitions", (&MacroScope::macro_definitions));
         ceto::mado(m)->def("macro_matches", (&macro_matches));
         ceto::mado(m)->def("visit_macro_definitions", (&visit_macro_definitions));
+        ceto::mado(m)->def("macro_trampoline", (&macro_trampoline));
         return;
         }(m);
 };

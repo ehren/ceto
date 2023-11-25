@@ -27,14 +27,8 @@
 
 #if _MSC_VER
 #define CETO_EXPORT __declspec(dllexport)
-#define CETO_DLSYM GetProcAddress
-#define CETO_DLOPEN LoadLibraryA
-#define CETO_DLCLOSE FreeLibrary
 #else
 #define CETO_EXPORT __attribute__((visibility("default")))
-#define CETO_DLSYM dlsym
-#define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
-#define CETO_DLCLOSE dlclose
 #endif
 ;
     template <typename T1, typename T2>
