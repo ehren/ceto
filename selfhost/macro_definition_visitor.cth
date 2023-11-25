@@ -11,7 +11,7 @@ struct (SemanticAnalysisError(std.runtime_error):
     pass
 )
 
-struct (MacroDefinition:
+class (MacroDefinition:
     defmacro_node: Call
     pattern_node: Node
     body: Block

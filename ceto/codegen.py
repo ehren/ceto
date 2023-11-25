@@ -1177,6 +1177,13 @@ def codegen_def(defnode: Call, cx):
             specifier_types.remove(finals[0])
             final = " final"
 
+        noinlines = [t for t in specifier_types if t.name == "noinline"]
+        if noinlines:
+            if len(noinlines) > 1:
+                raise CodeGenError("too many 'noinline' specified", defnode)
+            specifier_types.remove(noinlines[0])
+            inline = ""
+
         if specifier_types:
             specifier_node = list_to_typed_node(specifier_types)
             specifier = " " + codegen_type(name_node, specifier_node, cx) + " "

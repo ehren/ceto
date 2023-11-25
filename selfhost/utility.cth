@@ -6,6 +6,7 @@ cpp'
 #define CETO_EXPORT __declspec(dllexport)
 #else
 #define CETO_EXPORT __attribute__((visibility("default")))
+//#define CETO_EXPORT __attribute__((visibility("default"))) __attribute__((dll_export))
 #endif
 '
 

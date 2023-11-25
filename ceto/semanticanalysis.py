@@ -698,15 +698,17 @@ def prepare_macro_ready_callback(module, module_path):
         from .codegen import codegen
         print("mcd", mcd.defmacro_node)
 
-        impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
+        impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
             impl_str += indt + param_name + ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
-        impl_str += indt + "pass\n)"
+        impl_str += indt + "pass\n): Node"
 
         macro_impl = parse(impl_str).args[0]
-        assert isinstance(macro_impl, Call)
-        impl_block = macro_impl.args[-1]
+        assert isinstance(macro_impl, TypeOp)
+        impl_def = macro_impl.args[0]
+        assert isinstance(impl_def, Call)
+        impl_block = impl_def.args[-1]
         assert isinstance(impl_block, Block)
         assert isinstance(mcd.body, Block)
 

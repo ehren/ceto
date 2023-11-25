@@ -38,7 +38,7 @@ using std::runtime_error::runtime_error;
 
 };
 
-struct MacroDefinition : public ceto::object {
+struct MacroDefinition : public ceto::shared_object, public std::enable_shared_from_this<MacroDefinition> {
 
     std::shared_ptr<const Call> defmacro_node;
 
@@ -62,13 +62,13 @@ struct MacroScope : public ceto::shared_object, public std::enable_shared_from_t
 
     std::weak_ptr<const MacroScope> _parent = {};
 
-    std::vector<MacroDefinition> macro_definitions = std::vector<MacroDefinition>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<MacroDefinition>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
+    std::vector<std::shared_ptr<const MacroDefinition>> macro_definitions = std::vector<std::shared_ptr<const MacroDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const MacroDefinition>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
 
         inline auto parent() const -> auto {
             return ceto::mado(this -> _parent)->lock();
         }
 
-        inline auto add_definition(const MacroDefinition&  defn) -> void {
+        inline auto add_definition(const std::shared_ptr<const MacroDefinition>&  defn) -> void {
             ceto::mado(this -> macro_definitions)->push_back(defn);
         }
 
@@ -83,7 +83,7 @@ struct MacroScope : public ceto::shared_object, public std::enable_shared_from_t
 
 struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
-    std::function<void(MacroDefinition)> on_visit_definition;
+    std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition;
 
     std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const MacroScope>> macro_scopes = {};
 
@@ -135,7 +135,7 @@ if (i != ceto::mado(parameters)->end()) {
                 }
                 ceto::mad(parameters)->emplace(name, arg);
             }
-            const auto defn = MacroDefinition{ceto::shared_from((&node)), pattern, body, parameters};
+            const auto defn = std::make_shared<const decltype(MacroDefinition{ceto::shared_from((&node)), pattern, body, parameters})>(ceto::shared_from((&node)), pattern, body, parameters);
             ceto::mado(this -> current_scope)->add_definition(defn);
             this -> on_visit_definition(defn);
         }
@@ -160,13 +160,13 @@ if (i != ceto::mado(parameters)->end()) {
             (this -> current_scope) = outer;
         }
 
-    explicit MacroDefinitionVisitor(std::function<void(MacroDefinition)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
+    explicit MacroDefinitionVisitor(std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
 
     MacroDefinitionVisitor() = delete;
 
 };
 
-    inline auto visit_macro_definitions(const std::shared_ptr<const Module>&  node, const std::function<void(MacroDefinition)>  on_visit) -> std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const MacroScope>> {
+    inline auto visit_macro_definitions(const std::shared_ptr<const Module>&  node, const std::function<void(std::shared_ptr<const MacroDefinition>)>  on_visit) -> std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const MacroScope>> {
         auto visitor { MacroDefinitionVisitor{on_visit} } ;
         ceto::mado(node)->accept(visitor);
         return ceto::mado(visitor)->macro_scopes;
