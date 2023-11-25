@@ -716,7 +716,11 @@ def prepare_macro_ready_callback(module, module_path):
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         # allow constant evaluation of any other code in module (or included by module)
-        include_ast = parse("include (ast)")
+        include_ast = parse("""include (ast)
+def (class_name, node: const:Node.class:ptr:const:
+    return "kludge"  # TODO - better fix
+) : std.string
+        """)
         macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 

@@ -621,6 +621,7 @@ def codegen_class(node : Call, cx):
             else:
                 default_inherits += ["public ceto::shared_object", "public std::enable_shared_from_this<" + name.name + ">"]
 
+    #class_header = 'struct __attribute__((visibility("default")))' + name.name + " : " + ", ".join(default_inherits)
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
