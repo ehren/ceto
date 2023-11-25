@@ -3,6 +3,7 @@ from collections import defaultdict
 import sys
 import os
 import subprocess
+import concurrent.futures
 from hashlib import sha256
 
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
@@ -693,6 +694,8 @@ def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macr
 
 
 def prepare_macro_ready_callback(module, module_path):
+    jobs = []
+
     def on_macro_def(mcd: MacroDefinition):
         from .parser import parse
         from .codegen import codegen
@@ -734,13 +737,20 @@ def prepare_macro_ready_callback(module, module_path):
 
             project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 
+            pool = concurrent.futures.ThreadPoolExecutor()
             build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
             print(build_command)
-            subprocess.check_output(build_command, shell=True)
+            f = pool.submit(subprocess.check_output, shell=True)
+            def callback(future):
+                if future.exception() is not None:
+                    raise future.exception()
+            f.add_done_callback(callback)
+            jobs.append(f)
+
         mcd.dll_path = dll_path
         mcd.impl_function_name = "macro_impl"
 
-    return on_macro_def
+    return on_macro_def, jobs
 
 
 def expand_macros(node: Node, macro_scopes):
@@ -792,8 +802,9 @@ def semantic_analysis(expr: Module):
 
     if module_path:
         # no module path with direct compilation of string (test suite only)
-        macro_scopes = visit_macro_definitions(expr, prepare_macro_ready_callback(expr, module_path))
-        print(macro_scopes)
+        macro_ready_callback, compilation_jobs = prepare_macro_ready_callback(expr, module_path)
+        macro_scopes = visit_macro_definitions(expr, macro_ready_callback)
+        concurrent.futures.wait(compilation_jobs)
         expr = expand_macros(expr, macro_scopes)
 
     expr = build_types(expr)
