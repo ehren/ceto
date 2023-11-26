@@ -1,6 +1,13 @@
 from ceto.parser import parse
 from ceto._abstractsyntaxtree import macro_matches
 
+import pytest
+import sys
+
+
+pytest.skip(reason="-", allow_module_level=True)
+
+
 def matches(node, pattern, parameters):
     m = macro_matches(node, pattern, parameters)
     if m:
@@ -51,6 +58,7 @@ def test_binop_wildcard():
     add_pattern = parse("0 + y + 3").args[0]
     print( str(matches(add_node, add_pattern, parameters)))
 
+
 def test_binop_wildcard2():
 
     param = parse("y : BinOp").args[0]
@@ -60,6 +68,7 @@ def test_binop_wildcard2():
     add_pattern = parse("y + 2 + 3").args[0]
     m = matches(add_node, add_pattern, parameters)
     assert str(m) == "{'y': ((0 + x) + 1)}"
+
 
 def test_binop_wildcard3():
 

@@ -22,8 +22,11 @@ manifest = os.path.join(rootdir, "MANIFEST.in")
 packaged_ceto_header = os.path.join(rootdir, "ceto", "ceto.h")
 packaged_ceto_ast_header = os.path.join(rootdir, "ceto", "ast.cth")
 packaged_ceto_utility_header = os.path.join(rootdir, "ceto", "utility.cth")
+packaged_ceto_visitor_header = os.path.join(rootdir, "ceto", "visitor.cth")
 
-for f in [manifest, packaged_ceto_header, packaged_ceto_ast_header, packaged_ceto_utility_header]:
+extra_packaged = [manifest, packaged_ceto_header, packaged_ceto_ast_header, packaged_ceto_utility_header, packaged_ceto_visitor_header]
+
+for f in extra_packaged:
     if os.path.isfile(f):
         raise RuntimeError("to be packaged on-the-fly generated file unexpectedly exists", f)
 
@@ -38,6 +41,7 @@ try:
     shutil.copyfile(os.path.join(rootdir, "include", "ceto.h"), packaged_ceto_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "ast.cth"), packaged_ceto_ast_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "utility.cth"), packaged_ceto_utility_header)
+    shutil.copyfile(os.path.join(rootdir, "selfhost", "visitor.cth"), packaged_ceto_visitor_header)
 
     _extra_compile_args = ["-O0", "-g3"]
     if sys.platform == "win32":
@@ -70,35 +74,7 @@ try:
         description="General purpose programming language transpiled to C++",
         long_description="Parens/call expression language transpiled to c++20. \"Python\" with 2 parentheses moved or inserted (with extra C++ syntax). Codegen based on https://github.com/lukasmartinelli/py14 with additions e.g. implicit make_shared/unique, checked autoderef via '.', swiftish lambda capture, implicit move from last use of unique, const by default, extra CTAD!",
         ext_modules=ext_modules,
-        #package_data={
-        #    "ceto": ["selfhost/*.cth", "selfhost/*.ctp", "include/*.h"]
-        #},
-        #include_package_data=False,
-        #data_files=[
-            #("./selfhost/ast.cth", "selfhost/ast.cth")
-        #    ("ceto", "selfhost/ast.cth")
-        #],
-        #packages=find_packages(where="selfhost"),
-        #package_dir={"": "selfhost"},
-        #package_data={"ceto": ["selfhost/*.ctp", "selfhost/*.cth"]},
-        #package_data={"selfhost": ["*"]},
-
-        #package_data={'': [
-        #    'selfhost/*.ctp',
-        #    'include/*.h',
-        #]},
-        #include_package_data=True,
-        #data_files=[("ceto-extra", ["selfhost/ast.cth", "include/ceto.h"])],
-        #include_package_data=True,
-
-        #packages=find_packages(),
-        #package_data={'': ['ast.cth', 'ceto.h'],
-        #              },
-        #data_files=[('selfhost',['selfhost/ast.cth']),
-        #            ('include',['include/ceto.h'])],
         include_package_data=True,
-
-
         extras_require={"test": "pytest"},
         install_requires=[
             'cpyparsing',  # pyparsing also supported
@@ -110,5 +86,5 @@ try:
 
 finally:
 
-    for f in [manifest, packaged_ceto_header, packaged_ceto_ast_header, packaged_ceto_utility_header]:
+    for f in extra_packaged:
         os.remove(f)

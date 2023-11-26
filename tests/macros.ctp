@@ -1,3 +1,5 @@
+# Test Output: 600
+
 include <iostream>
 
 defmacro(x + 2 + 3, x: BinOp:

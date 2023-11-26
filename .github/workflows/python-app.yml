@@ -28,13 +28,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        pip install -r requirements.txt
     - name: Install package
       run: |
         pip install -v --editable .  # editable because we want the dll inside the source directory (we're testing with the code in the source directory below instead of testing the system/installed version)
     - name: Test with pytest
       run: |
-        pytest
+        pytest -s
       env:
         CXX: clang++
 
@@ -53,7 +52,6 @@ jobs:
         sudo ./llvm.sh 16
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        pip install -r requirements.txt
     - name: Install package
       run: |
         pip install -v --editable .
@@ -65,7 +63,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --statistics --max-line-length=127 
     - name: Test with pytest
       run: |
-        pytest
+        pytest -s
       env:
         CXX: clang++-16
 
@@ -82,13 +80,12 @@ jobs:
         sudo apt install gcc-12 g++-12
         python -m pip install --upgrade pip
         pip install pytest
-        pip install -r requirements.txt
     - name: Install package
       run: |
         pip install -v --editable .
     - name: Test with pytest
       run: |
-        pytest
+        pytest -s
       env:
         CXX: g++-12
 
@@ -105,13 +102,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        pip install -r requirements.txt
     - name: Install package
       run: |
         pip install -v --editable .
     - name: Test with pytest
       run: |
-        pytest
+        pytest -s
       env:
         CXX: cl
         PYTHONUTF8: 1
