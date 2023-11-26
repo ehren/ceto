@@ -495,6 +495,9 @@ def is_def_or_class_like(call : Call):
     return False
 
 
+# TODO Writing this with the exterior visitation was a bad idea - prevents things
+# like easily ignoring Template args (without accessing .parent) when determining if a variable
+# type is a declaration. Should be moved to C++ but arg flattening needs to be addressed first.
 class ScopeVisitor:
     def __init__(self):
         self._module_scope = None
@@ -706,6 +709,7 @@ def prepare_macro_ready_callback(module, module_path):
         from .codegen import codegen
         print("mcd", mcd.defmacro_node)
 
+        # prepare a function that implements the body of the "defmacro"
         impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
@@ -723,7 +727,16 @@ def prepare_macro_ready_callback(module, module_path):
         expanded = quote_expander(mcd.body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
+        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
+
+        module_name = os.path.basename(module_path)
         module_dir = os.path.dirname(module_path)
+        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
+        dll_path = impl_path + ".so"
+
+        if os.path.isfile(dll_path):
+            return
+
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
 
@@ -731,22 +744,21 @@ def prepare_macro_ready_callback(module, module_path):
         for orig_name in ["ast.cth", "utility.cth", "visitor.cth"]:
             destination_name = "ceto__private__" + orig_name
             destination_path = os.path.join(module_dir, destination_name)
-            if not os.path.isfile(destination_path):
-                for d in [package_dir, selfhost_dir]:
-                    orig_path = os.path.join(d, orig_name)
-                    if os.path.isfile(orig_path):
-                        if orig_name == "ast.cth":
-                            with open(orig_path) as f:
-                                ast_str = f.read()
-                            ast_str = ast_str.replace("include (utility)", "include (ceto__private__utility)")
-                            ast_str = ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
-                            with open(destination_path, "w") as f:
-                                f.write(ast_str)
-                        else:
-                            shutil.copyfile(orig_path, destination_path)
-                        break
-
-        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
+            if os.path.isfile(destination_path):
+                continue
+            for d in [package_dir, selfhost_dir]:
+                orig_path = os.path.join(d, orig_name)
+                if os.path.isfile(orig_path):
+                    if orig_name == "ast.cth":
+                        with open(orig_path) as f:
+                            ast_str = f.read()
+                        ast_str = ast_str.replace("include (utility)", "include (ceto__private__utility)")
+                        ast_str = ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
+                        with open(destination_path, "w") as f:
+                            f.write(ast_str)
+                    else:
+                        shutil.copyfile(orig_path, destination_path)
+                    break
 
         include_ast = parse("include (ceto__private__ast)")
         macro_impl_module.args = include_ast.args + macro_impl_module.args
@@ -754,21 +766,18 @@ def prepare_macro_ready_callback(module, module_path):
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
 
-        module_name = os.path.basename(module_path)
-
-        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
         dll_cpp = impl_path + ".cpp"
-        if not os.path.isfile(dll_cpp):
-            with open(dll_cpp, "w") as f:
-                f.write(macro_impl_code)
 
-            project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+        with open(dll_cpp, "w") as f:
+            f.write(macro_impl_code)
 
-            pool = concurrent.futures.ThreadPoolExecutor()
-            build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
-            print(build_command)
-            jobs.append(pool.submit(subprocess.check_output, build_command, shell=True))
+        project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
+
+        pool = concurrent.futures.ThreadPoolExecutor()
+        build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
+        print(build_command)
+        jobs.append(pool.submit(subprocess.check_output, build_command, shell=True))
 
         mcd.dll_path = dll_path
         mcd.impl_function_name = "macro_impl"
