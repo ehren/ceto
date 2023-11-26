@@ -682,11 +682,15 @@ def quote_expander(node):
     return node
 
 
-def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macro_impl: Call):
+def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macro_impl: TypeOp):
+    """create a module with the defmacro of `macro_definition` replaced by the `macro_impl` implementing the body of the macro"""
+
     new_args = [macro_impl if a is macro_definition.defmacro_node
                            else create_macro_impl_module(a, macro_definition, macro_impl)
                 for a in node.args]
     if isinstance(node, Module):
+        # allow constant evaluation of any other code in module (or included by
+        # module) except "main" (even though not strictly necessary to remove from dll)
         new_args = [a for a in new_args if not (isinstance(a, Call) and a.func.name == "def" and a.args[0].name == "main")]
         return Module(new_args)
     elif isinstance(node, Block):
@@ -724,37 +728,27 @@ def prepare_macro_ready_callback(module, module_path):
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
 
         # prepare dependency of macro dll on a few selfhost sources
-        ast_path = os.path.join(module_dir, "ceto__private__ast.cth")
-        utility_path = os.path.join(module_dir, "ceto__private__utility.cth")
-        visitor_path = os.path.join(module_dir, "ceto__private__visitor.cth")
-        if not os.path.isfile(ast_path):
-            for d in [package_dir, selfhost_dir]:
-                orig_ast_path = os.path.join(d, "ast.cth")
-                if os.path.isfile(orig_ast_path):
-                    with open(orig_ast_path) as f:
-                        orig_ast_str = f.read()
-                    orig_ast_str = orig_ast_str.replace("include (utility)", "include (ceto__private__utility)")
-                    orig_ast_str = orig_ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
-                    with open(ast_path, "w") as f:
-                        f.write(orig_ast_str)
-                    break
-        if not os.path.isfile(utility_path):
-            for d in [package_dir, selfhost_dir]:
-                orig_utility_path = os.path.join(d, "utility.cth")
-                if os.path.isfile(orig_utility_path):
-                    shutil.copyfile(orig_utility_path, utility_path)
-                    break
-        if not os.path.isfile(visitor_path):
-            for d in [package_dir, selfhost_dir]:
-                orig_visitor_path = os.path.join(d, "visitor.cth")
-                if os.path.isfile(orig_visitor_path):
-                    shutil.copyfile(orig_visitor_path, visitor_path)
-                    break
+        for orig_name in ["ast.cth", "utility.cth", "visitor.cth"]:
+            destination_name = "ceto__private__" + orig_name
+            destination_path = os.path.join(module_dir, destination_name)
+            if not os.path.isfile(destination_path):
+                for d in [package_dir, selfhost_dir]:
+                    orig_path = os.path.join(d, orig_name)
+                    if os.path.isfile(orig_path):
+                        if orig_name == "ast.cth":
+                            with open(orig_path) as f:
+                                ast_str = f.read()
+                            ast_str = ast_str.replace("include (utility)", "include (ceto__private__utility)")
+                            ast_str = ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
+                            with open(destination_path, "w") as f:
+                                f.write(ast_str)
+                        else:
+                            shutil.copyfile(orig_path, destination_path)
+                        break
 
-        # allow constant evaluation of any other code in module (or included by module)
+        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
 
         include_ast = parse("include (ceto__private__ast)")
-        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 
         macro_impl_module = semantic_analysis(macro_impl_module)
@@ -774,8 +768,7 @@ def prepare_macro_ready_callback(module, module_path):
             pool = concurrent.futures.ThreadPoolExecutor()
             build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
             print(build_command)
-            f = pool.submit(subprocess.check_output, build_command, shell=True)
-            jobs.append(f)
+            jobs.append(pool.submit(subprocess.check_output, build_command, shell=True))
 
         mcd.dll_path = dll_path
         mcd.impl_function_name = "macro_impl"
