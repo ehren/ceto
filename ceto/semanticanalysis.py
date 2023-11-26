@@ -5,6 +5,7 @@ import os
 import subprocess
 import concurrent.futures
 from hashlib import sha256
+import shutil
 
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
@@ -718,16 +719,49 @@ def prepare_macro_ready_callback(module, module_path):
         expanded = quote_expander(mcd.body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
+        module_dir = os.path.dirname(module_path)
+        package_dir = os.path.dirname(__file__)
+        selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
+
+        # prepare dependency of macro dll on a few selfhost sources
+        ast_path = os.path.join(module_dir, "ceto__private__ast.cth")
+        utility_path = os.path.join(module_dir, "ceto__private__utility.cth")
+        visitor_path = os.path.join(module_dir, "ceto__private__visitor.cth")
+        if not os.path.isfile(ast_path):
+            for d in [package_dir, selfhost_dir]:
+                orig_ast_path = os.path.join(d, "ast.cth")
+                if os.path.isfile(orig_ast_path):
+                    with open(orig_ast_path) as f:
+                        orig_ast_str = f.read()
+                    orig_ast_str = orig_ast_str.replace("include (utility)", "include (ceto__private__utility)")
+                    orig_ast_str = orig_ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
+                    with open(ast_path, "w") as f:
+                        f.write(orig_ast_str)
+                    break
+        if not os.path.isfile(utility_path):
+            for d in [package_dir, selfhost_dir]:
+                orig_utility_path = os.path.join(d, "utility.cth")
+                if os.path.isfile(orig_utility_path):
+                    shutil.copyfile(orig_utility_path, utility_path)
+                    break
+        if not os.path.isfile(visitor_path):
+            for d in [package_dir, selfhost_dir]:
+                orig_visitor_path = os.path.join(d, "visitor.cth")
+                if os.path.isfile(orig_visitor_path):
+                    shutil.copyfile(orig_visitor_path, visitor_path)
+                    break
+
         # allow constant evaluation of any other code in module (or included by module)
-        include_ast = parse("include (ast)")
+
+        include_ast = parse("include (ceto__private__ast)")
         macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
 
-        module_dir = os.path.dirname(module_path)
         module_name = os.path.basename(module_path)
+
         impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
         dll_cpp = impl_path + ".cpp"
@@ -740,11 +774,7 @@ def prepare_macro_ready_callback(module, module_path):
             pool = concurrent.futures.ThreadPoolExecutor()
             build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
             print(build_command)
-            f = pool.submit(subprocess.check_output, shell=True)
-            def callback(future):
-                if future.exception() is not None:
-                    raise future.exception()
-            f.add_done_callback(callback)
+            f = pool.submit(subprocess.check_output, build_command, shell=True)
             jobs.append(f)
 
         mcd.dll_path = dll_path
@@ -804,7 +834,10 @@ def semantic_analysis(expr: Module):
         # no module path with direct compilation of string (test suite only)
         macro_ready_callback, compilation_jobs = prepare_macro_ready_callback(expr, module_path)
         macro_scopes = visit_macro_definitions(expr, macro_ready_callback)
-        concurrent.futures.wait(compilation_jobs)
+        for future in concurrent.futures.as_completed(compilation_jobs):
+            exc = future.exception()
+            if exc:
+                raise exc
         expr = expand_macros(expr, macro_scopes)
 
     expr = build_types(expr)
