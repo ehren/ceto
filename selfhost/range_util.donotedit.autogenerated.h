@@ -24,7 +24,9 @@
 ;
 #include <numeric>
 ;
-#if __clang_major__ < 16
+#include <tuple>
+;
+#if defined(__clang__) && (__clang_major__ < 16)
         inline auto range(const size_t  start, const size_t  stop) -> std::vector<size_t> {
         auto r { std::vector<size_t>(stop - start) } ;
         std::iota(ceto::mado(r)->begin(), ceto::mado(r)->end(), start);
@@ -32,10 +34,10 @@
     }
 
         inline auto range(const size_t  stop) -> auto {
-        return range(0, stop);
+        return range(0u, stop);
     }
 
-         template<typename Element> inline auto reversed(const std::vector<Element>  container) -> auto {
+         template<typename Element> inline auto reversed( const std::vector<Element> &  container) -> auto {
         const auto rev = std::vector<Element>(ceto::mado(container)->rbegin(), ceto::mado(container)->rend());
         return rev;
     }
@@ -43,7 +45,8 @@
 #else
          template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
         if constexpr (sizeof...(Args) == 1) {
-            return std::ranges::iota_view(0, std::forward<Args>(args)...);
+            const typename std::tuple_element<0,std::tuple<Args...>> :: type zero { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(zero)>);
+            return std::ranges::iota_view(zero, std::forward<Args>(args)...);
         } else {
             return std::ranges::iota_view(std::forward<Args>(args)...);
         }

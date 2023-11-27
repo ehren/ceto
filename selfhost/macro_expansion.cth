@@ -1,8 +1,7 @@
 include <unordered_map>
 include <ranges>
-include <span>
 include <functional>
-include <ranges>
+include <span>
 
 include (ast)
 include (visitor)
@@ -53,12 +52,9 @@ class (MacroScope:
     ) : MacroScope:mut
 ) : unique
 
-# def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
-#     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
-# )
 
 def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
-    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr()
+    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr() << "\n"
 
     if (isinstance(pattern, Identifier):
         search = params.find(pattern.name().value())
@@ -207,7 +203,12 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
         parameters: mut = std.map<std.string, Node>{}
 
-        match_args = std.span(node.args.cbegin() + 1, node.args.cend() - 1)
+        if (defined(__clang__) and __clang_major__ < 16:
+            match_args = std.vector(node.args.cbegin() + 1, node.args.cend() - 1)
+        else:
+            match_args = std.span(node.args.cbegin() + 1, node.args.cend() - 1)
+        ) : preprocessor
+
         for (arg in match_args:
             name = if (isinstance(arg, Identifier):
                 arg.name().value()

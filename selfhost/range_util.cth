@@ -1,9 +1,10 @@
 include <ranges>
 include <numeric>
+include <tuple>
 
 # poor ranges supprt with current apple clang (15). This is good enough for internal use:
 
-if (__clang_major__ < 16:
+if (defined(__clang__) and __clang_major__ < 16:
 
     def (range, start: size_t, stop: size_t:
         r: mut = std.vector<size_t> (stop - start);
@@ -12,10 +13,10 @@ if (__clang_major__ < 16:
     ) : std.vector<size_t>
 
     def (range, stop: size_t:
-        return range(0, stop)
+        return range(0u, stop)
     )
 
-    def (reversed: template<typename: Element>, container: std.vector<Element>:
+    def (reversed: template<typename: Element>, container: const:std.vector<Element>:ref:
         rev = std.vector<Element> (container.rbegin(), container.rend())
         return rev
     )
@@ -24,7 +25,10 @@ else:
 
     def (range: template<typename:...:Args>, args: mut:Args:rref:...:
         if ((sizeof...)(Args) == 1:
-            return std.ranges.iota_view(0, std.forward<Args>(args)...)
+            # https://stackoverflow.com/questions/45578484/is-it-possible-to-get-the-first-type-of-a-parameter-pack-in-a-one-liner/45578533#45578533
+            # may be a better way?
+            zero : typename:std.tuple_element<0, std.tuple<Args...>>::type = 0
+            return std.ranges.iota_view(zero, std.forward<Args>(args)...)
         else:
             return std.ranges.iota_view(std.forward<Args>(args)...)
         ) : constexpr
