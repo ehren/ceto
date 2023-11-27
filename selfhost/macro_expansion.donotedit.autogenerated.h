@@ -78,25 +78,20 @@ struct MacroDefinition : public ceto::shared_object, public std::enable_shared_f
 
 };
 
-struct MacroScope : public ceto::shared_object, public std::enable_shared_from_this<MacroScope> {
+struct MacroScope : public ceto::object {
 
-    std::weak_ptr<MacroScope> _parent = {};
+    MacroScope * parent = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(parent)>>);
 
     std::vector<std::shared_ptr<const MacroDefinition>> macro_definitions = std::vector<std::shared_ptr<const MacroDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const MacroDefinition>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
-
-        inline auto parent() const -> std::shared_ptr<MacroScope> {
-            return ceto::mado(this -> _parent)->lock();
-        }
 
         inline auto add_definition(const std::shared_ptr<const MacroDefinition>&  defn) -> void {
             ceto::mado(this -> macro_definitions)->push_back(defn);
         }
 
-        inline auto enter_scope() -> std::shared_ptr<MacroScope> {
-            const auto self = ceto::shared_from(this);
-            auto m { std::make_shared<decltype(MacroScope())>() } ;
-            ceto::mado(m)->_parent = self;
-            return m;
+        inline auto enter_scope() -> std::unique_ptr<MacroScope> {
+            auto s { std::make_unique<decltype(MacroScope())>() } ;
+            ceto::mado(s)->parent = this;
+            return s;
         }
 
 };
@@ -178,13 +173,13 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
     std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition;
 
-    std::shared_ptr<MacroScope> current_scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(current_scope)>>);
+    std::unique_ptr<MacroScope> current_scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(current_scope)>>);
 
     std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> replacements = {};
 
         inline auto expand(const std::shared_ptr<const Node>&  node) -> void {
-            auto scope { (this -> current_scope) } ;
-            while (scope) {                for(const auto& definition : std::views::reverse(ceto::mado(scope)->macro_definitions)) {
+            auto * scope { (&(this -> current_scope)) -> get() } ;
+            while (scope) {                for(const auto& definition : std::views::reverse(scope -> macro_definitions)) {
                     const auto match = macro_matches(node, ceto::mado(definition)->pattern_node, ceto::mado(definition)->parameters);
                     if (match) {
                         const auto replacement = call_macro_impl(ceto::mado(definition)->impl_function_name, ceto::mado(definition)->dll_path, ceto::mad(match)->value());
@@ -194,7 +189,7 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                         }
                     }
                 }
-                scope = ceto::mado(scope)->parent();
+                scope = (scope -> parent);
             }
         }
 
@@ -250,21 +245,21 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
         }
 
         inline auto visit(const Module&  node) -> void override {
-            auto s { std::make_shared<decltype(MacroScope())>() } ;
-            (this -> current_scope) = s;
+            auto s { std::make_unique<decltype(MacroScope())>() } ;
+            (this -> current_scope) = std::move(s);
             for(const auto& arg : ceto::mado(node)->args) {
                 ceto::mado(arg)->accept((*this));
             }
         }
 
         inline auto visit(const Block&  node) -> void override {
-            const auto outer = (this -> current_scope);
+            std::unique_ptr<MacroScope> outer = std::move(this -> current_scope); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move(this -> current_scope)), std::remove_cvref_t<decltype(outer)>>);
             (this -> current_scope) = ceto::mado(outer)->enter_scope();
             this -> expand(ceto::shared_from((&node)));
             for(const auto& arg : ceto::mado(node)->args) {
                 ceto::mado(arg)->accept((*this));
             }
-            (this -> current_scope) = outer;
+            (this -> current_scope) = std::move(outer);
         }
 
     explicit MacroDefinitionVisitor(std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition) : on_visit_definition(on_visit_definition) {}

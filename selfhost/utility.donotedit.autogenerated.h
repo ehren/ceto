@@ -24,6 +24,8 @@
 ;
 #include <algorithm>
 ;
+#include <string_view>
+;
 #if _MSC_VER
     
     #define CETO_EXPORT __declspec(dllexport)
@@ -67,7 +69,14 @@ auto contains(const T1& container,  const typename std::remove_reference_t<declt
     template <typename T1>
 auto typeid_name(const T1& object) -> auto {
         #if _MSC_VER
-            return ceto::mado(typeid(object))->name();
+            const auto name = ceto::mado(typeid(object))->name();
+            using namespace std::literals;
+            const auto prefix = "struct "sv;
+            const auto name_view = std::string_view(name);
+            if (ceto::mado(name_view)->starts_with(prefix)) {
+                return ceto::mado(ceto::mado(name_view)->substr(ceto::mado(prefix)->size()))->data();
+            }
+            return name;
         #else
             return abi::__cxa_demangle(ceto::mado(typeid(object))->name(), 0, 0, 0);
         #endif

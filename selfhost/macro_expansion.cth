@@ -37,23 +37,20 @@ class (MacroDefinition:
 )
 
 class (MacroScope:
-    _parent: weak:MacroScope:mut = {}
-    macro_definitions: [MacroDefinition] = []
+    parent: MacroScope.class:ptr = None
 
-    def (parent:
-        return self._parent.lock()
-    ) : MacroScope:mut
+    macro_definitions: [MacroDefinition] = []
 
     def (add_definition: mut, defn: MacroDefinition:
         self.macro_definitions.push_back(defn)
     )
 
     def (enter_scope: mut:
-        m: mut = MacroScope()
-        m._parent = self  # should really be using weak_from_this
-        return m
+        s: mut = MacroScope()
+        s.parent = this
+        return s
     ) : MacroScope:mut
-)
+) : unique
 
 # def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
 #     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
@@ -155,9 +152,9 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     replacements: std.unordered_map<Node, Node> = {}
 
     def (expand: mut, node: Node:
-        scope: mut = self.current_scope
+        scope: mut:auto:ptr = (&self.current_scope)->get()
         while (scope:
-            for (definition in std.views.reverse(scope.macro_definitions):
+            for (definition in std.views.reverse(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
                     replacement = call_macro_impl(definition.impl_function_name, definition.dll_path, match.value())
@@ -168,7 +165,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
                 )
             )
 
-            scope = scope.parent()
+            scope = scope->parent
         )
     )
 
@@ -242,13 +239,15 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 
     def (visit: override:mut, node: Block.class:
-        outer = self.current_scope
+        outer: mut:MacroScope = std.move(self.current_scope)
         self.current_scope = outer.enter_scope()
         self.expand(ceto.shared_from(&node))
         for (arg in node.args:
             arg.accept(*this)
         )
-        self.current_scope = outer
+        self.current_scope = outer  # automatic move from last use
+        # TODO: if outer is just 'mut' above we should still automatically std::move it
+        # (because self.current_scope is :unique - a fact currently ignored by codegen is_unique_var)
     )
 )
 
