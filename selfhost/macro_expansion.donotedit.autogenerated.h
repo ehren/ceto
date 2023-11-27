@@ -162,9 +162,12 @@ struct MacroScope : public ceto::shared_object, public std::enable_shared_from_t
     inline auto call_macro_impl(const std::string&  macro_impl_name, const std::string&  macro_dll_path, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
         const auto handle = CETO_DLOPEN(ceto::mado(macro_dll_path)->c_str());
         if (!handle) {
-            throw std::runtime_error(std::string {"Failed to open macro dll: "} + macro_dll_path);
+            throw std::runtime_error("Failed to open macro dll: " + macro_dll_path);
         }
         const auto fptr = CETO_DLSYM(handle, ceto::mado(macro_impl_name)->c_str());
+        if (!fptr) {
+            throw std::runtime_error((("Failed to find symbol " + macro_impl_name) + " in dll ") + macro_dll_path);
+        }
         const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  m) -> std::shared_ptr<const Node> {
                 if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(fptr);

@@ -61,8 +61,8 @@ class (MacroScope:
 
 def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>:
     std.cout << "node: " << node.repr() << " pattern: " << pattern.repr()
+
     if (isinstance(pattern, Identifier):
-        # matched_param = params[pattern.name().value()]  # error from using maybe_bounds_check with const map is highly confusing (and maybe requires clause is too constraining)
         search = params.find(pattern.name().value())
         if (search != params.end():
 
@@ -90,7 +90,6 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
                 )
             )
         )
-        # return {}
     )
 
     if (typeid(*node) != typeid(*pattern):
@@ -136,12 +135,14 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
 
 
 def (call_macro_impl, macro_impl_name: std.string, macro_dll_path: std.string, match: std.map<std.string, Node>:
-    # new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
     handle = CETO_DLOPEN(macro_dll_path.c_str())  # just leak it for now
     if (not handle:
-        throw (std.runtime_error("Failed to open macro dll: "s + macro_dll_path))
+        throw (std.runtime_error("Failed to open macro dll: " + macro_dll_path))
     )
     fptr = CETO_DLSYM(handle, macro_impl_name.c_str())
+    if (not fptr:
+        throw (std.runtime_error("Failed to find symbol " + macro_impl_name + " in dll " + macro_dll_path))
+    )
     f = reinterpret_cast<decltype(+(lambda(m: std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
     return (*f)(match)
 ) : Node
@@ -150,32 +151,8 @@ def (call_macro_impl, macro_impl_name: std.string, macro_dll_path: std.string, m
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     on_visit_definition: std.function<void(MacroDefinition)>
 
-#    macro_scopes: std.unordered_map<Node, MacroScope> = {}
     current_scope: MacroScope:mut = None
     replacements: std.unordered_map<Node, Node> = {}
-
-#    def (expand: mut, node: Node:
-#        scope: mut = self.current_scope
-#        while (scope:
-#            it: mut = scope.macro_definitions.rbegin()
-#
-#            while (it != it.rend():  # no std.ranges.reverse_view until clang 16 :(
-#                definition: MacroDefinition = *it
-#                match = macro_matches(node, pattern, parameters)
-#                if (match:
-#                    replacement = call_macro_impl(definition.impl_function_name, definition.dll_path, match)
-#                    if (replacement:
-#                        self.replacements[node] = replacement
-#                        return
-#                    )
-#                )
-#
-#                it += 1
-#            )
-#
-#            scope = scope.parent()
-#        )
-#    )
 
     def (expand: mut, node: Node:
         scope: mut = self.current_scope
@@ -275,11 +252,6 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 )
 
-#def (visit_macro_definitions, node: Module, on_visit: std.function<void(MacroDefinition)>:
-#    visitor: mut = MacroDefinitionVisitor(on_visit)
-#    node.accept(visitor)
-#    return visitor.macro_scopes
-#) : std.unordered_map<Node, MacroScope>
 
 def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition)>:
     visitor: mut = MacroDefinitionVisitor(on_visit)

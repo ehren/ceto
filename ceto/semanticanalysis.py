@@ -734,6 +734,9 @@ def prepare_macro_ready_callback(module, module_path):
         impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
 
+        mcd.dll_path = dll_path
+        mcd.impl_function_name = "macro_impl"
+
         if os.path.isfile(dll_path):
             return
 
@@ -778,42 +781,7 @@ def prepare_macro_ready_callback(module, module_path):
         print(build_command)
         subprocess.check_output(build_command, shell=True)
 
-        mcd.dll_path = dll_path
-        mcd.impl_function_name = "macro_impl"
-
     return on_macro_def
-
-
-# def expand_macros(node: Node, macro_scopes):
-#     if not node in macro_scopes:
-#         return node
-#
-#     macro_scope = macro_scopes[node]
-#
-#     definitions = []
-#     if macro_scope.macro_definitions:
-#         definitions.extend(reversed(macro_scope.macro_definitions))
-#     p = macro_scope.parent
-#     while p:
-#         if p.macro_definitions:
-#             definitions.extend(reversed(p.macro_definitions))
-#         p = p.parent
-#
-#     for macro_definition in definitions:
-#         pattern: Node = macro_definition.pattern_node
-#         parameters = macro_definition.parameters
-#         assert isinstance(pattern, Node)
-#         match = macro_matches(node, pattern, parameters)
-#         if match:
-#             macro_dll_path = macro_definition.dll_path
-#             macro_impl_name = macro_definition.impl_function_name
-#             new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
-#             if new_node:
-#                 node = new_node
-#     node.args = [expand_macros(a, macro_scopes) for a in node.args]
-#     if node.func:
-#         node.func = expand_macros(node.func, macro_scopes)
-#     return node
 
 
 def replace_macro_expansion(node: Node, replacements):
@@ -843,12 +811,6 @@ def semantic_analysis(expr: Module):
             module_path = cmdargs.filename
 
     if module_path:
-        # no module path with direct compilation of string (test suite only)
-        # macro_ready_callback, compilation_jobs = prepare_macro_ready_callback(expr, module_path)
-        # macro_scopes = visit_macro_definitions(expr, macro_ready_callback)
-        # expr = expand_macros(expr, macro_scopes)
-        # expr = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
-
         replacements = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
         print("macro replacements", replacements)
         expr = replace_macro_expansion(expr, replacements)

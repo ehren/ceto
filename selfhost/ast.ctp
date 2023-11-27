@@ -9,14 +9,10 @@ include <pybind11/stl_bind.h>
 include <pybind11/functional.h>
 
 include(ast)
-
-#PYBIND11_MAKE_OPAQUE(std.map<std.string, Node>)
-
 include(repr_visitors)
 include(scope)
 include(parser)
-#include(macro_matcher)
-include(macro_definition_visitor)
+include(macro_expansion)
 
 
 py: namespace = pybind11
@@ -226,9 +222,6 @@ lambda(m : mut:auto:rref:
     # this will need its own module - just for testing for now
     m.def("parse_test", &parse_test)
 
-    py.bind_map<std.map<std.string, Node>>(m, "StringNodeMap");
-    #py.bind_map<std.map<Node, MacroDefinition>>(m, "NodeMacroDefinitionMap");
-
     py.class_<MacroDefinition.class, MacroDefinition:mut>(m, "MacroDefinition").def(
         py.init<Call, Node, Block, std.map<string, Node>>()).def_readonly(
         "defmacro_node", &MacroDefinition.defmacro_node).def_readonly(
@@ -238,16 +231,8 @@ lambda(m : mut:auto:rref:
         "dll_path", &MacroDefinition.dll_path).def_readwrite(
         "impl_function_name", &MacroDefinition.impl_function_name)
 
-#    py.class_<MacroScope.class, MacroScope:mut>(m, "MacroScope").def(
-#        py.init<>()).def_property_readonly(
-#        "parent", &MacroScope.parent).def_readwrite(
-#        "macro_definitions", &MacroScope.macro_definitions)
-
     m.def("macro_matches", &macro_matches)  # only for test code
-
     m.def("expand_macros", &expand_macros)
-#    m.def("visit_macro_definitions", &visit_macro_definitions)
-#    m.def("macro_trampoline", &macro_trampoline)
 
     return
 )(m)
