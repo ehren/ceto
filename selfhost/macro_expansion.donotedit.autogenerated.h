@@ -80,7 +80,7 @@ struct MacroDefinition : public ceto::shared_object, public std::enable_shared_f
 
 struct MacroScope : public ceto::object {
 
-    MacroScope * parent = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(parent)>>);
+    MacroScope const * parent = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(parent)>>);
 
     std::vector<std::shared_ptr<const MacroDefinition>> macro_definitions = std::vector<std::shared_ptr<const MacroDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const MacroDefinition>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
 
@@ -88,7 +88,7 @@ struct MacroScope : public ceto::object {
             ceto::mado(this -> macro_definitions)->push_back(defn);
         }
 
-        inline auto enter_scope() -> std::unique_ptr<MacroScope> {
+        inline auto enter_scope() const -> std::unique_ptr<MacroScope> {
             auto s { std::make_unique<decltype(MacroScope())>() } ;
             ceto::mado(s)->parent = this;
             return s;
@@ -96,7 +96,7 @@ struct MacroScope : public ceto::object {
 
 };
 
-    inline auto macro_matches(const std::shared_ptr<const Node>&  node, const std::shared_ptr<const Node>&  pattern, const std::map<std::string,std::shared_ptr<const Node>>  params) -> std::optional<std::map<std::string,std::shared_ptr<const Node>>> {
+    inline auto macro_matches(const std::shared_ptr<const Node>&  node, const std::shared_ptr<const Node>&  pattern,  const std::map<std::string,std::shared_ptr<const Node>> &  params) -> std::optional<std::map<std::string,std::shared_ptr<const Node>>> {
         (((std::cout << "node: ") << ceto::mado(node)->repr()) << " pattern: ") << ceto::mado(pattern)->repr();
         if ((std::dynamic_pointer_cast<const Identifier>(pattern) != nullptr)) {
             const auto search = ceto::mado(params)->find(ceto::mad(ceto::mado(pattern)->name())->value());
@@ -154,14 +154,14 @@ struct MacroScope : public ceto::object {
         return submatches;
     }
 
-    inline auto call_macro_impl(const std::string&  macro_impl_name, const std::string&  macro_dll_path, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
-        const auto handle = CETO_DLOPEN(ceto::mado(macro_dll_path)->c_str());
+    inline auto call_macro_impl(const std::shared_ptr<const MacroDefinition>&  definition, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
+        const auto handle = CETO_DLOPEN(ceto::mado(ceto::mado(definition)->dll_path)->c_str());
         if (!handle) {
-            throw std::runtime_error("Failed to open macro dll: " + macro_dll_path);
+            throw std::runtime_error("Failed to open macro dll: " + ceto::mado(definition)->dll_path);
         }
-        const auto fptr = CETO_DLSYM(handle, ceto::mado(macro_impl_name)->c_str());
+        const auto fptr = CETO_DLSYM(handle, ceto::mado(ceto::mado(definition)->impl_function_name)->c_str());
         if (!fptr) {
-            throw std::runtime_error((("Failed to find symbol " + macro_impl_name) + " in dll ") + macro_dll_path);
+            throw std::runtime_error((("Failed to find symbol " + ceto::mado(definition)->impl_function_name) + " in dll ") + ceto::mado(definition)->dll_path);
         }
         const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  m) -> std::shared_ptr<const Node> {
                 if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
@@ -178,11 +178,11 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
     std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> replacements = {};
 
         inline auto expand(const std::shared_ptr<const Node>&  node) -> void {
-            auto * scope { (&(this -> current_scope)) -> get() } ;
+            auto const * scope { (&(this -> current_scope)) -> get() } ;
             while (scope) {                for(const auto& definition : std::views::reverse(scope -> macro_definitions)) {
                     const auto match = macro_matches(node, ceto::mado(definition)->pattern_node, ceto::mado(definition)->parameters);
                     if (match) {
-                        const auto replacement = call_macro_impl(ceto::mado(definition)->impl_function_name, ceto::mado(definition)->dll_path, ceto::mad(match)->value());
+                        const auto replacement = call_macro_impl(definition, ceto::mad(match)->value());
                         if (replacement) {
                             ceto::maybe_bounds_check_access(this -> replacements,node) = replacement;
                             return;

@@ -37,7 +37,7 @@ class (MacroDefinition:
 )
 
 class (MacroScope:
-    parent: MacroScope.class:ptr = None
+    parent: MacroScope.class:const:ptr = None
 
     macro_definitions: [MacroDefinition] = []
 
@@ -45,7 +45,7 @@ class (MacroScope:
         self.macro_definitions.push_back(defn)
     )
 
-    def (enter_scope: mut:
+    def (enter_scope:
         s: mut = MacroScope()
         s.parent = this
         return s
@@ -56,7 +56,7 @@ class (MacroScope:
 #     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
 # )
 
-def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>:
+def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
     std.cout << "node: " << node.repr() << " pattern: " << pattern.repr()
 
     if (isinstance(pattern, Identifier):
@@ -131,16 +131,16 @@ def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>
 ) : std.optional<std.map<std.string, Node>>
 
 
-def (call_macro_impl, macro_impl_name: std.string, macro_dll_path: std.string, match: std.map<std.string, Node>:
-    handle = CETO_DLOPEN(macro_dll_path.c_str())  # just leak it for now
+def (call_macro_impl, definition: MacroDefinition, match: std.map<std.string, Node>:
+    handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak it for now
     if (not handle:
-        throw (std.runtime_error("Failed to open macro dll: " + macro_dll_path))
+        throw (std.runtime_error("Failed to open macro dll: " + definition.dll_path))
     )
-    fptr = CETO_DLSYM(handle, macro_impl_name.c_str())
+    fptr = CETO_DLSYM(handle, definition.impl_function_name.c_str())
     if (not fptr:
-        throw (std.runtime_error("Failed to find symbol " + macro_impl_name + " in dll " + macro_dll_path))
+        throw (std.runtime_error("Failed to find symbol " + definition.impl_function_name + " in dll " + definition.dll_path))
     )
-    f = reinterpret_cast<decltype(+(lambda(m: std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    f = reinterpret_cast<decltype(+(lambda(m: std.map<std.string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
     return (*f)(match)
 ) : Node
 
@@ -152,12 +152,12 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     replacements: std.unordered_map<Node, Node> = {}
 
     def (expand: mut, node: Node:
-        scope: mut:auto:ptr = (&self.current_scope)->get()
+        scope: mut:auto:const:ptr = (&self.current_scope)->get()
         while (scope:
             for (definition in std.views.reverse(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
-                    replacement = call_macro_impl(definition.impl_function_name, definition.dll_path, match.value())
+                    replacement = call_macro_impl(definition, match.value())
                     if (replacement:
                         self.replacements[node] = replacement
                         return
