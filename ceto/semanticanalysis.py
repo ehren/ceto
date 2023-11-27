@@ -11,9 +11,10 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
-from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
-from ._abstractsyntaxtree import macro_matches, macro_trampoline
+# from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
+# from ._abstractsyntaxtree import macro_matches, macro_trampoline
 
+from ._abstractsyntaxtree import MacroDefinition, expand_macros
 
 def isa_or_wrapped(node, NodeClass):
     return isinstance(node, NodeClass) or (isinstance(node, TypeOp) and isinstance(node.args[0], NodeClass))
@@ -702,7 +703,6 @@ def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macr
 
 
 def prepare_macro_ready_callback(module, module_path):
-    jobs = []
 
     def on_macro_def(mcd: MacroDefinition):
         from .parser import parse
@@ -774,46 +774,56 @@ def prepare_macro_ready_callback(module, module_path):
 
         project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 
-        pool = concurrent.futures.ThreadPoolExecutor()
         build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -fPIC -shared -Wl,-soname,{dll_path}.so -ldl -o{dll_path} {dll_cpp}"
         print(build_command)
-        jobs.append(pool.submit(subprocess.check_output, build_command, shell=True))
+        subprocess.check_output(build_command, shell=True)
 
         mcd.dll_path = dll_path
         mcd.impl_function_name = "macro_impl"
 
-    return on_macro_def, jobs
+    return on_macro_def
 
 
-def expand_macros(node: Node, macro_scopes):
-    if not node in macro_scopes:
-        return node
+# def expand_macros(node: Node, macro_scopes):
+#     if not node in macro_scopes:
+#         return node
+#
+#     macro_scope = macro_scopes[node]
+#
+#     definitions = []
+#     if macro_scope.macro_definitions:
+#         definitions.extend(reversed(macro_scope.macro_definitions))
+#     p = macro_scope.parent
+#     while p:
+#         if p.macro_definitions:
+#             definitions.extend(reversed(p.macro_definitions))
+#         p = p.parent
+#
+#     for macro_definition in definitions:
+#         pattern: Node = macro_definition.pattern_node
+#         parameters = macro_definition.parameters
+#         assert isinstance(pattern, Node)
+#         match = macro_matches(node, pattern, parameters)
+#         if match:
+#             macro_dll_path = macro_definition.dll_path
+#             macro_impl_name = macro_definition.impl_function_name
+#             new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
+#             if new_node:
+#                 node = new_node
+#     node.args = [expand_macros(a, macro_scopes) for a in node.args]
+#     if node.func:
+#         node.func = expand_macros(node.func, macro_scopes)
+#     return node
 
-    macro_scope = macro_scopes[node]
 
-    definitions = []
-    if macro_scope.macro_definitions:
-        definitions.extend(reversed(macro_scope.macro_definitions))
-    p = macro_scope.parent
-    while p:
-        if p.macro_definitions:
-            definitions.extend(reversed(p.macro_definitions))
-        p = p.parent
+def replace_macro_expansion(node: Node, replacements):
+    if node in replacements:
+        return replacements[node]
 
-    for macro_definition in definitions:
-        pattern: Node = macro_definition.pattern_node
-        parameters = macro_definition.parameters
-        assert isinstance(pattern, Node)
-        match = macro_matches(node, pattern, parameters)
-        if match:
-            macro_dll_path = macro_definition.dll_path
-            macro_impl_name = macro_definition.impl_function_name
-            new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
-            if new_node:
-                node = new_node
-    node.args = [expand_macros(a, macro_scopes) for a in node.args]
+    node.args = [replace_macro_expansion(a, replacements) for a in node.args]
     if node.func:
-        node.func = expand_macros(node.func, macro_scopes)
+        node.func = replace_macro_expansion(node.func, replacements)
+
     return node
 
 
@@ -834,13 +844,14 @@ def semantic_analysis(expr: Module):
 
     if module_path:
         # no module path with direct compilation of string (test suite only)
-        macro_ready_callback, compilation_jobs = prepare_macro_ready_callback(expr, module_path)
-        macro_scopes = visit_macro_definitions(expr, macro_ready_callback)
-        for future in concurrent.futures.as_completed(compilation_jobs):
-            exc = future.exception()
-            if exc:
-                raise exc
-        expr = expand_macros(expr, macro_scopes)
+        # macro_ready_callback, compilation_jobs = prepare_macro_ready_callback(expr, module_path)
+        # macro_scopes = visit_macro_definitions(expr, macro_ready_callback)
+        # expr = expand_macros(expr, macro_scopes)
+        # expr = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
+
+        replacements = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
+        print("macro replacements", replacements)
+        expr = replace_macro_expansion(expr, replacements)
 
     expr = build_types(expr)
     expr = build_parents(expr)

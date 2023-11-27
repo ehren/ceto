@@ -15,7 +15,7 @@ include(ast)
 include(repr_visitors)
 include(scope)
 include(parser)
-include(macro_matcher)
+#include(macro_matcher)
 include(macro_definition_visitor)
 
 
@@ -238,14 +238,16 @@ lambda(m : mut:auto:rref:
         "dll_path", &MacroDefinition.dll_path).def_readwrite(
         "impl_function_name", &MacroDefinition.impl_function_name)
 
-    py.class_<MacroScope.class, MacroScope:mut>(m, "MacroScope").def(
-        py.init<>()).def_property_readonly(
-        "parent", &MacroScope.parent).def_readwrite(
-        "macro_definitions", &MacroScope.macro_definitions)
+#    py.class_<MacroScope.class, MacroScope:mut>(m, "MacroScope").def(
+#        py.init<>()).def_property_readonly(
+#        "parent", &MacroScope.parent).def_readwrite(
+#        "macro_definitions", &MacroScope.macro_definitions)
 
-    m.def("macro_matches", &macro_matches)
-    m.def("visit_macro_definitions", &visit_macro_definitions)
-    m.def("macro_trampoline", &macro_trampoline)
+    m.def("macro_matches", &macro_matches)  # only for test code
+
+    m.def("expand_macros", &expand_macros)
+#    m.def("visit_macro_definitions", &visit_macro_definitions)
+#    m.def("macro_trampoline", &macro_trampoline)
 
     return
 )(m)

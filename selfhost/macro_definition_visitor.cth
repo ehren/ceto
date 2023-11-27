@@ -2,10 +2,26 @@ include <unordered_map>
 include <ranges>
 include <span>
 include <functional>
+include <ranges>
 
 include (ast)
 include (visitor)
 
+if (_MSC_VER:
+    include <windows.h>
+    cpp'
+    #define CETO_DLSYM GetProcAddress
+    #define CETO_DLOPEN LoadLibraryA
+    #define CETO_DLCLOSE FreeLibrary
+    '
+else:
+    include <dlfcn.h>
+    cpp'
+    #define CETO_DLSYM dlsym
+    #define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+    #define CETO_DLCLOSE dlclose
+    '
+) : preprocessor
 
 struct (SemanticAnalysisError(std.runtime_error):
     pass
@@ -21,32 +37,166 @@ class (MacroDefinition:
 )
 
 class (MacroScope:
-    _parent: weak:MacroScope = {}
+    _parent: weak:MacroScope:mut = {}
     macro_definitions: [MacroDefinition] = []
 
     def (parent:
         return self._parent.lock()
-    )
+    ) : MacroScope:mut
 
     def (add_definition: mut, defn: MacroDefinition:
         self.macro_definitions.push_back(defn)
     )
 
-    def (enter_scope:
+    def (enter_scope: mut:
         m: mut = MacroScope()
         m._parent = self  # should really be using weak_from_this
         return m
     ) : MacroScope:mut
 )
 
+# def(name=functions_with_default_values, x: std.function = lambda(b), x: Identifier, b: ...:
+#     return quote(unquote(x) : std.function(decltype(lambda(unpack(b)))) = lambda(unpack(b)))
+# )
+
+def (macro_matches, node: Node, pattern: Node, params: std.map<std.string, Node>:
+    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr()
+    if (isinstance(pattern, Identifier):
+        # matched_param = params[pattern.name().value()]  # error from using maybe_bounds_check with const map is highly confusing (and maybe requires clause is too constraining)
+        search = params.find(pattern.name().value())
+        if (search != params.end():
+
+            param_name = search->first
+            matched_param = search->second
+            if (isinstance(matched_param, Identifier):
+                # wildcard match
+                return std.map<std.string, Node>{{param_name, node}}
+            elif (typeop = asinstance(matched_param, TypeOp)):
+                ast_name = typeop.rhs()
+
+                # constrained wildcard / match by type
+                if (isinstance(ast_name, Identifier):
+                    # handle base class wild cards specially:
+                    if (ast_name.name() == "BinOp" and isinstance(node, BinOp):
+                        return std.map<string, Node>{{param_name, node}}
+                    elif ast_name.name() == "UnOp" and isinstance(node, UnOp):
+                        return std.map<std.string, Node>{{param_name, node}}
+                    )
+
+                    node_class_name = node.classname()
+                    if (node_class_name == typeop.rhs().name().value():
+                        return std.map<std.string, Node>{{param_name, node}}
+                    )
+                )
+            )
+        )
+        # return {}
+    )
+
+    if (typeid(*node) != typeid(*pattern):
+        return {}
+    )
+
+    if (node.args.size() != pattern.args.size():
+        return {}
+    )
+
+    if ((node.func == None) != (pattern.func == None):
+        return {}
+    )
+
+    if (node.args.size() == 0 and node.func == None and pattern.func == None:
+        if (node.repr() == pattern.repr():
+            # leaf match
+            return std.map<std.string, Node>{}
+        )
+        return {}
+    )
+
+    submatches: mut = std.map<std.string, Node> {}
+
+    for (i in std.ranges.iota_view(0u, node.args.size()):
+        m = macro_matches(node.args[i], pattern.args[i], params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())  # std::optional autoderef
+    )
+
+    if (node.func:
+        m = macro_matches(node.func, pattern.func, params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())
+    )
+
+    return submatches
+) : std.optional<std.map<std.string, Node>>
+
+
+def (call_macro_impl, macro_impl_name: std.string, macro_dll_path: std.string, match: std.map<std.string, Node>:
+    # new_node = macro_trampoline(macro_impl_name, macro_dll_path, match)
+    handle = CETO_DLOPEN(macro_dll_path.c_str())  # just leak it for now
+    if (not handle:
+        throw (std.runtime_error("Failed to open macro dll: "s + macro_dll_path))
+    )
+    fptr = CETO_DLSYM(handle, macro_impl_name.c_str())
+    f = reinterpret_cast<decltype(+(lambda(m: std.map<string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    return (*f)(match)
+) : Node
+
+
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     on_visit_definition: std.function<void(MacroDefinition)>
 
-    macro_scopes: std.unordered_map<Node, MacroScope> = {}
+#    macro_scopes: std.unordered_map<Node, MacroScope> = {}
     current_scope: MacroScope:mut = None
+    replacements: std.unordered_map<Node, Node> = {}
+
+#    def (expand: mut, node: Node:
+#        scope: mut = self.current_scope
+#        while (scope:
+#            it: mut = scope.macro_definitions.rbegin()
+#
+#            while (it != it.rend():  # no std.ranges.reverse_view until clang 16 :(
+#                definition: MacroDefinition = *it
+#                match = macro_matches(node, pattern, parameters)
+#                if (match:
+#                    replacement = call_macro_impl(definition.impl_function_name, definition.dll_path, match)
+#                    if (replacement:
+#                        self.replacements[node] = replacement
+#                        return
+#                    )
+#                )
+#
+#                it += 1
+#            )
+#
+#            scope = scope.parent()
+#        )
+#    )
+
+    def (expand: mut, node: Node:
+        scope: mut = self.current_scope
+        while (scope:
+            for (definition in std.views.reverse(scope.macro_definitions):
+                match = macro_matches(node, definition.pattern_node, definition.parameters)
+                if (match:
+                    replacement = call_macro_impl(definition.impl_function_name, definition.dll_path, match.value())
+                    if (replacement:
+                        self.replacements[node] = replacement
+                        return
+                    )
+                )
+            )
+
+            scope = scope.parent()
+        )
+    )
 
     def (visit: override:mut, node: Node.class:
-        self.macro_scopes[ceto.shared_from(&node)] = self.current_scope
+        self.expand(ceto.shared_from(&node))
 
         if (node.func:
             node.func.accept(*this)
@@ -58,7 +208,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 
     def (visit: override:mut, node: Call.class:
-        self.macro_scopes[ceto.shared_from(&node)] = self.current_scope
+        self.expand(ceto.shared_from(&node))
 
         if (node.func.name() != "defmacro":
             node.func.accept(*this)
@@ -107,7 +257,6 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
     def (visit: override:mut, node: Module.class:
         s: mut = MacroScope()
-        self.macro_scopes[ceto.shared_from(&node)] = s
         self.current_scope = s
 
         for (arg in node.args:
@@ -117,9 +266,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
     def (visit: override:mut, node: Block.class:
         outer = self.current_scope
-        inner = outer.enter_scope()
-        self.macro_scopes[ceto.shared_from(&node)] = outer
-        self.current_scope = inner
+        self.current_scope = outer.enter_scope()
+        self.expand(ceto.shared_from(&node))
         for (arg in node.args:
             arg.accept(*this)
         )
@@ -127,8 +275,14 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 )
 
-def (visit_macro_definitions, node: Module, on_visit: std.function<void(MacroDefinition)>:
+#def (visit_macro_definitions, node: Module, on_visit: std.function<void(MacroDefinition)>:
+#    visitor: mut = MacroDefinitionVisitor(on_visit)
+#    node.accept(visitor)
+#    return visitor.macro_scopes
+#) : std.unordered_map<Node, MacroScope>
+
+def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition)>:
     visitor: mut = MacroDefinitionVisitor(on_visit)
     node.accept(visitor)
-    return visitor.macro_scopes
-) : std.unordered_map<Node, MacroScope>
+    return visitor.replacements
+) : std.unordered_map<Node, Node>
