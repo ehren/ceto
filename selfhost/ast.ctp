@@ -9,8 +9,8 @@ include <pybind11/stl_bind.h>
 include <pybind11/functional.h>
 
 include(ast)
-include(repr_visitors)
 include(scope)
+include(evalable_repr)
 include(parser)
 include(macro_expansion)
 

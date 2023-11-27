@@ -5,7 +5,7 @@ include <span>
 
 include (ast)
 include (visitor)
-include (range_util)
+include (range_utility)
 
 if (_MSC_VER:
     include <windows.h>
