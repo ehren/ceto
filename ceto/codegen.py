@@ -676,6 +676,8 @@ def codegen_block_item(b : Node, cx):
             return codegen_if(b, cx)
         elif b.func.name == "while":
             return codegen_while(b, cx)
+        elif b.func.name == "def":
+            return codegen_def(b, cx)
 
     if b.declared_type is not None:
         # typed declaration

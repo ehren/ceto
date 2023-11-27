@@ -1,0 +1,37 @@
+include <ranges>
+include <numeric>
+
+# poor ranges supprt with current apple clang (15). This is good enough for internal use:
+
+if (__clang_major__ < 16:
+
+    def (range, start: size_t, stop: size_t:
+        r: mut = std.vector<size_t> (stop - start);
+        std.iota(r.begin(), r.end(), start)
+        return r
+    ) : std.vector<size_t>
+
+    def (range, stop: size_t:
+        return range(0, stop)
+    )
+
+    def (reversed: template<typename: Element>, container: std.vector<Element>:
+        rev = std.vector<Element> (container.rbegin(), container.rend())
+        return rev
+    )
+
+else:
+
+    def (range: template<typename:...:Args>, args: mut:Args:rref:...:
+        if ((sizeof...)(Args) == 1:
+            return std.ranges.iota_view(0, std.forward<Args>(args)...)
+        else:
+            return std.ranges.iota_view(std.forward<Args>(args)...)
+        ) : constexpr
+    ) : decltype(auto)
+
+    def (reversed: template<typename:...:Args>, args: mut:Args:rref:...:
+        return std.views.reverse(std.forward<Args>(args)...)
+    ) : decltype(auto)
+
+) : preprocessor

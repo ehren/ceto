@@ -6,6 +6,7 @@ include <ranges>
 
 include (ast)
 include (visitor)
+include (range_util)
 
 if (_MSC_VER:
     include <windows.h>
@@ -111,7 +112,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 
     submatches: mut = std.map<std.string, Node> {}
 
-    for (i in std.ranges.iota_view(0u, node.args.size()):
+    for (i in range(node.args.size()):
         m = macro_matches(node.args[i], pattern.args[i], params)
         if (not m:
             return {}
@@ -154,7 +155,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     def (expand: mut, node: Node:
         scope: mut:auto:const:ptr = (&self.current_scope)->get()
         while (scope:
-            for (definition in std.views.reverse(scope->macro_definitions):
+            for (definition in reversed(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
                     replacement = call_macro_impl(definition, match.value())
