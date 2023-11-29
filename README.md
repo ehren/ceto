@@ -10,14 +10,11 @@ include <iostream>
 
 
 class (Foo:
-    data_member  # implicit template with an implicit (but explicit in C++ sense) 
-                 # 1-arg constructor (deleted default constructor)
+    data_member
 
-    def (method, param:  # const by default method with const T& param
-        # call to .size() is maybe an ordinary C++ '.' access, 
-        # or maybe it's a null-checked (throwing) smart pointer or std::optional autoderef!
+    def (method, param:
         std.cout << "size: " << param.size()  << "\n"
-        return self  # implicit shared_from_this
+        return self
     )
 
     def (size:
@@ -34,6 +31,9 @@ def (string_join, vec: [std.string], sep = ", "s:   # string params (and various
         return ""s
     )
 
+    # unsafe lambda ref capture requires an explicit capture list. 
+    # The untyped lambda params 'a' and 'b' are const:auto:ref by default
+    # (like the generic param of 'method' above)
     return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
         lambda[&sep] (a, b, a + sep + b))
 ): std.string  # as a return type this is just std::string
@@ -46,7 +46,7 @@ defmacro(s.join(v), s: StringLiteral, v:
 
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
-    args : mut = []  # no need for the type if inferrable from .append call 
+    args : mut = []  # inferrable from .append call 
                      # (thanks to logic derived from https://github.com/lukasmartinelli/py14)
 
     for (a in std.span(argv, argc):
@@ -63,6 +63,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     f.method(args)  # this call to 'method' is a null checked shared_ptr autoderef.
                     # The call to 'size' in method, however, invokes std::vector::size (no deref).
                     # For a non null checked call to method (with potential UB!) write f->method(args)
+
+    # two autoderefs (call to 'method' and 'size':
+    f.method(f)    
 
     opt: std.optional<std.string> = summary
     if (opt:
@@ -81,7 +84,8 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
         std.cout << f.method(f).data_member << "\n"
         std.cout << "use count: " << (&f)->use_count() << std.endl  # one way to get around the autoderef and invoke the 
                                                                     # underlying methods of std::shared_ptr (as a bonus, 
-                                                                    # the use of explicit "&" and "->" signals unsafety)
+                                                                    # the use of explicit "&" and "->" signals unsafety).
+                                                                    # Note: smart pointers are autoderefed, raw pointers are not!
     ): void)  # lambdas automatically return their last expression 
               # unless that expression is_void_v or the return type is_void_v
 
@@ -104,5 +108,150 @@ size: 60
 use count: 2
 ```
 
+## More Examples:
 
+Classes definitions are intended to resemble python dataclasses
+
+```python
+class (Generic:
+    x  # implicit 1-arg constructor, deleted 0-arg constructor
+)
+
+class (Concrete(Generic):
+    def (init, x: int:
+        super.init(x)
+    )
+)
+
+class (Generic2(Generic):
+    y
+    def (init, x, y:
+        self.y = y
+        super.init(x)
+    )
+)
+
+def (main:
+    f = Generic("5")
+    f2 = Concrete(5)
+    #f2e = Concrete("5")  # error
+    f3 = Generic2([5], 5.0)
+    std.cout << f.x << f2.x << f3.x[0]
+)
+
+# Output: 555.0
+
+```
+
+You can code a simple visitor pattern almost like\* Java
+
+```python
+class (Node)
+class (Identifier)
+class (BinOp)
+class (Add)
+
+class (Visitor:
+
+    def (visit: virtual:mut, node: Node): void = 0
+
+    def (visit: virtual:mut, node: Identifier): void = 0
+
+    def (visit: virtual:mut, node: BinOp): void = 0
+
+    def (visit: virtual:mut, node: Add): void = 0
+)
+
+class (Node:
+    loc : int
+
+    def (accept: virtual, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (Identifier(Node):
+    name : std.string
+
+    def (init, name, loc=0:
+        # a user defined constructor is present - 1-arg constructor of Node is not inherited
+        self.name = name  # implicitly occurs in initializer list
+        super.init(loc)   # same
+    )
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (BinOp(Node):
+    args : [Node]
+
+    def (init, args, loc=0:
+        self.args = args
+        super.init(loc)
+    )
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (Add(BinOp):
+    # inherits 2-arg constructor from BinOp (because no user defined init is present)
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (SimpleVisitor(Visitor):
+    record = s""
+
+    def (visit: override:mut, node: Node:
+        self.record += "visiting Node\n"
+    )
+
+    def (visit: override:mut, ident: Identifier:
+        self.record += "visiting Identifier " + ident.name + "\n"
+    )
+
+    def (visit: override:mut, node: BinOp:
+        self.record += "visiting BinOp\n"
+
+        for (arg in node.args:
+            arg.accept(self)
+        )
+    )
+
+    def (visit: override:mut, node: Add:
+        self.record += "visiting Add\n"
+
+        for (arg in node.args:
+            arg.accept(self)
+        )
+    )
+)
+
+def (main:
+    node = Node(0)
+    ident = Identifier("a", 5)
+    args: [Node] = [ident, node, ident]
+    add: Add = Add(args)
+
+    simple_visitor: mut = SimpleVisitor()
+    ident.accept(simple_visitor)
+    add.accept(simple_visitor)
+
+    std.cout << simple_visitor.record
+)
+
+# Output:
+# visiting Identifier a
+# visiting Add
+# visiting Identifier a
+# visiting Node
+# visiting Identifier a
+
+```
 

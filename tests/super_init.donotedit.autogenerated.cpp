@@ -18,40 +18,41 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 x;
+template <typename ceto__private__C1>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
-    explicit Generic(_ceto_private_C1 x) : x(std::move(x)) {}
+    ceto__private__C1 x;
+
+    explicit Generic(ceto__private__C1 x) : x(std::move(x)) {}
 
     Generic() = delete;
 
 };
 
-struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<const int>()))> {
+struct Concrete : public std::type_identity_t<decltype(Generic(std::declval<const int>()))> {
 
-    explicit GenericChild(const int  x) : std::type_identity_t<decltype(Generic(std::declval<const int>()))> (std::move(x)) {
+    explicit Concrete(const int  x) : std::type_identity_t<decltype(Generic(std::declval<const int>()))> (std::move(x)) {
     }
 
-    GenericChild() = delete;
+    Concrete() = delete;
 
 };
 
-template <typename _ceto_private_C2>struct GenericChild2 : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> {
+template <typename ceto__private__C2, typename ceto__private__C3>struct Generic2 : public std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>()))> {
 
-    _ceto_private_C2 y;
+    ceto__private__C2 y;
 
-    explicit GenericChild2(const _ceto_private_C2 p) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (std::move(p)), y(p) {
+    explicit Generic2(ceto__private__C3 x, const ceto__private__C2 y) : std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>()))> (std::move(x)), y(y) {
     }
 
-    GenericChild2() = delete;
+    Generic2() = delete;
 
 };
 
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Generic{5})>(5);
-        const auto f2 = std::make_shared<const decltype(GenericChild{5})>(5);
-        const auto f3 = std::make_shared<const decltype(GenericChild2{5})>(5);
-        ((std::cout << ceto::mado(f)->x) << ceto::mado(f2)->x) << ceto::mado(f3)->x;
+        const auto f2 = std::make_shared<const decltype(Generic{"5"})>("5");
+        const auto f3 = std::make_shared<const decltype(Generic2{std::vector {5}, "5"})>(std::vector {5}, "5");
+        ((std::cout << ceto::mado(f)->x) << ceto::mado(f2)->x) << ceto::maybe_bounds_check_access(ceto::mado(f3)->x,0);
     }
 
