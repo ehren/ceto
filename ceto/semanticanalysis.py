@@ -7,7 +7,7 @@ import concurrent.futures
 from hashlib import sha256
 import shutil
 
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
+from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
 from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
 
@@ -728,6 +728,9 @@ def prepare_macro_ready_callback(module, module_path):
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
+
+        # this is unfortunate: (codegen and sema are performing some bad mutability)
+        macro_impl_module = eval(macro_impl_module.ast_repr(preserve_source_loc=False))
 
         module_name = os.path.basename(module_path)
         module_dir = os.path.dirname(module_path)

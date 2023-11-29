@@ -4,7 +4,6 @@
 # Test Output: Delegate destruct
 # Test Output: Timer destruct
 
-include <mutex>
 include <thread>
 
 class (Delegate:
