@@ -23,89 +23,64 @@ class (Foo:
 )
 
 
-def (string_join, vec: [std.string], sep = ", "s:   # string params (and various other things) always passed by const:ref
-    static_assert(std.is_same_v<decltype(sep), const:std.string:ref>)
-    static_assert(std.is_same_v<decltype(vec), const:std.vector<std.string>:ref>)
+def (string_join, vec: [std.string], sep = ", "s:
 
     if (vec.empty():
-        return ""s
+        return ""
     )
 
-    # unsafe lambda ref capture requires an explicit capture list. 
-    # The untyped lambda params 'a' and 'b' are const:auto:ref by default
-    # (like the generic param of 'method' above)
     return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
         lambda[&sep] (a, b, a + sep + b))
-): std.string  # as a return type this is just std::string
+
+): std.string
 
 
-# arbitrary expression macros - use carefully!
 defmacro(s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
 
 
+struct (Oops(std.runtime_error):
+    pass
+)
+
+
 def (main, argc: int, argv: const:char:ptr:const:ptr:
-    args : mut = []  # inferrable from .append call 
-                     # (thanks to logic derived from https://github.com/lukasmartinelli/py14)
+    args : mut = []
 
     for (a in std.span(argv, argc):
         args.append(std.string(a))
     )
 
-    # macro invocation (and expression if)
-    summary = ", ".join(args) + if (args.size() > 5: " that's a lot of arguments!" else: "")
+    more = if (argc == 0:
+        "no args"s
+    elif argc > 15:
+        throw (Oops("too many args entirely:" + ",".join(args))
+    else:
+        "end"s
+    )
+    args.append(more)
 
-    f = Foo(summary)  # really make_shared<const decltype(Foo{summary})>(summary) - note extra CTAD!
-                      # - don't grab the pichforks yet, there's 'struct'
-                      #   (and 'unique' with implicit std.move from last use!).
+    summary = ", ".join(args)
 
-    f.method(args)  # this call to 'method' is a null checked shared_ptr autoderef.
-                    # The call to 'size' in method, however, invokes std::vector::size (no deref).
-                    # For a non null checked call to method (with potential UB!) write f->method(args)
-
-    # two autoderefs (call to 'method' and 'size':
+    f = Foo(summary)
+    f.method(args)
     f.method(f)    
 
-    opt: std.optional<std.string> = summary
-    if (opt:
-        std.cout << opt.size() << " (optional autoderef)\n"
-        # ^ autoderef works by transforming ordinary method calls using '.' to something like
-        # maybe_allow_deref(opt)->size() where maybe_allow_deref returns opt unchanged if
-        # it's a std::optional or smart pointer. For anything else, maybe_allow_deref returns 
-        # the real std::addressof of its argument (cancelling out the outer deref. See ceto.h)
-
-        f.method(opt)  # call to 'size' in the generic 'method' is also a std::optional autoderef
-    )
-
     t: mut = std.thread(lambda(:
-        # shared/weak ceto defined class instances (or simple is_arithmetic_v variables) are captured 
-        # by value implicitly - everything else e.g. std.string/std.vector requires an explicit capture list (see above)
-        std.cout << f.method(f).data_member << "\n"
-        std.cout << "use count: " << (&f)->use_count() << std.endl  # one way to get around the autoderef and invoke the 
-                                                                    # underlying methods of std::shared_ptr (as a bonus, 
-                                                                    # the use of explicit "&" and "->" signals unsafety).
-                                                                    # Note: smart pointers are autoderefed, raw pointers are not!
-    ): void)  # lambdas automatically return their last expression 
-              # unless that expression is_void_v or the return type is_void_v
+        d = f.method(f).data_member 
+        std.cout << if (d.size() < 100: d else: "too much data!") << std.endl
+    ): void)
 
-    # you may still call the methods of std::optional (rather than the wrapped type) without additional ceremony:
-    std.cout << opt.value().size() << " (no optional autoderef)\n"
-
-    # not a macro invocation
     t.join()
 )
 ```
 
 ```
 $ ceto kitchensink.ctp a b c d e f
-size: 7
-60 (optional autoderef)
-size: 60
-60 (no optional deref)
-size: 60
-./kitchensink, a, b, c, d, e, f that's a lot of arguments!
-use count: 2
+size: 8
+size: 33
+./kitchensink, a, b, c, d, e, f, end
 ```
 
 ## More Examples:
