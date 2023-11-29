@@ -13,7 +13,7 @@ class (Foo:
     data_member
 
     def (method, param:
-        std.cout << "size: " << param.size()  << "\n"
+        std.cout << param.size()  << "\n"
         return self
     )
 
@@ -54,9 +54,16 @@ struct (Oops(std.runtime_error):
 )
 
 
+class (Holder:
+    args
+): unique  # non-refcounted but unique_ptr managed 
+           # with implicit std::move from last use
+
+
 def (main, argc: int, argv: const:char:ptr:const:ptr:
     args : mut = []  # no need for the list type 
-                     # - inferred from 'append' thanks to logic of py14
+                     # - inferred from 'append' thanks to logic of 
+                     #   https://github.com/lukasmartinelli/py14
 
     for (a in std.span(argv, argc):
         args.append(std.string(a))
@@ -66,7 +73,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     more = if (argc == 0:
         "no args"s
     elif argc > 15:
-        throw (Oops("too many args entirely")
+        throw (Oops("too many args entirely"))
     else:
         "end"s
     )
@@ -75,26 +82,35 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # macro invocation
     summary = ", ".join(args)
 
-    f = Foo(summary)  # auto make shared
+    f = Foo(summary)  # auto make shared with extra CTAD
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
 
-    t: mut = std.thread(lambda(:     # lambda with no capture list:
-        d = f.method(f).data_member  # - implicit strong capture for ceto class  
-                                     #   instances only
-        std.cout << if (d.size() < 100: d else: "too much data!") << std.endl
+    t:mut = std.thread(lambda(:       # lambda with no capture list:
+        d = f.method(f).data_member   # - implicit strong capture for (non :unique) ceto 
+                                      #   class instances only
+        std.cout << if (d.size() < 100: d else: "too much data!"s) << std.endl
     ): void)
 
-    # not a macro invocation
-    t.join()
+    # not macro invocation
+    t.join()  
+
+    holder:mut = Holder(args)  # make_unique with extra CTAD
+    holders: mut = []
+    holders.append(holder)     # implict std.move from last use
+
+    std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
+                                                # and unique_ptr autoderef
 )
 ```
 
 ```
 $ ceto kitchensink.ctp a b c d e f
-size: 8
-size: 33
+8
+38
+38
 ./kitchensink, a, b, c, d, e, f, end
+8
 ```
 
 ## More Examples:
