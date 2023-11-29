@@ -25,8 +25,6 @@ else:
 
     def (range: template<typename:...:Args>, args: mut:Args:rref:...:
         if ((sizeof...)(Args) == 1:
-            # https://stackoverflow.com/questions/45578484/is-it-possible-to-get-the-first-type-of-a-parameter-pack-in-a-one-liner/45578533#45578533
-            # may be a better way?
             zero : typename:std.tuple_element<0, std.tuple<Args...>>::type = 0
             return std.ranges.iota_view(zero, std.forward<Args>(args)...)
         else:
