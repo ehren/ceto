@@ -89,7 +89,7 @@ struct MacroScope : public ceto::object {
         }
 
         inline auto enter_scope() const -> std::unique_ptr<MacroScope> {
-            auto s { std::make_unique<decltype(MacroScope())>() } ;
+            auto s = std::make_unique<decltype(MacroScope())>();
             ceto::mado(s)->parent = this;
             return s;
         }
@@ -250,7 +250,7 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
         }
 
         inline auto visit(const Module&  node) -> void override {
-            auto s { std::make_unique<decltype(MacroScope())>() } ;
+            auto s = std::make_unique<decltype(MacroScope())>();
             (this -> current_scope) = std::move(s);
             for(const auto& arg : ceto::mado(node)->args) {
                 ceto::mado(arg)->accept((*this));

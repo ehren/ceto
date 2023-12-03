@@ -19,7 +19,7 @@ from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, 
 try:
     import cPyparsing as pp
     from cPyparsing import ParseException
-    # pp.ParserElement.enableIncremental()
+    #pp.ParserElement.enableIncremental()
 except ImportError:
     import pyparsing as pp
     from pyparsing import ParseException
@@ -420,12 +420,6 @@ def _parse_preprocessed(source: str):
     res = grammar.parseString(source, parseAll=True)
     return res[0]
 
-def _thread_parse(source, index):
-    expr = _parse_preprocessed(source)
-    assert isinstance(expr, Module)
-    if hasattr(expr, "ast_repr"):
-        return expr.ast_repr(), index
-    return expr, index
 
 def parse_string(source: str):
     from textwrap import dedent
@@ -441,36 +435,13 @@ def parse_string(source: str):
     futures = []
     results = {}
 
-    # blocks = []
-    # for s in subblocks:
-    #     blocks.append(s[-1])
-
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        for index, block in enumerate(subblocks):
-            block_source = block[-1]
-            if not block_source.strip():
-                continue
-            futures.append(
-                executor.submit(_thread_parse, block_source, index))
-
-        for future in concurrent.futures.as_completed(futures):
-            expr, index = future.result()
-            if isinstance(expr, str):
-                expr = eval(expr)
-            results[index] = expr
-
-    for k in sorted(results.keys()):
-        expr = results[k]
-        assert isinstance(expr, Module)
-        parsed_nodes.extend(expr.args)
-
-    # for block in subblocks:
-    #     block_source = block[-1]
-    #     if not block_source.strip():
-    #         continue
-    #     m = _parse_preprocessed(block[1].strip())
-    #     assert isinstance(m, Module)
-    #     parsed_nodes.extend(m.args)
+    for block in subblocks:
+        block_source = block[-1]
+        if not block_source.strip():
+            continue
+        m = _parse_preprocessed(block[1].strip())
+        assert isinstance(m, Module)
+        parsed_nodes.extend(m.args)
 
     res = Module(parsed_nodes)
     # preprocessed = preprocessed.getvalue()
