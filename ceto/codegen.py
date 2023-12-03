@@ -2357,6 +2357,23 @@ def codegen_assign(node: Assign, cx: Scope):
         rhs_str = codegen_node(node.rhs, cx)
 
     if isinstance(node.lhs, Identifier):
+        if _is_unique_var(node.lhs, cx):
+            # ':unique' instances are unique_ptr<const T> by default but the actual variable is non-const to facilitate easier
+            # automatic std::move from last use even with const:UniqueFoo (and not just mut:UniqueFoo).
+            # Note that a const shared_ptr<const T> is still powerful because it can be copied from,
+            # a const unique_ptr<const Foo> is rather useless (can only be called, can't form a vector with one).
+            # A (not const) unique_ptr<const Foo> on the other hand is a good replacement for a
+            # const shared_ptr<const Foo> (if you don't need shared ownership).
+            if node.lhs.declared_type:
+                return constexpr_specifier + codegen_type(node.lhs, node.lhs.declared_type, cx) + " = " + rhs_str
+            else:
+                if cx.in_class_body:
+                    assign_str = "decltype(" + rhs_str + ") " + codegen_node(node.lhs, cx) + " = " + rhs_str
+                else:
+                    # just auto not const auto
+                    assign_str = "auto " + codegen_node(node.lhs, cx) + " = " + rhs_str
+                return constexpr_specifier + assign_str
+
         lhs_str = node.lhs.name
 
         if node.lhs.declared_type:
@@ -2468,6 +2485,15 @@ def codegen_assign(node: Assign, cx: Scope):
 def _is_unique_var(node: Identifier, cx: Scope):
     # should be handled in a prior typechecking pass (like most uses of find_defs)
 
+    def _is(defining):
+        declared_type = strip_mut_or_const(defining.declared_type)
+        classdef = cx.lookup_class(declared_type)
+        if classdef and classdef.is_unique:
+            return True
+        elif isinstance(defining, Assign) and isinstance(rhs := strip_mut_or_const(defining.rhs), Call) \
+                and (classdef := cx.lookup_class(rhs.func)) and classdef.is_unique:
+            return True
+
     assert isinstance(node, Identifier)
 
     if not node.scope:
@@ -2476,14 +2502,10 @@ def _is_unique_var(node: Identifier, cx: Scope):
 
     for defn in node.scope.find_defs(node):
         if isinstance(defn, (LocalVariableDefinition, ParameterDefinition)):
-            defining = defn.defining_node
-            declared_type = strip_mut_or_const(defining.declared_type)
-            classdef = cx.lookup_class(declared_type)
-            if classdef and classdef.is_unique:
+            if _is(defn.defining_node):
                 return True
-            elif isinstance(defining, Assign) and isinstance(rhs := strip_mut_or_const(defining.rhs), Call) \
-                 and (classdef := cx.lookup_class(rhs.func)) and classdef.is_unique:
-                return True
+    if isinstance(node.parent, Assign) and _is(node.parent):
+        return True
 
     return False
 

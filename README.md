@@ -61,7 +61,7 @@ class (Holder:
 
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
-    args : mut = []  # no need for the list type 
+    args: mut = []  # no need for the list type 
                      # - inferred from 'append' thanks to logic of 
                      #   https://github.com/lukasmartinelli/py14
 
@@ -82,7 +82,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # macro invocation
     summary = ", ".join(args)
 
-    f = Foo(summary)  # auto make shared with extra CTAD
+    f = Foo(summary)  # make shared with extra CTAD
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
 
@@ -95,9 +95,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # not macro invocation
     t.join()  
 
-    holder:mut = Holder(args)  # make_unique with extra CTAD
+    holder = Holder(args)   # make_unique with extra CTAD
     holders: mut = []
-    holders.append(holder)     # implict std.move from last use
+    holders.append(holder)  # implict std.move from last use
 
     std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
                                                 # and unique_ptr autoderef
