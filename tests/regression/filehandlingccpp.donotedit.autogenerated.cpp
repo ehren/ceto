@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto fp = fopen("file.txt", "w+");
         fprintf(fp, "hello %s", "world\n");

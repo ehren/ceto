@@ -19,31 +19,32 @@
 #include "ceto.h"
 
 
+
 #include <array>
 ;
     auto main() -> int {
-if ((1 < 2) > 0) {
+        if ((1 < 2) > 0) {
             std::cout << "yes";
         }
         const auto l = std::vector {{1, 2, 3}};
         const auto lp = (&l);
-if (0 < lp -> size()) {
+        if (0 < lp -> size()) {
             std::cout << "ok";
         }
- std::array<int,3> a;
+         std::array<int,3> a;
         static_cast<void>(a);
- std::array<int,3> a2;
+         std::array<int,3> a2;
         static_cast<void>(a2);
-if (ceto::maybe_bounds_check_access(std::array<int,25>(),5)) {
+        if (ceto::maybe_bounds_check_access(std::array<int,25>(),5)) {
             ; // pass
         }
-if (ceto::maybe_bounds_check_access(std::array<int,26>(),5)) {
+        if (ceto::maybe_bounds_check_access(std::array<int,26>(),5)) {
             ; // pass
         }
-if (ceto::maybe_bounds_check_access(std::array<int,28>(),5)) {
+        if (ceto::maybe_bounds_check_access(std::array<int,28>(),5)) {
             ; // pass
         }
-if (1 + ceto::maybe_bounds_check_access(std::array<int,29>(),5)) {
+        if (1 + ceto::maybe_bounds_check_access(std::array<int,29>(),5)) {
             ; // pass
         }
         const auto f = []() {

@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const bool b { true } ; static_assert(std::is_convertible_v<decltype(true), decltype(b)>);
         const bool b2 { 1 } ; static_assert(std::is_convertible_v<decltype(1), decltype(b2)>);

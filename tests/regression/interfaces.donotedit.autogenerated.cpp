@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct A : ceto::object {
     virtual int foo(const std::shared_ptr<const A>&  x) const = 0;
 

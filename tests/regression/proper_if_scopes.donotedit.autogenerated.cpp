@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-if (0) {
+        if (0) {
             const auto x = 5;
         } else {
             const auto x = "1";

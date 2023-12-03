@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto v = std::vector {{0, 1, 2}};
         std::cout << ceto::maybe_bounds_check_access(v,2);

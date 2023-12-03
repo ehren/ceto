@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         auto [x, y] = std::make_tuple(0, 1);
         std::cout << x;

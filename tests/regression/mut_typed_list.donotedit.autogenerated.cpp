@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     inline auto byref(const std::vector<int>&  v) -> void {
         static_assert(std::is_reference_v<decltype(v)>);
         static_assert(std::is_const_v<std::remove_reference_t<decltype(v)>>);

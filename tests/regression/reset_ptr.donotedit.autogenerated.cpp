@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int x { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(x)>);
@@ -59,21 +60,21 @@ auto operator==(const std::shared_ptr<const Foo>&  f, const T2& other) -> auto {
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo())>();
         ceto::mado(f)->bar();
-if (f == 5) {
+        if (f == 5) {
             printf("overload == works\n");
         }
         const auto b = std::make_shared<const decltype(Foo())>();
-if (f == b) {
+        if (f == b) {
             printf("same\n");
         } else {
             printf("not same\n");
         }
         const std::shared_ptr<const Foo> f2 = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f2)>>);
         printf("testing for null...\n");
-if (f2 == nullptr) {
+        if (f2 == nullptr) {
             printf("we're dead\n");
         }
-if (!f2) {
+        if (!f2) {
             printf("we're dead\n");
         }
     }

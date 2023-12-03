@@ -18,13 +18,14 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto x = 0;
         auto xmut { 0 } ;
         const int * const y = (&x); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype((&x)), std::remove_cvref_t<decltype(y)>>);
- int * y2;
+         int * y2;
         y2 = (&xmut);
- int * y3;
+         int * y3;
         y3 = (&xmut);
         const auto hmm = reinterpret_cast<int *>(1);
         static_cast<void>(y);

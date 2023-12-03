@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1>
 auto foo(const T1& bar) -> auto {
         return bar;

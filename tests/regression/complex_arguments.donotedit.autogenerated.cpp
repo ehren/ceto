@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1>
 auto moretest2(const T1& p) -> void {
         (std::cout << p) << "\n";

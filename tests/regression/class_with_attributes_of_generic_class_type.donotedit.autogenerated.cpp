@@ -18,55 +18,56 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_private_C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1, typename ceto__private__C2, typename ceto__private__C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C2 b;
+    ceto__private__C1 a;
 
-    _ceto_private_C3 c;
+    ceto__private__C2 b;
 
-    explicit Foo(_ceto_private_C1 a, _ceto_private_C2 b, _ceto_private_C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
+    ceto__private__C3 c;
+
+    explicit Foo(ceto__private__C1 a, ceto__private__C2 b, ceto__private__C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
 
     Foo() = delete;
 
 };
 
-template <typename _ceto_private_C4, typename _ceto_private_C5>struct Bar : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C4, typename ceto__private__C5>struct Bar : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C4 a;
+    ceto__private__C4 a;
 
-    _ceto_private_C5 b;
+    ceto__private__C5 b;
 
     std::shared_ptr<const Foo<decltype(a),decltype(b),decltype(b)>> f;
 
-    explicit Bar(_ceto_private_C4 a, _ceto_private_C5 b, std::shared_ptr<const Foo<decltype(a),decltype(b),decltype(b)>> f) : a(std::move(a)), b(std::move(b)), f(f) {}
+    explicit Bar(ceto__private__C4 a, ceto__private__C5 b, std::shared_ptr<const Foo<decltype(a),decltype(b),decltype(b)>> f) : a(std::move(a)), b(std::move(b)), f(f) {}
 
     Bar() = delete;
 
 };
 
-template <typename _ceto_private_C6, typename _ceto_private_C7>struct Bar2 : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C6, typename ceto__private__C7>struct Bar2 : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C6 a;
+    ceto__private__C6 a;
 
-    _ceto_private_C7 b;
+    ceto__private__C7 b;
 
     decltype(std::make_shared<const decltype(Foo{b, b, b})>(b, b, b)) f;
 
-    explicit Bar2(_ceto_private_C6 a, _ceto_private_C7 b, decltype(std::make_shared<const decltype(Foo{b, b, b})>(b, b, b)) f) : a(std::move(a)), b(std::move(b)), f(f) {}
+    explicit Bar2(ceto__private__C6 a, ceto__private__C7 b, decltype(std::make_shared<const decltype(Foo{b, b, b})>(b, b, b)) f) : a(std::move(a)), b(std::move(b)), f(f) {}
 
     Bar2() = delete;
 
 };
 
-template <typename _ceto_private_C8>struct MixedGenericConcrete : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C8>struct MixedGenericConcrete : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C8 a;
+    ceto__private__C8 a;
 
     int b;
 
-    explicit MixedGenericConcrete(_ceto_private_C8 a, int b) : a(std::move(a)), b(b) {}
+    explicit MixedGenericConcrete(ceto__private__C8 a, int b) : a(std::move(a)), b(b) {}
 
     MixedGenericConcrete() = delete;
 

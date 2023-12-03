@@ -18,9 +18,10 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+
+    ceto__private__C1 a;
 
         inline auto f() const -> void {
             const auto self = ceto::shared_from(this);
@@ -50,7 +51,7 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
             std::cout << "dead\n";
         }
 
-    explicit Foo(_ceto_private_C1 a) : a(std::move(a)) {}
+    explicit Foo(ceto__private__C1 a) : a(std::move(a)) {}
 
     Foo() = delete;
 

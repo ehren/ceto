@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
+        struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
                         inline auto doit() const -> void {
                     printf("%d\n", 55 + 89);

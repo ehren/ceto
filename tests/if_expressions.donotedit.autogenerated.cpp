@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto x = [&]() {if (1) {
             return std::vector {{1, 2}};

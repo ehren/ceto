@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     inline auto f(const std::vector<std::vector<int>>&  a) -> void {
         std::cout << ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(a,0),0);
         static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
@@ -42,7 +43,7 @@
                 static_assert(std::is_reference_v<decltype(a)>);
                 if constexpr (!std::is_void_v<decltype(f(a))>) { return f(a); } else { static_cast<void>(f(a)); };
                 };
-struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
+        struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
 
                     std::vector<std::vector<int>> a;
 
@@ -53,7 +54,7 @@ struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
         };
 
         const auto c = std::make_shared<const decltype(C{l})>(l);
-struct C2 : public ceto::shared_object, public std::enable_shared_from_this<C2> {
+        struct C2 : public ceto::shared_object, public std::enable_shared_from_this<C2> {
 
                     std::vector<std::vector<int>> a = std::vector<std::vector<int>>{std::vector {0}}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<int>>{std::vector {0}}), std::remove_cvref_t<decltype(a)>>);
 

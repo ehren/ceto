@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::shared_ptr<const Foo> f;

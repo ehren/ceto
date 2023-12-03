@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto & x { 1 } ;
         const int & y = x; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(x), std::remove_cvref_t<decltype(y)>>);

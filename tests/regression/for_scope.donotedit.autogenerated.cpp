@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto x = 5;
         auto l { std::vector {{1, 2, 3}} } ;

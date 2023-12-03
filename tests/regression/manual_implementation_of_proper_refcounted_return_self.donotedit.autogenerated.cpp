@@ -18,11 +18,12 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct A : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1>struct A : public ceto::enable_shared_from_this_base_for_templates {
 
-    explicit A(_ceto_private_C1 a) : a(std::move(a)) {}
+    ceto__private__C1 a;
+
+    explicit A(ceto__private__C1 a) : a(std::move(a)) {}
 
     A() = delete;
 

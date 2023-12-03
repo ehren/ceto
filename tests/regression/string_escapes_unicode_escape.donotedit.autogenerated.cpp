@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         ((std::cout << "\u2200") << "\u2200") << "\u2200\u2200";
     }

@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
      template<typename T,typename Y> inline auto foo( const T &  x,  const Y &  y) -> decltype(x * y) {
         return (x + y);
     }

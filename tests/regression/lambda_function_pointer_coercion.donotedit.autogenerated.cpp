@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     inline auto blah(const int  x) -> auto {
         return x;
     }
@@ -47,7 +48,7 @@
                         };
                 }(1)(1);
         std::cout << l5;
-#if !defined(_MSC_VER)
+        #if !defined(_MSC_VER)
             const auto l6 = [](const int  x) {
                     if constexpr (!std::is_void_v<decltype([x = ceto::default_capture(x)](const auto &y) -> int {
                             if constexpr (!std::is_void_v<decltype((y + x))>&& !std::is_void_v<int>) { return (y + x); } else { static_cast<void>((y + x)); };
@@ -66,7 +67,7 @@
         #endif
 
         std::cout << l6;
-#if !defined(_MSC_VER)
+        #if !defined(_MSC_VER)
             const auto l7 = [](const int  x) {
                     if constexpr (!std::is_void_v<decltype([x = ceto::default_capture(x)](const auto &y) -> decltype(1) {
                             if constexpr (!std::is_void_v<decltype((y + x))>&& !std::is_void_v<decltype(1)>) { return (y + x); } else { static_cast<void>((y + x)); };

@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1>
 auto stuff(const T1& a) -> auto {
         return ceto::maybe_bounds_check_access(a,0);
@@ -60,10 +61,10 @@ auto foo(const T1& x) -> auto {
         const auto z = 5;
         const auto w = z;
         const auto q = foo(w + 1);
-if (1) {
+        if (1) {
             ceto::mad(x)->push_back(ceto::maybe_bounds_check_access(zz,1));
         } else if ((z == 4)) {
-if (q == 6) {
+            if (q == 6) {
                 static_cast<void>(1);
             } else {
                 static_cast<void>(10);

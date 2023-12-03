@@ -18,9 +18,10 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+
+    ceto__private__C1 a;
 
         inline auto mutmethod() -> auto {
             (this -> a) = ((this -> a) + 1);
@@ -31,17 +32,17 @@ template <typename _ceto_private_C1>struct Foo : public ceto::enable_shared_from
             return "i'm const by default";
         }
 
-    explicit Foo(_ceto_private_C1 a) : a(std::move(a)) {}
+    explicit Foo(ceto__private__C1 a) : a(std::move(a)) {}
 
     Foo() = delete;
 
 };
 
-template <typename _ceto_private_C2>struct Holder : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C2>struct Holder : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C2 f;
+    ceto__private__C2 f;
 
-    explicit Holder(_ceto_private_C2 f) : f(std::move(f)) {}
+    explicit Holder(ceto__private__C2 f) : f(std::move(f)) {}
 
     Holder() = delete;
 

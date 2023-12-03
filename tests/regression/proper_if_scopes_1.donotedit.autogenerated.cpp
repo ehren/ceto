@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-if (auto x { 5 } ) {
+        if (auto x { 5 } ) {
             x = 1;
         } else if (auto x { 2 } ) {
             x = 3;

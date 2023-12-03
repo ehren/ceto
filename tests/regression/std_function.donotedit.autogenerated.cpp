@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     inline auto foo(const decltype(std::function([](const int  x) {
             if constexpr (!std::is_void_v<decltype(0)>) { return 0; } else { static_cast<void>(0); };
             })) f = [](const int  x) {

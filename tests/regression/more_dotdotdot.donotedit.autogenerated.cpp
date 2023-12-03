@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
      template<typename ... Types> inline auto count() -> auto {
         return sizeof...(Types);
     }

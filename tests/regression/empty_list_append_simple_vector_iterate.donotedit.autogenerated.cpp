@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         auto v { std::vector<std::ranges::range_value_t<std::vector<decltype(0)>>>() } ;
         auto v2 { std::vector<std::ranges::range_value_t<decltype(v)>>() } ;

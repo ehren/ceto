@@ -18,13 +18,14 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
- int x;
+         int x;
         x = 0;
         static_cast<void>(x);
         const auto f = []( const char *  y,  int  z) {
-using namespace std;
-typedef int t;
+                using namespace std;
+                typedef int t;
                 const t w { 3 } ; static_assert(std::is_convertible_v<decltype(3), decltype(w)>);
                 (((cout << y) << z) << w) << endl;
                 z = 2;

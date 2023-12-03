@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto x { 0 } ;
         auto * const y { (&x) } ;

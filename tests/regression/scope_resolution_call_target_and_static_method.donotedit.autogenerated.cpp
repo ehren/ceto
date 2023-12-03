@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
          static inline auto blah() -> void {
@@ -30,7 +31,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
         Foo :: blah();
         Foo::blah();
         (std::cout << ceto::mado(std :: vector(500, 5))->at(499)) << (std :: endl);
-using std :: vector;
+        using std :: vector;
         const auto v = vector(500, 5);
         std::cout << ceto::mado(v)->at(499);
     }

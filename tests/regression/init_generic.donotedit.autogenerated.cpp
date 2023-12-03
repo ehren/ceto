@@ -18,24 +18,25 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1, typename _ceto_private_C2>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 x;
+template <typename ceto__private__C1, typename ceto__private__C2>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
+
+    ceto__private__C1 x;
 
     int y;
 
-    _ceto_private_C2 z;
+    ceto__private__C2 z;
 
-    explicit Generic(const _ceto_private_C2 z, const _ceto_private_C1 y) : x(y), y(99), z(z) {
+    explicit Generic(const ceto__private__C2 z, const ceto__private__C1 y) : x(y), y(99), z(z) {
     }
 
     Generic() = delete;
 
 };
 
-template <typename _ceto_private_C3>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C3>(), std::vector {{1, 2, 3}}))> {
+template <typename ceto__private__C3>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>(), std::vector {{1, 2, 3}}))> {
 
-    explicit GenericChild(_ceto_private_C3 x) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C3>(), std::vector {{1, 2, 3}}))> (std::move(x), std::vector {{1, 2, 3}}) {
+    explicit GenericChild(ceto__private__C3 x) : std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>(), std::vector {{1, 2, 3}}))> (std::move(x), std::vector {{1, 2, 3}}) {
     }
 
     GenericChild() = delete;

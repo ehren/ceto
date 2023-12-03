@@ -18,12 +18,13 @@
 
 #include "ceto.h"
 
+
     inline auto tprintf( const char *  format) -> void {
         std::cout << format;
     }
 
      template<typename T,typename ... Targs> inline auto tprintf( const char *  format, const T  value, const Targs ...  Fargs) -> void {
-while ((*format) != ""[0]) {if ((*format) == "%"[0]) {
+        while ((*format) != ""[0]) {            if ((*format) == "%"[0]) {
                 std::cout << value;
                 tprintf(format + 1, Fargs...);
                 return;

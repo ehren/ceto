@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main(const int  argc, const char * *  argv) -> int {
-if (const auto x = 5) {
+        if (const auto x = 5) {
             printf("%d", x);
         } else if ((argc == 1)) {
             printf("1");

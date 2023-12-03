@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Uniq : public ceto::object {
 
     decltype(0) x = 0;
@@ -44,11 +45,11 @@ struct Shared : public ceto::shared_object, public std::enable_shared_from_this<
 
 };
 
-template <typename _ceto_private_C1>struct Shared2 : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C1>struct Shared2 : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 x;
+    ceto__private__C1 x;
 
-    explicit Shared2(_ceto_private_C1 x) : x(std::move(x)) {}
+    explicit Shared2(ceto__private__C1 x) : x(std::move(x)) {}
 
     Shared2() = delete;
 
@@ -86,7 +87,7 @@ template <typename _ceto_private_C1>struct Shared2 : public ceto::enable_shared_
         for(const auto& x : u) {
             printf("bar again: %d\n", ceto::mado(x)->bar());
             n = (n + 1);
-if ((n % 2) == 0) {
+            if ((n % 2) == 0) {
                 ceto::mado(x)->bar();
             }
         }

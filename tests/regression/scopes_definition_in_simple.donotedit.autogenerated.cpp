@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-if (auto y { 1 } ) {
+        if (auto y { 1 } ) {
             y = 5;
         }
     }

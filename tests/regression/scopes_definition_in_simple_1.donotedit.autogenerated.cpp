@@ -18,8 +18,9 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-while (auto y { 1 } ) {            y = 5;
+        while (auto y { 1 } ) {            y = 5;
             break;
         }
     }

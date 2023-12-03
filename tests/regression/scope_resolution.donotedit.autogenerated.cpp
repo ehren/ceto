@@ -18,9 +18,10 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
-using std::cout;
-using std :: endl;
+        using std::cout;
+        using std :: endl;
         ((((cout << "hi") << endl) << (std :: endl)) << std::endl) << "end";
     }
 

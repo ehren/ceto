@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
      template<typename T,typename ... Args> inline auto forwarder( Args && ...  args) -> void {
         const T local = {std::forward<Args>(args)...};
     }

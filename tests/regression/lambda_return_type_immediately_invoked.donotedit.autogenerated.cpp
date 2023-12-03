@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         const auto val = [](const auto &x) -> int {
                 if constexpr (!std::is_void_v<decltype(x)>&& !std::is_void_v<int>) { return x; } else { static_cast<void>(x); };

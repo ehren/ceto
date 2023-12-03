@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1, typename T2>
 auto map(const T1& values, const T2& fun) -> auto {
         auto results { std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>() } ;

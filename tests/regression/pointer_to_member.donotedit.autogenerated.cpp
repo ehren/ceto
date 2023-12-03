@@ -19,6 +19,7 @@
 #include "ceto.h"
 
 
+
 #define MFPTR_DOT(a, b) (a.*b)
 #define MFPTR_ARROW(a, b) (a->*b)
 ;

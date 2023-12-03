@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         std::cout << "	\n";
         ((std::cout << std::endl) << "\"") << std::endl;

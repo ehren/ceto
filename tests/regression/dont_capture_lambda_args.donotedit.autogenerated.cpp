@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     auto main() -> int {
         auto x { std::vector<decltype(1)>() } ;
         const auto lfunc = [](const auto &x, const auto &y) {

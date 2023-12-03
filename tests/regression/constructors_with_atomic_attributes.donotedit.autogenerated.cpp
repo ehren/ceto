@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     std::atomic<int> a { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(a)>);

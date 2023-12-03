@@ -18,19 +18,20 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 x;
+template <typename ceto__private__C1>struct Generic : public ceto::enable_shared_from_this_base_for_templates {
 
-    explicit Generic(_ceto_private_C1 x) : x(std::move(x)) {}
+    ceto__private__C1 x;
+
+    explicit Generic(ceto__private__C1 x) : x(std::move(x)) {}
 
     Generic() = delete;
 
 };
 
-template <typename _ceto_private_C2>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> {
+template <typename ceto__private__C2>struct GenericChild : public std::type_identity_t<decltype(Generic(std::declval<ceto__private__C2>()))> {
 
-    explicit GenericChild(_ceto_private_C2 x) : std::type_identity_t<decltype(Generic(std::declval<_ceto_private_C2>()))> (std::move(x)) {
+    explicit GenericChild(ceto__private__C2 x) : std::type_identity_t<decltype(Generic(std::declval<ceto__private__C2>()))> (std::move(x)) {
     }
 
     GenericChild() = delete;

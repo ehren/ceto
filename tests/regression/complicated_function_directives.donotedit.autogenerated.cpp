@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1, typename T2>
  static auto foo(const T1& x, const T2& y) -> int {
         return (x + y);

@@ -18,15 +18,16 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1, typename _ceto_private_C2, typename _ceto_private_C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1, typename ceto__private__C2, typename ceto__private__C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C2 b;
+    ceto__private__C1 a;
 
-    _ceto_private_C3 c;
+    ceto__private__C2 b;
 
-    explicit Foo(_ceto_private_C1 a, _ceto_private_C2 b, _ceto_private_C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
+    ceto__private__C3 c;
+
+    explicit Foo(ceto__private__C1 a, ceto__private__C2 b, ceto__private__C3 c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
 
     Foo() = delete;
 

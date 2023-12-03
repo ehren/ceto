@@ -18,18 +18,19 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
 };
 
     auto main() -> int {
-if (std::make_shared<decltype(Foo())>()) {
+        if (std::make_shared<decltype(Foo())>()) {
             std::cout << 5;
         }
-if (std::make_shared<decltype(Foo())>()) {
+        if (std::make_shared<decltype(Foo())>()) {
             std::cout << 5;
         }
-if (std::make_shared<decltype(Foo())>()) {
+        if (std::make_shared<decltype(Foo())>()) {
             std::cout << 5;
         }
     }

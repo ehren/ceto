@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     inline auto is_void() -> void {
         ; // pass
     }

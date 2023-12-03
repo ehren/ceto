@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
     template <typename T1>
 auto list_size(const T1& lst) -> void {
         (((std::cout << "list size: ") << ceto::mado(lst)->size()) << " end") << std::endl;

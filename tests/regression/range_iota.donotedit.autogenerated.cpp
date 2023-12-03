@@ -18,12 +18,13 @@
 
 #include "ceto.h"
 
+
 #include <ranges>
 ;
 #include <iostream>
 ;
      template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
-if constexpr (sizeof...(Args) == 1) {
+        if constexpr (sizeof...(Args) == 1) {
             return std::ranges::iota_view(0, std::forward<Args>(args)...);
         } else {
             return std::ranges::iota_view(std::forward<Args>(args)...);
