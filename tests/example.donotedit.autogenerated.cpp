@@ -27,14 +27,14 @@
 ;
 #include <iostream>
 ;
-template <typename ceto__private__C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C5>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    ceto__private__C3 data_member;
+    ceto__private__C5 data_member;
 
         template <typename T1>
 auto method(const T1& param) const -> auto {
             const auto self = ceto::shared_from(this);
-            ((std::cout << "size: ") << ceto::mado(param)->size()) << "\n";
+            (std::cout << ceto::mado(param)->size()) << "\n";
             return self;
         }
 
@@ -42,7 +42,7 @@ auto method(const T1& param) const -> auto {
             return ceto::mado(this -> data_member)->size();
         }
 
-    explicit Foo(ceto__private__C3 data_member) : data_member(std::move(data_member)) {}
+    explicit Foo(ceto__private__C5 data_member) : data_member(std::move(data_member)) {}
 
     Foo() = delete;
 
@@ -66,11 +66,11 @@ using std::runtime_error::runtime_error;
 
 };
 
-template <typename ceto__private__C4>struct Holder : public ceto::object {
+template <typename ceto__private__C6>struct Holder : public ceto::object {
 
-    ceto__private__C4 args;
+    ceto__private__C6 args;
 
-    explicit Holder(ceto__private__C4 args) : args(std::move(args)) {}
+    explicit Holder(ceto__private__C6 args) : args(std::move(args)) {}
 
     Holder() = delete;
 

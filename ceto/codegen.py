@@ -2372,8 +2372,10 @@ def codegen_assign(node: Assign, cx: Scope):
                 if cx.in_class_body:
                     assign_str = "decltype(" + rhs_str + ") " + codegen_node(node.lhs, cx) + " = " + rhs_str
                 else:
-                    # just auto not const auto
-                    assign_str = "auto " + codegen_node(node.lhs, cx) + " = " + rhs_str
+                    assign_str = codegen_node(node.lhs, cx) + " = " + rhs_str
+                    if not node.lhs.scope.find_def(node.lhs):
+                        # just auto not const auto
+                        assign_str = "auto " + assign_str
                 node.lhs.declared_type = old_type
                 return constexpr_specifier + assign_str
 

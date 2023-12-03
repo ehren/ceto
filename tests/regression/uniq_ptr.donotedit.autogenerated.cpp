@@ -18,6 +18,7 @@
 
 #include "ceto.h"
 
+
 struct Foo : public ceto::object {
 
     int a { 5 } ; static_assert(std::is_convertible_v<decltype(5), decltype(a)>);
@@ -41,9 +42,9 @@ struct Foo : public ceto::object {
     auto main() -> int {
         ceto::mado(std::make_unique<const decltype(Foo())>())->bar();
         baz(std::make_unique<const decltype(Foo())>());
-        auto f { std::make_unique<decltype(Foo())>() } ;
+        auto f = std::make_unique<decltype(Foo())>();
         ceto::mado(f)->bar();
-        auto f2 { std::make_unique<decltype(Foo())>() } ;
+        auto f2 = std::make_unique<decltype(Foo())>();
         ceto::mado(f2)->bar();
         baz(std::move(f2));
         auto lst { std::vector<std::unique_ptr<decltype(Foo())>>() } ;

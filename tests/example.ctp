@@ -1,3 +1,9 @@
+include <numeric>
+include <thread>
+include <ranges>
+include <iostream>
+
+
 class (Foo:
     data_member
 
@@ -91,4 +97,3 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
                                                 # and unique_ptr autoderef
 )
-
