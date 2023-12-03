@@ -2364,14 +2364,17 @@ def codegen_assign(node: Assign, cx: Scope):
             # a const unique_ptr<const Foo> is rather useless (can only be called, can't form a vector with one).
             # A (not const) unique_ptr<const Foo> on the other hand is a good replacement for a
             # const shared_ptr<const Foo> (if you don't need shared ownership).
-            if node.lhs.declared_type:
+            if node.lhs.declared_type and node.lhs.declared_type.name not in ["mut", "const"]:
                 return constexpr_specifier + codegen_type(node.lhs, node.lhs.declared_type, cx) + " = " + rhs_str
             else:
+                old_type = node.lhs.declared_type  #  just mut or const
+                node.lhs.declared_type = None
                 if cx.in_class_body:
                     assign_str = "decltype(" + rhs_str + ") " + codegen_node(node.lhs, cx) + " = " + rhs_str
                 else:
                     # just auto not const auto
                     assign_str = "auto " + codegen_node(node.lhs, cx) + " = " + rhs_str
+                node.lhs.declared_type = old_type
                 return constexpr_specifier + assign_str
 
         lhs_str = node.lhs.name

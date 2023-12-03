@@ -18,11 +18,12 @@
 
 #include "ceto.h"
 
-template <typename _ceto_private_C1>struct FooGeneric : public ceto::enable_shared_from_this_base_for_templates {
 
-    _ceto_private_C1 a;
+template <typename ceto__private__C1>struct FooGeneric : public ceto::enable_shared_from_this_base_for_templates {
 
-    explicit FooGeneric(_ceto_private_C1 a) : a(std::move(a)) {}
+    ceto__private__C1 a;
+
+    explicit FooGeneric(ceto__private__C1 a) : a(std::move(a)) {}
 
     FooGeneric() = delete;
 
@@ -38,11 +39,11 @@ struct FooConcrete : public ceto::shared_object, public std::enable_shared_from_
 
 };
 
-template <typename _ceto_private_C2>struct FooGenericUnique : public ceto::object {
+template <typename ceto__private__C2>struct FooGenericUnique : public ceto::object {
 
-    _ceto_private_C2 a;
+    ceto__private__C2 a;
 
-    explicit FooGenericUnique(_ceto_private_C2 a) : a(std::move(a)) {}
+    explicit FooGenericUnique(ceto__private__C2 a) : a(std::move(a)) {}
 
     FooGenericUnique() = delete;
 
@@ -94,8 +95,8 @@ auto func(const T1& f) -> void {
         func(f);
         func(f2);
         func(std::make_unique<const decltype(FooGenericUnique{std::string {"hi"}})>(std::string {"hi"}));
-        const auto f3 = std::make_unique<const decltype(FooConcreteUnique{std::string {"hey"}})>(std::string {"hey"});
-        auto f4 { std::make_unique<decltype(FooConcreteUnique{std::string {"hello"}})>(std::string {"hello"}) } ;
+        auto f3 = std::make_unique<const decltype(FooConcreteUnique{std::string {"hey"}})>(std::string {"hey"});
+        auto f4 = std::make_unique<decltype(FooConcreteUnique{std::string {"hello"}})>(std::string {"hello"});
         (std::cout << ceto::mado(f3)->a) << "\n";
         func(f4);
         func(std::make_unique<const decltype(FooConcreteUnique{std::string {"yo"}})>(std::string {"yo"}));
