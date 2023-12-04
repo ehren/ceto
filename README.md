@@ -1,6 +1,6 @@
 # ceto
 
-**ceto** is an experimental "pythonish" dialect of C++:
+**ceto** is an experimental dialect of C++ with similarities to Python in syntax, variable declaration style, safe(ish) reference semantics for "class", and generic programming as an exercise in forgetting the type annotations. Every special form is a function call.
 
 ```python
 include <numeric>
@@ -113,9 +113,14 @@ $ ceto kitchensink.ctp a b c d e f
 8
 ```
 
-## More Examples:
+## Features
 
-Classes definitions are intended to resemble python dataclasses
+**.** performs both C++ scope resolution (**::** can still be used if desired), std::shared_ptr, std::unique_ptr, and std::optional autoderef in addition to ordinary C++ member access.
+
+
+## More Examples
+
+Class definitions are intended to resemble python dataclasses
 
 ```python
 class (Generic:
@@ -148,7 +153,7 @@ def (main:
 
 ```
 
-You can code a simple visitor pattern almost like\* Java
+You can code a simple visitor pattern just like\* Java
 
 ```python
 class (Node)
@@ -257,6 +262,65 @@ def (main:
 # visiting Identifier a
 # visiting Node
 # visiting Identifier a
+
+```
+
+## Syntax: 
+
+Every Python statement is present but represented as a function call that takes zero or more indented blocks in addition to any ordinary parameters. Blocks begin with an end of line **:**. Every other occurence of **:** is a first class binary operator (TypeOp in the ast). The other operators retain their precedence and syntax from C++ (see https://en.cppreference.com/w/cpp/language/operator_precedence) with the exceptions of **not**, **and**, and **or** which require the Python spelling but C++ precedence. Some C++ operators such as pre-increment and post-increment are intentionally not present (you can't have a fake Python with **++**).
+
+**def**, **class**, **while**, **for**, **if**, **try**, etc are merely **Identifier** instances in the ast (and macro system) not special keywords in the grammar.
+
+Simple python expressions such as [list, literals], {curly, braced, literals} and (tuple, literals) are present as well as array[access] notation. We also support C++ templates and curly braced calls.
+
+For example:
+
+```python
+include <cassert>  # parsed as templates
+include <unordered_map>
+include <optional>
+
+def (main:
+    s = [1, 2]  # ast: Assign with rhs a ListLiteral
+    
+    for (x in {1, 2, 3, 4}:  # ast: BracedLiteral as rhs of InOp and first arg to call with func "for" (second arg a Block)
+        pass
+    )
+
+    m: std.unordered_map<int, std.string> = {{0, "zero"}, {1, "one"}}
+    m2 = std.unordered_map <int, std.string> {{0, "zero"}, {1, "one"}}
+    assert(m == m2)
+
+    v = std.vector<int> {1, 2}  # ast: BracedCall with func a Template
+    v2: std.vector<int> = {1, 2}
+ 
+    assert(v == v2)
+    assert(v == s)
+
+    v3: std.vector<int> (1, 2)  # ast: Call with func a template
+    assert(v != v3)
+    assert(v3.size() == 1 and v3[0] == 2)
+
+    opt: std.optional<std.string> = {}  # empty
+    if (opt:
+        assert(opt.size() >= 0)  # aside: std.optional autoderef here
+    )
+
+    it:mut = s.begin()
+    it.operator("++")(1)   # while there's no ++ and -- you can do this
+    it.operator("--")()    # or this (which one is the preincrement anyway?)
+    cpp"
+        --it--  // if you really insist
+        #define PREINCREMENT(x) (++x)  // even worse
+    "
+    PREINCREMENT(it)
+    
+    # of course the pythonic option should be encouraged
+    it += 1  
+
+    # note the utility of ++ is diminished when C-style for loops are unavailable anyway
+    assert(it == s.end())
+)
 
 ```
 
