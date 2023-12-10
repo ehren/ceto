@@ -24,7 +24,7 @@
         const auto lfunc = [](const auto &x, const auto &y) {
                 if constexpr (!std::is_void_v<decltype((x + y))>) { return (x + y); } else { static_cast<void>((x + y)); };
                 };
-        ceto::mad(x)->push_back(1);
+        (*ceto::mad(x)).push_back(1);
         std::cout << lfunc(ceto::maybe_bounds_check_access(x,0), ceto::maybe_bounds_check_access(x,0));
     }
 

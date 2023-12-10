@@ -42,19 +42,19 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
     auto main() -> int {
         auto f { std::make_shared<decltype(Foo())>() } ;
         auto t { std::thread([f = ceto::default_capture(f)]() {
-                while (ceto::mado(f)->a < 100000) {                    (std::cout << ceto::mado(f)->a) << "\n";
+                while ((*ceto::mad(f)).a < 100000) {                    (std::cout << (*ceto::mad(f)).a) << "\n";
                 }
-                if constexpr (!std::is_void_v<decltype(ceto::mado(f)->go = false)>) { return ceto::mado(f)->go = false; } else { static_cast<void>(ceto::mado(f)->go = false); };
+                if constexpr (!std::is_void_v<decltype((*ceto::mad(f)).go = false)>) { return (*ceto::mad(f)).go = false; } else { static_cast<void>((*ceto::mad(f)).go = false); };
                 }) } ;
         auto t2 { std::thread([f = ceto::default_capture(f)]() {
-                while (ceto::mado(f)->go) {                    ceto::mado(f)->a = (ceto::mado(f)->a + 1);
-                    ceto::mad(ceto::mado(f)->a)->operator++();
-                    ceto::mad(ceto::mado(f)->a)->operator++(1);
-                    ceto::mado(f)->a += 1;
+                while ((*ceto::mad(f)).go) {                    (*ceto::mad(f)).a = ((*ceto::mad(f)).a + 1);
+                    (*ceto::mad((*ceto::mad(f)).a)).operator++();
+                    (*ceto::mad((*ceto::mad(f)).a)).operator++(1);
+                    (*ceto::mad(f)).a += 1;
                 }
                 return;
                 }) } ;
-        ceto::mado(t)->join();
-        ceto::mado(t2)->join();
+        (*ceto::mad(t)).join();
+        (*ceto::mad(t2)).join();
     }
 

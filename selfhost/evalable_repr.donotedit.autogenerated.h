@@ -39,20 +39,20 @@ auto generate_loc(const T1& node) -> void {
             if (!preserve_source_loc) {
                 return;
             }
-            const auto loc = std::get<1>(ceto::mado(node)->source);
+            const auto loc = std::get<1>((*ceto::mad(node)).source);
             (this -> repr) += (("(\"\", " + std::to_string(loc)) + ")");
         }
 
         inline auto visit(const Node&  node) -> void override {
             (this -> repr) += (std::string(typeid_name(node)) + "(");
-            if (ceto::mado(node)->func) {
-                ceto::mado(ceto::mado(node)->func)->accept((*this));
+            if ((*ceto::mad(node)).func) {
+                (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
                 (this -> repr) += ", ";
             }
             (this -> repr) += "[";
-            if (ceto::mado(ceto::mado(node)->args)->size() > 0) {
-                for(const auto& arg : ceto::mado(node)->args) {
-                    ceto::mado(arg)->accept((*this));
+            if ((*ceto::mad((*ceto::mad(node)).args)).size() > 0) {
+                for(const auto& arg : (*ceto::mad(node)).args) {
+                    (*ceto::mad(arg)).accept((*this));
                     (this -> repr) += ", ";
                 }
             }
@@ -67,8 +67,8 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const UnOp&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->op) + "\", [");
-            ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            (*ceto::mad(ceto::maybe_bounds_check_access((*ceto::mad(node)).args,0))).accept((*this));
             (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
                 return ": Node";
             } else {
@@ -80,8 +80,8 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->op) + "\", [");
-            ceto::mado(ceto::maybe_bounds_check_access(ceto::mado(node)->args,0))->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            (*ceto::mad(ceto::maybe_bounds_check_access((*ceto::mad(node)).args,0))).accept((*this));
             (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
                 return ": Node";
             } else {
@@ -93,9 +93,9 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const BinOp&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->op) + "\", [");
-            for(const auto& arg : ceto::mado(node)->args) {
-                ceto::mado(arg)->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            for(const auto& arg : (*ceto::mad(node)).args) {
+                (*ceto::mad(arg)).accept((*this));
                 (this -> repr) += ", ";
             }
             (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
@@ -109,22 +109,22 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const Identifier&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->repr()) + "\"");
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).repr()) + "\"");
             (this -> repr) += ", ";
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const StringLiteral&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(") + ceto::mado(node)->escaped()) + ", ");
-            if (ceto::mado(node)->prefix) {
-                ceto::mado(ceto::mado(node)->prefix)->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(") + (*ceto::mad(node)).escaped()) + ", ");
+            if ((*ceto::mad(node)).prefix) {
+                (*ceto::mad((*ceto::mad(node)).prefix)).accept((*this));
             } else {
                 (this -> repr) += "None";
             }
             (this -> repr) += ", ";
-            if (ceto::mado(node)->suffix) {
-                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+            if ((*ceto::mad(node)).suffix) {
+                (*ceto::mad((*ceto::mad(node)).suffix)).accept((*this));
             } else {
                 (this -> repr) += "None";
             }
@@ -134,9 +134,9 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const IntegerLiteral&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->integer_string) + "\", ");
-            if (ceto::mado(node)->suffix) {
-                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).integer_string) + "\", ");
+            if ((*ceto::mad(node)).suffix) {
+                (*ceto::mad((*ceto::mad(node)).suffix)).accept((*this));
             } else {
                 (this -> repr) += "None";
             }
@@ -146,9 +146,9 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const FloatLiteral&  node) -> void override {
-            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + ceto::mado(node)->float_string) + "\", ");
-            if (ceto::mado(node)->suffix) {
-                ceto::mado(ceto::mado(node)->suffix)->accept((*this));
+            (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).float_string) + "\", ");
+            if ((*ceto::mad(node)).suffix) {
+                (*ceto::mad((*ceto::mad(node)).suffix)).accept((*this));
             } else {
                 (this -> repr) += "None";
             }

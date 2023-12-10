@@ -29,7 +29,7 @@
 #if defined(__clang__) && (__clang_major__ < 16)
         inline auto range(const size_t  start, const size_t  stop) -> std::vector<size_t> {
         auto r { std::vector<size_t>(stop - start) } ;
-        std::iota(ceto::mado(r)->begin(), ceto::mado(r)->end(), start);
+        std::iota((*ceto::mad(r)).begin(), (*ceto::mad(r)).end(), start);
         return r;
     }
 
@@ -38,7 +38,7 @@
     }
 
          template<typename Element> inline auto reversed( const std::vector<Element> &  container) -> auto {
-        const auto rev = std::vector<Element>(ceto::mado(container)->rbegin(), ceto::mado(container)->rend());
+        const auto rev = std::vector<Element>((*ceto::mad(container)).rbegin(), (*ceto::mad(container)).rend());
         return rev;
     }
 

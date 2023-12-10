@@ -39,7 +39,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
 
          virtual inline auto accept(const std::shared_ptr<BaseVisitor>&  visitor) const -> void {
             const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            (*ceto::mad(visitor)).visit(self);
         }
 
 };
@@ -52,7 +52,7 @@ using Node::Node;
 
          virtual inline auto accept(const std::shared_ptr<BaseVisitor>&  visitor) const -> void {
             const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            (*ceto::mad(visitor)).visit(self);
         }
 
     explicit Identifier(std::string name) : name(std::move(name)) {}
@@ -69,7 +69,7 @@ using Node::Node;
 
          virtual inline auto accept(const std::shared_ptr<BaseVisitor>&  visitor) const -> void {
             const auto self = ceto::shared_from(this);
-            ceto::mado(visitor)->visit(self);
+            (*ceto::mad(visitor)).visit(self);
         }
 
     explicit ListLiteral(std::vector<std::shared_ptr<const Node>> args) : args(std::move(args)) {}
@@ -113,8 +113,8 @@ using BaseVisitor::BaseVisitor;
          virtual inline auto visit(const std::shared_ptr<const ListLiteral>&  list_literal) -> void {
             const auto self = ceto::shared_from(this);
             (this -> record) += "RecordingVisitor visiting ListLiteral\n";
-            for(const auto& arg : ceto::mado(list_literal)->args) {
-                ceto::mado(arg)->accept(self);
+            for(const auto& arg : (*ceto::mad(list_literal)).args) {
+                (*ceto::mad(arg)).accept(self);
             }
         }
 
@@ -124,15 +124,15 @@ using BaseVisitor::BaseVisitor;
         const auto node = std::make_shared<const decltype(Node())>();
         const auto ident = std::make_shared<const decltype(Identifier{"a"})>("a");
         auto simple_visitor { std::make_shared<decltype(SimpleVisitor())>() } ;
-        ceto::mado(ident)->accept(simple_visitor);
-        ceto::mado(node)->accept(simple_visitor);
+        (*ceto::mad(ident)).accept(simple_visitor);
+        (*ceto::mad(node)).accept(simple_visitor);
         auto recording_visitor { std::make_shared<decltype(RecordingVisitor())>() } ;
-        ceto::mado(ident)->accept(recording_visitor);
-        ceto::mado(node)->accept(recording_visitor);
+        (*ceto::mad(ident)).accept(recording_visitor);
+        (*ceto::mad(node)).accept(recording_visitor);
         const std::vector<std::shared_ptr<const Node>> list_args = std::vector<std::shared_ptr<const Node>>{ident, ident, ident}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Node>>{ident, ident, ident}), std::remove_cvref_t<decltype(list_args)>>);
         const auto list_literal = std::make_shared<const decltype(ListLiteral{list_args})>(list_args);
-        ceto::mado(list_literal)->accept(simple_visitor);
-        ceto::mado(list_literal)->accept(recording_visitor);
-        std::cout << ceto::mado(recording_visitor)->record;
+        (*ceto::mad(list_literal)).accept(simple_visitor);
+        (*ceto::mad(list_literal)).accept(recording_visitor);
+        std::cout << (*ceto::mad(recording_visitor)).record;
     }
 

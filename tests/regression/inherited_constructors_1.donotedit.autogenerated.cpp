@@ -37,6 +37,6 @@ using Base::Base;
 
     auto main() -> int {
         const auto d = std::make_shared<const decltype(Derived{5})>(5);
-        std::cout << ceto::mado(d)->a;
+        std::cout << (*ceto::mad(d)).a;
     }
 

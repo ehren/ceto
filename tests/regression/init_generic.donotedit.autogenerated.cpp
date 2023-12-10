@@ -46,7 +46,7 @@ template <typename ceto__private__C3>struct GenericChild : public std::type_iden
     auto main() -> int {
         const auto g = std::make_shared<const decltype(Generic{101, (-333)})>(101, (-333));
         const auto g2 = std::make_shared<const decltype(GenericChild{std::vector {{"x", "y", "z"}}})>(std::vector {{"x", "y", "z"}});
-        ((std::cout << ceto::mado(g)->x) << ceto::mado(g)->y) << ceto::mado(g)->z;
-        ((std::cout << ceto::maybe_bounds_check_access(ceto::mado(g2)->x,2)) << ceto::mado(g2)->y) << ceto::maybe_bounds_check_access(ceto::mado(g2)->z,1);
+        ((std::cout << (*ceto::mad(g)).x) << (*ceto::mad(g)).y) << (*ceto::mad(g)).z;
+        ((std::cout << ceto::maybe_bounds_check_access((*ceto::mad(g2)).x,2)) << (*ceto::mad(g2)).y) << ceto::maybe_bounds_check_access((*ceto::mad(g2)).z,1);
     }
 

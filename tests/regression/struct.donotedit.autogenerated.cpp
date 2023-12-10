@@ -33,29 +33,29 @@ struct Foo : public ceto::object {
         static_assert(std::is_same_v<decltype(f),const Foo &>);
         static_assert(std::is_reference_v<decltype(f)>);
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
-        std::cout << ceto::mado(f)->x;
+        std::cout << (*ceto::mad(f)).x;
     }
 
     inline auto by_val( Foo  f) -> void {
         static_assert(std::is_same_v<decltype(f),Foo>);
         static_assert(!std::is_reference_v<decltype(f)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(f)>>);
-        std::cout << ceto::mado(f)->x;
+        std::cout << (*ceto::mad(f)).x;
     }
 
     inline auto by_const_val( Foo const  f) -> void {
         static_assert(std::is_same_v<decltype(f),const Foo>);
         static_assert(!std::is_reference_v<decltype(f)>);
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
-        std::cout << ceto::mado(f)->x;
+        std::cout << (*ceto::mad(f)).x;
     }
 
     inline auto by_mut_ref( Foo &  f) -> void {
         static_assert(std::is_same_v<decltype(f),Foo &>);
         static_assert(std::is_reference_v<decltype(f)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(f)>>);
-        ceto::mado(f)->x += "hi";
-        std::cout << ceto::mado(f)->x;
+        (*ceto::mad(f)).x += "hi";
+        std::cout << (*ceto::mad(f)).x;
     }
 
     inline auto by_ptr(const Foo *  f) -> void {

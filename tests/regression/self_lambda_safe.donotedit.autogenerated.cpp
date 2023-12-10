@@ -36,7 +36,7 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
             const auto outer = [self = ceto::default_capture(self)]() {
                     ((std::cout << "in lambda1:") << (&self) -> use_count()) << "\n";
                     const auto l = [self = ceto::default_capture(self)]() {
-                            (std::cout << ceto::mado(self)->a) << "\n";
+                            (std::cout << (*ceto::mad(self)).a) << "\n";
                             return;
                             };
                     l();
@@ -58,7 +58,7 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
 };
 
     auto main() -> int {
-        ceto::mado(std::make_shared<const decltype(Foo{"yo"})>("yo"))->f();
-        ceto::mado(std::make_shared<const decltype(Foo{"yo"})>("yo"))->f2();
+        (*ceto::mad(std::make_shared<const decltype(Foo{"yo"})>("yo"))).f();
+        (*ceto::mad(std::make_shared<const decltype(Foo{"yo"})>("yo"))).f2();
     }
 

@@ -44,11 +44,11 @@ constexpr const auto cg = "it's a global, no need to capture";
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo{2})>(2);
         const auto l = [f = ceto::default_capture(f)]() {
-                if constexpr (!std::is_void_v<decltype((g + ceto::mado(f)->a))>) { return (g + ceto::mado(f)->a); } else { static_cast<void>((g + ceto::mado(f)->a)); };
+                if constexpr (!std::is_void_v<decltype((g + (*ceto::mad(f)).a))>) { return (g + (*ceto::mad(f)).a); } else { static_cast<void>((g + (*ceto::mad(f)).a)); };
                 };
         const auto l2 = []() {
                 if constexpr (!std::is_void_v<decltype(cg)>) { return cg; } else { static_cast<void>(cg); };
                 };
-        ((((std::cout << ceto::mado(f)->f) << ceto::mado(f)->a) << l()) << "\n") << l2();
+        ((((std::cout << (*ceto::mad(f)).f) << (*ceto::mad(f)).a) << l()) << "\n") << l2();
     }
 

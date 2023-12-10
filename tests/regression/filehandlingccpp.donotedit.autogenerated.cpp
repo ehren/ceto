@@ -27,8 +27,8 @@
         fclose(fp2);
         const auto t = std::ifstream("file.txt");
         auto buffer { std::stringstream() } ;
-        buffer << ceto::mado(t)->rdbuf();
-        const auto s = ceto::mado(buffer)->str();
+        buffer << (*ceto::mad(t)).rdbuf();
+        const auto s = (*ceto::mad(buffer)).str();
         (std::cout << s) << "\n";
     }
 

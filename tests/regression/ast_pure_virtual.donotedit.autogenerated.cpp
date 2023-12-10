@@ -43,11 +43,11 @@ struct Identifier : public Node {
 
     std::string _name;
 
-        inline auto repr() const -> decltype(ceto::mado(static_cast<std::shared_ptr<const Node>>(nullptr))->repr()) {
+        inline auto repr() const -> decltype((*ceto::mad(static_cast<std::shared_ptr<const Node>>(nullptr))).repr()) {
             return (this -> _name);
         }
 
-         virtual inline auto name() const -> decltype(ceto::mado(std::declval<std::shared_ptr<const Node>>())->name()) {
+         virtual inline auto name() const -> decltype((*ceto::mad(std::declval<std::shared_ptr<const Node>>())).name()) {
             return (this -> _name);
         }
 
@@ -82,6 +82,6 @@ constexpr const auto glob = 0;
 
     auto main() -> int {
         const auto id = std::make_shared<const decltype(Identifier{"a"})>("a");
-        std::cout << ceto::mad(ceto::mado(id)->name())->value();
+        std::cout << (*ceto::mad_smartptr((*ceto::mad(id)).name())).value();
     }
 

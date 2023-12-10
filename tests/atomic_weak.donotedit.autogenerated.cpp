@@ -55,18 +55,18 @@ struct Executor : public ceto::shared_object, public std::enable_shared_from_thi
 
         inline auto do_something(const std::shared_ptr<const Task>&  task) -> void {
             (this -> last_submitted) = task;
-            ceto::mado(task)->action();
+            (*ceto::mad(task)).action();
             (this -> last_finished) = task;
         }
 
         ~Executor() {
-            ((((std::cout << "Last task submitted: ") << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_submitted)->load())->lock()) {
-                return std::to_string(ceto::mado(strong)->id());
+            ((((std::cout << "Last task submitted: ") << [&]() {if (const auto strong = (*ceto::mad((*ceto::mad(this -> last_submitted)).load())).lock()) {
+                return std::to_string((*ceto::mad(strong)).id());
             } else {
                 return std::string {"Last submitted task not found"};
             }}()
-) << "\nLast task finished: ") << [&]() {if (const auto strong = ceto::mado(ceto::mado(this -> last_finished)->load())->lock()) {
-                return std::to_string(ceto::mado(strong)->id());
+) << "\nLast task finished: ") << [&]() {if (const auto strong = (*ceto::mad((*ceto::mad(this -> last_finished)).load())).lock()) {
+                return std::to_string((*ceto::mad(strong)).id());
             } else {
                 return std::string {"Last finished task not found"};
             }}()
@@ -79,19 +79,19 @@ struct Executor : public ceto::shared_object, public std::enable_shared_from_thi
         auto executor { std::make_shared<decltype(Executor())>() } ;
         std::vector<std::thread> threads = std::vector<std::thread>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::thread>{}), std::remove_cvref_t<decltype(threads)>>);
         for(const auto& task : tasks) {
-            ceto::mad(threads)->push_back(std::thread([task = ceto::default_capture(task), executor = ceto::default_capture(executor)]() {
-                    if constexpr (!std::is_void_v<decltype(ceto::mado(executor)->do_something(task))>) { return ceto::mado(executor)->do_something(task); } else { static_cast<void>(ceto::mado(executor)->do_something(task)); };
+            (*ceto::mad(threads)).push_back(std::thread([task = ceto::default_capture(task), executor = ceto::default_capture(executor)]() {
+                    if constexpr (!std::is_void_v<decltype((*ceto::mad(executor)).do_something(task))>) { return (*ceto::mad(executor)).do_something(task); } else { static_cast<void>((*ceto::mad(executor)).do_something(task)); };
                     }));
         }
         for( auto &&  thread : threads) {
-            ceto::mado(thread)->join();
+            (*ceto::mad(thread)).join();
         }
     }
 
     auto main() -> int {
         auto tasks { std::vector<std::shared_ptr<const decltype(Task{std::declval<std::ranges::range_value_t<decltype(std::ranges::iota_view(0, 10))>>()})>>() } ;
         for(const auto& i : std::ranges::iota_view(0, 10)) {
-            ceto::mad(tasks)->push_back(std::make_shared<const decltype(Task{i})>(i));
+            (*ceto::mad(tasks)).push_back(std::make_shared<const decltype(Task{i})>(i));
         }
         launch(tasks);
     }

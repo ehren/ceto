@@ -35,9 +35,9 @@ template <typename ceto__private__C1>struct Blah : public ceto::enable_shared_fr
 
     auto main() -> int {
         auto b { std::make_shared<decltype(Blah{1})>(1) } ;
-        ceto::mado(b)->foo();
-        std::cout << ceto::mado(b)->x;
-        ceto::mado(b)->x = 5;
-        std::cout << ceto::mado(b)->x;
+        (*ceto::mad(b)).foo();
+        std::cout << (*ceto::mad(b)).x;
+        (*ceto::mad(b)).x = 5;
+        std::cout << (*ceto::mad(b)).x;
     }
 

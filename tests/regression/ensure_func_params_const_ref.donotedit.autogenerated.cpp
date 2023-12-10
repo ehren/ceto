@@ -63,30 +63,30 @@ struct FooConcreteUnique : public ceto::object {
 auto func(const T1& f) -> void {
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(std::is_reference_v<decltype(f)>);
-        ((std::cout << "generic ") << ceto::mado(f)->a) << std::endl;
+        ((std::cout << "generic ") << (*ceto::mad(f)).a) << std::endl;
     }
 
     inline auto func(const std::shared_ptr<const FooConcrete>&  f) -> void {
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(std::is_reference_v<decltype(f)>);
-        ((std::cout << "FooConcrete ") << ceto::mado(f)->a) << std::endl;
+        ((std::cout << "FooConcrete ") << (*ceto::mad(f)).a) << std::endl;
     }
 
     inline auto func( std::unique_ptr<const FooConcreteUnique>  f) -> void {
         static_assert(!std::is_reference_v<decltype(f)>);
-        ((std::cout << "FooConcreteUnique ") << ceto::mado(f)->a) << std::endl;
+        ((std::cout << "FooConcreteUnique ") << (*ceto::mad(f)).a) << std::endl;
     }
 
     inline auto func2( const std::unique_ptr<const FooConcreteUnique>&  f) -> void {
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(std::is_reference_v<decltype(f)>);
         static_assert(std::is_same_v<decltype(f),const std::unique_ptr<const FooConcreteUnique> &>);
-        ((std::cout << "FooConcreteUnique ") << ceto::mado(f)->a) << std::endl;
+        ((std::cout << "FooConcreteUnique ") << (*ceto::mad(f)).a) << std::endl;
     }
 
     inline auto byval(const auto  f) -> void {
         static_assert(!std::is_reference_v<decltype(f)>);
-        ((std::cout << "byval ") << ceto::mado(f)->a) << "\n";
+        ((std::cout << "byval ") << (*ceto::mad(f)).a) << "\n";
     }
 
     auto main() -> int {
@@ -97,7 +97,7 @@ auto func(const T1& f) -> void {
         func(std::make_unique<const decltype(FooGenericUnique{std::string {"hi"}})>(std::string {"hi"}));
         auto f3 = std::make_unique<const decltype(FooConcreteUnique{std::string {"hey"}})>(std::string {"hey"});
         auto f4 = std::make_unique<decltype(FooConcreteUnique{std::string {"hello"}})>(std::string {"hello"});
-        (std::cout << ceto::mado(f3)->a) << "\n";
+        (std::cout << (*ceto::mad(f3)).a) << "\n";
         func(f4);
         func(std::make_unique<const decltype(FooConcreteUnique{std::string {"yo"}})>(std::string {"yo"}));
         byval(std::move(f4));

@@ -30,9 +30,9 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     auto main() -> int {
         auto f { std::make_shared<decltype(Foo())>() } ;
-        ceto::mado(f)->foo();
+        (*ceto::mad(f)).foo();
         auto f2 { f } ;
-        ceto::mado(f2)->foo();
+        (*ceto::mad(f2)).foo();
         (std::cout << (&f) -> use_count()) << std::endl;
         (std::cout << (&f2) -> use_count()) << std::endl;
         f2 = nullptr;

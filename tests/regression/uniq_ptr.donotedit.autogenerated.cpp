@@ -31,27 +31,27 @@ struct Foo : public ceto::object {
 };
 
     inline auto bam( std::unique_ptr<const Foo>  f) -> void {
-        ceto::mado(f)->bar();
+        (*ceto::mad(f)).bar();
     }
 
     inline auto baz( std::unique_ptr<const Foo>  f) -> void {
-        ceto::mado(f)->bar();
+        (*ceto::mad(f)).bar();
         bam(std::move(f));
     }
 
     auto main() -> int {
-        ceto::mado(std::make_unique<const decltype(Foo())>())->bar();
+        (*ceto::mad(std::make_unique<const decltype(Foo())>())).bar();
         baz(std::make_unique<const decltype(Foo())>());
         auto f = std::make_unique<decltype(Foo())>();
-        ceto::mado(f)->bar();
+        (*ceto::mad(f)).bar();
         auto f2 = std::make_unique<decltype(Foo())>();
-        ceto::mado(f2)->bar();
+        (*ceto::mad(f2)).bar();
         baz(std::move(f2));
         auto lst { std::vector<std::unique_ptr<decltype(Foo())>>() } ;
-        ceto::mad(lst)->push_back(std::make_unique<decltype(Foo())>());
+        (*ceto::mad(lst)).push_back(std::make_unique<decltype(Foo())>());
         f = std::make_unique<decltype(Foo())>();
-        ceto::mad(lst)->push_back(std::move(f));
-        ceto::mado(ceto::maybe_bounds_check_access(lst,0))->bar();
-        ceto::mado(ceto::maybe_bounds_check_access(lst,1))->bar();
+        (*ceto::mad(lst)).push_back(std::move(f));
+        (*ceto::mad(ceto::maybe_bounds_check_access(lst,0))).bar();
+        (*ceto::mad(ceto::maybe_bounds_check_access(lst,1))).bar();
     }
 

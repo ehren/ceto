@@ -31,6 +31,6 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
 };
 
     auto main() -> int {
-        std::cout << ceto::mado(std::make_shared<const decltype(Foo{5})>(5))->x;
+        std::cout << (*ceto::mad(std::make_shared<const decltype(Foo{5})>(5))).x;
     }
 

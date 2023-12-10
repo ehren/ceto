@@ -43,8 +43,8 @@ auto foo(const T1& x) -> auto {
         const auto xxanother = xx;
         std::vector<std::vector<int>> xxanother2 = xxanother; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(xxanother), std::remove_cvref_t<decltype(xxanother2)>>);
         auto xxanother3 { xxanother } ;
-        ceto::mad(xx2)->push_back(xxanother2);
-        ceto::mad(xx3)->push_back(xxanother3);
+        (*ceto::mad(xx2)).push_back(xxanother2);
+        (*ceto::mad(xx3)).push_back(xxanother3);
         ceto::maybe_bounds_check_access(xxanother2,0) = std::vector {{7, 7, 7}};
         ceto::maybe_bounds_check_access(xxanother3,1) = std::vector {{8, 7, 6}};
         printf("xxanother2 %d\n", ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(xxanother2,0),0));
@@ -62,7 +62,7 @@ auto foo(const T1& x) -> auto {
         const auto w = z;
         const auto q = foo(w + 1);
         if (1) {
-            ceto::mad(x)->push_back(ceto::maybe_bounds_check_access(zz,1));
+            (*ceto::mad(x)).push_back(ceto::maybe_bounds_check_access(zz,1));
         } else if ((z == 4)) {
             if (q == 6) {
                 static_cast<void>(1);
@@ -70,7 +70,7 @@ auto foo(const T1& x) -> auto {
                 static_cast<void>(10);
             }
         } else {
-            ceto::mad(x)->push_back(foo(w - 1));
+            (*ceto::mad(x)).push_back(foo(w - 1));
         }
         printf("ohsnap\n%d", ceto::maybe_bounds_check_access(x,0));
         const auto yy = std::vector {{ceto::maybe_bounds_check_access(x,0), foo(ceto::maybe_bounds_check_access(x,0))}};

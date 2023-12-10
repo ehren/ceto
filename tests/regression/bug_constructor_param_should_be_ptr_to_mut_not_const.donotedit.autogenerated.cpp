@@ -36,6 +36,6 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
 };
 
     auto main() -> int {
-        std::cout << ceto::mado(ceto::mado(std::make_shared<const decltype(Node{nullptr, std::vector<std::shared_ptr<Node>>{}})>(nullptr, std::vector<std::shared_ptr<Node>>{}))->args)->size();
+        std::cout << (*ceto::mad((*ceto::mad(std::make_shared<const decltype(Node{nullptr, std::vector<std::shared_ptr<Node>>{}})>(nullptr, std::vector<std::shared_ptr<Node>>{}))).args)).size();
     }
 

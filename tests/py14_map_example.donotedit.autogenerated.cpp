@@ -23,7 +23,7 @@
 auto map(const T1& values, const T2& fun) -> auto {
         auto results { std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>() } ;
         for(const auto& v : values) {
-            ceto::mad(results)->push_back(fun(v));
+            (*ceto::mad(results)).push_back(fun(v));
         }
         return results;
     }

@@ -86,14 +86,14 @@ public:
 
 // no autoderef
 template<typename T>
-auto mad(T&& obj) {
+auto mad_smartptr(T&& obj) {
     return std::addressof(obj);
 }
 
 // autoderef
 template<typename T>
 std::shared_ptr<T>&
-mad(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -104,7 +104,7 @@ mad(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 // autoderef of temporary
 template<typename T>
 std::shared_ptr<T>  // alternately, could return std::shared_ptr<T>& here and remove the std::move
-mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -114,7 +114,7 @@ mad(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 // autoderef
 template<typename T>
 const std::shared_ptr<T>&
-mad(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -124,7 +124,7 @@ mad(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 // autoderef
 template<typename T>
 std::unique_ptr<T>&
-mad(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -134,7 +134,7 @@ mad(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 // autoderef
 template<typename T>
 const std::unique_ptr<T>&
-mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -144,7 +144,7 @@ mad(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 // autoderef of temporary
 template<typename T>
 std::unique_ptr<T>  // alternately, could return std::unique_ptr<T>& here and remove the std::move
-mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
+mad_smartptr(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
     }
@@ -152,34 +152,32 @@ mad(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 }
 
 
-// mado = maybe allow deref - optionals too!
-
-// autoderef of std::optional (and maybe a double autoderef if it's an optional of a class (should be discouraged))
+// general autoderef including std::optional (and maybe a double autoderef if it's an optional of a class (should be discouraged))
 template<typename T>
 decltype(auto)
-mado(std::optional<T>& obj) {
-    return mad(obj.value());
+mad(std::optional<T>& obj) {
+    return mad_smartptr(obj.value());
 }
 
 // autoderef optional
 template<typename T>
 decltype(auto)
-mado(const std::optional<T>& obj) {
-    return mad(obj.value());
+mad(const std::optional<T>& obj) {
+    return mad_smartptr(obj.value());
 }
 
 // autoderef optional
 template<typename T>
 decltype(auto)
-mado(std::optional<T>&& obj) {
-    return mad(obj.value());
+mad(std::optional<T>&& obj) {
+    return mad_smartptr(obj.value());
 }
 
 // no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
 decltype(auto)
-mado(T&& obj) {
-    return mad(obj);
+mad(T&& obj) {
+    return mad_smartptr(obj);
 }
 
 

@@ -49,7 +49,7 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
     template <typename T1>
 auto aliaser(const T1& f) -> void {
         const auto g = accessor();
-        ceto::mado(g)->f = nullptr;
+        (*ceto::mad(g)).f = nullptr;
         std::cout << (f == nullptr);
         std::cout << (&f) -> use_count();
         std::cout << ((&f) -> get() == nullptr);
@@ -57,8 +57,8 @@ auto aliaser(const T1& f) -> void {
 
     auto main() -> int {
         const auto f = accessor();
-        ceto::mado(f)->f = std::make_shared<const decltype(Foo())>();
-        std::cout << (&ceto::mado(f)->f) -> use_count();
-        aliaser(ceto::mado(f)->f);
+        (*ceto::mad(f)).f = std::make_shared<const decltype(Foo())>();
+        std::cout << (&(*ceto::mad(f)).f) -> use_count();
+        aliaser((*ceto::mad(f)).f);
     }
 

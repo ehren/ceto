@@ -63,7 +63,7 @@
         };
 
         const auto c2 = std::make_shared<const decltype(C2())>();
-        const auto ll = std::vector {{l, l2, l3, l4, l5, l6, l7, l9, ceto::mado(c)->a, ceto::mado(c2)->a}};
+        const auto ll = std::vector {{l, l2, l3, l4, l5, l6, l7, l9, (*ceto::mad(c)).a, (*ceto::mad(c2)).a}};
         const std::vector<std::vector<std::vector<int>>> ll2 = ll; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ll), std::remove_cvref_t<decltype(ll2)>>);
         const auto ll3 = std::vector<std::vector<std::vector<int>>>{l, l2, l3};
         const std::vector<std::vector<std::vector<int>>> ll4 = std::vector<std::vector<std::vector<int>>>{l, l2, l3}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<std::vector<int>>>{l, l2, l3}), std::remove_cvref_t<decltype(ll4)>>);

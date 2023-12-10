@@ -31,6 +31,6 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 };
 
     auto main() -> int {
-        std::cout << ceto::mado(std::make_shared<const decltype(Foo{5})>(5))->a;
+        std::cout << (*ceto::mad(std::make_shared<const decltype(Foo{5})>(5))).a;
     }
 

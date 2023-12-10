@@ -28,9 +28,9 @@ struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Bl
 };
 
     auto main() -> int {
-        ceto::mado(std::make_shared<const decltype(Blah())>())->huh();
+        (*ceto::mad(std::make_shared<const decltype(Blah())>())).huh();
         const auto b = std::make_shared<const decltype(Blah())>();
-        ceto::mado(b)->huh();
+        (*ceto::mad(b)).huh();
         b -> huh();
         printf("addr %p\n", static_cast<const void *>((&b) -> get()));
         printf("use_count %ld\n", (&b) -> use_count());
@@ -38,7 +38,7 @@ struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Bl
         printf("addr of shared_ptr instance %p\n", static_cast<const void *>(b_addr));
         printf("addr %p\n", static_cast<const void *>(b_addr -> get()));
         printf("use_count %ld\n", b_addr -> use_count());
-        ceto::mado((*b_addr))->huh();
+        (*ceto::mad((*b_addr))).huh();
         (*b_addr) -> huh();
     }
 

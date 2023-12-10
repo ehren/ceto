@@ -39,7 +39,7 @@ struct Foo2 : public ceto::shared_object, public std::enable_shared_from_this<Fo
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo())>();
         const auto f2 = std::make_shared<const decltype(Foo2{1})>(1);
-        static_assert(!std::is_const_v<decltype(ceto::mado(f)->a)>);
-        static_assert(std::is_const_v<decltype(ceto::mado(f2)->a)>);
+        static_assert(!std::is_const_v<decltype((*ceto::mad(f)).a)>);
+        static_assert(std::is_const_v<decltype((*ceto::mad(f2)).a)>);
     }
 

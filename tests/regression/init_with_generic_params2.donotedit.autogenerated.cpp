@@ -35,7 +35,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
         const auto f2 = std::make_shared<const decltype(Foo{1})>(1);
         const auto f3 = std::make_shared<const decltype(Foo{2, 3})>(2, 3);
         for(const auto& f : {f1, f2, f3}) {
-            (std::cout << ceto::mado(f)->x) << ceto::mado(f)->y;
+            (std::cout << (*ceto::mad(f)).x) << (*ceto::mad(f)).y;
         }
     }
 

@@ -41,6 +41,6 @@ template <typename ceto__private__C2>struct GenericChild : public std::type_iden
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Generic{5})>(5);
         const auto f2 = std::make_shared<const decltype(GenericChild{"A"})>("A");
-        (std::cout << ceto::mado(f)->x) << ceto::mado(f2)->x;
+        (std::cout << (*ceto::mad(f)).x) << (*ceto::mad(f2)).x;
     }
 

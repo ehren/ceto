@@ -53,6 +53,6 @@ template <typename ceto__private__C2, typename ceto__private__C3>struct Generic2
         const auto f = std::make_shared<const decltype(Generic{5})>(5);
         const auto f2 = std::make_shared<const decltype(Generic{"5"})>("5");
         const auto f3 = std::make_shared<const decltype(Generic2{std::vector {5}, "5"})>(std::vector {5}, "5");
-        ((std::cout << ceto::mado(f)->x) << ceto::mado(f2)->x) << ceto::maybe_bounds_check_access(ceto::mado(f3)->x,0);
+        ((std::cout << (*ceto::mad(f)).x) << (*ceto::mad(f2)).x) << ceto::maybe_bounds_check_access((*ceto::mad(f3)).x,0);
     }
 

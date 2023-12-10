@@ -32,7 +32,7 @@ struct Blah1 : public A, public ceto::shared_object, public std::enable_shared_f
 
         auto foo(const std::shared_ptr<const A>&  x) const -> int {
             printf("Blah1 foo\n");
-            return ceto::mado(x)->huh();
+            return (*ceto::mad(x)).huh();
         }
 
         auto huh() const -> int {
@@ -46,7 +46,7 @@ struct Blah2 : public A, public ceto::shared_object, public std::enable_shared_f
 
         auto foo(const std::shared_ptr<const A>&  x) const -> int {
             printf("Blah2 foo\n");
-            return ceto::mado(x)->huh();
+            return (*ceto::mad(x)).huh();
         }
 
         auto huh() const -> int {
@@ -60,7 +60,7 @@ struct Blah2 : public A, public ceto::shared_object, public std::enable_shared_f
         const auto a = std::make_shared<const decltype(Blah1())>();
         const auto b = std::make_shared<const decltype(Blah2())>();
         const auto l = std::vector<std::shared_ptr<const A>>{a, b};
-        ceto::mado(ceto::maybe_bounds_check_access(l,0))->foo(ceto::maybe_bounds_check_access(l,1));
-        ceto::mado(ceto::maybe_bounds_check_access(l,1))->foo(ceto::maybe_bounds_check_access(l,0));
+        (*ceto::mad(ceto::maybe_bounds_check_access(l,0))).foo(ceto::maybe_bounds_check_access(l,1));
+        (*ceto::mad(ceto::maybe_bounds_check_access(l,1))).foo(ceto::maybe_bounds_check_access(l,0));
     }
 

@@ -30,7 +30,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     template <typename T1>
 auto huh(const T1& x) -> void {
-        ceto::mado(x)->doit();
+        (*ceto::mad(x)).doit();
     }
 
     auto main() -> int {

@@ -35,14 +35,14 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     template <typename T1>
 auto calls_method(const T1& f) -> void {
-        ceto::mado(f)->method();
+        (*ceto::mad(f)).method();
     }
 
     auto main() -> int {
         const std::shared_ptr<const Foo> fc = std::make_shared<const decltype(Foo{1})>(1); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::make_shared<const decltype(Foo{1})>(1)), std::remove_cvref_t<decltype(fc)>>);
         const auto f { std::make_shared<decltype(Foo{1})>(1) } ;
         static_assert(std::is_const_v<decltype(f)>);
-        ceto::mado(f)->method();
+        (*ceto::mad(f)).method();
         calls_method(f);
     }
 

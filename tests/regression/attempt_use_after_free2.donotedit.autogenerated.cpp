@@ -50,13 +50,13 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
 
     auto main() -> int {
         const auto g = std::make_shared<decltype(Holder())>();
-        ceto::mado(g)->f = std::make_shared<decltype(Foo())>();
+        (*ceto::mad(g)).f = std::make_shared<decltype(Foo())>();
         auto t { std::thread([g = ceto::default_capture(g)]() {
-                if constexpr (!std::is_void_v<decltype(ceto::mado(ceto::mado(g)->f)->long_running_method())>) { return ceto::mado(ceto::mado(g)->f)->long_running_method(); } else { static_cast<void>(ceto::mado(ceto::mado(g)->f)->long_running_method()); };
+                if constexpr (!std::is_void_v<decltype((*ceto::mad((*ceto::mad(g)).f)).long_running_method())>) { return (*ceto::mad((*ceto::mad(g)).f)).long_running_method(); } else { static_cast<void>((*ceto::mad((*ceto::mad(g)).f)).long_running_method()); };
                 }) } ;
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-        ceto::mado(g)->f = nullptr;
-        ceto::mado(t)->join();
+        (*ceto::mad(g)).f = nullptr;
+        (*ceto::mad(t)).join();
         std::cout << "ub has occured\n";
     }
 

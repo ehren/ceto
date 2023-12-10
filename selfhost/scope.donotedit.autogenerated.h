@@ -43,7 +43,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
     decltype(false) is_concrete = false;
 
         inline auto repr() const -> auto {
-            return ((((((((((this -> class_name() + "(") + ceto::mado(this -> name_node)->repr()) + ", ") + ceto::mado(this -> class_def_node)->repr()) + std::to_string(this -> is_unique)) + ", ") + std::to_string(this -> is_struct)) + ", ") + std::to_string(this -> is_forward_declaration)) + ")");
+            return ((((((((((this -> class_name() + "(") + (*ceto::mad(this -> name_node)).repr()) + ", ") + (*ceto::mad(this -> class_def_node)).repr()) + std::to_string(this -> is_unique)) + ", ") + std::to_string(this -> is_struct)) + ", ") + std::to_string(this -> is_forward_declaration)) + ")");
         }
 
          virtual inline auto class_name() const -> std::string {
@@ -74,7 +74,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
     std::shared_ptr<const Node> defining_node;
 
         inline auto repr() const -> auto {
-            return (((((this -> class_name() + "(") + ceto::mado(this -> defined_node)->repr()) + ", ") + ceto::mado(this -> defining_node)->repr()) + ")");
+            return (((((this -> class_name() + "(") + (*ceto::mad(this -> defined_node)).repr()) + ", ") + (*ceto::mad(this -> defining_node)).repr()) + ")");
         }
 
          virtual inline auto class_name() const -> std::string {
@@ -117,8 +117,8 @@ using VariableDefinition::VariableDefinition;
 
     inline auto creates_new_variable_scope(const std::shared_ptr<const Node>&  e) -> auto {
         if ((std::dynamic_pointer_cast<const Call>(e) != nullptr)) {
-            const auto name = ceto::mado(ceto::mado(e)->func)->name();
-            return (name && contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, ceto::mad(name)->value()));
+            const auto name = (*ceto::mad((*ceto::mad(e)).func)).name();
+            return (name && contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, (*ceto::mad_smartptr(name)).value()));
         }
         return false;
     }
@@ -130,15 +130,15 @@ auto comes_before(const T1& root, const T2& before, const T3& after) -> std::opt
         } else if ((root == after)) {
             return false;
         }
-        for(const auto& arg : ceto::mado(root)->args) {
+        for(const auto& arg : (*ceto::mad(root)).args) {
             const auto cb = comes_before(arg, before, after);
-            if (ceto::mad(cb)->has_value()) {
+            if ((*ceto::mad_smartptr(cb)).has_value()) {
                 return cb;
             }
         }
-        if (ceto::mado(root)->func) {
-            const auto cb = comes_before(ceto::mado(root)->func, before, after);
-            if (ceto::mad(cb)->has_value()) {
+        if ((*ceto::mad(root)).func) {
+            const auto cb = comes_before((*ceto::mad(root)).func, before, after);
+            if ((*ceto::mad_smartptr(cb)).has_value()) {
                 return cb;
             }
         }
@@ -170,33 +170,33 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         }
 
         inline auto add_variable_definition(const std::shared_ptr<const Identifier>&  defined_node, const std::shared_ptr<const Node>&  defining_node) -> void {
-            auto parent { ceto::mado(defined_node)->parent() } ;
+            auto parent { (*ceto::mad(defined_node)).parent() } ;
             while (parent) {                if (creates_new_variable_scope(parent)) {
-                    const auto name = ceto::mado(ceto::mado(parent)->func)->name();
+                    const auto name = (*ceto::mad((*ceto::mad(parent)).func)).name();
                     if ((name == "class") || (name == "struct")) {
                         const auto defn = std::make_shared<const decltype(FieldDefinition{defined_node, defining_node})>(defined_node, defining_node);
-                        ceto::mado(this -> variable_definitions)->push_back(defn);
+                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
                     } else if (((name == "def") || (name == "lambda"))) {
                         const auto defn = std::make_shared<const decltype(ParameterDefinition{defined_node, defining_node})>(defined_node, defining_node);
-                        ceto::mado(this -> variable_definitions)->push_back(defn);
+                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
                     } else {
                         const auto defn = std::make_shared<const decltype(LocalVariableDefinition{defined_node, defining_node})>(defined_node, defining_node);
-                        ceto::mado(this -> variable_definitions)->push_back(defn);
+                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
                     }
                     return;
                 }
-                parent = ceto::mado(parent)->parent();
+                parent = (*ceto::mad(parent)).parent();
             }
             const auto defn = std::make_shared<const decltype(GlobalVariableDefinition{defined_node, defining_node})>(defined_node, defining_node);
-            ceto::mado(this -> variable_definitions)->push_back(defn);
+            (*ceto::mad(this -> variable_definitions)).push_back(defn);
         }
 
         inline auto add_interface_method(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
-            ceto::mado(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))->push_back(interface_method_def_node);
+            (*ceto::mad(ceto::maybe_bounds_check_access(this -> interfaces,interface_name))).push_back(interface_method_def_node);
         }
 
         inline auto add_class_definition(const std::shared_ptr<const ClassDefinition>&  class_definition) -> void {
-            ceto::mado(this -> class_definitions)->push_back(class_definition);
+            (*ceto::mad(this -> class_definitions)).push_back(class_definition);
         }
 
         inline auto lookup_class(const std::shared_ptr<const Node>&  class_node) const -> std::shared_ptr<const ClassDefinition> {
@@ -204,15 +204,15 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 return nullptr;
             }
             for(const auto& c : (this -> class_definitions)) {
-                if (ceto::mado(ceto::mado(c)->name_node)->name() == ceto::mado(class_node)->name()) {
+                if ((*ceto::mad((*ceto::mad(c)).name_node)).name() == (*ceto::mad(class_node)).name()) {
                     return c;
                 }
             }
-            if (ceto::mado(this -> interfaces)->contains(ceto::mad(ceto::mado(class_node)->name())->value())) {
+            if ((*ceto::mad(this -> interfaces)).contains((*ceto::mad_smartptr((*ceto::mad(class_node)).name())).value())) {
                 return std::make_shared<const decltype(InterfaceDefinition())>();
             }
-            if (const auto s = ceto::mado(this -> _parent)->lock()) {
-                return ceto::mado(s)->lookup_class(class_node);
+            if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
+                return (*ceto::mad(s)).lookup_class(class_node);
             }
             return nullptr;
         }
@@ -223,33 +223,33 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             }
             std::vector<std::shared_ptr<const VariableDefinition>> results = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(results)>>);
             for(const auto& d : (this -> variable_definitions)) {
-                if ((ceto::mado(ceto::mado(d)->defined_node)->name() == ceto::mado(var_node)->name()) && (ceto::mado(d)->defined_node != var_node)) {
-                    const auto defined_loc = std::get<1>(ceto::mado(ceto::mado(d)->defined_node)->source);
-                    const auto var_loc = std::get<1>(ceto::mado(var_node)->source);
-                    auto parent_block { ceto::mado(ceto::mado(d)->defined_node)->parent() } ;
+                if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
+                    const auto defined_loc = std::get<1>((*ceto::mad((*ceto::mad(d)).defined_node)).source);
+                    const auto var_loc = std::get<1>((*ceto::mad(var_node)).source);
+                    auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
                     while (true) {                        if ((std::dynamic_pointer_cast<const Module>(parent_block) != nullptr)) {
                             break;
                         }
-                        parent_block = ceto::mado(parent_block)->parent();
+                        parent_block = (*ceto::mad(parent_block)).parent();
                     }
-                    const auto defined_before = comes_before(parent_block, ceto::mado(d)->defined_node, var_node);
-                    if (defined_before && ceto::mad(defined_before)->value()) {
+                    const auto defined_before = comes_before(parent_block, (*ceto::mad(d)).defined_node, var_node);
+                    if (defined_before && (*ceto::mad_smartptr(defined_before)).value()) {
                         if (!find_all) {
                             return std::vector {d};
                         }
-                        ceto::mad(results)->push_back(d);
-                        if (const auto assign = std::dynamic_pointer_cast<const Assign>(ceto::mado(d)->defining_node)) {
-                            if (const auto ident = std::dynamic_pointer_cast<const Identifier>(ceto::mado(assign)->rhs())) {
+                        (*ceto::mad(results)).push_back(d);
+                        if (const auto assign = std::dynamic_pointer_cast<const Assign>((*ceto::mad(d)).defining_node)) {
+                            if (const auto ident = std::dynamic_pointer_cast<const Identifier>((*ceto::mad(assign)).rhs())) {
                                 const auto more = this -> find_defs(ident, find_all);
-                                ceto::mado(results)->insert(ceto::mado(results)->end(), ceto::mado(more)->begin(), ceto::mado(more)->end());
+                                (*ceto::mad(results)).insert((*ceto::mad(results)).end(), (*ceto::mad(more)).begin(), (*ceto::mad(more)).end());
                             }
                         }
                     }
                 }
             }
-            if (const auto s = ceto::mado(this -> _parent)->lock()) {
-                const auto more = ceto::mado(s)->find_defs(var_node, find_all);
-                ceto::mado(results)->insert(ceto::mado(results)->end(), ceto::mado(more)->begin(), ceto::mado(more)->end());
+            if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
+                const auto more = (*ceto::mad(s)).find_defs(var_node, find_all);
+                (*ceto::mad(results)).insert((*ceto::mad(results)).end(), (*ceto::mad(more)).begin(), (*ceto::mad(more)).end());
             }
             return results;
         }
@@ -257,7 +257,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         inline auto find_def(const std::shared_ptr<const Node>&  var_node) const -> auto {
             const auto find_all = false;
             const auto found = this -> find_defs(var_node, find_all);
-            return [&]() {if (ceto::mado(found)->size() > 0) {
+            return [&]() {if ((*ceto::mad(found)).size() > 0) {
                 return ceto::maybe_bounds_check_access(found,0);
             } else {
                 const std::shared_ptr<const VariableDefinition> none_result = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none_result)>>);
@@ -269,15 +269,15 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         inline auto enter_scope() const -> std::shared_ptr<const Scope> {
             const auto self = ceto::shared_from(this);
             auto s { std::make_shared<decltype(Scope())>() } ;
-            ceto::mado(s)->_parent = self;
-            ceto::mado(s)->in_function_body = (this -> in_function_body);
-            ceto::mado(s)->in_decltype = (this -> in_decltype);
-            ceto::mado(s)->indent = ((this -> indent) + 1);
+            (*ceto::mad(s))._parent = self;
+            (*ceto::mad(s)).in_function_body = (this -> in_function_body);
+            (*ceto::mad(s)).in_decltype = (this -> in_decltype);
+            (*ceto::mad(s)).indent = ((this -> indent) + 1);
             return s;
         }
 
         inline auto parent() const -> auto {
-            return ceto::mado(this -> _parent)->lock();
+            return (*ceto::mad(this -> _parent)).lock();
         }
 
 };

@@ -23,7 +23,7 @@
 ;
     template <typename T1>
 auto contains(const T1& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
-        return (std::find(ceto::mado(container)->begin(), ceto::mado(container)->end(), element) != ceto::mado(container)->end());
+        return (std::find((*ceto::mad(container)).begin(), (*ceto::mad(container)).end(), element) != (*ceto::mad(container)).end());
     }
 
      template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {

@@ -1487,7 +1487,7 @@ def _decltype_str(node, cx):
         binop = node
         if isinstance(node, AttributeAccess):
             # TODO needs fixes for implicit scope resolution / may be busted
-            return True, "ceto::mad(" + _decltype_maybe_wrapped_in_declval(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+            return True, "(*ceto::mad(" + _decltype_maybe_wrapped_in_declval(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
         elif isinstance(node, ArrowOp):
             return True, _decltype_maybe_wrapped_in_declval(node.lhs, cx) + "->" + codegen_node(node.rhs, cx)
 
@@ -1972,12 +1972,41 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
                 return scope_resolution_code + "::" + codegen_node(remaining, cx)
 
     # maybe autoderef
+    # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
 
     if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
-        # don't autoderef an optional if we're calling a method of std::optional on it
-        return "ceto::mad(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+        # don't autoderef an optional if we're calling a method of std::optional on it (maybe this is dubious for the mutable methods swap/reset/emplace?)
+        return "(*ceto::mad_smartptr(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
 
-    return "ceto::mado(" + codegen_node(node.lhs, cx) + ")->" + codegen_node(node.rhs, cx)
+    # autoderef optional or smart pointer:
+    return "(*ceto::mad(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
+
+
+def _has_outer_double_parentheses(s: str):
+    """ helper to avoid acidentally emitting e.g. decltype((x + y)) which means something very different than decltype(x + y)"""
+
+    count = 0
+    ended = False
+    began = False
+
+    for char in s:
+        if char == '(':
+            count += 1
+            if count == 2:
+                began = True
+        elif char == ')':
+            count -= 1
+            if count < 0:
+                return False
+            elif count == 1:
+                ended = True
+        if char != "(" and not began and count < 2:
+            # string does not begin with at least two "("
+            return False
+        if ended and char != ")":
+            return False
+
+    return count == 0
 
 
 def codegen_call(node: Call, cx: Scope):
@@ -2076,10 +2105,9 @@ def codegen_call(node: Call, cx: Scope):
                     node.parent.lhs is not node):
                 if func_str == "decltype":
                     cx.in_decltype = True
-                    if args_str.startswith("((") and args_str.endswith("))"):
+                    if _has_outer_double_parentheses(args_str):
                         # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
                         # strip the outside ones (fine for now)
-                        # NOTE: this will break if the overparenthization in codegen is removed
                         return func_str + args_str[1:-1]
                 return simple_call_str
 
@@ -2133,7 +2161,7 @@ def codegen_call(node: Call, cx: Scope):
                     node.args) == 1 and isinstance(
                 operator_name_node := node.args[0], StringLiteral):
                 consume_method_name()
-                return "ceto::mad(" + codegen_node(node.func, cx) + ")->operator" + operator_name_node.str
+                return "(*ceto::mad(" + codegen_node(node.func, cx) + ")).operator" + operator_name_node.str
 
             elif method_name.parent and not isinstance(method_name.parent,
                                 (ScopeResolution, ArrowOp)):
@@ -2165,7 +2193,7 @@ def codegen_call(node: Call, cx: Scope):
                     if is_list:
                         append_str = "push_back"
 
-                    func_str = "ceto::mad(" + codegen_node(node.func, cx) + ")->" + append_str
+                    func_str = "(*ceto::mad(" + codegen_node(node.func, cx) + "))." + append_str
                 else:
 
                     # TODO don't do the silly mutation above in the first place!

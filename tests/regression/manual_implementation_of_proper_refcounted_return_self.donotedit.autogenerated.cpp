@@ -45,11 +45,11 @@ struct S : public ceto::shared_object, public std::enable_shared_from_this<S> {
     auto main() -> int {
         const auto s = std::make_shared<const decltype(S())>();
         (std::cout << (&s) -> use_count()) << std::endl;
-        const auto s2 = ceto::mado(s)->foo();
+        const auto s2 = (*ceto::mad(s)).foo();
         (std::cout << (&s2) -> use_count()) << std::endl;
         const auto a = std::make_shared<const decltype(A{s})>(s);
         (std::cout << (&s2) -> use_count()) << std::endl;
-        const auto s3 = ceto::mado(ceto::mado(a)->a)->foo2();
+        const auto s3 = (*ceto::mad((*ceto::mad(a)).a)).foo2();
         (std::cout << (&s) -> use_count()) << std::endl;
         (std::cout << (&s3) -> use_count()) << std::endl;
     }

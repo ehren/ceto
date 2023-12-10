@@ -39,18 +39,18 @@ auto operator+(const T1& other) const -> auto {
     template <typename T2>
 auto operator+(const std::shared_ptr<const Foo>&  f, const T2& x) -> auto {
         printf("adding foo and other\n");
-        return ceto::mad(f)->operator+(x);
+        return (*ceto::mad(f)).operator+(x);
     }
 
     template <typename T1>
 auto operator+(const T1& x, const std::shared_ptr<const Foo>&  f) -> auto {
         printf("adding other and foo\n");
-        return ceto::mad(f)->operator+(x);
+        return (*ceto::mad(f)).operator+(x);
     }
 
     inline auto operator+(const std::shared_ptr<const Foo>&  x, const std::shared_ptr<const Foo>&  f) -> auto {
         printf("adding foo and foo\n");
-        return ceto::mad(f)->operator+(x);
+        return (*ceto::mad(f)).operator+(x);
     }
 
     auto main() -> int {

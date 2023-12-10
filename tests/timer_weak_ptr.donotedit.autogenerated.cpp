@@ -43,8 +43,8 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
             const std::weak_ptr<const Delegate> w = (this -> _delegate); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype((this -> _delegate)), std::remove_cvref_t<decltype(w)>>);
             (this -> _thread) = std::thread([w = ceto::default_capture(w)]() {
                     while (true) {                        std::this_thread::sleep_for(std::chrono::seconds(1));
-                        if (const auto s = ceto::mado(w)->lock()) {
-                            ceto::mado(s)->action();
+                        if (const auto s = (*ceto::mad(w)).lock()) {
+                            (*ceto::mad(s)).action();
                         } else {
                             break;
                         }
@@ -54,7 +54,7 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
         }
 
         inline auto join() -> void {
-            ceto::mado(this -> _thread)->join();
+            (*ceto::mad(this -> _thread)).join();
         }
 
         inline auto clear_delegate() -> void {
@@ -73,10 +73,10 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
 
     auto main() -> int {
         auto timer { std::make_shared<decltype(Timer{std::make_shared<const decltype(Delegate())>()})>(std::make_shared<const decltype(Delegate())>()) } ;
-        ceto::mado(timer)->start();
+        (*ceto::mad(timer)).start();
         using namespace std::literals;
         std::this_thread::sleep_for(3.5s);
-        ceto::mado(timer)->clear_delegate();
-        ceto::mado(timer)->join();
+        (*ceto::mad(timer)).clear_delegate();
+        (*ceto::mad(timer)).join();
     }
 

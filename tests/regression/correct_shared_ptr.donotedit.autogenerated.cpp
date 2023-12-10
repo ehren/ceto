@@ -45,17 +45,17 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     template <typename T1>
 auto calls_foo(const T1& x) -> auto {
-        ceto::mado(x)->foo();
+        (*ceto::mad(x)).foo();
         return x;
     }
 
     auto main() -> int {
-        ceto::mado(std::make_shared<const decltype(Foo())>())->foo();
+        (*ceto::mad(std::make_shared<const decltype(Foo())>())).foo();
         auto f { std::make_shared<decltype(Foo())>() } ;
-        ceto::mado(f)->foo();
-        ceto::mado(f)->x = 55;
-        ceto::mado(f)->foo();
+        (*ceto::mad(f)).foo();
+        (*ceto::mad(f)).x = 55;
+        (*ceto::mad(f)).foo();
         const auto y = std::make_shared<const decltype(Foo())>();
-        ceto::mado(ceto::mado(calls_foo(y))->foo())->foo();
+        (*ceto::mad((*ceto::mad(calls_foo(y))).foo())).foo();
     }
 

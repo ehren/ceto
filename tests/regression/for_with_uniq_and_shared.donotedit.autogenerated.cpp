@@ -75,38 +75,38 @@ template <typename ceto__private__C1>struct Shared2 : public ceto::enable_shared
         auto s { std::vector<std::shared_ptr<const decltype(Shared())>>() } ;
         auto s2 { std::vector<std::shared_ptr<const decltype(Shared2{std::string {"blah"}})>>() } ;
         for(const auto& x : std::vector {{1, 2, 3, 4, 5}}) {
-            ceto::mad(u)->push_back(std::make_unique<decltype(Uniq())>());
-            ceto::mad(s)->push_back(std::make_shared<const decltype(Shared())>());
-            ceto::mad(s2)->push_back(std::make_shared<const decltype(Shared2{std::string {"blah"}})>(std::string {"blah"}));
+            (*ceto::mad(u)).push_back(std::make_unique<decltype(Uniq())>());
+            (*ceto::mad(s)).push_back(std::make_shared<const decltype(Shared())>());
+            (*ceto::mad(s2)).push_back(std::make_shared<const decltype(Shared2{std::string {"blah"}})>(std::string {"blah"}));
         }
         for(const auto& x : u) {
             printf("%d\n", x -> bar());
-            printf("%d\n", ceto::mado(x)->bar());
+            printf("%d\n", (*ceto::mad(x)).bar());
         }
         int n { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(n)>);
         for(const auto& x : u) {
-            printf("bar again: %d\n", ceto::mado(x)->bar());
+            printf("bar again: %d\n", (*ceto::mad(x)).bar());
             n = (n + 1);
             if ((n % 2) == 0) {
-                ceto::mado(x)->bar();
+                (*ceto::mad(x)).bar();
             }
         }
         for(const auto& x : u) {
-            printf("bar again again: %d\n", ceto::mado(x)->bar());
+            printf("bar again again: %d\n", (*ceto::mad(x)).bar());
         }
         auto v { std::vector {std::make_shared<decltype(Shared())>()} } ;
         auto v2 { std::vector {std::make_shared<const decltype(Shared())>()} } ;
         for(const auto& i : s) {
-            ceto::mado(i)->foo();
-            ceto::mad(v2)->push_back(i);
+            (*ceto::mad(i)).foo();
+            (*ceto::mad(v2)).push_back(i);
         }
         for(const auto& vv2 : v2) {
-            ceto::mado(vv2)->foo();
+            (*ceto::mad(vv2)).foo();
         }
         const auto s1 = std::make_shared<decltype(Shared())>();
         for(const auto& v1 : v) {
-            ceto::mado(v1)->x = 55;
-            (std::cout << "v:") << ceto::mado(v1)->foo();
+            (*ceto::mad(v1)).x = 55;
+            (std::cout << "v:") << (*ceto::mad(v1)).foo();
         }
     }
 

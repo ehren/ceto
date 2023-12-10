@@ -51,9 +51,9 @@ template <typename ceto__private__C2>struct Holder : public ceto::enable_shared_
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo{1})>(1);
         const auto h = std::make_shared<const decltype(Holder{f})>(f);
-        std::cout << ceto::mado(ceto::mado(h)->f)->constmethod();
+        std::cout << (*ceto::mad((*ceto::mad(h)).f)).constmethod();
         auto f2 { std::make_shared<decltype(Foo{2})>(2) } ;
         const auto h2 = std::make_shared<const decltype(Holder{f2})>(f2);
-        std::cout << ceto::mado(ceto::mado(h2)->f)->mutmethod();
+        std::cout << (*ceto::mad((*ceto::mad(h2)).f)).mutmethod();
     }
 

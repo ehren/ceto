@@ -41,7 +41,7 @@
         static_assert(!std::is_reference_v<decltype(v)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(v)>>);
         static_assert(std::is_same_v<decltype(v),std::vector<int>>);
-        ceto::mado(v)->push_back(5);
+        (*ceto::mad(v)).push_back(5);
         return v;
     }
 
@@ -49,7 +49,7 @@
         static_assert(!std::is_reference_v<decltype(v)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(v)>>);
         static_assert(std::is_same_v<decltype(v),std::vector<int>>);
-        ceto::mado(v)->push_back(5);
+        (*ceto::mad(v)).push_back(5);
         return v;
     }
 
@@ -57,7 +57,7 @@
         static_assert(std::is_reference_v<decltype(v)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(v)>>);
         static_assert(std::is_same_v<decltype(v),std::vector<int> &>);
-        ceto::mado(v)->push_back(5);
+        (*ceto::mad(v)).push_back(5);
         return v;
     }
 
@@ -65,13 +65,13 @@
         static_assert(std::is_reference_v<decltype(v)>);
         static_assert(!std::is_const_v<std::remove_reference_t<decltype(v)>>);
         static_assert(std::is_same_v<decltype(v),std::vector<int> &>);
-        ceto::mado(v)->push_back(5);
+        (*ceto::mad(v)).push_back(5);
         return v;
     }
 
     auto main() -> int {
         std::vector<int> v = std::vector<int>{1, 2, 3}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<int>{1, 2, 3}), std::remove_cvref_t<decltype(v)>>);
-        ceto::mad(v)->push_back(4);
+        (*ceto::mad(v)).push_back(4);
         for(const auto& v : v) {
             std::cout << v;
         }

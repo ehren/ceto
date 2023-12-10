@@ -45,9 +45,9 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
             const auto self = ceto::shared_from(this);
             (this -> _thread) = std::thread([self = ceto::default_capture(self)]() {
                     while (true) {                        std::this_thread::sleep_for(std::chrono::seconds(1));
-                        const auto guard = std::lock_guard<std::mutex>(ceto::mado(self)->_delegate_mutex);
-                        if (ceto::mado(self)->_delegate) {
-                            ceto::mado(ceto::mado(self)->_delegate)->action();
+                        const auto guard = std::lock_guard<std::mutex>((*ceto::mad(self))._delegate_mutex);
+                        if ((*ceto::mad(self))._delegate) {
+                            (*ceto::mad((*ceto::mad(self))._delegate)).action();
                         } else {
                             break;
                         }
@@ -57,7 +57,7 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
         }
 
         inline auto join() -> void {
-            ceto::mado(this -> _thread)->join();
+            (*ceto::mad(this -> _thread)).join();
         }
 
         inline auto clear_delegate() -> void {
@@ -77,10 +77,10 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
 
     auto main() -> int {
         auto timer { std::make_shared<decltype(Timer{std::make_shared<const decltype(Delegate())>()})>(std::make_shared<const decltype(Delegate())>()) } ;
-        ceto::mado(timer)->start();
+        (*ceto::mad(timer)).start();
         using namespace std::literals;
         std::this_thread::sleep_for(3.5s);
-        ceto::mado(timer)->clear_delegate();
-        ceto::mado(timer)->join();
+        (*ceto::mad(timer)).clear_delegate();
+        (*ceto::mad(timer)).join();
     }
 

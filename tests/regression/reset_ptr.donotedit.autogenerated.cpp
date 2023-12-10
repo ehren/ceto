@@ -33,7 +33,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
         inline auto operator==(const std::shared_ptr<const Foo>&  other) const -> auto {
             printf("in == method - both foo\n");
-            return ((this -> x) == ceto::mado(other)->x);
+            return ((this -> x) == (*ceto::mad(other)).x);
         }
 
         template <typename T1>
@@ -46,11 +46,11 @@ auto operator==(const T1& other) const -> auto {
 
     template <typename T2>
 auto operator==(const std::shared_ptr<const Foo>&  f, const T2& other) -> auto {
-        return ceto::mad(f)->operator==(other);
+        return (*ceto::mad(f)).operator==(other);
     }
 
     inline auto operator==(const std::shared_ptr<const Foo>&  f, const std::shared_ptr<const Foo>&  otherfoo) -> auto {
-        return ceto::mad(f)->operator==(otherfoo);
+        return (*ceto::mad(f)).operator==(otherfoo);
     }
 
     inline auto operator==(const std::shared_ptr<const Foo>&  f, const std::nullptr_t  other) -> auto {
@@ -59,7 +59,7 @@ auto operator==(const std::shared_ptr<const Foo>&  f, const T2& other) -> auto {
 
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo())>();
-        ceto::mado(f)->bar();
+        (*ceto::mad(f)).bar();
         if (f == 5) {
             printf("overload == works\n");
         }

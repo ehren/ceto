@@ -30,9 +30,9 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
     auto main() -> int {
         Foo :: blah();
         Foo::blah();
-        (std::cout << ceto::mado(std :: vector(500, 5))->at(499)) << (std :: endl);
+        (std::cout << (*ceto::mad(std :: vector(500, 5))).at(499)) << (std :: endl);
         using std :: vector;
         const auto v = vector(500, 5);
-        std::cout << ceto::mado(v)->at(499);
+        std::cout << (*ceto::mad(v)).at(499);
     }
 

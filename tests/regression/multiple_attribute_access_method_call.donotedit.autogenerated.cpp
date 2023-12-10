@@ -42,14 +42,14 @@ struct FooList : public ceto::shared_object, public std::enable_shared_from_this
 
     auto main() -> int {
         const auto f = std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr))))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr))})>(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))));
-        std::cout << ceto::mado(ceto::mado(ceto::mado(ceto::mado(ceto::mado(f)->f)->f)->f)->f)->use_count();
-        ceto::mado(ceto::mado(std::make_shared<decltype(FooList())>())->l)->push_back(f);
-        ceto::mado(std::make_shared<const decltype(FooList())>())->l;
-        std::cout << ceto::mado(ceto::mado(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))->f)->use_count();
-        std::cout << ceto::mado(ceto::mado(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))->f)->use_count();
-        ceto::mad(ceto::mado(std::make_shared<const decltype(FooList())>())->l)->operator[](0);
+        std::cout << (*ceto::mad((*ceto::mad((*ceto::mad((*ceto::mad((*ceto::mad(f)).f)).f)).f)).f)).use_count();
+        (*ceto::mad((*ceto::mad(std::make_shared<decltype(FooList())>())).l)).push_back(f);
+        (*ceto::mad(std::make_shared<const decltype(FooList())>())).l;
+        std::cout << (*ceto::mad((*ceto::mad(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))).f)).use_count();
+        std::cout << (*ceto::mad((*ceto::mad(std::make_shared<const decltype(Foo{std::make_shared<const decltype(Foo{nullptr})>(nullptr)})>(std::make_shared<const decltype(Foo{nullptr})>(nullptr)))).f)).use_count();
+        (*ceto::mad((*ceto::mad(std::make_shared<const decltype(FooList())>())).l)).operator[](0);
         auto fl { std::make_shared<decltype(FooList())>() } ;
-        ceto::mado(ceto::mado(fl)->l)->push_back(f);
-        std::cout << ceto::mado(ceto::mad(ceto::mado(fl)->l)->operator[](0))->use_count();
+        (*ceto::mad((*ceto::mad(fl)).l)).push_back(f);
+        std::cout << (*ceto::mad((*ceto::mad((*ceto::mad(fl)).l)).operator[](0))).use_count();
     }
 

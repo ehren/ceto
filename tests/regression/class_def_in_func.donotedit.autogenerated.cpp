@@ -28,6 +28,6 @@
 
         };
 
-        ceto::mado(std::make_shared<const decltype(Foo())>())->doit();
+        (*ceto::mad(std::make_shared<const decltype(Foo())>())).doit();
     }
 

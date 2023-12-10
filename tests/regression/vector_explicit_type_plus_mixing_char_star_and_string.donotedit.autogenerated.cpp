@@ -31,8 +31,8 @@ struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Bl
         const auto a = std::make_shared<const decltype(Blah())>();
         const auto b = std::make_shared<const decltype(Blah())>();
         const auto l = std::vector<std::shared_ptr<const Blah>>{a, b};
-        ceto::mado(ceto::maybe_bounds_check_access(l,1))->foo();
+        (*ceto::mad(ceto::maybe_bounds_check_access(l,1))).foo();
         const auto s = std::vector<std::string>{"a", "b", "c"};
-        printf("%s is the last element. %c is the first.\n", ceto::mado(ceto::maybe_bounds_check_access(s,2))->c_str(), ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(s,0),0));
+        printf("%s is the last element. %c is the first.\n", (*ceto::mad(ceto::maybe_bounds_check_access(s,2))).c_str(), ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(s,0),0));
     }
 

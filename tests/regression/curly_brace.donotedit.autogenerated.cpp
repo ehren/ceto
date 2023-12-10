@@ -31,7 +31,7 @@
         const std::vector<std::vector<int>> a2 = {l};
         const std::vector<std::vector<int>> a3 = l; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(l), std::remove_cvref_t<decltype(a3)>>);
         const std::vector<std::vector<int>> a4 = {{l}};
-        assert((((2 == ceto::mado(a)->size()) && (2 == ceto::mado(a2)->size())) && (2 == ceto::mado(a3)->size())) && (2 == ceto::mado(a4)->size()));
+        assert((((2 == (*ceto::mad(a)).size()) && (2 == (*ceto::mad(a2)).size())) && (2 == (*ceto::mad(a3)).size())) && (2 == (*ceto::mad(a4)).size()));
         for(const auto& ll : std::vector {{l, l2, l3, l4, a2}}) {
             for(const auto& li : ll) {
                 for(const auto& lk : li) {
@@ -52,14 +52,14 @@
         }
         const auto v = std::vector<int>(5, 42);
         std::cout << ceto::maybe_bounds_check_access(v,4);
-        assert(ceto::mado(v)->size() == 5);
+        assert((*ceto::mad(v)).size() == 5);
         const auto v2 = std::vector<int>{5, 42};
-        assert(ceto::mado(v2)->size() == 2);
+        assert((*ceto::mad(v2)).size() == 2);
         const std::vector<int> vv = std::vector<int>(5, 42); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<int>(5, 42)), std::remove_cvref_t<decltype(vv)>>);
         std::cout << ceto::maybe_bounds_check_access(v,4);
-        assert(ceto::mado(v)->size() == 5);
+        assert((*ceto::mad(v)).size() == 5);
         const std::vector<int> vv2 = std::vector<int>{5, 42}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<int>{5, 42}), std::remove_cvref_t<decltype(vv2)>>);
-        assert(ceto::mado(v2)->size() == 2);
+        assert((*ceto::mad(v2)).size() == 2);
         const std::vector<int> v1 = {1, 2};
         const std::vector<std::vector<int>> vv1 = {v};
     }

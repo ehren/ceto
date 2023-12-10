@@ -56,7 +56,7 @@ auto moretest2(const T1& p) -> void {
     }
 
     inline auto foo(const std::vector<std::string>&  items) -> void {
-        ((std::cout << "size: ") << ceto::mado(items)->size()) << "\n";
+        ((std::cout << "size: ") << (*ceto::mad(items)).size()) << "\n";
         for(const auto& s : items) {
             (std::cout << s) << "\n";
         }
@@ -64,9 +64,9 @@ auto moretest2(const T1& p) -> void {
 
     auto main(const int  argc, const char * *  argv) -> int {
         printf("argc %d\n", argc);
-        assert(ceto::mado(std::string(argv[0]))->length() > 0);
+        assert((*ceto::mad(std::string(argv[0]))).length() > 0);
         const auto lst = std::vector {{std::string {"hello"}, std::string {"world"}}};
         foo(lst);
-        bar(ceto::mado(lst)->size());
+        bar((*ceto::mad(lst)).size());
     }
 
