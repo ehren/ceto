@@ -23,7 +23,7 @@ def (aliaser, f:
     g = accessor()
     g.f = nullptr
     # f.method()  # this would raise (good)
-    std.cout << (f == nullptr)  # true - still safe at this point? (reference lifetime extension for the shared_ptr itself (not what it's pointing to) to then end of main?)
+    std.cout << (f == nullptr)  # true - still safe at this point (reference lifetime extension for the shared_ptr itself (not what it's pointing to) to then end of main). no different than passing 'int' by const ref
     std.cout << (&f)->use_count()  # 0 
     std.cout << ((&f)->get() == nullptr) # 1
 )

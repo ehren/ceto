@@ -39,8 +39,8 @@ def (main:
     g.f = Foo() : mut
     
     t: mut = std.thread(lambda(:
-        # g.getter().long_running_method()  # this "works" (getter returns by value ie +1 refcount) although still a race condition plus UB due to no atomics
-        g.f.long_running_method()  # this is a definite use after free
+        # g.getter().long_running_method()  # this would be fine - we copy capture g by value and getter returns a fresh shared_ptr instance bumping refcount (different threads accessing different shared_ptr instances even if pointing to same thing is thread safe)
+        g.f.long_running_method()  # accessing 'g' (different shared_ptr instances due to implicit copy capture) is safe. accessing the same shared_ptr instance 'f' is UB and a reliable use after free on all 3 platforms
     ))
     
     std.this_thread.sleep_for(std.chrono.milliseconds(2500))
