@@ -1,6 +1,6 @@
 # ceto
 
-**ceto** is an experimental dialect of C++ with similarities to Python in syntax, variable declaration style, safe(ish) reference semantics for "class", and generic programming as an exercise in forgetting the type annotations. Every special form is a function call.
+**ceto** is an experimental programming language transpiled to C++ but inspired by Python in variable declaration style, \*syntax, safe(ish) reference semantics for `class`, and generic programming as an exercise in forgetting the type annotations. Every special control structure is a function call.
 
 ```python
 include <numeric>
@@ -82,7 +82,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # macro invocation
     summary = ", ".join(args)
 
-    f = Foo(summary)  # make shared with extra CTAD
+    f = Foo(summary)  # make shared with extra CTAD.
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
 
@@ -104,6 +104,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
+
 ```
 $ ceto kitchensink.ctp a b c d e f
 8
@@ -113,14 +114,33 @@ $ ceto kitchensink.ctp a b c d e f
 8
 ```
 
+Informally, one can think of the language as "Python with two parenthesese moved or inserted" (per control structure). This is a good approach both for those less familliar with C++ and for those wanting to avoid certain explicitly unsafe C++ operations such as unary `*` (present in C++/ceto but not Python). More on safety and python compatibility later.
+
 ## Features
 
-**.** performs both C++ scope resolution (**::** can still be used if desired), std::shared_ptr, std::unique_ptr, and std::optional autoderef in addition to ordinary C++ member access.
+`.` performs C++ scope resolution (`::` can still be used if desired), `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. Autoderef works by converting code like
 
+```python
+def (calls_foo, f:
+    return f.foo()
+)
+```
+
+to
+
+```c++
+#include <ceto.h>
+
+auto calls_foo(const auto& f) -> auto {
+    return (*ceto::mad(f)).foo();
+}
+```
+
+where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` in ceto when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
 
 ## More Examples
 
-Class definitions are intended to resemble python dataclasses
+Class definitions are intended to resemble Python dataclasses
 
 ```python
 class (Generic:
@@ -267,11 +287,11 @@ def (main:
 
 ## Syntax: 
 
-Every Python statement is present but represented as a function call that takes zero or more indented blocks in addition to any ordinary parameters. Blocks begin with an end of line **:**. Every other occurence of **:** is a first class binary operator (TypeOp in the ast). The other operators retain their precedence and syntax from C++ (see https://en.cppreference.com/w/cpp/language/operator_precedence) with the exceptions of **not**, **and**, and **or** which require the Python spelling but C++ precedence. Some C++ operators such as pre-increment and post-increment are intentionally not present (you can't have a fake Python with **++**).
+Every Python statement is present but represented as a function call that takes zero or more indented blocks in addition to any ordinary parameters. Blocks begin with an end of line `:`. Every other occurence of `:` is a first class binary operator (TypeOp in the ast). The other operators retain their precedence and syntax from C++ (see https://en.cppreference.com/w/cpp/language/operator_precedence) with the exceptions of `not`, `and`, and `or` which require the Python spelling but C++ precedence. Some C++ operators such as pre-increment and post-increment are intentionally not present (you can't have a fake Python with `++`).
 
-**def**, **class**, **while**, **for**, **if**, **try**, etc are merely **Identifier** instances in the ast (and macro system) not special keywords in the grammar.
+`def`, `class`, `while`, `for`, `if`, `try`, etc are merely `Identifier` instances in the ast (and macro system) not special keywords in the grammar.
 
-Simple python expressions such as [list, literals], {curly, braced, literals} and (tuple, literals) are present as well as array[access] notation. We also support C++ templates and curly braced calls.
+Simple python expressions such as `[list, literals]`, `{curly, braced, literals}` and `(tuple, literals)` are present as well as array[access] notation. We also support C++ templates and curly braced calls.
 
 For example:
 
