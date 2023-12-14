@@ -70,15 +70,9 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 
                 # constrained wildcard / match by type
                 if (isinstance(ast_name, Identifier):
-                    # handle base class wild cards specially:
-                    if (ast_name.name() == "BinOp" and isinstance(node, BinOp):
-                        return std.map<string, Node>{{param_name, node}}
-                    elif ast_name.name() == "UnOp" and isinstance(node, UnOp):
-                        return std.map<std.string, Node>{{param_name, node}}
-                    )
-
-                    node_class_name = node.classname()
-                    if (node_class_name == typeop.rhs().name().value():
+                    if ((ast_name.name() == "BinOp" and isinstance(node, BinOp) or  # base class handling
+                         ast_name.name() == "UnOp" and isinstance(node, UnOp) or    # same
+                         node.classname() == typeop.rhs().name()):                  # exact match
                         return std.map<std.string, Node>{{param_name, node}}
                     )
                 )

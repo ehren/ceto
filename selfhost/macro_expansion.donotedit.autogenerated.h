@@ -108,13 +108,7 @@ struct MacroScope : public ceto::object {
                 } else if (const auto typeop = std::dynamic_pointer_cast<const TypeOp>(matched_param)) {
                     const auto ast_name = (*ceto::mad(typeop)).rhs();
                     if ((std::dynamic_pointer_cast<const Identifier>(ast_name) != nullptr)) {
-                        if (((*ceto::mad(ast_name)).name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) {
-                            return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
-                        } else if ((((*ceto::mad(ast_name)).name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) {
-                            return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
-                        }
-                        const auto node_class_name = (*ceto::mad(node)).classname();
-                        if (node_class_name == (*ceto::mad_smartptr((*ceto::mad((*ceto::mad(typeop)).rhs())).name())).value()) {
+                        if (((((*ceto::mad(ast_name)).name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) || (((*ceto::mad(ast_name)).name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) || ((*ceto::mad(node)).classname() == (*ceto::mad((*ceto::mad(typeop)).rhs())).name())) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         }
                     }

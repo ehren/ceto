@@ -104,7 +104,6 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-
 ```
 $ ceto kitchensink.ctp a b c d e f
 8
@@ -113,10 +112,21 @@ $ ceto kitchensink.ctp a b c d e f
 ./kitchensink, a, b, c, d, e, f, end
 8
 ```
-
-Informally, one can think of the language as "Python with two parenthesese moved or inserted" (per control structure). This is a good approach both for those less familliar with C++ and for those wanting to avoid certain explicitly unsafe C++ operations such as unary `*` (present in C++/ceto but not Python). More on safety and python compatibility later.
-
 ## Features
+
+- autoderef (call methods on class instances using '.' instead of '->')
+- implicit scope resolution using `.` (`m: std.unordered_map<int, int> = {{0,1}}` but you can still write `m: std::unordered_map<int, int>` if you insist
+- auto make_shared / make_unique for ceto defined classes (with hidden CTAD for templated classes)
+- (const) auto everywhere and nowhere style
+    - locals const auto by default
+    - parameters `const` by default and maybe `const:ref` by default depending on their type (for example all shared_ptrs transparently managing ceto defined class instances are passed by const ref, all ceto defined structs are passed by const ref, as well as std::vector and std::tuple when using the ceto python style `[list, literal]` and `(tuple, literal)` notation)
+- `:` as a first class binary operator in ceto (for creation of user defined constructs in the macro system and some tom foolery in built-in ceto constructs like one-liner ifs `if (cond: 1 else: 0)`
+
+
+Informally, one can think of the language as "Python with two parenthesese moved or inserted" (per control structure). This is a good approach for those less familliar with C++, for those wanting to avoid certain explicitly unsafe C++ operations such as unary `*` (present in C++/ceto but not Python and which might TODO require an `unsafe` block in in the future), and for those wishing to prototype with Python style ceto (heavily using `class`) with an easier path to integrating more precise/performant C++ (whether ceto defined or not) later.
+
+
+### Autoderef
 
 `.` performs C++ scope resolution (`::` can still be used if desired), `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. Autoderef works by converting code like
 
