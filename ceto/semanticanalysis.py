@@ -713,7 +713,12 @@ def prepare_macro_ready_callback(module, module_path):
         impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
-            impl_str += indt + param_name + ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
+            init_param = ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
+            for param in mcd.defmacro_node.args[1:]:
+                if isinstance(param, TypeOp) and isinstance(param.rhs, ListLiteral) and param_name == param.lhs.name:
+                    init_param = ' = CETO_PRIVATE_params.at("' + param_name + '").args\n'
+                    break
+            impl_str += indt + param_name + init_param
         impl_str += indt + "pass\n): Node"
 
         macro_impl = parse(impl_str).args[0]

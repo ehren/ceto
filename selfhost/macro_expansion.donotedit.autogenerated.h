@@ -20,6 +20,8 @@
 #include "ceto.h"
 
 
+#include <map>
+;
 #include <unordered_map>
 ;
 #include <ranges>
@@ -106,9 +108,9 @@ struct MacroScope : public ceto::object {
                 if ((std::dynamic_pointer_cast<const Identifier>(matched_param) != nullptr)) {
                     return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                 } else if (const auto typeop = std::dynamic_pointer_cast<const TypeOp>(matched_param)) {
-                    const auto ast_name = (*ceto::mad(typeop)).rhs();
-                    if ((std::dynamic_pointer_cast<const Identifier>(ast_name) != nullptr)) {
-                        if (((((*ceto::mad(ast_name)).name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) || (((*ceto::mad(ast_name)).name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) || ((*ceto::mad(node)).classname() == (*ceto::mad((*ceto::mad(typeop)).rhs())).name())) {
+                    const auto param_type = (*ceto::mad(typeop)).rhs();
+                    if ((std::dynamic_pointer_cast<const Identifier>(param_type) != nullptr)) {
+                        if ((((((*ceto::mad(param_type)).name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) || (((*ceto::mad(param_type)).name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) || ((*ceto::mad(param_type)).name() == "Node")) || ((*ceto::mad(node)).classname() == (*ceto::mad((*ceto::mad(typeop)).rhs())).name())) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         }
                     }
@@ -116,9 +118,6 @@ struct MacroScope : public ceto::object {
             }
         }
         if (typeid((*node)) != typeid((*pattern))) {
-            return {};
-        }
-        if ((*ceto::mad((*ceto::mad(node)).args)).size() != (*ceto::mad((*ceto::mad(pattern)).args)).size()) {
             return {};
         }
         if (((*ceto::mad(node)).func == nullptr) != ((*ceto::mad(pattern)).func == nullptr)) {
@@ -131,19 +130,77 @@ struct MacroScope : public ceto::object {
             return {};
         }
         auto submatches { std::map<std::string,std::shared_ptr<const Node>>{} } ;
-        for(const auto& i : range((*ceto::mad((*ceto::mad(node)).args)).size())) {
-            const auto m = macro_matches(ceto::maybe_bounds_check_access((*ceto::mad(node)).args,i), ceto::maybe_bounds_check_access((*ceto::mad(pattern)).args,i), params);
-            if (!m) {
-                return {};
-            }
-            (*ceto::mad(submatches)).insert((*ceto::mad(m)).begin(), (*ceto::mad(m)).end());
-        }
         if ((*ceto::mad(node)).func) {
             const auto m = macro_matches((*ceto::mad(node)).func, (*ceto::mad(pattern)).func, params);
             if (!m) {
                 return {};
             }
             (*ceto::mad(submatches)).insert((*ceto::mad(m)).begin(), (*ceto::mad(m)).end());
+        }
+        auto pattern_iterator { (*ceto::mad((*ceto::mad(pattern)).args)).cbegin() } ;
+        auto arg_iterator { (*ceto::mad((*ceto::mad(node)).args)).cbegin() } ;
+        while (true) {            if (pattern_iterator == (*ceto::mad((*ceto::mad(pattern)).args)).end()) {
+                if (arg_iterator != (*ceto::mad((*ceto::mad(node)).args)).end()) {
+                    return {};
+                } else {
+                    break;
+                }
+            }
+            auto subpattern { (*pattern_iterator) } ;
+            if ((std::dynamic_pointer_cast<const Identifier>(subpattern) != nullptr)) {
+                const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(subpattern)).name())).value());
+                if (search != (*ceto::mad(params)).end()) {
+                    const auto param_name = (search -> first);
+                    const auto matched_param = (search -> second);
+                    if ((std::dynamic_pointer_cast<const TypeOp>(matched_param) != nullptr)) {
+                        if (const auto list_param = std::dynamic_pointer_cast<const ListLiteral>(ceto::maybe_bounds_check_access((*ceto::mad(matched_param)).args,1))) {
+                            if ((*ceto::mad((*ceto::mad(list_param)).args)).size() != 1) {
+                                throw SemanticAnalysisError{"bad ListLiteral args in macro param"};
+                            }
+                            const auto wildcard_list_type = ceto::maybe_bounds_check_access((*ceto::mad(list_param)).args,0);
+                            if (!(std::dynamic_pointer_cast<const Identifier>(wildcard_list_type) != nullptr)) {
+                                throw SemanticAnalysisError{"bad ListLiteral arg type in macro param"};
+                            }
+                            const std::map<std::string,std::shared_ptr<const Node>> wildcard_list_params = {{(*ceto::mad_smartptr((*ceto::mad(wildcard_list_type)).name())).value(), wildcard_list_type}};
+                            std::vector<std::shared_ptr<const Node>> wildcard_list_matches = std::vector<std::shared_ptr<const Node>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Node>>{}), std::remove_cvref_t<decltype(wildcard_list_matches)>>);
+                            while (true) {                                if (arg_iterator == (*ceto::mad((*ceto::mad(node)).args)).end()) {
+                                    break;
+                                }
+                                const auto arg = (*arg_iterator);
+                                if (macro_matches(arg, wildcard_list_type, wildcard_list_params)) {
+                                    (*ceto::mad(wildcard_list_matches)).push_back(arg);
+                                } else {
+                                    break;
+                                }
+                                arg_iterator += 1;
+                            }
+                            ceto::maybe_bounds_check_access(submatches,param_name) = std::make_shared<const decltype(ListLiteral{wildcard_list_matches})>(wildcard_list_matches);
+                            pattern_iterator += 1;
+                            if (pattern_iterator == (*ceto::mad((*ceto::mad(pattern)).args)).end()) {
+                                if (arg_iterator != (*ceto::mad((*ceto::mad(node)).args)).end()) {
+                                    return {};
+                                }
+                                break;
+                            }
+                            subpattern = (*pattern_iterator);
+                        }
+                    }
+                }
+            }
+            if (arg_iterator == (*ceto::mad((*ceto::mad(node)).args)).end()) {
+                if (pattern_iterator != (*ceto::mad((*ceto::mad(pattern)).args)).end()) {
+                    return {};
+                }
+                break;
+            }
+            const auto arg = (*arg_iterator);
+            const auto m = macro_matches(arg, subpattern, params);
+            if (!m) {
+                return {};
+            }
+            (*ceto::mad(submatches)).insert((*ceto::mad(m)).begin(), (*ceto::mad(m)).end());
+            arg_iterator += 1;
+            pattern_iterator += 1;
         }
         return submatches;
     }
