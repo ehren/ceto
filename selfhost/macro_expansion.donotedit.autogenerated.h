@@ -161,13 +161,15 @@ struct MacroScope : public ceto::object {
                             if (!(std::dynamic_pointer_cast<const Identifier>(wildcard_list_type) != nullptr)) {
                                 throw SemanticAnalysisError{"bad ListLiteral arg type in macro param"};
                             }
-                            const std::map<std::string,std::shared_ptr<const Node>> wildcard_list_params = {{(*ceto::mad_smartptr((*ceto::mad(wildcard_list_type)).name())).value(), wildcard_list_type}};
+                            const auto wildcard_list_name = ceto::maybe_bounds_check_access((*ceto::mad(matched_param)).args,0);
+                            if (!(std::dynamic_pointer_cast<const Identifier>(wildcard_list_name) != nullptr)) {
+                                throw SemanticAnalysisError{"arg of type ListLiteral must be an identifier"};
+                            }
+                            const auto wildcard_type_op = std::make_shared<const decltype(TypeOp{":", std::vector<std::shared_ptr<const Node>>{wildcard_list_name, wildcard_list_type}})>(":", std::vector<std::shared_ptr<const Node>>{wildcard_list_name, wildcard_list_type});
+                            const std::map<std::string,std::shared_ptr<const Node>> wildcard_list_params = {{(*ceto::mad_smartptr((*ceto::mad(wildcard_list_name)).name())).value(), wildcard_type_op}};
                             std::vector<std::shared_ptr<const Node>> wildcard_list_matches = std::vector<std::shared_ptr<const Node>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Node>>{}), std::remove_cvref_t<decltype(wildcard_list_matches)>>);
-                            while (true) {                                if (arg_iterator == (*ceto::mad((*ceto::mad(node)).args)).end()) {
-                                    break;
-                                }
-                                const auto arg = (*arg_iterator);
-                                if (macro_matches(arg, wildcard_list_type, wildcard_list_params)) {
+                            while (arg_iterator != (*ceto::mad((*ceto::mad(node)).args)).end()) {                                const auto arg = (*arg_iterator);
+                                if (macro_matches(arg, wildcard_list_name, wildcard_list_params)) {
                                     (*ceto::mad(wildcard_list_matches)).push_back(arg);
                                 } else {
                                     break;

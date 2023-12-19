@@ -132,6 +132,8 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 
                 if (isinstance(matched_param, TypeOp):
                     if ((list_param = asinstance(matched_param.args[1], ListLiteral)):
+                        # variadic wildcard pattern
+
                         if (list_param.args.size() != 1:
                             throw (SemanticAnalysisError("bad ListLiteral args in macro param"))
                         )
@@ -141,15 +143,18 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                             throw (SemanticAnalysisError("bad ListLiteral arg type in macro param"))
                         )
 
-                        wildcard_list_params: std.map<std.string, Node> = { {wildcard_list_type.name().value(), wildcard_list_type} }
+                        wildcard_list_name = matched_param.args[0]
+                        if (not isinstance(wildcard_list_name, Identifier):
+                            throw (SemanticAnalysisError("arg of type ListLiteral must be an identifier"))
+                        )
+
+                        wildcard_type_op = TypeOp(":", [wildcard_list_name, wildcard_list_type]: Node)
+                        wildcard_list_params: std.map<std.string, Node> = { {wildcard_list_name.name().value(), wildcard_type_op} }
                         wildcard_list_matches: mut:[Node] = []
 
-                        while (true:
-                            if (arg_iterator == node.args.end():
-                                break
-                            )
+                        while (arg_iterator != node.args.end():
                             arg = *arg_iterator
-                            if (macro_matches(arg, wildcard_list_type, wildcard_list_params):
+                            if (macro_matches(arg, wildcard_list_name, wildcard_list_params):
                                 wildcard_list_matches.append(arg)
                             else:
                                 break
