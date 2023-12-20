@@ -45,208 +45,519 @@ cpp_preamble = r"""
 """
 
 
-# Uses code and ideas from https://github.com/lukasmartinelli/py14
+def codegen(expr: Node):
+    assert isinstance(expr, Module)
+    cx = Scope()
+    s = codegen_module(expr, cx)
+    print(s)
+    return s
 
 
-def codegen_if(ifcall : Call, cx):
-    assert isinstance(ifcall, Call)
-    assert ifcall.func.name == "if" 
+def codegen_module(module: Module, cx: Scope):
+    assert isinstance(module, Module)
+    modcpp = ""
 
-    indt = cx.indent_str()
+    included_module_code = defaultdict(str)
+
+    for modarg in module.args:
+
+        if isinstance(modarg, Call) and modarg.func.name == "def":
+            funcx = cx.enter_scope()
+            funcx.in_function_param_list = True
+            modarg_code = codegen_def(modarg, funcx)
+        else:
+            modarg_code = codegen_block_item(modarg, cx)
+
+        if modarg.file_path:
+            included_module_code[modarg.file_path] += modarg_code
+        else:
+            modcpp += modarg_code
+
+    for path, include_code in included_module_code.items():
+        with open(path, "w") as include_file:
+            include_file.write("#pragma once\n" + cpp_preamble + include_code)
+
+    return cpp_preamble + modcpp
+
+
+def codegen_block(block: Block, cx):
+    assert isinstance(block, Block)
     cpp = ""
+    indent_str = cx.indent_str()
 
-    is_expression = not isinstance(ifcall.parent, Block)
+    for b in block.args:
+        cpp += indent_str + codegen_block_item(b, cx)
 
-    if is_expression:
-        if any(find_all(ifcall, is_return, stop=creates_new_variable_scope)):
-            raise CodeGenError("no explicit return in if expression", ifcall)
+    return cpp
 
-        for a in ifcall.args:
-            if isinstance(a, Block):
-                last_statement = a.args[-1]
-                if not (isinstance(last_statement, Call) and last_statement.func.name == "throw"):
-                    synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
-                    last_statement.parent = synthetic_return
-                    synthetic_return.parent = a
-                    a.args = a.args[0:-1] + [synthetic_return]
 
-    ifnode = IfWrapper(ifcall.func, ifcall.args)
+def codegen_block_item(b : Node, cx):
+    assert isinstance(b, Node)
 
-    if ifcall.declared_type:
-        ifkind = ifcall.declared_type.name
-        if ifkind is None:
-            raise CodeGenError("unexpected if type", ifcall)
+    if isinstance(b, Identifier):
+        if b.name == "pass":
+            return "; // pass\n"
+
+    if isinstance(b, Call):
+        if b.func.name == "for":
+            return codegen_for(b, cx)
+        elif b.func.name in ["class", "struct"]:
+            return codegen_class(b, cx)
+        elif b.func.name == "if":
+            return codegen_if(b, cx)
+        elif b.func.name == "while":
+            return codegen_while(b, cx)
+        elif b.func.name == "def":
+            return codegen_def(b, cx)
+
+    if b.declared_type is not None:
+        # typed declaration
+
+        types = type_node_to_list_of_types(b.declared_type)
+        if any(t.name in ["typedef", "using"] for t in types):
+            # TODO more error checking here
+            # we might just want to ban 'using' altogether (dangerous in combination with _ceto_ defined classes (not structs)
+            declared_type = b.declared_type
+            cpp = codegen_type(b, b.declared_type, cx)
+            b.declared_type = None
+            cpp += " " + codegen_node(b, cx) + ";\n"
+            b.declared_type = declared_type
+            return cpp
+
+        field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
+        decl = field_type_const_part + field_type_str + " " + b.name
+        return " " + decl + ";\n"
+
+    cpp = codegen_node(b, cx)
+    if not is_comment(b):
+        cpp += ";\n"
+    return cpp
+
+
+def codegen_def(defnode: Call, cx):
+    assert defnode.func.name == "def"
+    name_node = defnode.args[0]
+    name = name_node.name
+    args = defnode.args[1:]
+    if args and isinstance(args[-1], Block):
+        block = args.pop()
+        is_declaration = False
     else:
-        ifkind = None
+        block = None
+        is_declaration = True
 
-    if_start = "if ("
-    block_opening = ") {\n"
-    elif_start = "} else if ("
-    else_start = "} else {\n"
-    block_closing = "}"
+    return_type_node = defnode.declared_type
 
-    if ifkind == "noscope":
-        # python-style "noscope" ifs requires a specifier (TODO probably should just remove this silliness)
+    if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
+        name = "operator" + operator_name_node.str
 
-        if is_expression or not cx.in_function_body:
-            raise CodeGenError("unscoped if disallowed in expression context", ifcall)
+    if name is None:
+        # no immediate plans to support out of line methods
+        raise CodeGenError(f"can't handle name {name_node} in def {defnode}")
 
-        # scopes = [ifnode.cond, ifnode.thenblock]
-        scopes = [ifnode.thenblock]
-        if ifnode.elseblock is not None:
-            scopes.append(ifnode.elseblock)
+    params = []
+    typenames = []
+
+    # no support for out of line methods at the moment
+    class_identifier = class_name_node_from_inline_method(defnode)
+    is_method = class_identifier is not None
+    if is_method:
+        if isinstance(class_identifier, Identifier):
+            class_name = class_identifier.name
+        elif isinstance(class_identifier, Template):
+            class_name = class_identifier.func.name + "<" + ", ".join(codegen_node(t, cx) for t in class_identifier.args) + ">"
         else:
-            raise CodeGenError("unscoped if without else block disallowed", ifcall)
+            assert 0, class_identifier
 
-        for elifcond, elifblock in ifnode.eliftuples:
-            # scopes.append(elifcond)
-            scopes.append(elifblock)
-
-        assigns = { scope:[] for scope in scopes }
-
-        for scope in scopes:
-            assigns[scope].extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
-
-        print("all if assigns", list(assigns))
-
-        declarations = { scope:{} for scope in scopes }
-
-        for scope in scopes:
-            for assign in assigns[scope]:
-                if hasattr(assign, "already_declared"):
-                    continue
-                if isinstance(assign.lhs, Identifier) and not assign.lhs.declared_type and not assign.scope.find_def(assign.lhs):
-                    if assign.lhs.name in declarations[scope]:
-                        continue
-                    declarations[scope][assign.lhs.name] = assign, codegen_node(assign.rhs, cx)
-                else:
-                    raise CodeGenError("unexpected non-simple assign in noscope if", assign)
-
-        if all(declarations[scopes[0]].keys() == declarations[s].keys() for s in scopes[1:]):
-            # allow noscope
-
-            for lhs in declarations[scopes[0]]:
-                assign, declname = declarations[scopes[0]][lhs]
-                assign.already_declared = True
-                cpp += f"decltype({declname}) {lhs};\n" + indt
-            for scope in scopes[1:]:
-                for lhs in declarations[scope]:
-                    assign, declname = declarations[scope][lhs]
-                    assign.already_declared = True
-        else:
-            raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
-
-    # TODO should these be disallowed with expression ifs?
-    elif ifkind == "preprocessor":
-        if_start = "#if "
-        block_opening = "\n"
-        elif_start = "#elif "
-        else_start = "#else\n"
-        block_closing = "#endif\n"
-    elif ifkind == "constexpr":
-        if_start = "if constexpr ("
-    elif ifkind == "consteval":  # c++23
-        if_start = "if consteval ("
-
-    if isinstance(ifnode.cond, NamedParameter) and not ifcall.is_one_liner_if:
-        raise CodeGenError("assignment in if missing extra parenthesese", ifnode.cond)
-
-    cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
-
-    cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
-
-    for elifcond, elifblock in ifnode.eliftuples:
-        cpp += indt + elif_start + codegen_node(elifcond, cx.enter_scope()) + block_opening
-        cpp += codegen_block(elifblock, cx.enter_scope())
-
-    if ifnode.elseblock:
-        cpp += indt + else_start
-        cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
-
-    cpp += indt + block_closing
-
-    if is_expression:
-        if cx.in_function_body:
-            capture = "&"
-        else:
-            capture = ""
-        cpp = "[" + capture + "]() {" + cpp + "}()"
-
-    return cpp + "\n"
-
-
-def codegen_for(node, cx):
-    assert isinstance(node, Call)
-    if len(node.args) != 2:
-        raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
-    arg, block = node.args
-    if not isinstance(block, Block):
-        raise CodeGenError("expected block as last arg of for", node)
-
-    iter_type : Node = None
-
-    if not isinstance(arg, BinOp) and isinstance(arg, (Identifier, TupleLiteral)) and arg.declared_type is not None:
-        # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
-
-        # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
-        # - does not work so well for:
-        # for (x: const:int in it:
-        #     pass
-        # )
-        # still, the syntax above even if "parsed wrong" beats the alternatives (odd for loop syntax with type at the end or tightening precedence of : or loosening precedence of 'in'). so we'll just accept that typed-fors are represented oddly in the ast
-        # (though maybe this should be done in an earlier pass like expanded if one-liners)
-        itertypes = type_node_to_list_of_types(arg.declared_type)
-        if not itertypes:
-            raise CodeGenError("unexpected typed for-loop first arg (not enough elements", node)
-        instmt = itertypes.pop()
-        lasttype = instmt.lhs
-        # we should really re-create or mutate here (wrong parent) but it's fine for now
-        itertypes.append(lasttype)
-        if not all(isinstance(i, Identifier) for i in itertypes):
-            raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
-
-        arg.declared_type = list_to_typed_node(itertypes)
-        instmt_args = instmt.args
-        instmt_args[0] = arg
-        instmt.args = instmt_args  # we're not modifying instmt.args directly (pybind11 copying semantics without MAKE_OPAQUE)
     else:
-        instmt = node.args[0]
+        class_name = None
 
-    if not isinstance(instmt, BinOp) or instmt.op != "in":
-        raise CodeGenError("unexpected 1st argument to for", node)
+    is_destructor = False
+    if is_method and name == "destruct":
+        if args:
+            raise CodeGenError("destructors can't take arguments", defnode)
+        is_destructor = True
 
-    var = instmt.lhs
-    if not isinstance(var, (Identifier, TupleLiteral)):
-        raise CodeGenError("Unexpected iter var", var)
+    specifier_node = name_node.declared_type
+    specifier_types = type_node_to_list_of_types(specifier_node)
 
-    iterable = instmt.rhs
-
-    if isinstance(var, TupleLiteral):
-        structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
-        type_str = " "
-        var_str = structured_binding
-    elif var.declared_type is not None:
-        assert isinstance(var, Identifier)
-        type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
+    interface_calls = [t for t in specifier_types if isinstance(t, Call) and t.func.name == "interface"]
+    if len(interface_calls) > 1:
+        raise CodeGenError("too many 'interface' specifiers", defnode)
+    elif len(interface_calls) == 1:
+        interface = interface_calls[0]
+        specifier_types.remove(interface)
     else:
-        var_str = codegen_node(var, cx)
-        type_str = None
+        interface = None
 
-    if type_str is None:
-        type_str = "const auto&"
+    if interface and return_type_node is None:
+        raise CodeGenError("must specify return type of interface method")
+    assert is_method or not interface
 
-    forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
+    for i, arg in enumerate(args):
+        if interface:
+            if arg.declared_type is None:
+                raise CodeGenError(
+                    "parameter types must be specified for interface methods")
+            if not isinstance(arg, Identifier):
+                raise CodeGenError(
+                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
+        if typed_param := codegen_typed_def_param(arg, cx):
+            params.append(typed_param)
+        else:
+            t = "T" + str(i + 1)
+            # params.append(t + "&& " + arg.name)
+            # params.append(t + " " + arg.name)
+            params.append("const " + t + "& " + arg.name)
+            typenames.append("typename " + t)
+
+    template = ""
+    inline = "inline "
+    override = ""
+    final = ""
+    specifier = ""
+    is_const = is_method and not mut_by_default
+
+    if specifier_types:
+        const_or_mut = [t for t in specifier_types if t.name in ["const", "mut"]]
+        if len(const_or_mut) > 1:
+            raise CodeGenError("too many 'mut' and 'const' specified", defnode)
+
+        if const_or_mut:
+            if not is_method:
+                raise CodeGenError("Don't specify const/mut for a non-method", const_or_mut[0])
+            is_const = const_or_mut[0].name == "const"
+            specifier_types.remove(const_or_mut[0])
+
+        overrides = [t for t in specifier_types if t.name == "override"]
+        if overrides:
+            if len(overrides) > 1:
+                raise CodeGenError("too many overrides specified", defnode)
+            if not is_method:
+                raise CodeGenError("Don't specify 'override' for a non-method", defnode)
+            specifier_types.remove(overrides[0])
+
+        if overrides or interface:
+            override = " override"
+
+        finals = [t for t in specifier_types if t.name == "final"]
+        if finals:
+            if len(finals) > 1:
+                raise CodeGenError("too many 'final' specified", defnode)
+            if not is_method:
+                raise CodeGenError("Don't specify 'final' for a non-method", defnode)
+            specifier_types.remove(finals[0])
+            final = " final"
+
+        noinlines = [t for t in specifier_types if t.name == "noinline"]
+        if noinlines:
+            if len(noinlines) > 1:
+                raise CodeGenError("too many 'noinline' specified", defnode)
+            specifier_types.remove(noinlines[0])
+            inline = ""
+
+        if specifier_types:
+            specifier_node = list_to_typed_node(specifier_types)
+            specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
+
+            if any(t.name == "static" for t in specifier_types):
+                if const_or_mut:
+                    raise CodeGenError("const/mut makes no sense for a static function", const_or_mut[0])
+                is_const = False
+
+            def is_template_test(expr):
+                return isinstance(expr, Template) and expr.func.name == "template"
+
+            if list(find_all(specifier_node, test=is_template_test)):
+                if len(typenames) > 0:
+                    raise CodeGenError("Explicit template function with generic params", specifier_node)
+                template = ""
+            # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
+            # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
+
+    if interface:
+        assert len(typenames) == 0
+        template = ""
+        inline = ""
+
+    if is_declaration:
+        inline = ""
+
+    if typenames:
+        template = "template <{0}>\n".format(", ".join(typenames))
+        inline = ""
+
+    if name == "main":
+        if return_type_node or name_node.declared_type:
+            raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
+        template = ""
+        inline = ""
+        if not isinstance(defnode.parent, Module):
+            raise CodeGenError("unexpected nested main function", defnode)
+        defnode.parent.has_main_function = True
+
+    if return_type_node:
+        # return_type = codegen_type(name_node, name_node.declared_type)
+        return_type = codegen_type(defnode, return_type_node, cx)
+        if is_destructor:
+            raise CodeGenError("destruct methods can't specifiy a return type")
+    elif name == "main":
+        return_type = "int"
+    else:
+        return_type = "auto"
+        found_return = False
+        if block:
+            for b in block.args:
+                for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
+                    found_return = True
+                    if is_void_return(ret):
+                        # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
+                        # return_type = 'std::shared_ptr<object>'
+                        # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
+                        return_type = "void"
+                        break
+
+        if not found_return:
+            # return_type = 'std::shared_ptr<object>'
+            return_type = "void"
+
+    if is_destructor:
+        # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
+        funcdef = specifier + "~" + class_name + "()" + override + final
+    else:
+        const = " const" if is_const else ""
+
+        funcdef = "{}{}{}auto {}({}){} -> {}{}{}".format(template, specifier, inline, name, ", ".join(params), const, return_type, override, final)
 
     indt = cx.indent_str()
+
+    if is_declaration:
+        if typenames:
+            raise CodeGenError("no declarations with untyped/generic params", defnode)
+
+        if is_method and isinstance(defnode.parent, Assign):
+
+            rhs = defnode.parent.rhs
+
+            if name == "init" and rhs.name in ["default", "delete"]:
+                # return class_name + "() = " + defnode.parent.rhs.name
+                raise CodeGenError("TODO decide best way to express = default/delete", defnode)
+
+            if return_type_node is None:
+                raise CodeGenError("declarations must specify a return type", defnode)
+
+            if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
+
+                classdef = cx.lookup_class(class_identifier)
+                if not classdef:
+                    raise CodeGenError("expected a class/struct in '= 0' declaration", class_identifier)
+
+                classdef.is_pure_virtual = True
+
+                # pure virtual function (codegen_assign handles the "= 0" part)
+                return indt + funcdef
+            else:
+                raise CodeGenError("bad assignment to function declaration", defnode)
+        else:
+            return indt + funcdef + ";\n\n"
+
+    block_str = codegen_function_body(defnode, block, cx)
+    return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
+
+
+def codegen_function_body(defnode : Call, block, cx):
+    # methods or functions only (not lambdas!)
+    assert defnode.func.name == "def"
+
+    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
+    need_self = False
+    for s in find_all(defnode, test=lambda a: a.name == "self"):
+
+        replace_self = True
+        p = s
+        while p is not defnode:
+            if creates_new_variable_scope(p):
+                # 'self.foo' inside e.g. a lambda body
+                replace_self = False
+                break
+            p = p.parent
+
+        if replace_self and isinstance(s.parent,
+                                       AttributeAccess) and s.parent.lhs is s:
+            # rewrite as this->foo:
+            this = Identifier("this")
+            arrow = ArrowOp("->", [this, s.parent.rhs])
+            arrow.scope = s.scope
+            this.scope = s.scope
+            arrow.parent = s.parent.parent
+            this.parent = arrow
+            arrow.rhs.parent = arrow
+
+            if s.parent in s.parent.parent.args:
+                index = s.parent.parent.args.index(s.parent)
+                new_args = s.parent.parent.args
+                new_args[index] = arrow
+                s.parent.parent.args = new_args  # resetting args (unnecessary in pure python but necessary with pybind11 copying semantics _without_ MAKE_OPAQUE)
+            elif s.parent is s.parent.parent.func:
+                s.parent.parent.func = arrow
+        else:
+            need_self = True
     block_cx = cx.enter_scope()
-    forstr += codegen_block(block, block_cx)
-    forstr += indt + "}\n"
-    return forstr
+    block_cx.in_function_body = True
+    block_str = codegen_block(block, block_cx)
+    if need_self:
+        # (note: this will be a compile error in a non-member function / non-shared_from_this deriving class)
+        block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
+    # if not is_destructor and not is_return(block.args[-1]):
+    #     block_str += block_cx.indent_str() + "return {};\n"
+    # no longer doing this^
+    return block_str
 
 
-def is_comment(node):
-    return isinstance(node, ScopeResolution) and node.lhs.name == "ceto" and (
-            isinstance(node.rhs, Call) and node.rhs.func.name == "comment")
+def codegen_lambda(node, cx):
+    args = list(node.args)
+    block = args.pop()
+    assert isinstance(block, Block)
+    # params = ["auto " + codegen_node(a) for a in args]
+    params = []
+    for a in args:
+        if not isinstance(a, Identifier):
+            if isinstance(a, Assign):
+                raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
+            if isinstance(a, TypeOp):
+                # lambda inside decltype on rhs of an outer type case (result of unfortunate choice in sema to not fully flatten TypeOp and only  partially convert to a .declared_type)
+                realtype = a.rhs
+                a = a.lhs
+                a.declared_type = realtype
+                if not isinstance(a, Identifier):
+                    raise CodeGenError("Unexpected lambda argument for lambda found inside decltype", a)
+            else:
+                raise CodeGenError("Unexpected lambda argument", a)
+
+        if typed_param := codegen_typed_def_param(a, cx):
+            params.append(typed_param)
+        else:
+            params.append("const auto &" + a.name)
+    newcx = cx.enter_scope()
+    newcx.in_function_body = True
+    type_str = ""
+    invocation_str = ""
+    if node.declared_type is not None:
+        if isinstance(node.declared_type, (TypeOp, Call)):
+            if isinstance(node.declared_type, Call):
+                return_type_list = []
+                last_type = node.declared_type
+            elif isinstance(node.declared_type, TypeOp):
+                return_type_list = type_node_to_list_of_types(node.declared_type)
+                last_type = return_type_list.pop()
+
+            if isinstance(last_type, Call):
+                while isinstance(last_type.func, Call):#  and not last_type.func.func.name == "decltype":
+                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
+                    last_type = last_type.func
+
+                if (isinstance(last_type.func, Identifier) and last_type.func.name != "decltype"):
+                    # this is the case e.g. l = lambda(x:int, 0):int(0)
+                    # decltype check avoids the case: l2 = lambda (x: int, 0):decltype(0)  # not an immediately invoked lambda
+                    # but note that this is immediately invoked: l3 = lambda(x:int, 0):decltype(1)(2)
+                    return_type_list.append(last_type.func)
+                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
+                elif isinstance(last_type, Call) and last_type.func.name == "decltype":
+                    return_type_list.append(last_type)
+
+                assert return_type_list
+                declared_type = list_to_typed_node(return_type_list)
+                node.declared_type = declared_type
+                type_str = " -> " + codegen_type(node, declared_type, cx)
+
+        if not type_str:
+            type_str = " -> " + codegen_type(node, node.declared_type, cx)
+    # if isinstance(node.func, ArrowOp):
+    #     # not workable for precedence reasons
+    #     if declared_type is not None:
+    #         raise CodeGenError("Multiple return types specified for lambda?", node)
+    #     declared_type = node.func.rhs
+    #     # simplify AST (still messed with for 'is return type void?' stuff)
+    #     node.declared_type = declared_type  # put type in normal position
+    #     node.func = node.func.lhs  # func is now 'lambda' keyword
+
+    if isinstance(node.func, ArrayAccess):
+        # explicit capture list
+
+        def codegen_capture_list_item(a):
+
+            def codegen_capture_list_address_op(u : UnOp):
+                if isinstance(u, UnOp) and u.op == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
+                    # codegen would add parenthese to UnOp arg here:
+                    return "&" + codegen_node(u.args[0], cx)
+                return None
+
+            if isinstance(a, Assign):
+                if ref_capture := codegen_capture_list_address_op(a.lhs):
+                    lhs = ref_capture
+                elif isinstance(a.lhs, Identifier) and not a.lhs.declared_type:
+                    lhs = codegen_node(a.lhs, cx)
+                else:
+                    raise CodeGenError("Unexpected lhs in capture list assign", a)
+                return lhs + " = " + codegen_node(a.rhs, cx)
+            else:
+                if ref_capture := codegen_capture_list_address_op(a):
+                    return ref_capture
+                if isinstance(a, UnOp) and a.op == "*" and a.args[0].name == "this":
+                    return "*" + codegen_node(a.args[0])
+                if not isinstance(a, Identifier) or a.declared_type:
+                    raise CodeGenError("Unexpected capture list item", a)
+                if a.name == "ref":
+                    # special case non-type usage of ref
+                    return "&"
+                elif a.name == "val":
+                    return "="
+                return codegen_node(a, cx)
+
+        capture_list = [codegen_capture_list_item(a) for a in node.func.args]
+
+    elif cx.parent.in_function_body:
+
+        def is_capture(n):
+            if not isinstance(n, Identifier):
+                return False
+            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, Template)) and n is n.parent.func:
+                return False
+            elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
+                return False
+            return True
+
+        # find all identifiers but not call funcs etc or anything in a nested class
+        idents = find_all(node, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name in ["class", "struct"])
+
+        idents = {i.name: i for i in idents}.values()  # remove duplicates
+
+        possible_captures = []
+        for i in idents:
+            if i.name == "self":
+                possible_captures.append(i.name)
+            elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
+                pass  # don't capture a lambda parameter
+            elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
+                defnode = d.defined_node
+                is_capture = True
+                while defnode is not None:
+                    if defnode is node:
+                        # defined in lambda or by lambda params (not a capture)
+                        is_capture = False
+                        break
+                    defnode = defnode.parent
+                if is_capture:
+                    possible_captures.append(i.name)
+
+        capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
+    # elif TODO is nonescaping or immediately invoked:
+    #    capture_list = "&"
+    else:
+        capture_list = ""
+
+    return ("[" + ", ".join(capture_list) + "](" + ", ".join(params) + ")" + type_str + " {\n" +
+            codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)
 
 
 def is_super_init(call):
@@ -260,6 +571,27 @@ def is_self_field_access(node):
             raise CodeGenError("unexpected attribute access", node)
         return True
     return False
+
+
+def is_comment(node):
+    return isinstance(node, ScopeResolution) and node.lhs.name == "ceto" and (
+            isinstance(node.rhs, Call) and node.rhs.func.name == "comment")
+
+
+def class_name_node_from_inline_method(defcallnode : Call):
+    assert isinstance(defcallnode, Call)
+
+    parentblock = defcallnode.parent
+    if isinstance(parentblock, Assign):  # e.g. = 0 pure virtual function
+        parentblock = parentblock.parent
+    if isinstance(parentblock, Block) and isinstance(parentblock.parent, Call) and parentblock.parent.func.name in ["class", "struct"]:
+        classname = parentblock.parent.args[0]
+        if isinstance(classname, Call):
+            # inheritance
+            classname = classname.func
+        assert isinstance(classname, (Identifier, Template))
+        return classname
+    return None
 
 
 def codegen_class(node : Call, cx):
@@ -646,74 +978,6 @@ def codegen_class(node : Call, cx):
     return interface_def_str + template_header + class_header + cpp
 
 
-def codegen_while(whilecall, cx):
-    assert isinstance(whilecall, Call)
-    assert whilecall.func.name == "while"
-    if len(whilecall.args) != 2:
-        raise CodeGenError("Incorrect number of while args", whilecall)
-    if not isinstance(whilecall.args[1], Block):
-        raise CodeGenError("Last while arg must be a block", whilecall.args[1])
-
-    cpp = "while (" + codegen_node(whilecall.args[0], cx.enter_scope()) + ") {"
-    cpp += codegen_block(whilecall.args[1], cx.enter_scope())
-    cpp += cx.indent_str() + "}\n"
-    return cpp
-
-
-def codegen_block_item(b : Node, cx):
-    assert isinstance(b, Node)
-
-    if isinstance(b, Identifier):
-        if b.name == "pass":
-            return "; // pass\n"
-
-    if isinstance(b, Call):
-        if b.func.name == "for":
-            return codegen_for(b, cx)
-        elif b.func.name in ["class", "struct"]:
-            return codegen_class(b, cx)
-        elif b.func.name == "if":
-            return codegen_if(b, cx)
-        elif b.func.name == "while":
-            return codegen_while(b, cx)
-        elif b.func.name == "def":
-            return codegen_def(b, cx)
-
-    if b.declared_type is not None:
-        # typed declaration
-
-        types = type_node_to_list_of_types(b.declared_type)
-        if any(t.name in ["typedef", "using"] for t in types):
-            # TODO more error checking here
-            # we might just want to ban 'using' altogether (dangerous in combination with _ceto_ defined classes (not structs)
-            declared_type = b.declared_type
-            cpp = codegen_type(b, b.declared_type, cx)
-            b.declared_type = None
-            cpp += " " + codegen_node(b, cx) + ";\n"
-            b.declared_type = declared_type
-            return cpp
-
-        field_type_const_part, field_type_str = codegen_variable_declaration_type(b, cx)
-        decl = field_type_const_part + field_type_str + " " + b.name
-        return " " + decl + ";\n"
-
-    cpp = codegen_node(b, cx)
-    if not is_comment(b):
-        cpp += ";\n"
-    return cpp
-
-
-def codegen_block(block: Block, cx):
-    assert isinstance(block, Block)
-    cpp = ""
-    indent_str = cx.indent_str()
-
-    for b in block.args:
-        cpp += indent_str + codegen_block_item(b, cx)
-
-    return cpp
-
-
 def interface_method_declaration_str(defnode: Call, cx):
     assert defnode.func.name == "def"
     name_node = defnode.args[0]
@@ -766,6 +1030,339 @@ def interface_method_declaration_str(defnode: Call, cx):
         params.append(param)
 
     return "{}virtual {} {}({}){} = 0;\n\n".format(specifier, return_type, name, ", ".join(params), const)
+
+
+def codegen_while(whilecall, cx):
+    assert isinstance(whilecall, Call)
+    assert whilecall.func.name == "while"
+    if len(whilecall.args) != 2:
+        raise CodeGenError("Incorrect number of while args", whilecall)
+    if not isinstance(whilecall.args[1], Block):
+        raise CodeGenError("Last while arg must be a block", whilecall.args[1])
+
+    cpp = "while (" + codegen_node(whilecall.args[0], cx.enter_scope()) + ") {"
+    cpp += codegen_block(whilecall.args[1], cx.enter_scope())
+    cpp += cx.indent_str() + "}\n"
+    return cpp
+
+
+def codegen_if(ifcall : Call, cx):
+    assert isinstance(ifcall, Call)
+    assert ifcall.func.name == "if"
+
+    indt = cx.indent_str()
+    cpp = ""
+
+    is_expression = not isinstance(ifcall.parent, Block)
+
+    if is_expression:
+        if any(find_all(ifcall, is_return, stop=creates_new_variable_scope)):
+            raise CodeGenError("no explicit return in if expression", ifcall)
+
+        for a in ifcall.args:
+            if isinstance(a, Block):
+                last_statement = a.args[-1]
+                if not (isinstance(last_statement, Call) and last_statement.func.name == "throw"):
+                    synthetic_return = SyntaxTypeOp(":", [Identifier("return"), last_statement])
+                    last_statement.parent = synthetic_return
+                    synthetic_return.parent = a
+                    a.args = a.args[0:-1] + [synthetic_return]
+
+    ifnode = IfWrapper(ifcall.func, ifcall.args)
+
+    if ifcall.declared_type:
+        ifkind = ifcall.declared_type.name
+        if ifkind is None:
+            raise CodeGenError("unexpected if type", ifcall)
+    else:
+        ifkind = None
+
+    if_start = "if ("
+    block_opening = ") {\n"
+    elif_start = "} else if ("
+    else_start = "} else {\n"
+    block_closing = "}"
+
+    if ifkind == "noscope":
+        # python-style "noscope" ifs requires a specifier (TODO probably should just remove this silliness)
+
+        if is_expression or not cx.in_function_body:
+            raise CodeGenError("unscoped if disallowed in expression context", ifcall)
+
+        # scopes = [ifnode.cond, ifnode.thenblock]
+        scopes = [ifnode.thenblock]
+        if ifnode.elseblock is not None:
+            scopes.append(ifnode.elseblock)
+        else:
+            raise CodeGenError("unscoped if without else block disallowed", ifcall)
+
+        for elifcond, elifblock in ifnode.eliftuples:
+            # scopes.append(elifcond)
+            scopes.append(elifblock)
+
+        assigns = { scope:[] for scope in scopes }
+
+        for scope in scopes:
+            assigns[scope].extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
+
+        print("all if assigns", list(assigns))
+
+        declarations = { scope:{} for scope in scopes }
+
+        for scope in scopes:
+            for assign in assigns[scope]:
+                if hasattr(assign, "already_declared"):
+                    continue
+                if isinstance(assign.lhs, Identifier) and not assign.lhs.declared_type and not assign.scope.find_def(assign.lhs):
+                    if assign.lhs.name in declarations[scope]:
+                        continue
+                    declarations[scope][assign.lhs.name] = assign, codegen_node(assign.rhs, cx)
+                else:
+                    raise CodeGenError("unexpected non-simple assign in noscope if", assign)
+
+        if all(declarations[scopes[0]].keys() == declarations[s].keys() for s in scopes[1:]):
+            # allow noscope
+
+            for lhs in declarations[scopes[0]]:
+                assign, declname = declarations[scopes[0]][lhs]
+                assign.already_declared = True
+                cpp += f"decltype({declname}) {lhs};\n" + indt
+            for scope in scopes[1:]:
+                for lhs in declarations[scope]:
+                    assign, declname = declarations[scope][lhs]
+                    assign.already_declared = True
+        else:
+            raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
+
+    # TODO should these be disallowed with expression ifs?
+    elif ifkind == "preprocessor":
+        if_start = "#if "
+        block_opening = "\n"
+        elif_start = "#elif "
+        else_start = "#else\n"
+        block_closing = "#endif\n"
+    elif ifkind == "constexpr":
+        if_start = "if constexpr ("
+    elif ifkind == "consteval":  # c++23
+        if_start = "if consteval ("
+
+    if isinstance(ifnode.cond, NamedParameter) and not ifcall.is_one_liner_if:
+        raise CodeGenError("assignment in if missing extra parenthesese", ifnode.cond)
+
+    cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
+
+    cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
+
+    for elifcond, elifblock in ifnode.eliftuples:
+        cpp += indt + elif_start + codegen_node(elifcond, cx.enter_scope()) + block_opening
+        cpp += codegen_block(elifblock, cx.enter_scope())
+
+    if ifnode.elseblock:
+        cpp += indt + else_start
+        cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
+
+    cpp += indt + block_closing
+
+    if is_expression:
+        if cx.in_function_body:
+            capture = "&"
+        else:
+            capture = ""
+        cpp = "[" + capture + "]() {" + cpp + "}()"
+
+    return cpp + "\n"
+
+
+def codegen_for(node, cx):
+    assert isinstance(node, Call)
+    if len(node.args) != 2:
+        raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
+    arg, block = node.args
+    if not isinstance(block, Block):
+        raise CodeGenError("expected block as last arg of for", node)
+
+    iter_type : Node = None
+
+    if not isinstance(arg, BinOp) and isinstance(arg, (Identifier, TupleLiteral)) and arg.declared_type is not None:
+        # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
+
+        # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
+        # - does not work so well for:
+        # for (x: const:int in it:
+        #     pass
+        # )
+        # still, the syntax above even if "parsed wrong" beats the alternatives (odd for loop syntax with type at the end or tightening precedence of : or loosening precedence of 'in'). so we'll just accept that typed-fors are represented oddly in the ast
+        # (though maybe this should be done in an earlier pass like expanded if one-liners)
+        itertypes = type_node_to_list_of_types(arg.declared_type)
+        if not itertypes:
+            raise CodeGenError("unexpected typed for-loop first arg (not enough elements", node)
+        instmt = itertypes.pop()
+        lasttype = instmt.lhs
+        # we should really re-create or mutate here (wrong parent) but it's fine for now
+        itertypes.append(lasttype)
+        if not all(isinstance(i, Identifier) for i in itertypes):
+            raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
+
+        arg.declared_type = list_to_typed_node(itertypes)
+        instmt_args = instmt.args
+        instmt_args[0] = arg
+        instmt.args = instmt_args  # we're not modifying instmt.args directly (pybind11 copying semantics without MAKE_OPAQUE)
+    else:
+        instmt = node.args[0]
+
+    if not isinstance(instmt, BinOp) or instmt.op != "in":
+        raise CodeGenError("unexpected 1st argument to for", node)
+
+    var = instmt.lhs
+    if not isinstance(var, (Identifier, TupleLiteral)):
+        raise CodeGenError("Unexpected iter var", var)
+
+    iterable = instmt.rhs
+
+    if isinstance(var, TupleLiteral):
+        structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
+        type_str = " "
+        var_str = structured_binding
+    elif var.declared_type is not None:
+        assert isinstance(var, Identifier)
+        type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
+    else:
+        var_str = codegen_node(var, cx)
+        type_str = None
+
+    if type_str is None:
+        type_str = "const auto&"
+
+    forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
+
+    indt = cx.indent_str()
+    block_cx = cx.enter_scope()
+    forstr += codegen_block(block, block_cx)
+    forstr += indt + "}\n"
+    return forstr
+
+
+def _is_unique_var(node: Identifier, cx: Scope):
+    # should be handled in a prior typechecking pass (like most uses of find_defs)
+
+    def _is(defining):
+        declared_type = strip_mut_or_const(defining.declared_type)
+        classdef = cx.lookup_class(declared_type)
+        if classdef and classdef.is_unique:
+            return True
+        elif isinstance(defining, Assign) and isinstance(rhs := strip_mut_or_const(defining.rhs), Call) \
+                and (classdef := cx.lookup_class(rhs.func)) and classdef.is_unique:
+            return True
+
+    assert isinstance(node, Identifier)
+
+    if not node.scope:
+        # nodes on rhs of TypeOp currently don't have a scope
+        return False
+
+    for defn in node.scope.find_defs(node):
+        if isinstance(defn, (LocalVariableDefinition, ParameterDefinition)):
+            if _is(defn.defining_node):
+                return True
+    if isinstance(node.parent, Assign) and _is(node.parent):
+        return True
+
+    return False
+
+
+def is_last_use_of_identifier(node: Identifier):
+    assert isinstance(node, Identifier)
+    name = node.name
+    ident_ancestor = node.parent
+    prev_ancestor = node
+    is_last_use = True
+    if isinstance(node.parent,
+                  (ScopeResolution, AttributeAccess, ArrowOp, Template)):
+        is_last_use = False
+    elif isinstance(node.parent, (BinOp, UnOp)):
+        is_last_use = isinstance(node.parent,
+                                 Assign)  # maybe a bit strict but e.g. we don't want to transform &x to &(std::move(x))
+    elif isinstance(node.parent, Call) and node.parent.func is node:
+        is_last_use = False
+
+    while is_last_use and ident_ancestor and not creates_new_variable_scope(
+            ident_ancestor):
+        if isinstance(ident_ancestor,
+                      Block) and prev_ancestor in ident_ancestor.args:
+            # TODO 'find_uses' in sema should work with Identifier not just Assign too
+            # try:
+            for b in ident_ancestor.args[
+                     ident_ancestor.args.index(prev_ancestor):]:
+                if any(find_all(b, lambda n: (n is not node) and (
+                        n.name == name))):
+                    is_last_use = False
+                    break
+            # except ValueError:
+            #     pass
+        if any(n and n is not node and isinstance(n, Node) and name == n.name
+               for n in ident_ancestor.args + [ident_ancestor.func]):
+            is_last_use = False
+            break
+        prev_ancestor = ident_ancestor
+        ident_ancestor = ident_ancestor.parent
+    return is_last_use
+
+
+def codegen_attribute_access(node: AttributeAccess, cx: Scope):
+    assert isinstance(node, AttributeAccess)
+
+    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO: bad separate lookup mechanism for class defs and variable defs won't work with shadowing of a class name by a local (legal in C++)
+        if node.rhs.name == "class":
+            # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
+            # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes
+            # TODO ^ needs test
+            return node.lhs.name
+
+        # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
+        return node.lhs.name + "::" + codegen_node(node.rhs, cx)
+
+    if isinstance(node.lhs, (Identifier, AttributeAccess)):
+        # implicit scope resolution:
+
+        # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
+
+        # e.g. std.q.r.s should print as std::q::r::s
+        # HOWEVER std.q.r().s should print as std::q::r().s  where the last '.' is a maybe autoderef
+
+        leading = node
+        scope_resolution_list = []
+
+        while isinstance(leading, AttributeAccess):
+            scope_resolution_list.append(leading.rhs)
+            leading = leading.lhs
+
+        if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
+
+            # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
+            scope_resolution_code = leading.name
+            while scope_resolution_list:
+                if isinstance(scope_resolution_list[0], Identifier):
+                    item = scope_resolution_list.pop()
+                    scope_resolution_code += "::" + item.name
+                else:
+                    break
+
+            if not scope_resolution_list:
+                return scope_resolution_code
+            else:
+                remaining = list_to_attribute_access_node(scope_resolution_list)
+                assert remaining is not None
+                return scope_resolution_code + "::" + codegen_node(remaining, cx)
+
+    # maybe autoderef
+    # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
+
+    if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
+        # don't autoderef an optional if we're calling a method of std::optional on it (maybe this is dubious for the mutable methods swap/reset/emplace?)
+        return "(*ceto::mad_smartptr(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
+
+    # autoderef optional or smart pointer:
+    return "(*ceto::mad(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
 
 
 def extract_mut_or_const(type_node : Node) -> typing.Tuple[Node, typing.List[Node]]:
@@ -996,454 +1593,718 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
     return None
 
 
-def codegen_function_body(defnode : Call, block, cx):
-    # methods or functions only (not lambdas!)
-    assert defnode.func.name == "def"
+def _shared_ptr_str_for_type(type_node, cx):
+    if not isinstance(type_node, Identifier):
+        return None
 
-    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
-    need_self = False
-    for s in find_all(defnode, test=lambda a: a.name == "self"):
+    if classdef := cx.lookup_class(type_node):
+        if isinstance(classdef, InterfaceDefinition):
+            # TODO this clearly needs a revisit (or just scrap current 'interface' handling)
+            return "std::shared_ptr"
 
-        replace_self = True
-        p = s
-        while p is not defnode:
-            if creates_new_variable_scope(p):
-                # 'self.foo' inside e.g. a lambda body
-                replace_self = False
-                break
-            p = p.parent
-
-        if replace_self and isinstance(s.parent,
-                                       AttributeAccess) and s.parent.lhs is s:
-            # rewrite as this->foo:
-            this = Identifier("this")
-            arrow = ArrowOp("->", [this, s.parent.rhs])
-            arrow.scope = s.scope
-            this.scope = s.scope
-            arrow.parent = s.parent.parent
-            this.parent = arrow
-            arrow.rhs.parent = arrow
-
-            if s.parent in s.parent.parent.args:
-                index = s.parent.parent.args.index(s.parent)
-                new_args = s.parent.parent.args
-                new_args[index] = arrow
-                s.parent.parent.args = new_args  # resetting args (unnecessary in pure python but necessary with pybind11 copying semantics _without_ MAKE_OPAQUE)
-            elif s.parent is s.parent.parent.func:
-                s.parent.parent.func = arrow
+        if classdef.is_struct:
+            return None
+        elif classdef.is_unique:
+            return "std::unique_ptr"
         else:
-            need_self = True
-    block_cx = cx.enter_scope()
-    block_cx.in_function_body = True
-    block_str = codegen_block(block, block_cx)
-    if need_self:
-        # (note: this will be a compile error in a non-member function / non-shared_from_this deriving class)
-        block_str = block_cx.indent_str() + "const auto self = ceto::shared_from(this);\n" + block_str
-    # if not is_destructor and not is_return(block.args[-1]):
-    #     block_str += block_cx.indent_str() + "return {};\n"
-    # no longer doing this^
-    return block_str
+            return "std::shared_ptr"
 
-
-def class_name_node_from_inline_method(defcallnode : Call):
-    assert isinstance(defcallnode, Call)
-
-    parentblock = defcallnode.parent
-    if isinstance(parentblock, Assign):  # e.g. = 0 pure virtual function
-        parentblock = parentblock.parent
-    if isinstance(parentblock, Block) and isinstance(parentblock.parent, Call) and parentblock.parent.func.name in ["class", "struct"]:
-        classname = parentblock.parent.args[0]
-        if isinstance(classname, Call):
-            # inheritance
-            classname = classname.func
-        assert isinstance(classname, (Identifier, Template))
-        return classname
     return None
 
 
-def codegen_def(defnode: Call, cx):
-    assert defnode.func.name == "def"
-    name_node = defnode.args[0]
-    name = name_node.name
-    args = defnode.args[1:]
-    if args and isinstance(args[-1], Block):
-        block = args.pop()
-        is_declaration = False
+def _codegen_extern_C(lhs, rhs):
+    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.str == "C":
+        return 'extern "C"'
+    return None
+
+
+def _sublist_indices(sublist, lst : typing.List):
+    list_set = set(lst)
+    subset = set(sublist)
+    if subset <= list_set:
+        indices = sorted([lst.index(s) for s in subset])
+        if indices == list(range(indices[0], len(indices))):
+            return indices
+    return None
+
+
+def _codegen_compound_class_type(types, cx):
+    # note that for better or worse, the calling code of codegen_type should
+    # take care to add an outer const where necessary
+    class_types = [(t, c) for (t, c) in [(t, cx.lookup_class(t)) for t in types] if c is not None]
+    if len(class_types) == 0:
+        return None
+    class_type, class_def = class_types[0]
+    class_name = class_type.name
+    if len(class_types) > 1:
+        raise CodeGenError("too many class types in type", class_type)
+    typenames = [t.name for t in types]
+    if class_def.is_unique:
+        if indices := _sublist_indices(["const", class_name, "ref"], typenames):
+            return "const std::unique_ptr<const " + class_name + ">&", indices
+        if indices := _sublist_indices([class_name, "const", "ref"], typenames):
+            return "const std::unique_ptr<const " + class_name + ">&", indices
+    if not class_def.is_struct and ("ref" in typenames or "ptr" in typenames or "rref" in typenames):
+        raise CodeGenError("no ref/ptr specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
+    if indices := _sublist_indices(["shared", "mut", class_name], typenames):
+        return "std::shared_ptr<" + class_name + ">", indices
+    if indices := _sublist_indices(["shared", "const", class_name], typenames):
+        return "std::shared_ptr<const " + class_name + ">", indices
+    if indices := _sublist_indices(["unique", "mut", class_name], typenames):
+        return "std::unique_ptr< " + class_name + ">", indices
+    if indices := _sublist_indices(["unique", "const", class_name], typenames):
+        return "std::unique_ptr<const " + class_name + ">", indices
+    if indices := _sublist_indices(["weak", "mut", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
+        return "std::weak_ptr<" + class_name + ">", indices
+    if indices := _sublist_indices(["weak", "const", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
+        return "std::weak_ptr<const " + class_name + ">", indices
+    if indices := _sublist_indices(["weak", class_name], typenames):
+        if class_def.is_unique:
+            raise CodeGenError("no weak specifier for type", types[0])
+        if mut_by_default:
+            return "std::weak_ptr<" + class_name + ">", indices
+        return "std::weak_ptr<const " + class_name + ">", indices
+    if class_def.is_struct:
+        # let the defaults of codegen_type handle this
+        return None
+    if indices := _sublist_indices(["mut", class_name], typenames):
+        if class_def.is_unique:
+            return "std::unique_ptr<" + class_name + ">", indices
+        return "std::shared_ptr<" + class_name + ">", indices
+    if indices := _sublist_indices(["const", class_name], typenames):
+        if class_def.is_unique:
+            return "std::unique_ptr<const " + class_name + ">", indices
+        return "std::shared_ptr<const " + class_name + ">", indices
+    if mut_by_default:
+        if class_def.is_unique:
+            return "std::unique_ptr<" + class_name + ">", [types.index(class_type)]
+        return "std::shared_ptr<" + class_name + ">", [types.index(class_type)]
     else:
-        block = None
-        is_declaration = True
+        if class_def.is_unique:
+            return "std::unique_ptr<const " + class_name + ">", [types.index(class_type)]
+        return "std::shared_ptr<const " + class_name + ">", [types.index(class_type)]
 
-    return_type_node = defnode.declared_type
 
-    if isinstance(name_node, Call) and name_node.func.name == "operator" and len(name_node.args) == 1 and isinstance(operator_name_node := name_node.args[0], StringLiteral):
-        name = "operator" + operator_name_node.str
+def codegen_type(expr_node, type_node, cx):
 
-    if name is None:
-        # no immediate plans to support out of line methods
-        raise CodeGenError(f"can't handle name {name_node} in def {defnode}")
+    if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
+        pass
+    elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess)):
+        raise CodeGenError("unexpected typed expression", expr_node)
+    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
+        raise CodeGenError("unexpected typed call", expr_node)
 
-    params = []
-    typenames = []
+    types = type_node_to_list_of_types(type_node)
+    type_names = [t.name for t in types]
 
-    # no support for out of line methods at the moment
-    class_identifier = class_name_node_from_inline_method(defnode)
-    is_method = class_identifier is not None
-    if is_method:
-        if isinstance(class_identifier, Identifier):
-            class_name = class_identifier.name
-        elif isinstance(class_identifier, Template):
-            class_name = class_identifier.func.name + "<" + ", ".join(codegen_node(t, cx) for t in class_identifier.args) + ">"
+    if type_names[0] in ["ptr", "ref", "rref"]:
+        raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
+
+    # TODO better ptr handling - 'same behavior as add_const_t' not workable.
+    # maybe just require 'unsafe' as a type keyword (not precluding 'unsafe' blocks) but
+    # leave the ptr type as mut by default (needs fixes elsewhere unfortunately)
+
+    # TODO don't make ref:ref const by default - gotcha (ideally error on a const ref:ref but not a mut ref:ref of a ptr to const etc)
+
+    type_code = []
+
+    if result := _codegen_compound_class_type(types, cx):
+        ptr_code, indices = result
+        types[indices[0]] = ptr_code  # save for below
+        del indices[0]
+        if indices:
+            # remove the rest
+            types = types[0:indices[0]] + types[indices[-1] + 1:]
+
+    i = 0
+    while i < len(types):
+        t = types[i]
+
+        assert not isinstance(t, TypeOp)
+
+        if isinstance(t, str):  # already computed above
+            code = t
+        elif i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
+            type_code.append(extern_c)
+            i += 2
+            continue
+        elif i < len(types) - 1 and type_names[i] == "ref" == type_names[i + 1]:
+            type_code.append("&&")
+            i += 2
+            continue
+        elif isinstance(t, ListLiteral):
+            if len(t.args) != 1:
+                raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
+            code = "std::vector<" + codegen_type(expr_node, t.args[0], cx) + ">"
+        elif isinstance(t, TupleLiteral):
+            if len(t.args) == 0:
+                raise CodeGenError("No empty tuples as types", expr_node)
+            code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
+        elif t.name == "ptr":
+            code = "*"
+        elif t.name == "ref":
+            code = "&"
+        elif t.name == "rref":
+            code = "&&"
+        elif t.name == "mut":
+            raise CodeGenError("unexpected placement of 'mut'", expr_node)
+
+        elif t.name in ["new", "goto"]:
+            raise CodeGenError("nice try", t)
+        elif not isinstance(t, (Identifier, Call, Template, AttributeAccess, ScopeResolution)):
+            raise CodeGenError("unexpected type", t)
         else:
-            assert 0, class_identifier
+            if t.declared_type:
+                temp = t.declared_type
+                t.declared_type = None
+                code = codegen_node(t, cx)
+                t.declared_type = temp
+            else:
+                code = codegen_node(t, cx)
+
+        type_code.append(code)
+        i += 1
+
+    assert len(type_code) > 0
+    return " ".join(type_code)
+
+
+def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, cx):
+    assert isinstance(node, TupleLiteral)
+
+    structured_binding = "[" + ", ".join(codegen_node(a, cx) for a in node.args) + "]"
+
+    if is_for_loop_iter:
+        ref_part = "& "
+    else:
+        ref_part = " "
+
+    if node.declared_type:
+        if node.declared_type.name == "mut":
+            # plain mut means by value
+            return "auto " + structured_binding
+        elif node.declared_type.name == "const":
+            # plain const means by const value unless it's a for iter unpacking (const ref)
+            return "const auto" + ref_part + structured_binding
+        binding_types = type_node_to_list_of_types(node.declared_type)
+        _ensure_auto_or_ref_specifies_mut_const(binding_types)
+        binding_type_names = [t.name for t in binding_types]
+        # we don't have to worry about stripping out a mut/const that belongs to
+        # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
+        # allowed in structured bindings, otherwise C++ error).
+        binding_types = [t for t in binding_types if t.name != "mut"]
+        binding_type = list_to_typed_node(binding_types)
+        binding_type_code = codegen_type(node, binding_type, cx)
+        return binding_type_code + " " + structured_binding
+
+    return "const auto" + ref_part + structured_binding
+
+
+def codegen_assign(node: Assign, cx: Scope):
+    assert isinstance(node, Assign)
+
+    if not isinstance(node.lhs, (Identifier, TupleLiteral)):
+        return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
+
+    is_lambda_rhs_with_return_type = False
+
+    const_specifier = ""
+    if not cx.in_function_body and not cx.in_class_body:
+        # add constexpr to all global defns
+        constexpr_specifier = "constexpr "
+    else:
+        constexpr_specifier = ""
+
+    if node.declared_type is not None and isinstance(node.rhs,
+                                                     Call) and node.rhs.func.name == "lambda":
+        # TODO lambda return types need fixes? fixed now?
+        lambdaliteral = node.rhs
+        is_lambda_rhs_with_return_type = True
+        # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
+        if lambdaliteral.declared_type is not None:
+            raise CodeGenError("Two return types defined for lambda:",
+                               node.rhs)
+        lambdaliteral.declared_type = node.declared_type
+        newcx = cx.enter_scope()
+        newcx.in_function_param_list = True
+        rhs_str = codegen_lambda(lambdaliteral, newcx)
+    #elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
+    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and not node.rhs.declared_type and (not node.lhs.declared_type or not isinstance(strip_mut_or_const(node.lhs.declared_type), ListLiteral)) and (vds := vector_decltype_str(node, cx)) is not None:  # TODO const/mut specifier for list type on lhs
+        # handle untyped empty list literal by searching for uses
+        rhs_str = "std::vector<" + vds + ">()"
+    else:
+        rhs_str = codegen_node(node.rhs, cx)
+
+    if isinstance(node.lhs, Identifier):
+        if _is_unique_var(node.lhs, cx):
+            # ':unique' instances are unique_ptr<const T> by default but the actual variable is non-const to facilitate easier
+            # automatic std::move from last use even with const:UniqueFoo (and not just mut:UniqueFoo).
+            # Note that a const shared_ptr<const T> is still powerful because it can be copied from,
+            # a const unique_ptr<const Foo> is rather useless (can only be called, can't form a vector with one).
+            # A (not const) unique_ptr<const Foo> on the other hand is a good replacement for a
+            # const shared_ptr<const Foo> (if you don't need shared ownership).
+            if node.lhs.declared_type and node.lhs.declared_type.name not in ["mut", "const"]:
+                return constexpr_specifier + codegen_type(node.lhs, node.lhs.declared_type, cx) + " = " + rhs_str
+            else:
+                old_type = node.lhs.declared_type  #  just mut or const
+                node.lhs.declared_type = None
+                if cx.in_class_body:
+                    assign_str = "decltype(" + rhs_str + ") " + codegen_node(node.lhs, cx) + " = " + rhs_str
+                else:
+                    assign_str = codegen_node(node.lhs, cx) + " = " + rhs_str
+                    if not node.lhs.scope.find_def(node.lhs):
+                        # just auto not const auto
+                        assign_str = "auto " + assign_str
+                node.lhs.declared_type = old_type
+                return constexpr_specifier + assign_str
+
+        lhs_str = node.lhs.name
+
+        if node.lhs.declared_type:
+
+            if node.lhs.declared_type.name in ["using", "namespace"]:
+                return node.lhs.declared_type.name + " " + lhs_str + " = " + rhs_str
+
+            if node.lhs.declared_type.name == "weak":
+                is_weak_const = True
+
+            types = type_node_to_list_of_types(node.lhs.declared_type)
+            type_names = [t.name for t in types]
+            _ensure_auto_or_ref_specifies_mut_const(types)
+
+            adjacent_type_names = zip(type_names, type_names[1:])
+            if ("const", "weak") in adjacent_type_names:
+                pass
+
+            # add const if not mut
+
+            if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
+                if cx.in_class_body:
+                    # lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"  # this would work but see error message
+                    raise CodeGenError(f"const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use {node.lhs.name} = whatever (with no {node.lhs.declared_type.name} \"type\" specified)")
+                else:
+                    lhs_type_str = "const auto" if node.lhs.declared_type.name == "const" else "auto"
+            else:
+                if cx.in_class_body:
+                    # don't call 'codegen_variable_declaration_type' which adds 'const' (TODO rethink previous refactors with codegen_assign called by codegen_class). See comments elsewhere re const data members in C++.
+                    lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
+                    const_specifier = ""
+                else:
+                    const_specifier, lhs_type_str = codegen_variable_declaration_type(node.lhs, cx)
+
+            decl_str = lhs_type_str + " " + lhs_str
+
+            const_specifier = constexpr_specifier + const_specifier
+
+            plain_initialization = decl_str + " = " + rhs_str
+
+            if isinstance(node.rhs, BracedLiteral):
+                # aka "copy-list-initialization" in this case
+                return const_specifier + plain_initialization
+
+            # prefer brace initialization to disable narrowing conversions (in these assignments):
+
+            direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
+
+            # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
+            # e.g. l2 : std.vector<std.vector<int>> = 1
+            # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
+            # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
+
+            if node.lhs.declared_type.name == "mut" or any(t for t in type_node_to_list_of_types(node.lhs.declared_type) if t.name == "auto"):  # or _strip_non_class_non_plain_mut_type(node.lhs, cx):
+                # no need to assert non-narrowing if lhs type codegen has 'auto'
+                return const_specifier + direct_initialization
+
+            # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
+            # this unfortunately can introduce unexpected use of overparenthesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
+            # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
+            # rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
+
+            if isinstance(node.rhs, (IntegerLiteral, FloatLiteral)) or (
+                    isinstance(node.rhs, Identifier) and node.rhs.name in [
+                "true", "false"]):
+                return f"{const_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
+
+            # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
+
+            # note that 'plain_initialization' will handle cvref mismatch errors!
+            return f"{const_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
+    elif isinstance(node.lhs, TupleLiteral):
+        is_tie = False
+
+        for a in node.lhs.args:
+            if not isinstance(a, Identifier) or a.scope.find_def(a):
+                if node.lhs.declared_type:
+                    raise CodeGenError('typed tuple unpacking ("structured bindings" in C++) can\'t redefine variable: ', a)
+                is_tie = True
+            if a.declared_type:
+                raise CodeGenError("unexpected type in tuple", node)
+
+        if is_tie:
+            return "std::tie(" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + ") = " + rhs_str
+
+        structured_binding = _structured_binding_unpack_from_tuple(node.lhs, False, cx)
+        return structured_binding + " = " + rhs_str
 
     else:
-        class_name = None
+        lhs_str = codegen_node(node.lhs, cx)
 
-    is_destructor = False
-    if is_method and name == "destruct":
-        if args:
-            raise CodeGenError("destructors can't take arguments", defnode)
-        is_destructor = True
+    assign_str = " ".join([lhs_str, node.op, rhs_str])
 
-    specifier_node = name_node.declared_type
-    specifier_types = type_node_to_list_of_types(specifier_node)
-
-    interface_calls = [t for t in specifier_types if isinstance(t, Call) and t.func.name == "interface"]
-    if len(interface_calls) > 1:
-        raise CodeGenError("too many 'interface' specifiers", defnode)
-    elif len(interface_calls) == 1:
-        interface = interface_calls[0]
-        specifier_types.remove(interface)
-    else:
-        interface = None
-
-    if interface and return_type_node is None:
-        raise CodeGenError("must specify return type of interface method")
-    assert is_method or not interface
-
-    for i, arg in enumerate(args):
-        if interface:
-            if arg.declared_type is None:
-                raise CodeGenError(
-                    "parameter types must be specified for interface methods")
-            if not isinstance(arg, Identifier):
-                raise CodeGenError(
-                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
-        if typed_param := codegen_typed_def_param(arg, cx):
-            params.append(typed_param)
+    # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
+    # NOTE 'already_declared' is kludge only for 'noscope' ifs
+    if not hasattr(node, "already_declared") and node.scope.find_def(node.lhs) is None:
+        if cx.in_class_body:
+            # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
+            # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
+            assign_str = "decltype(" + rhs_str + ") " + lhs_str + " = " + rhs_str
         else:
-            t = "T" + str(i + 1)
-            # params.append(t + "&& " + arg.name)
-            # params.append(t + " " + arg.name)
-            params.append("const " + t + "& " + arg.name)
-            typenames.append("typename " + t)
+            assign_str = "const auto " + assign_str
 
-    template = ""
-    inline = "inline "
-    override = ""
-    final = ""
-    specifier = ""
-    is_const = is_method and not mut_by_default
+    const_specifier = constexpr_specifier + const_specifier
 
-    if specifier_types:
-        const_or_mut = [t for t in specifier_types if t.name in ["const", "mut"]]
-        if len(const_or_mut) > 1:
-            raise CodeGenError("too many 'mut' and 'const' specified", defnode)
+    return const_specifier + assign_str
 
-        if const_or_mut:
-            if not is_method:
-                raise CodeGenError("Don't specify const/mut for a non-method", const_or_mut[0])
-            is_const = const_or_mut[0].name == "const"
-            specifier_types.remove(const_or_mut[0])
 
-        overrides = [t for t in specifier_types if t.name == "override"]
-        if overrides:
-            if len(overrides) > 1:
-                raise CodeGenError("too many overrides specified", defnode)
-            if not is_method:
-                raise CodeGenError("Don't specify 'override' for a non-method", defnode)
-            specifier_types.remove(overrides[0])
+def _has_outer_double_parentheses(s: str):
+    """ helper to avoid acidentally emitting e.g. decltype((x + y)) which means something very different than decltype(x + y)"""
 
-        if overrides or interface:
-            override = " override"
+    count = 0
+    ended = False
+    began = False
 
-        finals = [t for t in specifier_types if t.name == "final"]
-        if finals:
-            if len(finals) > 1:
-                raise CodeGenError("too many 'final' specified", defnode)
-            if not is_method:
-                raise CodeGenError("Don't specify 'final' for a non-method", defnode)
-            specifier_types.remove(finals[0])
-            final = " final"
+    for char in s:
+        if char == '(':
+            count += 1
+            if count == 2:
+                began = True
+        elif char == ')':
+            count -= 1
+            if count < 0:
+                return False
+            elif count == 1:
+                ended = True
+        if char != "(" and not began and count < 2:
+            # string does not begin with at least two "("
+            return False
+        if ended and char != ")":
+            return False
 
-        noinlines = [t for t in specifier_types if t.name == "noinline"]
-        if noinlines:
-            if len(noinlines) > 1:
-                raise CodeGenError("too many 'noinline' specified", defnode)
-            specifier_types.remove(noinlines[0])
-            inline = ""
+    return count == 0
 
-        if specifier_types:
-            specifier_node = list_to_typed_node(specifier_types)
-            specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
 
-            if any(t.name == "static" for t in specifier_types):
-                if const_or_mut:
-                    raise CodeGenError("const/mut makes no sense for a static function", const_or_mut[0])
+def codegen_call(node: Call, cx: Scope):
+    assert isinstance(node, Call)
+
+    if is_call_lambda(node):
+        newcx = cx.enter_scope()
+        newcx.in_function_param_list = True
+        return codegen_lambda(node, newcx)
+
+    if isinstance(node.func, Identifier):
+        func_name = node.func.name
+        if func_name == "if":
+            return codegen_if(node, cx)
+        elif func_name == "def":
+            return codegen_def(node, cx)
+        elif func_name == "operator" and len(node.args) == 1 and isinstance(
+                operator_name_node := node.args[0], StringLiteral):
+            return "operator" + operator_name_node.str
+        elif func_name == "include":
+            cpp_name = node.args[0]
+            assert isinstance(cpp_name, Identifier)
+            return f'#include "{cpp_name.name}.donotedit.autogenerated.h"\n'
+        elif func_name == "throw":
+            if not len(node.args) == 1:
+                raise CodeGenError("throw takes 1 arg", node)
+            return "throw " + codegen_node(node.args[0], cx)
+        elif func_name == "defmacro":
+            return ""
+        elif func_name in ["asinstance", "isinstance"]:
+            if not len(node.args) == 2:
+                raise CodeGenError("asinstance takes 2 args", node)
+            class_name = node.args[1]
+            const_specifier = "const "
+            if extracted := extract_mut_or_const(class_name):
+                mc, class_name = extracted
+                if mc.name == "mut":
+                    const_specifier = ""
+            if not isinstance(class_name, Identifier):
+                raise CodeGenError("bad is/asinstance class arg", node)
+            if not (classdef := cx.lookup_class(class_name)) or classdef.is_struct or not classdef.is_concrete:
+                if classdef.is_concrete:
+                    raise CodeGenError("is/asinstance arg can't be a template", classdef)
+                raise CodeGenError("is/asinstance arg must be a class", node)
+            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
+            if func_name == "isinstance":
+                cast_string = "(" + cast_string + " != nullptr)"
+            return cast_string
+        else:
+            arg_strs = [codegen_node(a, cx) for a in node.args]
+            args_inner = ", ".join(arg_strs)
+            args_str = "(" + args_inner + ")"
+
+            if class_def := cx.lookup_class(node.func):
+                class_name = node.func.name
+                curly_args = "{" + args_inner + "}"
+
+                if not node.args:
+                    # just use round parentheses to call default constructor
+                    curly_args = args_str
+
+                # if class_def.has_generic_params():
+                #     class_name += "<" + ", ".join(
+                #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
+                #          class_def.is_generic_param_index[i]]) + ">"
+
+                if class_def.is_struct:
+                    func_str = class_name
+                    args_str = curly_args
+                else:
+                    class_name = "decltype(" + class_name + curly_args + ")"
+                    const_part = "const " if _is_const_make(node) else ""
+
+                    if class_def.is_unique:
+                        func_str = "std::make_unique<" + const_part + class_name + ">"
+                    else:
+                        func_str = "std::make_shared<" + const_part + class_name + ">"
+
+                return func_str + args_str
+
+            if isinstance(node.func, Identifier):
+                func_str = node.func.name
+            else:
+                func_str = codegen_node(node.func, cx)
+
+            if cx.in_function_body:
+                capture = "&"
+            else:
+                capture = ""
+
+            simple_call_str = func_str + args_str
+
+            if func_str in ("decltype", "static_assert") or (
+                    isinstance(node.parent,
+                               (ScopeResolution, ArrowOp, AttributeAccess)) and
+                    node.parent.lhs is not node):
+                if func_str == "decltype":
+                    cx.in_decltype = True
+                    if _has_outer_double_parentheses(args_str):
+                        # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
+                        # strip the outside ones (fine for now)
+                        return func_str + args_str[1:-1]
+                return simple_call_str
+
+            return simple_call_str
+
+            # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
+
+            dt_str = "decltype(" + simple_call_str + ")"
+
+            simple_return = "return "
+            if isinstance(node.parent, Block):
+                simple_return = ""
+
+            call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
+
+            return call_str
+    else:
+        # probably a method:
+
+        # not auto-flattening args is becoming annoying!
+        # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
+        method_name = None
+        if isinstance(node.func, (AttributeAccess, ScopeResolution)):
+            method_name = node.func.rhs
+            while isinstance(method_name, (AttributeAccess, ScopeResolution)):
+                method_name = method_name.rhs
+
+        func_str = None
+
+        if method_name is not None:
+
+            # modify node.func (this is bad mutation and a source of future bugs)
+            def consume_method_name():
+                method_parent = method_name.parent
+                assert method_parent.rhs is method_name
+
+                if method_parent in method_parent.parent.args:
+                    new_args = method_parent.parent.args
+                    new_args.remove(method_parent)
+                    new_args.append(method_parent.lhs)
+                    # important that we reset the list instead of mutating directly here (difference between plain python and pybind11 ast)
+                    method_parent.parent.args = new_args
+                    method_parent.lhs.parent = method_parent.parent
+                elif method_parent is method_parent.parent.func:
+                    method_parent.parent.func = method_parent.lhs
+                    method_parent.lhs.parent = method_parent.parent
+                else:
+                    assert 0
+
+            if method_name.name == "operator" and len(
+                    node.args) == 1 and isinstance(
+                operator_name_node := node.args[0], StringLiteral):
+                consume_method_name()
+                return "(*ceto::mad(" + codegen_node(node.func, cx) + ")).operator" + operator_name_node.str
+
+            elif method_name.parent and not isinstance(method_name.parent,
+                                                       (ScopeResolution, ArrowOp)):
+                # method_name.parent is None for a method call inside a decltype in a return type
+                # TODO we maybe still have to handle cases where method_name.parent is None. silly example: x : decltype([].append(1)[0])
+
+                consume_method_name()
+
+                if method_name.name == "unsafe_at" and len(node.args) == 1:
+                    return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
+
+                if method_name.name == "append" and len(node.args) == 1:
+                    # perhaps controversial rewriting of append to push_back
+                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+
+                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
+                    append_str = "append"
+                    is_list = False
+                    if isinstance(node.func, ListLiteral):
+                        is_list = True
+                    else:
+                        #for d in find_defs(node.func):
+                        for d in node.scope.find_defs(node.func):
+                            # print("found def", d, "when determining if an append is really a push_back")
+                            if isinstance(d.defining_node, Assign) and isinstance(
+                                    d.defining_node.rhs, ListLiteral):
+                                is_list = True
+                                break
+                    if is_list:
+                        append_str = "push_back"
+
+                    func_str = "(*ceto::mad(" + codegen_node(node.func, cx) + "))." + append_str
+                else:
+
+                    # TODO don't do the silly mutation above in the first place!
+                    new_attr_access = AttributeAccess(".", [node.func, method_name])
+                    new_attr_access.parent = node
+                    node.func.parent = new_attr_access
+                    method_name.parent = new_attr_access
+                    func_str = codegen_attribute_access(new_attr_access, cx)
+
+        if func_str is None:
+            func_str = codegen_node(node.func, cx)
+
+        return func_str + "(" + ", ".join(
+            map(lambda a: codegen_node(a, cx), node.args)) + ")"
+
+
+def _is_const_make(node : Call):
+    assert isinstance(node, Call)
+
+    is_const = not mut_by_default
+
+    if node.declared_type is not None:
+        lhs_type = node.declared_type
+
+        if isinstance(lhs_type, Identifier):
+            if lhs_type.name == "mut":
+                is_const = False
+            elif lhs_type.name == "const":
+                is_const = True
+        elif isinstance(lhs_type, TypeOp):
+            type_list = type_node_to_list_of_types(lhs_type)
+            if "mut" in type_list:
+                is_const = False
+            elif "const" in type_list:
+                is_const = True
+    elif isinstance(node.parent,
+                    Assign) and node.parent.lhs.declared_type is not None:
+        lhs_type = node.parent.lhs.declared_type
+
+        if isinstance(lhs_type, Identifier):
+            if lhs_type.name == "mut":
+                is_const = False
+        elif isinstance(lhs_type, TypeOp):
+            type_list = type_node_to_list_of_types(lhs_type)
+            if "mut" in [type_list[0].name, type_list[-1].name]:
                 is_const = False
 
-            def is_template_test(expr):
-                return isinstance(expr, Template) and expr.func.name == "template"
+    return is_const
 
-            if list(find_all(specifier_node, test=is_template_test)):
-                if len(typenames) > 0:
-                    raise CodeGenError("Explicit template function with generic params", specifier_node)
-                template = ""
-            # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
-            # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
-    if interface:
-        assert len(typenames) == 0
-        template = ""
-        inline = ""
+def codegen_variable_declaration_type(node: Identifier, cx: Scope):
+    if not isinstance(node, Identifier):
+        raise CodeGenError("Unexpected typed expression", node)
+    assert node.declared_type
 
-    if is_declaration:
-        inline = ""
+    lhs_type_str = None
 
-    if typenames:
-        template = "template <{0}>\n".format(", ".join(typenames))
-        inline = ""
+    const_specifier = ""
 
-    if name == "main":
-        if return_type_node or name_node.declared_type:
-            raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
-        template = ""
-        inline = ""
-        if not isinstance(defnode.parent, Module):
-            raise CodeGenError("unexpected nested main function", defnode)
-        defnode.parent.has_main_function = True
+    if isinstance(node.declared_type, Identifier):
+        if node.declared_type.name == "auto":
+            raise CodeGenError("must specify const/mut for auto", node)
+    elif isinstance(node.declared_type, TypeOp):
+        type_list = type_node_to_list_of_types(node.declared_type)
 
-    if return_type_node:
-        # return_type = codegen_type(name_node, name_node.declared_type)
-        return_type = codegen_type(defnode, return_type_node, cx)
-        if is_destructor:
-            raise CodeGenError("destruct methods can't specifiy a return type")
-    elif name == "main":
-        return_type = "int"
-    else:
-        return_type = "auto"
-        found_return = False
-        if block:
-            for b in block.args:
-                for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
-                    found_return = True
-                    if is_void_return(ret):
-                        # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
-                        # return_type = 'std::shared_ptr<object>'
-                        # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
-                        return_type = "void"
-                        break
+        _ensure_auto_or_ref_specifies_mut_const(type_list)
 
-        if not found_return:
-            # return_type = 'std::shared_ptr<object>'
-            return_type = "void"
+        classes = [t for t in type_list if cx.lookup_class(t)]
 
-    if is_destructor:
-        # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
-        funcdef = specifier + "~" + class_name + "()" + override + final
-    else:
-        const = " const" if is_const else ""
+        mut_or_const = [t for t in type_list if t.name in ["mut", "const"]]
 
-        funcdef = "{}{}{}auto {}({}){} -> {}{}{}".format(template, specifier, inline, name, ", ".join(params), const, return_type, override, final)
+        if len(classes) > 1:
+            raise CodeGenError("too many classes specified", node)
 
-    indt = cx.indent_str()
+        if classes and len(mut_or_const) > 1:
+            raise CodeGenError("too many mut/const specified for class type", node)
+        if classes and mut_or_const:
+            lhs_type_str = codegen_type(node, node.declared_type, cx)
 
-    if is_declaration:
-        if typenames:
-            raise CodeGenError("no declarations with untyped/generic params", defnode)
+            if mut_or_const[0].name == "const":
+                lhs_type_str = "const " + lhs_type_str
 
-        if is_method and isinstance(defnode.parent, Assign):
-
-            rhs = defnode.parent.rhs
-
-            if name == "init" and rhs.name in ["default", "delete"]:
-                # return class_name + "() = " + defnode.parent.rhs.name
-                raise CodeGenError("TODO decide best way to express = default/delete", defnode)
-
-            if return_type_node is None:
-                raise CodeGenError("declarations must specify a return type", defnode)
-
-            if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
-
-                classdef = cx.lookup_class(class_identifier)
-                if not classdef:
-                    raise CodeGenError("expected a class/struct in '= 0' declaration", class_identifier)
-
-                classdef.is_pure_virtual = True
-
-                # pure virtual function (codegen_assign handles the "= 0" part)
-                return indt + funcdef
+        elif "mut" in [type_list[0].name,
+                       type_list[-1].name]:  # east or west mut is fine
+            if type_list[0].name == "mut":
+                type_list.pop(0)
             else:
-                raise CodeGenError("bad assignment to function declaration", defnode)
+                type_list.pop()
+            rebuilt = list_to_typed_node(type_list)
+            lhs_type_str = codegen_type(node, rebuilt, cx)
+            assert len(lhs_type_str) > 0
         else:
-            return indt + funcdef + ";\n\n"
+            for i, t in enumerate(type_list):
+                otheridx = i - 1 if i > 0 else i + 1
+                if (t.name in ["const", "auto"] and type_list[otheridx].name in [
+                    "const", "auto"]) or (
+                        t.name == "const" and i < len(type_list) - 1 and type_list[
+                    i + 1].name == "ref"):
+                    # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
+                    # alternately contains "const ref" anywhere
+                    # use type verbatim
+                    lhs_type_str = codegen_type(node, node.declared_type, cx)
+                    break
 
-    block_str = codegen_function_body(defnode, block, cx)
-    return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
+            if lhs_type_str is None:
+                if (type_list[0].name == "const" and type_list[
+                    -1].name != "ptr") or type_list[-1].name == "const":
+                    lhs_type_str = codegen_type(node, node.declared_type,
+                                                cx)
+                elif type_list[-1].name == "ptr":
+                    lhs_type_str = codegen_type(node, node.declared_type,
+                                                cx) + " const"
+                # else:
+                #     assert 0
 
+    if lhs_type_str is None:
+        lhs_type_str = codegen_type(node, node.declared_type, cx)
+        needs_const = not mut_by_default
+        if needs_const and not const_specifier:
+            const_specifier = "const "
 
-def codegen_lambda(node, cx):
-    args = list(node.args)
-    block = args.pop()
-    assert isinstance(block, Block)
-    # params = ["auto " + codegen_node(a) for a in args]
-    params = []
-    for a in args:
-        if not isinstance(a, Identifier):
-            if isinstance(a, Assign):
-                raise CodeGenError("lambda args may not have default values (not supported in C++)", a)
-            if isinstance(a, TypeOp):
-                # lambda inside decltype on rhs of an outer type case (result of unfortunate choice in sema to not fully flatten TypeOp and only  partially convert to a .declared_type)
-                realtype = a.rhs
-                a = a.lhs
-                a.declared_type = realtype
-                if not isinstance(a, Identifier):
-                    raise CodeGenError("Unexpected lambda argument for lambda found inside decltype", a)
-            else:
-                raise CodeGenError("Unexpected lambda argument", a)
+    return const_specifier, lhs_type_str
 
-        if typed_param := codegen_typed_def_param(a, cx):
-            params.append(typed_param)
-        else:
-            params.append("const auto &" + a.name)
-    newcx = cx.enter_scope()
-    newcx.in_function_body = True
-    type_str = ""
-    invocation_str = ""
-    if node.declared_type is not None:
-        if isinstance(node.declared_type, (TypeOp, Call)):
-            if isinstance(node.declared_type, Call):
-                return_type_list = []
-                last_type = node.declared_type
-            elif isinstance(node.declared_type, TypeOp):
-                return_type_list = type_node_to_list_of_types(node.declared_type)
-                last_type = return_type_list.pop()
-
-            if isinstance(last_type, Call):
-                while isinstance(last_type.func, Call):#  and not last_type.func.func.name == "decltype":
-                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
-                    last_type = last_type.func
-
-                if (isinstance(last_type.func, Identifier) and last_type.func.name != "decltype"):
-                    # this is the case e.g. l = lambda(x:int, 0):int(0)
-                    # decltype check avoids the case: l2 = lambda (x: int, 0):decltype(0)  # not an immediately invoked lambda
-                    # but note that this is immediately invoked: l3 = lambda(x:int, 0):decltype(1)(2)
-                    return_type_list.append(last_type.func)
-                    invocation_str += "(" + ", ".join(codegen_node(a, cx) for a in last_type.args) + ")"
-                elif isinstance(last_type, Call) and last_type.func.name == "decltype":
-                    return_type_list.append(last_type)
-
-                assert return_type_list
-                declared_type = list_to_typed_node(return_type_list)
-                node.declared_type = declared_type
-                type_str = " -> " + codegen_type(node, declared_type, cx)
-
-        if not type_str:
-            type_str = " -> " + codegen_type(node, node.declared_type, cx)
-    # if isinstance(node.func, ArrowOp):
-    #     # not workable for precedence reasons
-    #     if declared_type is not None:
-    #         raise CodeGenError("Multiple return types specified for lambda?", node)
-    #     declared_type = node.func.rhs
-    #     # simplify AST (still messed with for 'is return type void?' stuff)
-    #     node.declared_type = declared_type  # put type in normal position
-    #     node.func = node.func.lhs  # func is now 'lambda' keyword
-
-    if isinstance(node.func, ArrayAccess):
-        # explicit capture list
-
-        def codegen_capture_list_item(a):
-
-            def codegen_capture_list_address_op(u : UnOp):
-                if isinstance(u, UnOp) and u.op == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
-                    # codegen would add parenthese to UnOp arg here:
-                    return "&" + codegen_node(u.args[0], cx)
-                return None
-
-            if isinstance(a, Assign):
-                if ref_capture := codegen_capture_list_address_op(a.lhs):
-                    lhs = ref_capture
-                elif isinstance(a.lhs, Identifier) and not a.lhs.declared_type:
-                    lhs = codegen_node(a.lhs, cx)
-                else:
-                    raise CodeGenError("Unexpected lhs in capture list assign", a)
-                return lhs + " = " + codegen_node(a.rhs, cx)
-            else:
-                if ref_capture := codegen_capture_list_address_op(a):
-                    return ref_capture
-                if isinstance(a, UnOp) and a.op == "*" and a.args[0].name == "this":
-                    return "*" + codegen_node(a.args[0])
-                if not isinstance(a, Identifier) or a.declared_type:
-                    raise CodeGenError("Unexpected capture list item", a)
-                if a.name == "ref":
-                    # special case non-type usage of ref
-                    return "&"
-                elif a.name == "val":
-                    return "="
-                return codegen_node(a, cx)
-
-        capture_list = [codegen_capture_list_item(a) for a in node.func.args]
-
-    elif cx.parent.in_function_body:
-
-        def is_capture(n):
-            if not isinstance(n, Identifier):
-                return False
-            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, Template)) and n is n.parent.func:
-                return False
-            elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
-                return False
-            return True
-
-        # find all identifiers but not call funcs etc or anything in a nested class
-        idents = find_all(node, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name in ["class", "struct"])
-
-        idents = {i.name: i for i in idents}.values()  # remove duplicates
-
-        possible_captures = []
-        for i in idents:
-            if i.name == "self":
-                possible_captures.append(i.name)
-            elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
-                pass  # don't capture a lambda parameter
-            elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
-                defnode = d.defined_node
-                is_capture = True
-                while defnode is not None:
-                    if defnode is node:
-                        # defined in lambda or by lambda params (not a capture)
-                        is_capture = False
-                        break
-                    defnode = defnode.parent
-                if is_capture:
-                    possible_captures.append(i.name)
-
-        capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
-    # elif TODO is nonescaping or immediately invoked:
-    #    capture_list = "&"
-    else:
-        capture_list = ""
-
-    return ("[" + ", ".join(capture_list) + "](" + ", ".join(params) + ")" + type_str + " {\n" +
-            codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)
-
-
-def codegen(expr: Node):
-    assert isinstance(expr, Module)
-    cx = Scope()
-    s = codegen_module(expr, cx)
-    print(s)
-    return s
 
 
 def decltype_str(node, cx):
@@ -1649,963 +2510,6 @@ def vector_decltype_str(node, cx):
         if rhs_str is not None:
             break
     return rhs_str
-
-
-def _shared_ptr_str_for_type(type_node, cx):
-    if not isinstance(type_node, Identifier):
-        return None
-
-    if classdef := cx.lookup_class(type_node):
-        if isinstance(classdef, InterfaceDefinition):
-            # TODO this clearly needs a revisit (or just scrap current 'interface' handling)
-            return "std::shared_ptr"
-
-        if classdef.is_struct:
-            return None
-        elif classdef.is_unique:
-            return "std::unique_ptr"
-        else:
-            return "std::shared_ptr"
-
-    return None
-
-
-def _codegen_extern_C(lhs, rhs):
-    if isinstance(lhs, Identifier) and isinstance(rhs, StringLiteral) and lhs.name == "extern" and rhs.str == "C":
-        return 'extern "C"'
-    return None
-
-
-def _sublist_indices(sublist, lst : typing.List):
-    list_set = set(lst)
-    subset = set(sublist)
-    if subset <= list_set:
-        indices = sorted([lst.index(s) for s in subset])
-        if indices == list(range(indices[0], len(indices))):
-            return indices
-    return None
-
-
-def _codegen_compound_class_type(types, cx):
-    # note that for better or worse, the calling code of codegen_type should
-    # take care to add an outer const where necessary
-    class_types = [(t, c) for (t, c) in [(t, cx.lookup_class(t)) for t in types] if c is not None]
-    if len(class_types) == 0:
-        return None
-    class_type, class_def = class_types[0]
-    class_name = class_type.name
-    if len(class_types) > 1:
-        raise CodeGenError("too many class types in type", class_type)
-    typenames = [t.name for t in types]
-    if class_def.is_unique:
-        if indices := _sublist_indices(["const", class_name, "ref"], typenames):
-            return "const std::unique_ptr<const " + class_name + ">&", indices
-        if indices := _sublist_indices([class_name, "const", "ref"], typenames):
-            return "const std::unique_ptr<const " + class_name + ">&", indices
-    if not class_def.is_struct and ("ref" in typenames or "ptr" in typenames or "rref" in typenames):
-        raise CodeGenError("no ref/ptr specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
-    if indices := _sublist_indices(["shared", "mut", class_name], typenames):
-        return "std::shared_ptr<" + class_name + ">", indices
-    if indices := _sublist_indices(["shared", "const", class_name], typenames):
-        return "std::shared_ptr<const " + class_name + ">", indices
-    if indices := _sublist_indices(["unique", "mut", class_name], typenames):
-        return "std::unique_ptr< " + class_name + ">", indices
-    if indices := _sublist_indices(["unique", "const", class_name], typenames):
-        return "std::unique_ptr<const " + class_name + ">", indices
-    if indices := _sublist_indices(["weak", "mut", class_name], typenames):
-        if class_def.is_unique:
-            raise CodeGenError("no weak specifier for type", types[0])
-        return "std::weak_ptr<" + class_name + ">", indices
-    if indices := _sublist_indices(["weak", "const", class_name], typenames):
-        if class_def.is_unique:
-            raise CodeGenError("no weak specifier for type", types[0])
-        return "std::weak_ptr<const " + class_name + ">", indices
-    if indices := _sublist_indices(["weak", class_name], typenames):
-        if class_def.is_unique:
-            raise CodeGenError("no weak specifier for type", types[0])
-        if mut_by_default:
-            return "std::weak_ptr<" + class_name + ">", indices
-        return "std::weak_ptr<const " + class_name + ">", indices
-    if class_def.is_struct:
-        # let the defaults of codegen_type handle this
-        return None
-    if indices := _sublist_indices(["mut", class_name], typenames):
-        if class_def.is_unique:
-            return "std::unique_ptr<" + class_name + ">", indices
-        return "std::shared_ptr<" + class_name + ">", indices
-    if indices := _sublist_indices(["const", class_name], typenames):
-        if class_def.is_unique:
-            return "std::unique_ptr<const " + class_name + ">", indices
-        return "std::shared_ptr<const " + class_name + ">", indices
-    if mut_by_default:
-        if class_def.is_unique:
-            return "std::unique_ptr<" + class_name + ">", [types.index(class_type)]
-        return "std::shared_ptr<" + class_name + ">", [types.index(class_type)]
-    else:
-        if class_def.is_unique:
-            return "std::unique_ptr<const " + class_name + ">", [types.index(class_type)]
-        return "std::shared_ptr<const " + class_name + ">", [types.index(class_type)]
-
-
-def _codegen_compound_class_type_old(lhs, rhs, cx):
-    # these should all create:
-    # c = C() : const  # auto c = make_shared<const decltype(C())> ();
-    # east/west:
-    # c:const:C = C()  # const shared_ptr<const C> c = make_shared<const C)> ();
-    # c:C:const = C()  # const shared_ptr<C const> c = make_shared<C const> ();
-
-    # this would remain as is (c2 is just a const shared_ptr<C>)
-    # s = C()
-    # c2: const:auto = s  # if we continue to disallow just 'const'
-    # c2: const = s  # even if we allow 'const' as a shorthand for 'auto:const' this could still be const shared_ptr<C>
-    # c3: const = C()  # same
-    # c4: const:C = s  # error can't convert shared_ptr<C> to shared_ptr<const C>
-    # c5: const:C = s : const  # do we allow this as a convenient shorthand for static_pointer_cast?
-    # c6: const:C = const(s)   # maybe this?
-
-    for l, r in ((lhs,rhs), (rhs, lhs)):
-        if c := cx.lookup_class(l):
-            if not isinstance(r, Identifier) or r.name not in ["const", "mut", "weak", "shared", "unique"]:
-                raise CodeGenError("Invalid specifier for class type")
-            if r.name == "const":
-                if c.is_unique:
-                    return "std::unique_ptr<const " + l.name + ">"
-                return "std::shared_ptr<const " + l.name + ">"
-            elif r.name == "mut":
-                if c.is_unique:
-                    return "std::unique_ptr<" + l.name + ">"
-                return "std::shared_ptr<" + l.name + ">"
-            else:
-                assert r.name == "weak"
-                if c.is_unique:
-                    raise CodeGenError("no weak specifier for unique-class", l)
-                return "std::weak_ptr"
-
-
-def codegen_type(expr_node, type_node, cx):
-
-    if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
-        pass
-    elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess)):
-        raise CodeGenError("unexpected typed expression", expr_node)
-    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
-        raise CodeGenError("unexpected typed call", expr_node)
-
-    types = type_node_to_list_of_types(type_node)
-    type_names = [t.name for t in types]
-
-    if type_names[0] in ["ptr", "ref", "rref"]:
-        raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
-
-    # TODO better ptr handling - 'same behavior as add_const_t' not workable.
-    # maybe just require 'unsafe' as a type keyword (not precluding 'unsafe' blocks) but
-    # leave the ptr type as mut by default (needs fixes elsewhere unfortunately)
-
-    # TODO don't make ref:ref const by default - gotcha (ideally error on a const ref:ref but not a mut ref:ref of a ptr to const etc)
-
-    type_code = []
-
-    if result := _codegen_compound_class_type(types, cx):
-        ptr_code, indices = result
-        types[indices[0]] = ptr_code  # save for below
-        del indices[0]
-        if indices:
-            # remove the rest
-            types = types[0:indices[0]] + types[indices[-1] + 1:]
-
-    i = 0
-    while i < len(types):
-        t = types[i]
-
-        assert not isinstance(t, TypeOp)
-
-        if isinstance(t, str):  # already computed above
-            code = t
-        elif i < len(types) - 1 and (extern_c := _codegen_extern_C(types[i], types[i + 1])):
-            type_code.append(extern_c)
-            i += 2
-            continue
-        elif i < len(types) - 1 and type_names[i] == "ref" == type_names[i + 1]:
-            type_code.append("&&")
-            i += 2
-            continue
-        elif isinstance(t, ListLiteral):
-            if len(t.args) != 1:
-                raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
-            code = "std::vector<" + codegen_type(expr_node, t.args[0], cx) + ">"
-        elif isinstance(t, TupleLiteral):
-            if len(t.args) == 0:
-                raise CodeGenError("No empty tuples as types", expr_node)
-            code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
-        elif t.name == "ptr":
-            code = "*"
-        elif t.name == "ref":
-            code = "&"
-        elif t.name == "rref":
-            code = "&&"
-        elif t.name == "mut":
-            raise CodeGenError("unexpected placement of 'mut'", expr_node)
-
-        elif t.name in ["new", "goto"]:
-            raise CodeGenError("nice try", t)
-        elif not isinstance(t, (Identifier, Call, Template, AttributeAccess, ScopeResolution)):
-            raise CodeGenError("unexpected type", t)
-        else:
-            if t.declared_type:
-                temp = t.declared_type
-                t.declared_type = None
-                code = codegen_node(t, cx)
-                t.declared_type = temp
-            else:
-                code = codegen_node(t, cx)
-
-        type_code.append(code)
-        i += 1
-
-    assert len(type_code) > 0
-    return " ".join(type_code)
-
-
-def codegen_type_old(expr_node, type_node, cx, _is_leading=True):
-
-    if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
-        pass
-    elif not isinstance(expr_node, (ListLiteral, Call, Identifier, TypeOp)):
-        raise CodeGenError("unexpected typed expression", expr_node)
-    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
-        raise CodeGenError("unexpected typed call", expr_node)
-
-    if isinstance(type_node, TypeOp):
-        lhs = type_node.lhs
-        rhs = type_node.rhs
-        if s := _codegen_extern_C(lhs, rhs):
-            return s
-        elif s := _codegen_compound_class_type(lhs, rhs, cx):
-            return s
-        return codegen_type(expr_node, lhs, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, rhs, cx, _is_leading=False)
-    elif isinstance(type_node, ListLiteral):
-        if len(type_node.args) != 1:
-            raise CodeGenError("Array literal type must have a single argument (for the element type)", expr_node)
-        return "std::vector<" + codegen_type(expr_node, type_node.args[0], cx) + ">"
-    elif isinstance(type_node, Identifier):
-        if type_node.declared_type is not None:
-            # TODO removing the 'declared_type' property entirely in favour of unflattened TypeOp would solve various probs
-            declared_type = type_node.declared_type
-
-            if s := _codegen_extern_C(type_node, declared_type):
-                return s
-            elif s := _codegen_compound_class_type(type_node, declared_type, cx):
-                return s
-
-            type_node.declared_type = None
-            output = codegen_type(expr_node, type_node, cx, _is_leading=_is_leading) + " " + codegen_type(expr_node, declared_type, cx, _is_leading=False)
-            type_node.declared_type = declared_type
-
-            return output
-
-        if _is_leading and type_node.name in ["ptr", "ref", "rref"]:
-            raise CodeGenError(f"Invalid untyped specifier. Use explicit 'auto:{type_node.name}':", type_node)
-
-        if type_node.name == "ptr":
-            return "*"
-        elif type_node.name == "ref":
-            return "&"
-        elif type_node.name == "rref":
-            return "&&"
-
-        if type_node.name in ["new", "goto"]:
-            raise CodeGenError("nice try", type_node)
-
-        if type_node.name == "mut":
-            raise CodeGenError("unexpected placement of 'mut'", expr_node)
-
-    if not isinstance(type_node, (Identifier, TypeOp, Call, Template, AttributeAccess, ScopeResolution)):
-        raise CodeGenError("unexpected type", type_node)
-
-    return codegen_node(type_node, cx)
-
-
-def codegen_attribute_access(node: AttributeAccess, cx: Scope):
-    assert isinstance(node, AttributeAccess)
-
-    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO: bad separate lookup mechanism for class defs and variable defs won't work with shadowing of a class name by a local (legal in C++)
-        if node.rhs.name == "class":
-            # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
-            # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes
-            # TODO ^ needs test
-            return node.lhs.name
-
-        # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
-        return node.lhs.name + "::" + codegen_node(node.rhs, cx)
-
-    if isinstance(node.lhs, (Identifier, AttributeAccess)):
-        # implicit scope resolution:
-
-        # Here we implement for example: in A.b.c, if A doesn't lookup as a variable, print whole thing as scope resolution A::b::c. Note this makes e.g. accessing data members of globals defined in external C++ headers impossible (good!). TODO Such accesses can be allowed in the future once a python-style 'global' is implemented
-
-        # e.g. std.q.r.s should print as std::q::r::s
-        # HOWEVER std.q.r().s should print as std::q::r().s  where the last '.' is a maybe autoderef
-
-        leading = node
-        scope_resolution_list = []
-
-        while isinstance(leading, AttributeAccess):
-            scope_resolution_list.append(leading.rhs)
-            leading = leading.lhs
-
-        if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
-
-            # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
-            scope_resolution_code = leading.name
-            while scope_resolution_list:
-                if isinstance(scope_resolution_list[0], Identifier):
-                    item = scope_resolution_list.pop()
-                    scope_resolution_code += "::" + item.name
-                else:
-                    break
-
-            if not scope_resolution_list:
-                return scope_resolution_code
-            else:
-                remaining = list_to_attribute_access_node(scope_resolution_list)
-                assert remaining is not None
-                return scope_resolution_code + "::" + codegen_node(remaining, cx)
-
-    # maybe autoderef
-    # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
-
-    if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
-        # don't autoderef an optional if we're calling a method of std::optional on it (maybe this is dubious for the mutable methods swap/reset/emplace?)
-        return "(*ceto::mad_smartptr(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
-
-    # autoderef optional or smart pointer:
-    return "(*ceto::mad(" + codegen_node(node.lhs, cx) + "))." + codegen_node(node.rhs, cx)
-
-
-def _has_outer_double_parentheses(s: str):
-    """ helper to avoid acidentally emitting e.g. decltype((x + y)) which means something very different than decltype(x + y)"""
-
-    count = 0
-    ended = False
-    began = False
-
-    for char in s:
-        if char == '(':
-            count += 1
-            if count == 2:
-                began = True
-        elif char == ')':
-            count -= 1
-            if count < 0:
-                return False
-            elif count == 1:
-                ended = True
-        if char != "(" and not began and count < 2:
-            # string does not begin with at least two "("
-            return False
-        if ended and char != ")":
-            return False
-
-    return count == 0
-
-
-def codegen_call(node: Call, cx: Scope):
-    assert isinstance(node, Call)
-
-    if is_call_lambda(node):
-        newcx = cx.enter_scope()
-        newcx.in_function_param_list = True
-        return codegen_lambda(node, newcx)
-
-    if isinstance(node.func, Identifier):
-        func_name = node.func.name
-        if func_name == "if":
-            return codegen_if(node, cx)
-        elif func_name == "def":
-            return codegen_def(node, cx)
-        elif func_name == "operator" and len(node.args) == 1 and isinstance(
-                operator_name_node := node.args[0], StringLiteral):
-            return "operator" + operator_name_node.str
-        elif func_name == "include":
-            cpp_name = node.args[0]
-            assert isinstance(cpp_name, Identifier)
-            return f'#include "{cpp_name.name}.donotedit.autogenerated.h"\n'
-        elif func_name == "throw":
-            if not len(node.args) == 1:
-                raise CodeGenError("throw takes 1 arg", node)
-            return "throw " + codegen_node(node.args[0], cx)
-        elif func_name == "defmacro":
-            return ""
-        elif func_name in ["asinstance", "isinstance"]:
-            if not len(node.args) == 2:
-                raise CodeGenError("asinstance takes 2 args", node)
-            class_name = node.args[1]
-            const_specifier = "const "
-            if extracted := extract_mut_or_const(class_name):
-                mc, class_name = extracted
-                if mc.name == "mut":
-                    const_specifier = ""
-            if not isinstance(class_name, Identifier):
-                raise CodeGenError("bad is/asinstance class arg", node)
-            if not (classdef := cx.lookup_class(class_name)) or classdef.is_struct or not classdef.is_concrete:
-                if classdef.is_concrete:
-                    raise CodeGenError("is/asinstance arg can't be a template", classdef)
-                raise CodeGenError("is/asinstance arg must be a class", node)
-            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
-            if func_name == "isinstance":
-                cast_string = "(" + cast_string + " != nullptr)"
-            return cast_string
-        else:
-            arg_strs = [codegen_node(a, cx) for a in node.args]
-            args_inner = ", ".join(arg_strs)
-            args_str = "(" + args_inner + ")"
-
-            if class_def := cx.lookup_class(node.func):
-                class_name = node.func.name
-                curly_args = "{" + args_inner + "}"
-
-                if not node.args:
-                    # just use round parentheses to call default constructor
-                    curly_args = args_str
-
-                # if class_def.has_generic_params():
-                #     class_name += "<" + ", ".join(
-                #         [decltype_str(a, cx) for i, a in enumerate(node.args) if
-                #          class_def.is_generic_param_index[i]]) + ">"
-
-                if class_def.is_struct:
-                    func_str = class_name
-                    args_str = curly_args
-                else:
-                    class_name = "decltype(" + class_name + curly_args + ")"
-                    const_part = "const " if _is_const_make(node) else ""
-
-                    if class_def.is_unique:
-                        func_str = "std::make_unique<" + const_part + class_name + ">"
-                    else:
-                        func_str = "std::make_shared<" + const_part + class_name + ">"
-
-                return func_str + args_str
-
-            if isinstance(node.func, Identifier):
-                func_str = node.func.name
-            else:
-                func_str = codegen_node(node.func, cx)
-
-            if cx.in_function_body:
-                capture = "&"
-            else:
-                capture = ""
-
-            simple_call_str = func_str + args_str
-
-            if func_str in ("decltype", "static_assert") or (
-                    isinstance(node.parent,
-                               (ScopeResolution, ArrowOp, AttributeAccess)) and
-                    node.parent.lhs is not node):
-                if func_str == "decltype":
-                    cx.in_decltype = True
-                    if _has_outer_double_parentheses(args_str):
-                        # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
-                        # strip the outside ones (fine for now)
-                        return func_str + args_str[1:-1]
-                return simple_call_str
-
-            return simple_call_str
-
-            # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
-
-            dt_str = "decltype(" + simple_call_str + ")"
-
-            simple_return = "return "
-            if isinstance(node.parent, Block):
-                simple_return = ""
-
-            call_str = "[" + capture + "] { if constexpr (std::is_base_of_v<ceto::object, " + dt_str + ">) { return ceto::call_or_construct<" + dt_str + ">" + args_str + "; } else { " + simple_return + simple_call_str + "; } } ()"
-
-            return call_str
-    else:
-        # probably a method:
-
-        # not auto-flattening args is becoming annoying!
-        # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
-        method_name = None
-        if isinstance(node.func, (AttributeAccess, ScopeResolution)):
-            method_name = node.func.rhs
-            while isinstance(method_name, (AttributeAccess, ScopeResolution)):
-                method_name = method_name.rhs
-
-        func_str = None
-
-        if method_name is not None:
-
-            # modify node.func (this is bad mutation and a source of future bugs)
-            def consume_method_name():
-                method_parent = method_name.parent
-                assert method_parent.rhs is method_name
-
-                if method_parent in method_parent.parent.args:
-                    new_args = method_parent.parent.args
-                    new_args.remove(method_parent)
-                    new_args.append(method_parent.lhs)
-                    # important that we reset the list instead of mutating directly here (difference between plain python and pybind11 ast)
-                    method_parent.parent.args = new_args
-                    method_parent.lhs.parent = method_parent.parent
-                elif method_parent is method_parent.parent.func:
-                    method_parent.parent.func = method_parent.lhs
-                    method_parent.lhs.parent = method_parent.parent
-                else:
-                    assert 0
-
-            if method_name.name == "operator" and len(
-                    node.args) == 1 and isinstance(
-                operator_name_node := node.args[0], StringLiteral):
-                consume_method_name()
-                return "(*ceto::mad(" + codegen_node(node.func, cx) + ")).operator" + operator_name_node.str
-
-            elif method_name.parent and not isinstance(method_name.parent,
-                                (ScopeResolution, ArrowOp)):
-                # method_name.parent is None for a method call inside a decltype in a return type
-                # TODO we maybe still have to handle cases where method_name.parent is None. silly example: x : decltype([].append(1)[0])
-
-                consume_method_name()
-
-                if method_name.name == "unsafe_at" and len(node.args) == 1:
-                    return codegen_node(node.func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
-
-                if method_name.name == "append" and len(node.args) == 1:
-                    # perhaps controversial rewriting of append to push_back
-                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
-
-                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
-                    append_str = "append"
-                    is_list = False
-                    if isinstance(node.func, ListLiteral):
-                        is_list = True
-                    else:
-                        #for d in find_defs(node.func):
-                        for d in node.scope.find_defs(node.func):
-                            # print("found def", d, "when determining if an append is really a push_back")
-                            if isinstance(d.defining_node, Assign) and isinstance(
-                                    d.defining_node.rhs, ListLiteral):
-                                is_list = True
-                                break
-                    if is_list:
-                        append_str = "push_back"
-
-                    func_str = "(*ceto::mad(" + codegen_node(node.func, cx) + "))." + append_str
-                else:
-
-                    # TODO don't do the silly mutation above in the first place!
-                    new_attr_access = AttributeAccess(".", [node.func, method_name])
-                    new_attr_access.parent = node
-                    node.func.parent = new_attr_access
-                    method_name.parent = new_attr_access
-                    func_str = codegen_attribute_access(new_attr_access, cx)
-
-        if func_str is None:
-            func_str = codegen_node(node.func, cx)
-
-        return func_str + "(" + ", ".join(
-            map(lambda a: codegen_node(a, cx), node.args)) + ")"
-
-
-def _is_const_make(node : Call):
-    assert isinstance(node, Call)
-
-    is_const = not mut_by_default
-
-    if node.declared_type is not None:
-        lhs_type = node.declared_type
-
-        if isinstance(lhs_type, Identifier):
-            if lhs_type.name == "mut":
-                is_const = False
-            elif lhs_type.name == "const":
-                is_const = True
-        elif isinstance(lhs_type, TypeOp):
-            type_list = type_node_to_list_of_types(lhs_type)
-            if "mut" in type_list:
-                is_const = False
-            elif "const" in type_list:
-                is_const = True
-    elif isinstance(node.parent,
-                  Assign) and node.parent.lhs.declared_type is not None:
-        lhs_type = node.parent.lhs.declared_type
-
-        if isinstance(lhs_type, Identifier):
-            if lhs_type.name == "mut":
-                is_const = False
-        elif isinstance(lhs_type, TypeOp):
-            type_list = type_node_to_list_of_types(lhs_type)
-            if "mut" in [type_list[0].name, type_list[-1].name]:
-                is_const = False
-
-    return is_const
-
-
-def codegen_variable_declaration_type(node: Identifier, cx: Scope):
-    if not isinstance(node, Identifier):
-        raise CodeGenError("Unexpected typed expression", node)
-    assert node.declared_type
-
-    lhs_type_str = None
-
-    const_specifier = ""
-
-    if isinstance(node.declared_type, Identifier):
-        if node.declared_type.name == "auto":
-            raise CodeGenError("must specify const/mut for auto", node)
-    elif isinstance(node.declared_type, TypeOp):
-        type_list = type_node_to_list_of_types(node.declared_type)
-
-        _ensure_auto_or_ref_specifies_mut_const(type_list)
-
-        classes = [t for t in type_list if cx.lookup_class(t)]
-
-        mut_or_const = [t for t in type_list if t.name in ["mut", "const"]]
-
-        if len(classes) > 1:
-            raise CodeGenError("too many classes specified", node)
-
-        if classes and len(mut_or_const) > 1:
-            raise CodeGenError("too many mut/const specified for class type", node)
-        if classes and mut_or_const:
-            lhs_type_str = codegen_type(node, node.declared_type, cx)
-
-            if mut_or_const[0].name == "const":
-                lhs_type_str = "const " + lhs_type_str
-
-        elif "mut" in [type_list[0].name,
-                     type_list[-1].name]:  # east or west mut is fine
-            if type_list[0].name == "mut":
-                type_list.pop(0)
-            else:
-                type_list.pop()
-            rebuilt = list_to_typed_node(type_list)
-            lhs_type_str = codegen_type(node, rebuilt, cx)
-            assert len(lhs_type_str) > 0
-        else:
-            for i, t in enumerate(type_list):
-                otheridx = i - 1 if i > 0 else i + 1
-                if (t.name in ["const", "auto"] and type_list[otheridx].name in [
-                    "const", "auto"]) or (
-                        t.name == "const" and i < len(type_list) - 1 and type_list[
-                    i + 1].name == "ref"):
-                    # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
-                    # alternately contains "const ref" anywhere
-                    # use type verbatim
-                    lhs_type_str = codegen_type(node, node.declared_type, cx)
-                    break
-
-            if lhs_type_str is None:
-                if (type_list[0].name == "const" and type_list[
-                    -1].name != "ptr") or type_list[-1].name == "const":
-                    lhs_type_str = codegen_type(node, node.declared_type,
-                                                cx)
-                elif type_list[-1].name == "ptr":
-                    lhs_type_str = codegen_type(node, node.declared_type,
-                                                cx) + " const"
-                # else:
-                #     assert 0
-
-    if lhs_type_str is None:
-        lhs_type_str = codegen_type(node, node.declared_type, cx)
-        needs_const = not mut_by_default
-        if needs_const and not const_specifier:
-            const_specifier = "const "
-
-    return const_specifier, lhs_type_str
-
-
-def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, cx):
-    assert isinstance(node, TupleLiteral)
-
-    structured_binding = "[" + ", ".join(codegen_node(a, cx) for a in node.args) + "]"
-
-    if is_for_loop_iter:
-        ref_part = "& "
-    else:
-        ref_part = " "
-
-    if node.declared_type:
-        if node.declared_type.name == "mut":
-            # plain mut means by value
-            return "auto " + structured_binding
-        elif node.declared_type.name == "const":
-            # plain const means by const value unless it's a for iter unpacking (const ref)
-            return "const auto" + ref_part + structured_binding
-        binding_types = type_node_to_list_of_types(node.declared_type)
-        _ensure_auto_or_ref_specifies_mut_const(binding_types)
-        binding_type_names = [t.name for t in binding_types]
-        # we don't have to worry about stripping out a mut/const that belongs to
-        # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
-        # allowed in structured bindings, otherwise C++ error).
-        binding_types = [t for t in binding_types if t.name != "mut"]
-        binding_type = list_to_typed_node(binding_types)
-        binding_type_code = codegen_type(node, binding_type, cx)
-        return binding_type_code + " " + structured_binding
-
-    return "const auto" + ref_part + structured_binding
-
-
-def codegen_assign(node: Assign, cx: Scope):
-    assert isinstance(node, Assign)
-
-    if not isinstance(node.lhs, (Identifier, TupleLiteral)):
-        return codegen_node(node.lhs, cx) + " = " + codegen_node(node.rhs, cx)
-
-    is_lambda_rhs_with_return_type = False
-
-    const_specifier = ""
-    if not cx.in_function_body and not cx.in_class_body:
-        # add constexpr to all global defns
-        constexpr_specifier = "constexpr "
-    else:
-        constexpr_specifier = ""
-
-    if node.declared_type is not None and isinstance(node.rhs,
-                                                     Call) and node.rhs.func.name == "lambda":
-        # TODO lambda return types need fixes? fixed now?
-        lambdaliteral = node.rhs
-        is_lambda_rhs_with_return_type = True
-        # type of the assignment (of a lambda literal) is the type of the lambda not the lhs
-        if lambdaliteral.declared_type is not None:
-            raise CodeGenError("Two return types defined for lambda:",
-                               node.rhs)
-        lambdaliteral.declared_type = node.declared_type
-        newcx = cx.enter_scope()
-        newcx.in_function_param_list = True
-        rhs_str = codegen_lambda(lambdaliteral, newcx)
-    #elif node.lhs.declared_type is None and isinstance(node.rhs, ListLiteral) and not node.rhs.args and node.rhs.declared_type is None and (vds := vector_decltype_str(node, cx)) is not None:
-    elif isinstance(node.rhs, ListLiteral) and not node.rhs.args and not node.rhs.declared_type and (not node.lhs.declared_type or not isinstance(strip_mut_or_const(node.lhs.declared_type), ListLiteral)) and (vds := vector_decltype_str(node, cx)) is not None:  # TODO const/mut specifier for list type on lhs
-        # handle untyped empty list literal by searching for uses
-        rhs_str = "std::vector<" + vds + ">()"
-    else:
-        rhs_str = codegen_node(node.rhs, cx)
-
-    if isinstance(node.lhs, Identifier):
-        if _is_unique_var(node.lhs, cx):
-            # ':unique' instances are unique_ptr<const T> by default but the actual variable is non-const to facilitate easier
-            # automatic std::move from last use even with const:UniqueFoo (and not just mut:UniqueFoo).
-            # Note that a const shared_ptr<const T> is still powerful because it can be copied from,
-            # a const unique_ptr<const Foo> is rather useless (can only be called, can't form a vector with one).
-            # A (not const) unique_ptr<const Foo> on the other hand is a good replacement for a
-            # const shared_ptr<const Foo> (if you don't need shared ownership).
-            if node.lhs.declared_type and node.lhs.declared_type.name not in ["mut", "const"]:
-                return constexpr_specifier + codegen_type(node.lhs, node.lhs.declared_type, cx) + " = " + rhs_str
-            else:
-                old_type = node.lhs.declared_type  #  just mut or const
-                node.lhs.declared_type = None
-                if cx.in_class_body:
-                    assign_str = "decltype(" + rhs_str + ") " + codegen_node(node.lhs, cx) + " = " + rhs_str
-                else:
-                    assign_str = codegen_node(node.lhs, cx) + " = " + rhs_str
-                    if not node.lhs.scope.find_def(node.lhs):
-                        # just auto not const auto
-                        assign_str = "auto " + assign_str
-                node.lhs.declared_type = old_type
-                return constexpr_specifier + assign_str
-
-        lhs_str = node.lhs.name
-
-        if node.lhs.declared_type:
-
-            if node.lhs.declared_type.name in ["using", "namespace"]:
-                return node.lhs.declared_type.name + " " + lhs_str + " = " + rhs_str
-
-            if node.lhs.declared_type.name == "weak":
-                is_weak_const = True
-
-            types = type_node_to_list_of_types(node.lhs.declared_type)
-            type_names = [t.name for t in types]
-            _ensure_auto_or_ref_specifies_mut_const(types)
-
-            adjacent_type_names = zip(type_names, type_names[1:])
-            if ("const", "weak") in adjacent_type_names:
-                pass
-
-            # add const if not mut
-
-            if isinstance(node.lhs.declared_type, Identifier) and node.lhs.declared_type.name in ["mut", "const"]:
-                if cx.in_class_body:
-                    # lhs_type_str = "std::remove_cvref_t<decltype(" + rhs_str + ")>"  # this would work but see error message
-                    raise CodeGenError(f"const data members in C++ aren't very useful and prevent moves leading to unnecessary copying. Just use {node.lhs.name} = whatever (with no {node.lhs.declared_type.name} \"type\" specified)")
-                else:
-                    lhs_type_str = "const auto" if node.lhs.declared_type.name == "const" else "auto"
-            else:
-                if cx.in_class_body:
-                    # don't call 'codegen_variable_declaration_type' which adds 'const' (TODO rethink previous refactors with codegen_assign called by codegen_class). See comments elsewhere re const data members in C++.
-                    lhs_type_str = codegen_type(node.lhs, node.lhs.declared_type, cx)
-                    const_specifier = ""
-                else:
-                    const_specifier, lhs_type_str = codegen_variable_declaration_type(node.lhs, cx)
-
-            decl_str = lhs_type_str + " " + lhs_str
-
-            const_specifier = constexpr_specifier + const_specifier
-
-            plain_initialization = decl_str + " = " + rhs_str
-
-            if isinstance(node.rhs, BracedLiteral):
-                # aka "copy-list-initialization" in this case
-                return const_specifier + plain_initialization
-
-            # prefer brace initialization to disable narrowing conversions (in these assignments):
-
-            direct_initialization = lhs_type_str + " " + lhs_str + " { " + rhs_str + " } "
-
-            # ^ but there are still cases where this introduces 'unexpected' aggregate initialization
-            # e.g. l2 : std.vector<std.vector<int>> = 1
-            # should it be printed as std::vector<std::vector<int>> l2 {1} (fine: aggregate init) or std::vector<std::vector<int>> l2 = 1  (error) (same issue if e.g. '1' is replaced by a 1-D vector of int)
-            # I think the latter behaviour for aggregates is less suprising: = {1} can be used if the aggregate init is desired.
-
-            if node.lhs.declared_type.name == "mut" or any(t for t in type_node_to_list_of_types(node.lhs.declared_type) if t.name == "auto"):  # or _strip_non_class_non_plain_mut_type(node.lhs, cx):
-                # no need to assert non-narrowing if lhs type codegen has 'auto'
-                return const_specifier + direct_initialization
-
-            # printing of UnOp is currently parenthesized due to FIXME current use of pyparsing infix_expr discards parenthesese in e.g. (&x)->foo()   (the precedence is correct but whether explicit non-redundant parenthesese are used is discarded)
-            # this unfortunately can introduce unexpected use of overparenthesized decltype (this may be a prob in other places although note use of remove_cvref etc in 'list' type deduction.
-            # FIXME: this is more of a problem in user code (see test changes). Also, current discarding of RedundantParens means user code can't explicitly call over-parenthesized decltype)
-            # rhs_str = re.sub(r'^\((.*)\)$', r'\1', rhs_str)
-
-            if isinstance(node.rhs, (IntegerLiteral, FloatLiteral)) or (
-                    isinstance(node.rhs, Identifier) and node.rhs.name in [
-                "true", "false"]):
-                return f"{const_specifier}{direct_initialization}; static_assert(std::is_convertible_v<decltype({rhs_str}), decltype({node.lhs.name})>)"
-
-            # So go given the above, define our own no-implicit-conversion init (without the gotcha for aggregates from naive use of brace initialization everywhere). Note that typed assignments in non-block / expression context will fail on the c++ side anyway so extra statements tacked on via semicolon is ok here.
-
-            # note that 'plain_initialization' will handle cvref mismatch errors!
-            return f"{const_specifier}{plain_initialization}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype({rhs_str}), std::remove_cvref_t<decltype({node.lhs.name})>>)"
-    elif isinstance(node.lhs, TupleLiteral):
-        is_tie = False
-
-        for a in node.lhs.args:
-            if not isinstance(a, Identifier) or a.scope.find_def(a):
-                if node.lhs.declared_type:
-                    raise CodeGenError('typed tuple unpacking ("structured bindings" in C++) can\'t redefine variable: ', a)
-                is_tie = True
-            if a.declared_type:
-                raise CodeGenError("unexpected type in tuple", node)
-
-        if is_tie:
-            return "std::tie(" + ", ".join(codegen_node(a, cx) for a in node.lhs.args) + ") = " + rhs_str
-
-        structured_binding = _structured_binding_unpack_from_tuple(node.lhs, False, cx)
-        return structured_binding + " = " + rhs_str
-
-    else:
-        lhs_str = codegen_node(node.lhs, cx)
-
-    assign_str = " ".join([lhs_str, node.op, rhs_str])
-
-    # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-    # NOTE 'already_declared' is kludge only for 'noscope' ifs
-    if not hasattr(node, "already_declared") and node.scope.find_def(node.lhs) is None:
-        if cx.in_class_body:
-            # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
-            # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
-            assign_str = "decltype(" + rhs_str + ") " + lhs_str + " = " + rhs_str
-        else:
-            assign_str = "const auto " + assign_str
-
-    const_specifier = constexpr_specifier + const_specifier
-
-    return const_specifier + assign_str
-
-
-def _is_unique_var(node: Identifier, cx: Scope):
-    # should be handled in a prior typechecking pass (like most uses of find_defs)
-
-    def _is(defining):
-        declared_type = strip_mut_or_const(defining.declared_type)
-        classdef = cx.lookup_class(declared_type)
-        if classdef and classdef.is_unique:
-            return True
-        elif isinstance(defining, Assign) and isinstance(rhs := strip_mut_or_const(defining.rhs), Call) \
-                and (classdef := cx.lookup_class(rhs.func)) and classdef.is_unique:
-            return True
-
-    assert isinstance(node, Identifier)
-
-    if not node.scope:
-        # nodes on rhs of TypeOp currently don't have a scope
-        return False
-
-    for defn in node.scope.find_defs(node):
-        if isinstance(defn, (LocalVariableDefinition, ParameterDefinition)):
-            if _is(defn.defining_node):
-                return True
-    if isinstance(node.parent, Assign) and _is(node.parent):
-        return True
-
-    return False
-
-
-def codegen_module(module: Module, cx: Scope):
-    assert isinstance(module, Module)
-    modcpp = ""
-
-    included_module_code = defaultdict(str)
-
-    for modarg in module.args:
-
-        if isinstance(modarg, Call) and modarg.func.name == "def":
-            funcx = cx.enter_scope()
-            funcx.in_function_param_list = True
-            modarg_code = codegen_def(modarg, funcx)
-        else:
-            modarg_code = codegen_block_item(modarg, cx)
-
-        if modarg.file_path:
-            included_module_code[modarg.file_path] += modarg_code
-        else:
-            modcpp += modarg_code
-
-    for path, include_code in included_module_code.items():
-        with open(path, "w") as include_file:
-            include_file.write("#pragma once\n" + cpp_preamble + include_code)
-
-    return cpp_preamble + modcpp
-
-
-def is_last_use_of_identifier(node: Identifier):
-    assert isinstance(node, Identifier)
-    name = node.name
-    ident_ancestor = node.parent
-    prev_ancestor = node
-    is_last_use = True
-    if isinstance(node.parent,
-                  (ScopeResolution, AttributeAccess, ArrowOp, Template)):
-        is_last_use = False
-    elif isinstance(node.parent, (BinOp, UnOp)):
-        is_last_use = isinstance(node.parent,
-                                 Assign)  # maybe a bit strict but e.g. we don't want to transform &x to &(std::move(x))
-    elif isinstance(node.parent, Call) and node.parent.func is node:
-        is_last_use = False
-
-    while is_last_use and ident_ancestor and not creates_new_variable_scope(
-            ident_ancestor):
-        if isinstance(ident_ancestor,
-                      Block) and prev_ancestor in ident_ancestor.args:
-            # TODO 'find_uses' in sema should work with Identifier not just Assign too
-            # try:
-            for b in ident_ancestor.args[
-                     ident_ancestor.args.index(prev_ancestor):]:
-                if any(find_all(b, lambda n: (n is not node) and (
-                        n.name == name))):
-                    is_last_use = False
-                    break
-            # except ValueError:
-            #     pass
-        if any(n and n is not node and isinstance(n, Node) and name == n.name
-               for n in ident_ancestor.args + [ident_ancestor.func]):
-            is_last_use = False
-            break
-        prev_ancestor = ident_ancestor
-        ident_ancestor = ident_ancestor.parent
-    return is_last_use
 
 
 def codegen_node(node: Node, cx: Scope):
