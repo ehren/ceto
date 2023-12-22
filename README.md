@@ -82,7 +82,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # macro invocation
     summary = ", ".join(args)
 
-    f = Foo(summary)  # make shared with extra CTAD.
+    f = Foo(summary)  # equivalent to C++: const auto f = make_shared<const decltype(Foo{summary}) (summary)
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
 
@@ -95,9 +95,10 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # not macro invocation
     t.join()  
 
-    holder = Holder(args)   # make_unique with extra CTAD
+    holder = Holder(args)   # in C++: auto holder = make_unique<const decltype(Holder{args}) (args)
+                            # instances of 'unique' type aren't const by default but they are ptr-to-const by default 
     holders: mut = []
-    holders.append(holder)  # implict std.move from last use
+    holders.append(holder)  # implict std.move from last use 
 
     std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
                                                 # and unique_ptr autoderef
@@ -105,6 +106,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 ```
 
 ```
+$ pip install ceto
 $ ceto kitchensink.ctp a b c d e f
 8
 38
@@ -112,23 +114,12 @@ $ ceto kitchensink.ctp a b c d e f
 ./kitchensink, a, b, c, d, e, f, end
 8
 ```
+
 ## Features
 
-- autoderef (call methods on class instances using '.' instead of '->')
-- implicit scope resolution using `.` (`m: std.unordered_map<int, int> = {{0,1}}` but you can still write `m: std::unordered_map<int, int>` if you insist
-- auto make_shared / make_unique for ceto defined classes (with hidden CTAD for templated classes)
-- (const) auto everywhere and nowhere style
-    - locals const auto by default
-    - parameters `const` by default and maybe `const:ref` by default depending on their type (for example all shared_ptrs transparently managing ceto defined class instances are passed by const ref, all ceto defined structs are passed by const ref, as well as std::vector and std::tuple when using the ceto python style `[list, literal]` and `(tuple, literal)` notation)
-- `:` as a first class binary operator in ceto (for creation of user defined constructs in the macro system and some tom foolery in built-in ceto constructs like one-liner ifs `if (cond: 1 else: 0)`
+### Use "." for method calls / attribute access and namespace access: no need for `->` or `*` in safe code
 
-
-Informally, one can think of the language as "Python with two parenthesese moved or inserted" (per control structure). This is a good approach for those less familliar with C++, for those wanting to avoid certain explicitly unsafe C++ operations such as unary `*` (present in C++/ceto but not Python and which might TODO require an `unsafe` block in in the future), and for those wishing to prototype with Python style ceto (heavily using `class`) with an easier path to integrating more precise/performant C++ (whether ceto defined or not) later.
-
-
-### Autoderef
-
-`.` performs C++ scope resolution (`::` can still be used if desired), `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. Autoderef works by converting code like
+`.` performs C++ scope resolution (`::` can still be used if desired), `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. Autoderef works by compiling a generic / non-type-annotated function like
 
 ```python
 def (calls_foo, f:
@@ -136,7 +127,7 @@ def (calls_foo, f:
 )
 ```
 
-to
+to the C++ template function
 
 ```c++
 #include <ceto.h>
@@ -294,6 +285,48 @@ def (main:
 # visiting Identifier a
 
 ```
+
+'Just like Java' (with differerent syntax and the complication of const/mut) because the two crucial method calls of the visitor pattern above are written
+
+```python
+arg.accept(self)  # java equivalent: arg.accept(this)
+```
+
+and
+
+```python
+visitor.visit(self)  # java equivalent: visitor.visit(this)
+```
+
+rather than the the idiomatic C++ which would be something like
+
+```c++
+visitor.visit(*this)
+``` 
+
+This brings us to the meaning of `self`: For simple attribute accesses `self.foo` is rewritten to `this->foo`. When `self` is used in other contexts (including any use in a capturing lambda) a `const` definition of `self` using `shared_from_this` is provided to the body of the method.
+
+At this point, you might be saying "automatic make_shared, and automatic shared_from_this??!" This would be slower than Java! (at least once the JVM starts up)"
+
+At this point, you might be objecting on performance grounds alone. While the above visitor example 
+
+While this is true (though we claim zero overhead because you can always avoid `class`
+
+
+Extended Feature List
+- [x] Autoderef (call methods on 'class instances' using '.' instead of '->')
+   - [x] Might as well autoderef every smart pointer and optionals too. Except, when calling a method of std::optional, yo
+- implicit scope resolution using `.` (`m: std.unordered_map<int, int> = {{0,1}}` but you can still write `m: std::unordered_map<int, int>` if you insist
+- auto make_shared / make_unique for ceto defined classes (with hidden CTAD for templated classes)
+- (const) auto everywhere and nowhere
+    - locals `const:auto` by default
+    - parameters `const` by default and maybe `const:ref` by default depending on their type (for example all shared_ptrs transparently managing ceto defined class instances are passed by const ref, all ceto defined structs are passed by `const:ref`, as well as `std::vector` and `std::tuple` when using the ceto python style `[list, literal]` and `(tuple, literal)` notation)
+
+    - methods
+- `:` as a first class binary operator in ceto (for creation of user defined constructs in the macro system and some tom foolery in built-in ceto constructs like one-liner ifs `if (cond: 1 else: 0)`. Types are annoted with 
+
+
+Informally, one can think of the language as "Python with two parenthesese moved or inserted" (per control structure). This is a good approach for those less familliar with C++, for those wanting to avoid certain explicitly unsafe C++ operations such as unary `*` (present in C++/ceto but not Python and which might TODO require an `unsafe` block in in the future), and for those wishing to prototype with Python style ceto (heavily using `class`) with an easier path to integrating more precise/performant C++ (whether ceto defined or not) later.
 
 ## Syntax: 
 
