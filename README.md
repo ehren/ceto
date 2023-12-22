@@ -105,7 +105,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-```
+## Usage
+
+```bash
 $ pip install ceto
 $ ceto kitchensink.ctp a b c d e f
 8
@@ -117,9 +119,26 @@ $ ceto kitchensink.ctp a b c d e f
 
 ## Features
 
-### Use "." for method calls / attribute access and namespace access: no need for `->` or `*` in safe code
+- [x] Autoderef (call methods on "class instances" using `.` instead of `->`)
+   - [x] Using dot on a std::shared_ptr, std::unique_ptr, or std::optional autoderefed (in the case of std::optional no deref takes place when calling a method of std::optional - that is, to call a method `value()` call `.value().value()`). For std::shared/unique_ptr you must use a construct like `(&o)->get` to call the smart ptr `get` method.
+- implicit scope resolution using `.` (`::` may still be used)
+- auto make_shared / make_unique for ceto defined classes (with hidden CTAD for templated classes). Write `f = Foo(x, y)` like python regardless of whether `Foo` is a (unique) class or struct (and regardless of whether `Foo` has generic/untyped data members or is an explicit template).
+- (const) auto everywhere and nowhere
+    - locals `const:auto` by default
+    - parameters `const` by default and maybe `const:ref` by default depending on their type (for example all shared_ptrs transparently managing ceto defined class instances are passed by const ref, all ceto defined structs are passed by `const:ref`, as well as `std::vector` and `std::tuple` when using the ceto python style `[list, literal]` and `(tuple, literal)` notation)
+    - methods const by default
+- `:` as a first class binary operator in ceto for use by macro defined or built-in constructs e.g. one-liner ifs `if (cond: 1 else: 0)`. Variable type declaration syntax mimicks python type annotations e.g. `x: int` but `:` acts as a type separator character for multi-word C++ types (and type-like / space separated things) e.g. `x: static:std.array<unsigned:int, 4> = {1, 2, 3, 4}`
 
-`.` performs C++ scope resolution (`::` can still be used if desired), `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. Autoderef works by compiling a generic / non-type-annotated function like
+
+## Features
+
+- [x] Autoderef (call methods on class instances using `.` instead of `->` or `*`)
+    - [x] `.` performs  `std::shared_ptr`, `std::unique_ptr`, and `std::optional` autoderef in addition to ordinary C++ member access. 
+- [x] `.` performs C++ scope resolution (like namespace access in Python)
+
+### Autoderef
+
+Autoderef works by compiling a generic / non-type-annotated function like
 
 ```python
 def (calls_foo, f:
@@ -138,6 +157,8 @@ auto calls_foo(const auto& f) -> auto {
 ```
 
 where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` in ceto when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
+
+Note
 
 ## More Examples
 
@@ -307,6 +328,39 @@ visitor.visit(*this)
 This brings us to the meaning of `self`: For simple attribute accesses `self.foo` is rewritten to `this->foo`. When `self` is used in other contexts (including any use in a capturing lambda) a `const` definition of `self` using `shared_from_this` is provided to the body of the method.
 
 At this point, you might be saying "automatic make_shared, and automatic shared_from_this??!" This would be slower than Java! (at least once the JVM starts up)"
+
+To alleviate these performance concerns, we can first change the definition of `Visitor` and `SimpleVisitor` to use `struct` instead of `class`. We would then change calls in the `visit` methods like `arg.accept(self)` to `arg.accept(*this)  # note *self works but might cause an unnecessary refcount bump`. `accept` methods must be changed so that `Visitor` (now just a `struct`) is passed by `mut:ref` rather than just `mut` (note that when `Visitor` was a (non-`unique`) `class`, `Visitor:mut` as a function param meant in C++ `const std::shared_ptr<Visitor>&` (that is a const-ref shared_ptr to non-const)
+
+Note that these changes introducing unary `*` as well as the keyword `ref` (especially `mut:ref` !) might require an `unsafe` block in the future (cost of performance).
+
+We're then left with `Node` and its derived classes. If changed to `struct` we'll be forced to redesign this class (err struct) hierarchy either in terms of raw pointers or of explicitly smart pointer managed instances. Smart pointer managed struct instances still benefit from autoderef; that is `arg.accept` is never required to be rewritten `arg->accept` unless one is unwisely avoiding a null check). 
+
+For ceto's selfhost ast implementation we define the visitor pattern using struct but (for better or worse) keep the class hierarchy as shared (for compatibility with our existing python bootstrap compiler). However we define the visitor pattern visit methods without smart pointer parameter passing by using 'Node.class' to get at the underlying class (just `Node` in C++). This also requires changing the accept methods to call `visitor.accept(*this)`. Note that like struct instances, a `Foo.class` is still passed by `const:ref` automatically.
+
+See here for our ast
+Here for our visitor implmentation and a CRTP visitor subclass for visiting only certain derived classes conveniently (stolen from symengine)
+See here for our macro expansion pass which uses the CRTP utility (and also has a bit of everything e.g. `MacroScope` is `:unique` and we rely on all 3 kinds - shared, unique, and optional too.
+
+There is also the possibility to define the `Node` hierarchy using `unique`. The 'smart ptr heavy' version of the visitor pattern would then benefit from our handling of `const:Node:ref` in a function param (when `Node` is `:unique`) as `const unique_ptr<const Node>&` (there is not such a convenient way to operate with non-ptr-to-const unique_ptr managed instances passed by const ref - nor is there a convenient way to operate with non-const references to smart pointers - as an intended safety feature!)
+
+While you are right, this is not the worst thing with the above visitor example! When making slightly more complicated use of the visitor pattern you'll quickly realize that  
+
+```python
+def (visit: override: mut, node: BinOp:
+    ...
+)
+
+```
+
+is not "overridden" by 
+
+```python
+def (visit: override: mut, node: Add:
+    ...
+)
+
+```
+
 
 At this point, you might be objecting on performance grounds alone. While the above visitor example 
 
