@@ -117,9 +117,9 @@ $ ceto kitchensink.ctp a b c d e f
 8
 ```
 
-
-
 ## More Examples
+
+### Classes, Inheritance
 
 Class definitions are intended to resemble Python dataclasses
 
@@ -266,7 +266,28 @@ def (main:
 
 ```
 
-'Just like Java' (with differerent syntax and the complication of const/mut) because the two crucial method calls of the visitor pattern above are written
+"Just like Java" in this example because we write
+
+```python
+visitor.visit(self)
+```
+
+rather than 
+
+```
+visitor.visit(*this)
+```
+
+This relies on the meaning of *self*. For simple attribute accesses `self.foo` is rewritten to `this->foo`. When `self` is used in other contexts (including any use in a capturing lambda) a `const` definition of `self` using `shared_from_this` is provided to the body of the method (compile time error when used with *struct* or *:unique* instances and TODO a transpile time error when non-trivial use of *self* occurs in *init*).
+
+There are performance concerns which with the use of shared_ptr in this visitor example which we address here (TODO) however this is not the crucial problem with 
+
+
+
+
+TODO: clean up and integrate the below text better
+
+"Just like Java" (with differerent syntax and the complication of const/mut) because the two crucial method calls of the visitor pattern above are written
 
 ```python
 arg.accept(self)  # java equivalent: arg.accept(this)
