@@ -300,6 +300,14 @@ def (visit: override: mut, node: Add:
 
 ```
 
+A note on development status: we are partially selfhosted but only by cheating! That is, we've implemented an ast in ceto then briged it to our original python bootstrap compiler via the pybind11 bindings here.
+
+For our "selfhost" ast (TODO link), we heavily rely on (shared) ceto class instances (primarily to integrate with our bootstrap python compiler via the pybind11 bindings here (TODO link). Using :unique classes for our ast nodes would have certain benefits in the future
+
+(Though an implementation of our ast using :unique is possible in the future, 
+
+   integration with our exising to be replaced   (for  a (TODO link) CRTP visitor implementation that relies on overriding visit Node.
+
 
 TODO: clean up and integrate the below text better
 
