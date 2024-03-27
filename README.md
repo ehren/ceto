@@ -141,6 +141,60 @@ auto calls_foo(const auto& f) -> auto {
 
 where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
 
+
+### Less typing (at least as in your input device\*)
+
+This project uses many of the ideas from the wonderful https://github.com/lukasmartinelli/py14 project such as the implicit insertion of *auto* (though in ceto it's implict *const auto* for untyped locals and *const auto&* for untyped params). The very notion of generic python functions as C++ template functions is also largely the same (including our backend implementation). 
+
+We've also derived our code generation of Python like lists as *std.vector* from the project.
+
+For example, from the [README](https://github.com/lukasmartinelli/py14?tab=readme-ov-file#how-it-works):
+
+```python
+# Test Output: 123424681234123412341234
+
+
+def (map, values, fun:
+    results: mut = []
+    for (v in values:  # implicit const auto&
+        results.append(fun(v))
+    )
+    return results
+)
+
+def (foo, x:int:
+    std.cout << x
+    return x
+)
+
+def (foo_generic, x:
+    std.cout << x
+    return x
+)
+
+def (main:
+    l = [1, 2, 3, 4]  # definition simply via CTAD (unavailable to py14)
+    map(map(l, lambda (x:
+        std.cout << x
+        x*2
+    )), lambda (x:
+        std.cout << x
+        x
+    ))
+    map(l, foo)
+    # map(l, foo_generic)  # error
+    map(l, lambda (x:int, foo_generic(x)))  # when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
+    map(l, lambda (x, foo_generic(x)))  # Although we can trick c++ into deducing the correct type for x here clang 14 -O3 produces seemingly worse code than passing foo_generic<int> directly. 
+    map(l, foo_generic<int>)  # explicit template syntax
+)
+```
+
+Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as *std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>* is directly taken from py14.
+	
+
+(*tempered with the dubiously attainable goal of less typing in the language implementation)
+
+
 ### Classes, Inheritance
 
 Class definitions are intended to resemble Python dataclasses
