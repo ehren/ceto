@@ -187,7 +187,7 @@ def (main:
 )
 ```
 
-Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as *std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>* is directly taken from py14.
+Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as *std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>*  derives from the py14 implementation.
 	
 
 (*tempered with the dubiously attainable goal of less typing in the language implementation)
@@ -339,7 +339,7 @@ def (main:
 # visiting Identifier a
 ```
 
-### tuples, "tuple unpacking" (structured bindings / std::tie)
+### Tuples, "tuple unpacking" (std::tuple / structured bindings / std::tie)
 
 ```python
 # Test Output: 01
