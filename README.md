@@ -341,7 +341,7 @@ def (main:
 # visiting Identifier a
 ```
 
-## tuples
+## tuples, "tuple unpacking" (structured bindings / std::tie)
 
 ```python
 # Test Output: 01
@@ -380,6 +380,16 @@ def (main:
 
     for ((x, y) in tuples:
         std.cout << x << y << "\n"
+    )
+
+    for ((x, y):mut:auto:ref in tuples:  # auto&
+        x += 1
+        y += 2
+    )
+
+    for ((x, y):mut in tuples:  # just auto
+        static_assert(std.is_same_v<decltype(x), int>)
+        static_assert(std.is_same_v<decltype(y), int>)
     )
 )
 ```
