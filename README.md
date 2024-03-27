@@ -8,7 +8,6 @@ include <thread>
 include <ranges>
 include <iostream>
 
-
 class (Foo:
     data_member
 
@@ -22,8 +21,9 @@ class (Foo:
     )
 )
 
-# ^ refcounted template class with template method
-
+def (calls_method, f:
+    return f.method()
+)
 
 def (string_join, vec: [std.string], sep = ", "s:
     # std.string and various other things passed by const ref
@@ -41,24 +41,20 @@ def (string_join, vec: [std.string], sep = ", "s:
 
 ): std.string  # as a return type (or a class member) it's by value
 
-
 # arbitrary expression macros - use carefully!
-defmacro(s.join(v), s: StringLiteral, v:
+defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
-
 
 # non-refcounted 
 struct (Oops(std.runtime_error):
     pass  # inherited constructors
 )
 
-
 class (Holder:
     args
 ): unique  # non-refcounted but unique_ptr managed 
            # with implicit std::move from last use
-
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
     args: mut = []  # no need for the list type 
@@ -85,6 +81,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     f = Foo(summary)  # equivalent to C++: const auto f = make_shared<const decltype(Foo{summary}) (summary)
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
+    calls_method(f)   # autoderef in the body of 'calls_method'
 
     t:mut = std.thread(lambda(:       # lambda with no capture list:
         d = f.method(f).data_member   # - implicit strong capture for (non :unique) ceto 
@@ -111,6 +108,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 $ pip install ceto
 $ ceto kitchensink.ctp a b c d e f
 8
+38
 38
 38
 ./kitchensink, a, b, c, d, e, f, end
