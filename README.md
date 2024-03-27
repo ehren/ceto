@@ -154,7 +154,7 @@ def (main:
 
 ```
 
-You can code a simple visitor pattern just like\* Java
+You can code a simple visitor pattern just like\* Java (see GOTCHAs)
 
 ```python
 class (Node)
@@ -266,7 +266,9 @@ def (main:
 
 ```
 
-"Just like Java" in this example because we write
+### Gotchas
+
+In the "just like Java" visitor example we write
 
 ```python
 visitor.visit(self)
