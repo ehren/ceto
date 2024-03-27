@@ -117,7 +117,29 @@ $ ceto kitchensink.ctp a b c d e f
 8
 ```
 
-## More Examples
+## Features
+
+### Autoderef (use *.* not *->*)
+
+This works by compiling a generic / non-type-annotated function like
+
+```python
+def (calls_foo, f:
+    return f.foo()
+)
+```
+
+to the C++ template function
+
+```c++
+#include <ceto.h>
+
+auto calls_foo(const auto& f) -> auto {
+    return (*ceto::mad(f)).foo();
+}
+```
+
+where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
 
 ### Classes, Inheritance
 
@@ -377,25 +399,6 @@ While this is true (though we claim zero overhead because you can always avoid `
 
 ### Further Explanation
 
-Autoderef works by compiling a generic / non-type-annotated function like
-
-```python
-def (calls_foo, f:
-    return f.foo()
-)
-```
-
-to the C++ template function
-
-```c++
-#include <ceto.h>
-
-auto calls_foo(const auto& f) -> auto {
-    return (*ceto::mad(f)).foo();
-}
-```
-
-where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
 
 ## Features
 
