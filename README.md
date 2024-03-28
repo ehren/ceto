@@ -22,7 +22,7 @@ class (Foo:
 )
 
 def (calls_method, f:
-    return f.method()
+    return f.method(f)
 )
 
 def (string_join, vec: [std.string], sep = ", "s:
@@ -51,8 +51,13 @@ struct (Oops(std.runtime_error):
     pass  # inherited constructors
 )
 
-class (Holder:
-    args
+class (UniqueFoo:
+    uniquely_owned: [UniqueFoo] = []
+    
+    def (consuming_method, u: UniqueFoo:  # UniqueFoo really means std::unique_ptr<const UniqueFoo> here
+        self.uniquely_owned.push_back(u)  # implicit std::move from last use of 'u'
+    )
+
 ): unique  # non-refcounted but unique_ptr managed 
            # with implicit std::move from last use
 
@@ -92,13 +97,11 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # not macro invocation
     t.join()  
 
-    holder = Holder(args)   # in C++: auto holder = make_unique<const decltype(Holder{args}) (args)
-                            # instances of 'unique' type aren't const by default but they are ptr-to-const by default 
-    holders: mut = []
-    holders.append(holder)  # implict std.move from last use 
-
-    std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
-                                                # and unique_ptr autoderef
+    u = UniqueFoo()   # hidden std::make_unique<const UniqueFoo>() in C++
+                      # (instances of 'unique' type aren't const by default (as that would prevent automatic std::move) but they are ptr-to-const by default)
+    u2 = UniqueFoo()
+    u.consuming_method(u2)  # implicit std::move from last use of 'u2'
+    u.uniquely_owned[0].consuming_method(u)  # bounds checked access and another std::move from last use
 )
 ```
 
@@ -112,7 +115,6 @@ $ ceto kitchensink.ctp a b c d e f
 38
 38
 ./kitchensink, a, b, c, d, e, f, end
-8
 ```
 
 ## Features
