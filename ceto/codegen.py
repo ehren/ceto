@@ -1485,7 +1485,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
 
             automatic_const_part = " "  # TODO add const here (if not already const)
             if should_add_outer_const:
-                if (class_def := cx.lookup_class(arg.declared_type)) and class_def.is_unique:
+                if (class_def := cx.lookup_class(strip_mut_or_const(arg.declared_type))) and class_def.is_unique:
                     # don't add const to unique managed param (it will impede automatic std::move from last use)
                     pass
                 else:
