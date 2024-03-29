@@ -53,7 +53,16 @@ class (UniqueFoo:
         self.consumed.push_back(u)   # automatic std::move from last use 
     )
 
+    def (size:
+        return self.consumed.size()
+    )
+
 ) : unique
+
+def (consuming_function, u: UniqueFoo:
+    Foo(42).method(u)  # u passed by const:ref here
+    std.cout << u.consumed.size() << std.endl
+)
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
     args: mut = []  # no need for the list type 
@@ -94,4 +103,6 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     u: mut = UniqueFoo()
     u2 = UniqueFoo()
     u.consuming_method(u2)  # implic std::move from last use of u2
+    u3: UniqueFoo = u  # implicit std::move from last use of u (note that consuming_function takes a UniqueFoo and not a UniqueFoo:mut)
+    consuming_function(u3)  # implicit std::move from last use
 )

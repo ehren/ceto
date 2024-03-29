@@ -2241,24 +2241,28 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
 
     const_specifier = ""
 
+    classdef = None
+
     if isinstance(node.declared_type, Identifier):
         if node.declared_type.name == "auto":
             raise CodeGenError("must specify const/mut for auto", node)
+        classdef = cx.lookup_class(node.declared_type)
     elif isinstance(node.declared_type, TypeOp):
         type_list = type_node_to_list_of_types(node.declared_type)
 
         _ensure_auto_or_ref_specifies_mut_const(type_list)
 
-        classes = [t for t in type_list if cx.lookup_class(t)]
+        classdefs = [c for c in [cx.lookup_class(t) for t in type_list] if c is not None]
 
         mut_or_const = [t for t in type_list if t.name in ["mut", "const"]]
 
-        if len(classes) > 1:
+        if len(classdefs) > 1:
             raise CodeGenError("too many classes specified", node)
 
-        if classes and len(mut_or_const) > 1:
-            raise CodeGenError("too many mut/const specified for class type", node)
-        if classes and mut_or_const:
+        if classdefs:
+            classdef = classdefs[0]
+
+        if classdef and mut_or_const:
             lhs_type_str = codegen_type(node, node.declared_type, cx)
 
             if mut_or_const[0].name == "const":
@@ -2276,10 +2280,8 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
         else:
             for i, t in enumerate(type_list):
                 otheridx = i - 1 if i > 0 else i + 1
-                if (t.name in ["const", "auto"] and type_list[otheridx].name in [
-                    "const", "auto"]) or (
-                        t.name == "const" and i < len(type_list) - 1 and type_list[
-                    i + 1].name == "ref"):
+                if (t.name in ["const", "auto"] and type_list[otheridx].name in ["const", "auto"]) or (
+                        t.name == "const" and i < len(type_list) - 1 and type_list[i + 1].name == "ref"):
                     # either contains "const auto", "auto const" or contains "const const"/"auto auto" (error in c++)
                     # alternately contains "const ref" anywhere
                     # use type verbatim
@@ -2287,20 +2289,17 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
                     break
 
             if lhs_type_str is None:
-                if (type_list[0].name == "const" and type_list[
-                    -1].name != "ptr") or type_list[-1].name == "const":
-                    lhs_type_str = codegen_type(node, node.declared_type,
-                                                cx)
+                if (type_list[0].name == "const" and type_list[-1].name != "ptr") or type_list[-1].name == "const":
+                    lhs_type_str = codegen_type(node, node.declared_type, cx)
                 elif type_list[-1].name == "ptr":
-                    lhs_type_str = codegen_type(node, node.declared_type,
-                                                cx) + " const"
+                    lhs_type_str = codegen_type(node, node.declared_type, cx) + " const"
                 # else:
                 #     assert 0
 
     if lhs_type_str is None:
         lhs_type_str = codegen_type(node, node.declared_type, cx)
         needs_const = not mut_by_default
-        if needs_const and not const_specifier:
+        if needs_const and not const_specifier and not (classdef and classdef.is_unique):
             const_specifier = "const "
 
     return const_specifier, lhs_type_str
