@@ -52,14 +52,13 @@ struct (Oops(std.runtime_error):
 )
 
 class (UniqueFoo:
-    uniquely_owned: [UniqueFoo] = []
+    consumed: [UniqueFoo] = []
     
-    def (consuming_method, u: UniqueFoo:  # UniqueFoo really means std::unique_ptr<const UniqueFoo> here
-        self.uniquely_owned.push_back(u)  # implicit std::move from last use of 'u'
+    def (consuming_method: mut, u: UniqueFoo:  # u is a (passed by value) unique_ptr<const UniqueFoo> in C++
+        self.consumed.push_back(u)   # automatic std::move from last use 
     )
 
-): unique  # non-refcounted but unique_ptr managed 
-           # with implicit std::move from last use
+) : unique
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
     args: mut = []  # no need for the list type 
@@ -97,11 +96,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # not macro invocation
     t.join()  
 
-    u = UniqueFoo()   # hidden std::make_unique<const UniqueFoo>() in C++
-                      # (instances of 'unique' type aren't const by default (as that would prevent automatic std::move) but they are ptr-to-const by default)
+    u: mut = UniqueFoo()
     u2 = UniqueFoo()
-    u.consuming_method(u2)  # implicit std::move from last use of 'u2'
-    u.uniquely_owned[0].consuming_method(u)  # bounds checked access and another std::move from last use
+    u.consuming_method(u2)  # implic std::move from last use of u2
 )
 ```
 
@@ -109,12 +106,12 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
 ```bash
 $ pip install ceto
-$ ceto kitchensink.ctp a b c d e f
-8
-38
-38
-38
-./kitchensink, a, b, c, d, e, f, end
+$ ceto example.ctp
+5
+29
+29
+29
+./tests/example, a, b, c, end
 ```
 
 ## Features

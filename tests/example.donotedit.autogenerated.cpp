@@ -48,6 +48,11 @@ auto method(const T1& param) const -> auto {
 
 };
 
+    template <typename T1>
+auto calls_method(const T1& f) -> auto {
+        return (*ceto::mad(f)).method(f);
+    }
+
     inline auto string_join(const std::vector<std::string>&  vec, const decltype(std::string {", "})&  sep = std::string {", "}) -> std::string {
         static_assert(std::is_same_v<decltype(vec),const std::vector<std::string> &>);
         static_assert(std::is_same_v<decltype(sep),const std::string &>);
@@ -66,13 +71,13 @@ using std::runtime_error::runtime_error;
 
 };
 
-template <typename ceto__private__C4>struct Holder : public ceto::object {
+struct UniqueFoo : public ceto::object {
 
-    ceto__private__C4 args;
+    std::vector<std::unique_ptr<const UniqueFoo>> consumed = std::vector<std::unique_ptr<const UniqueFoo>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::unique_ptr<const UniqueFoo>>{}), std::remove_cvref_t<decltype(consumed)>>);
 
-    explicit Holder(ceto__private__C4 args) : args(std::move(args)) {}
-
-    Holder() = delete;
+        inline auto consuming_method( std::unique_ptr<const UniqueFoo>  u) -> void {
+            (*ceto::mad(this -> consumed)).push_back(std::move(u));
+        }
 
 };
 
@@ -94,6 +99,7 @@ template <typename ceto__private__C4>struct Holder : public ceto::object {
         const auto f = std::make_shared<const decltype(Foo{summary})>(summary);
         (*ceto::mad(f)).method(args);
         (*ceto::mad(f)).method(f);
+        calls_method(f);
         auto t { std::thread([f = ceto::default_capture(f)]() -> void {
                 const auto d = (*ceto::mad((*ceto::mad(f)).method(f))).data_member;
                 ((std::cout << [&]() {if ((*ceto::mad(d)).size() < 100) {
@@ -104,9 +110,8 @@ template <typename ceto__private__C4>struct Holder : public ceto::object {
 ) << std::endl);
                 }) } ;
         (*ceto::mad(t)).join();
-        auto holder = std::make_unique<const decltype(Holder{args})>(args);
-        auto holders { std::vector<std::unique_ptr<const decltype(Holder{args})>>() } ;
-        (*ceto::mad(holders)).push_back(std::move(holder));
-        (std::cout << (*ceto::mad((*ceto::mad(ceto::maybe_bounds_check_access(holders,0))).args)).size()) << "\n";
+        auto u = std::make_unique<decltype(UniqueFoo())>();
+        auto u2 = std::make_unique<const decltype(UniqueFoo())>();
+        (*ceto::mad(u)).consuming_method(std::move(u2));
     }
 

@@ -3,7 +3,6 @@ include <thread>
 include <ranges>
 include <iostream>
 
-
 class (Foo:
     data_member
 
@@ -17,8 +16,9 @@ class (Foo:
     )
 )
 
-# ^ refcounted template class with template method
-
+def (calls_method, f:
+    return f.method(f)
+)
 
 def (string_join, vec: [std.string], sep = ", "s:
     # std.string and various other things passed by const ref
@@ -36,24 +36,24 @@ def (string_join, vec: [std.string], sep = ", "s:
 
 ): std.string  # as a return type (or a class member) it's by value
 
-
 # arbitrary expression macros - use carefully!
-defmacro(s.join(v), s: StringLiteral, v:
+defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
-
 
 # non-refcounted 
 struct (Oops(std.runtime_error):
     pass  # inherited constructors
 )
 
+class (UniqueFoo:
+    consumed: [UniqueFoo] = []
+    
+    def (consuming_method: mut, u: UniqueFoo:  # u is a (passed by value) unique_ptr<const UniqueFoo> in C++
+        self.consumed.push_back(u)   # automatic std::move from last use 
+    )
 
-class (Holder:
-    args
-): unique  # non-refcounted but unique_ptr managed 
-           # with implicit std::move from last use
-
+) : unique
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
     args: mut = []  # no need for the list type 
@@ -77,9 +77,10 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # macro invocation
     summary = ", ".join(args)
 
-    f = Foo(summary)  # make shared with extra CTAD
+    f = Foo(summary)  # equivalent to C++: const auto f = make_shared<const decltype(Foo{summary}) (summary)
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
+    calls_method(f)   # autoderef in the body of 'calls_method'
 
     t:mut = std.thread(lambda(:       # lambda with no capture list:
         d = f.method(f).data_member   # - implicit strong capture for (non :unique) ceto 
@@ -90,10 +91,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     # not macro invocation
     t.join()  
 
-    holder = Holder(args)   # make_unique with extra CTAD
-    holders: mut = []
-    holders.append(holder)  # implict std.move from last use
-
-    std.cout << holders[0].args.size() << "\n"  # bounds checked vector access 
-                                                # and unique_ptr autoderef
+    u: mut = UniqueFoo()
+    u2 = UniqueFoo()
+    u.consuming_method(u2)  # implic std::move from last use of u2
 )
