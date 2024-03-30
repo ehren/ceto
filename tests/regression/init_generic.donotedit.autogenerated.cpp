@@ -27,7 +27,7 @@ template <typename ceto__private__C1, typename ceto__private__C2>struct Generic 
 
     ceto__private__C2 z;
 
-    explicit Generic(const ceto__private__C2 z, const ceto__private__C1 y) : x(y), y(99), z(z) {
+    explicit Generic(ceto__private__C2 z, const ceto__private__C1 y) : x(y), y(99), z(std::move(z)) {
     }
 
     Generic() = delete;

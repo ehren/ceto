@@ -75,19 +75,19 @@ struct UniqueFoo : public ceto::object {
 
     std::vector<std::unique_ptr<const UniqueFoo>> consumed = std::vector<std::unique_ptr<const UniqueFoo>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::unique_ptr<const UniqueFoo>>{}), std::remove_cvref_t<decltype(consumed)>>);
 
-        inline auto consuming_method( std::unique_ptr<const UniqueFoo>  u) -> void {
-            (*ceto::mad(this -> consumed)).push_back(std::move(u));
-        }
-
         inline auto size() const -> auto {
             return (*ceto::mad(this -> consumed)).size();
+        }
+
+        inline auto consuming_method( std::unique_ptr<const UniqueFoo>  u) -> void {
+            (*ceto::mad(std::make_shared<const decltype(Foo{42})>(42))).method(u);
+            (*ceto::mad(this -> consumed)).push_back(std::move(u));
         }
 
 };
 
     inline auto consuming_function( std::unique_ptr<const UniqueFoo>  u) -> void {
-        (*ceto::mad(std::make_shared<const decltype(Foo{42})>(42))).method(u);
-        (std::cout << (*ceto::mad((*ceto::mad(u)).consumed)).size()) << std::endl;
+        ; // pass
     }
 
     auto main(const int  argc,  const char * const *  argv) -> int {
@@ -121,7 +121,9 @@ struct UniqueFoo : public ceto::object {
         (*ceto::mad(t)).join();
         auto u = std::make_unique<decltype(UniqueFoo())>();
         auto u2 = std::make_unique<const decltype(UniqueFoo())>();
+        auto u3 = std::make_unique<const decltype(UniqueFoo())>();
         (*ceto::mad(u)).consuming_method(std::move(u2));
-        consuming_function(std::move(u));
+        consuming_function(std::move(u3));
+        (*ceto::mad(u)).consuming_method(std::move(u));
     }
 

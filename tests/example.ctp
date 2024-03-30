@@ -48,20 +48,19 @@ struct (Oops(std.runtime_error):
 
 class (UniqueFoo:
     consumed: [UniqueFoo] = []
-    
-    def (consuming_method: mut, u: UniqueFoo:  # u is a (passed by value) unique_ptr<const UniqueFoo> in C++
-        self.consumed.push_back(u)   # automatic std::move from last use 
-    )
 
     def (size:
         return self.consumed.size()
     )
-
+    
+    def (consuming_method: mut, u: UniqueFoo:  # u is a (passed by value) unique_ptr<const UniqueFoo> in C++
+        Foo(42).method(u)  # u passed by const:ref here
+        self.consumed.push_back(u)   # automatic std::move from last use 
+    )
 ) : unique
 
-def (consuming_function, u: UniqueFoo:
-    Foo(42).method(u)  # u passed by const:ref here
-    std.cout << u.consumed.size() << std.endl
+def (consuming_function, u: UniqueFoo: 
+    pass
 )
 
 def (main, argc: int, argv: const:char:ptr:const:ptr:
@@ -102,6 +101,8 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
     u: mut = UniqueFoo()
     u2 = UniqueFoo()
-    u.consuming_method(u2)  # implic std::move from last use of u2
-    consuming_function(u)   # implicit std::move from last use
+    u3 = UniqueFoo()
+    u.consuming_method(u2)  # auto std.move from last use of u2/u3
+    consuming_function(u3)  
+    u.consuming_method(u)   # eats itself
 )

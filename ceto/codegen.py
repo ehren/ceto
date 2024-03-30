@@ -1273,6 +1273,8 @@ def _is_unique_var(node: Identifier, cx: Scope):
 def is_last_use_of_identifier(node: Identifier):
     assert isinstance(node, Identifier)
     name = node.name
+    if name == "u" and node in node.parent.args:
+        pass
     ident_ancestor = node.parent
     prev_ancestor = node
     is_last_use = True
@@ -1285,22 +1287,26 @@ def is_last_use_of_identifier(node: Identifier):
     elif isinstance(node.parent, Call) and node.parent.func is node:
         is_last_use = False
 
+    # apparently unnecessary
+    #elif isinstance(node.parent, Call) and node in node.parent.args:
+    #    # if node appears in Call args more than once it's not a last use (regardless of order of evaluation of the Call args)
+    #    for arg in [n for n in node.parent.args if n is not node]:
+    #        if any(find_all(arg, lambda n: n is not node and n.name == node.name)):
+    #            is_last_use = False
+
     while is_last_use and ident_ancestor and not creates_new_variable_scope(
             ident_ancestor):
         if isinstance(ident_ancestor,
                       Block) and prev_ancestor in ident_ancestor.args:
             # TODO 'find_uses' in sema should work with Identifier not just Assign too
-            # try:
-            for b in ident_ancestor.args[
-                     ident_ancestor.args.index(prev_ancestor):]:
+            for b in ident_ancestor.args[ident_ancestor.args.index(prev_ancestor) + 1:]:
                 if any(find_all(b, lambda n: (n is not node) and (
                         n.name == name))):
                     is_last_use = False
                     break
-            # except ValueError:
-            #     pass
         if any(n and n is not node and isinstance(n, Node) and name == n.name
-               for n in ident_ancestor.args + [ident_ancestor.func]):
+               #for n in ident_ancestor.args + [ident_ancestor.func]):
+               for n in ident_ancestor.args):
             is_last_use = False
             break
         prev_ancestor = ident_ancestor

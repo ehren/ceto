@@ -42,7 +42,7 @@ template <typename ceto__private__C2, typename ceto__private__C3>struct Generic2
 
     ceto__private__C2 y;
 
-    explicit Generic2(ceto__private__C3 x, const ceto__private__C2 y) : std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>()))> (std::move(x)), y(y) {
+    explicit Generic2(ceto__private__C3 x, ceto__private__C2 y) : std::type_identity_t<decltype(Generic(std::declval<ceto__private__C3>()))> (std::move(x)), y(std::move(y)) {
     }
 
     Generic2() = delete;
