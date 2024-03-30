@@ -321,8 +321,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             arg.accept(*this)
         )
         self.current_scope = outer  # automatic move from last use
-        # TODO: if outer is just 'mut' above we should still automatically std::move it
-        # (because self.current_scope is :unique - a fact currently ignored by codegen is_unique_var)
+        # TODO: if outer is just 'mut' above we should still automatically std::move it? OTOH maybe not - keep need for an explicit type for something that is to be auto moved? Also, if you just write "outer2 = outer": Currently outer2 is a const auto definition created from std::moveing outer (creating a unique_ptr<non-const MacroScope>). I'm not so keen on making outer2 implicitly mut without a type annotation
     )
 )
 

@@ -122,7 +122,6 @@ struct UniqueFoo : public ceto::object {
         auto u = std::make_unique<decltype(UniqueFoo())>();
         auto u2 = std::make_unique<const decltype(UniqueFoo())>();
         (*ceto::mad(u)).consuming_method(std::move(u2));
-        std::unique_ptr<const UniqueFoo> u3 = std::move(u); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move(u)), std::remove_cvref_t<decltype(u3)>>);
-        consuming_function(std::move(u3));
+        consuming_function(std::move(u));
     }
 
