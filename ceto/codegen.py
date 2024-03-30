@@ -2265,6 +2265,9 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
         if len(classdefs) > 1:
             raise CodeGenError("too many classes specified", node)
 
+        if len(mut_or_const) > 1:
+            raise CodeGenError("too many mut/const specified for class type", node)
+
         if classdefs:
             classdef = classdefs[0]
 
