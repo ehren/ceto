@@ -21,11 +21,11 @@
 
 #include <numeric>
 ;
-#include <thread>
-;
 #include <ranges>
 ;
 #include <iostream>
+;
+#include <future>
 ;
 template <typename ceto__private__C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
@@ -53,24 +53,6 @@ auto calls_method(const T1& f) -> auto {
         return (*ceto::mad(f)).method(f);
     }
 
-    inline auto string_join(const std::vector<std::string>&  vec, const decltype(std::string {", "})&  sep = std::string {", "}) -> std::string {
-        static_assert(std::is_same_v<decltype(vec),const std::vector<std::string> &>);
-        static_assert(std::is_same_v<decltype(sep),const std::string &>);
-        if ((*ceto::mad(vec)).empty()) {
-            return "";
-        }
-        return std::accumulate((*ceto::mad(vec)).cbegin() + 1, (*ceto::mad(vec)).cend(), ceto::maybe_bounds_check_access(vec,0), [&sep](const auto &a, const auto &b) {
-                if constexpr (!std::is_void_v<decltype(((a + sep) + b))>) { return ((a + sep) + b); } else { static_cast<void>(((a + sep) + b)); };
-                });
-    }
-
-;
-struct Oops : public std::runtime_error {
-
-using std::runtime_error::runtime_error;
-
-};
-
 struct UniqueFoo : public ceto::object {
 
     std::vector<std::unique_ptr<const UniqueFoo>> consumed = std::vector<std::unique_ptr<const UniqueFoo>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::unique_ptr<const UniqueFoo>>{}), std::remove_cvref_t<decltype(consumed)>>);
@@ -86,44 +68,66 @@ struct UniqueFoo : public ceto::object {
 
 };
 
-    inline auto consuming_function( std::unique_ptr<const UniqueFoo>  u) -> void {
-        ; // pass
+struct Oops : public std::runtime_error {
+
+using std::runtime_error::runtime_error;
+
+};
+
+    inline auto string_join(const std::vector<std::string>&  vec, const decltype(std::string {", "})&  sep = std::string {", "}) -> std::string {
+        static_assert(std::is_same_v<decltype(vec),const std::vector<std::string> &>);
+        static_assert(std::is_same_v<decltype(sep),const std::string &>);
+        if ((*ceto::mad(vec)).empty()) {
+            return "";
+        }
+        return std::accumulate((*ceto::mad(vec)).cbegin() + 1, (*ceto::mad(vec)).cend(), ceto::maybe_bounds_check_access(vec,0), [&sep](const auto &a, const auto &b) {
+                if constexpr (!std::is_void_v<decltype(((a + sep) + b))>) { return ((a + sep) + b); } else { static_cast<void>(((a + sep) + b)); };
+                });
     }
 
+;
     auto main(const int  argc,  const char * const *  argv) -> int {
         auto args { std::vector<decltype(std::string(std::declval<std::ranges::range_value_t<decltype(std::span(argv, std::declval<int>()))>>()))>() } ;
         for(const auto& a : std::span(argv, argc)) {
             (*ceto::mad(args)).push_back(std::string(a));
         }
-        const auto more = [&]() {if (argc == 0) {
+        (*ceto::mad(args)).push_back([&]() {if (argc == 0) {
             return std::string {"no args"};
         } else if ((argc > 15)) {
             throw Oops{"too many args entirely"};
         } else {
             return std::string {"end"};
         }}()
-;
-        (*ceto::mad(args)).push_back(more);
+);
         const auto summary = string_join(args, ", ");
         const auto f = std::make_shared<const decltype(Foo{summary})>(summary);
         (*ceto::mad(f)).method(args);
         (*ceto::mad(f)).method(f);
         calls_method(f);
-        auto t { std::thread([f = ceto::default_capture(f)]() -> void {
-                const auto d = (*ceto::mad((*ceto::mad(f)).method(f))).data_member;
-                ((std::cout << [&]() {if ((*ceto::mad(d)).size() < 100) {
-                    return d;
+        const auto i = 42u;
+        auto fut { std::async(std::launch::async, [f = ceto::default_capture(f), i = ceto::default_capture(i)]() {
+                const auto data = (*ceto::mad((*ceto::mad(f)).method(f))).data_member;
+                if constexpr (!std::is_void_v<decltype([&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
+                    return data;
                 } else {
                     return std::string {"too much data!"};
                 }}()
-) << std::endl);
+)>) { return [&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
+                    return data;
+                } else {
+                    return std::string {"too much data!"};
+                }}()
+; } else { static_cast<void>([&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
+                    return data;
+                } else {
+                    return std::string {"too much data!"};
+                }}()
+); };
                 }) } ;
-        (*ceto::mad(t)).join();
+        std::cout << (*ceto::mad(fut)).get();
         auto u = std::make_unique<decltype(UniqueFoo())>();
         auto u2 = std::make_unique<const decltype(UniqueFoo())>();
-        auto u3 = std::make_unique<const decltype(UniqueFoo())>();
         (*ceto::mad(u)).consuming_method(std::move(u2));
-        consuming_function(std::move(u3));
         (*ceto::mad(u)).consuming_method(std::move(u));
     }
 
