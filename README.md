@@ -67,12 +67,12 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
         args.append(std.string(a))
     )
 
-    args.append(if (argc == 0:
-        "no args"s
+    args.append("args:"s + if (argc == 0:
+        "no args\n"
     elif argc > 15:
         throw (Oops("too many args entirely"))
     else:
-        "end"s
+        "some args\n"
     ))
 
     summary = ", ".join(args)
@@ -103,12 +103,13 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
 ```bash
 $ pip install ceto
-$ ceto example.ctp
-5
-29
-29
-29
-./tests/example, a, b, c, end
+$ ceto example.ctp a b c d e f
+8
+50
+50
+50
+./tests/example, a, b, c, d, e, f, args:some args
+0
 1
 ```
 
@@ -134,7 +135,7 @@ auto calls_foo(const auto& f) -> auto {
 }
 ```
 
-where `ceto::mad` (maybe allow deref) forwards `f` unchanged (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, and otherwise returns the `std::addressof` of `f` to cancel the outer `*` dereference for anything else (equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
+where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
 
 
 ### Less typing (at least as in your input device\*)

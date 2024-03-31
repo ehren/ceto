@@ -91,12 +91,12 @@ using std::runtime_error::runtime_error;
         for(const auto& a : std::span(argv, argc)) {
             (*ceto::mad(args)).push_back(std::string(a));
         }
-        (*ceto::mad(args)).push_back([&]() {if (argc == 0) {
-            return std::string {"no args"};
+        (*ceto::mad(args)).push_back(std::string {"args:"} + [&]() {if (argc == 0) {
+            return "no args\n";
         } else if ((argc > 15)) {
             throw Oops{"too many args entirely"};
         } else {
-            return std::string {"end"};
+            return "some args\n";
         }}()
 );
         const auto summary = string_join(args, ", ");

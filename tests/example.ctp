@@ -62,12 +62,12 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
         args.append(std.string(a))
     )
 
-    args.append(if (argc == 0:
-        "no args"s
+    args.append("args:"s + if (argc == 0:
+        "no args\n"
     elif argc > 15:
         throw (Oops("too many args entirely"))
     else:
-        "end"s
+        "some args\n"
     ))
 
     summary = ", ".join(args)
