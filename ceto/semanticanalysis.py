@@ -622,7 +622,7 @@ def unquote_remover(node):
             if len(unquote.args) != 1:
                 raise SemanticAnalysisError("unquote takes a single arg", unquote)
             if not isinstance(unquote.args[0], Identifier):
-                # don't worry about nested quote/unquote at least for now
+                # don't worry about nested quote/unquote at least for now (or any complex unquoting)
                 raise SemanticAnalysisError("unquote must be called on an Identifier", unquote.args[0])
             return Identifier(gensym())
         return None
@@ -713,12 +713,16 @@ def prepare_macro_ready_callback(module, module_path):
         impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
-            init_param = ' = CETO_PRIVATE_params.at("' + param_name + '")\n'
+            init_param = 'CETO_PRIVATE_params.at("' + param_name + '")'
             for param in mcd.defmacro_node.args[1:]:
-                if isinstance(param, TypeOp) and isinstance(param.rhs, ListLiteral) and param_name == param.lhs.name:
-                    init_param = ' = CETO_PRIVATE_params.at("' + param_name + '").args\n'
+                if isinstance(param, TypeOp) and param_name == param.lhs.name:
+                    if isinstance(param.rhs, Identifier):
+                        init_param = "asinstance(" + init_param + ", " + param.rhs.name + ")"
+                    elif isinstance(param.rhs, ListLiteral):
+                        init_param = init_param + ".args"
                     break
-            impl_str += indt + param_name + init_param
+
+            impl_str += indt + param_name + " = " + init_param + "\n"
         impl_str += indt + "pass\n): Node"
 
         macro_impl = parse(impl_str).args[0]

@@ -460,6 +460,11 @@ def (main:
 
 ## Gotchas
 
+
+### Implicit Scope Resolution
+
+The main issue
+
 ### Classes instances aren't real smart references / Limitations of "Java" style visitor pattern
 
 In the "just like Java" visitor example we write
