@@ -201,7 +201,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 ) : std.optional<std.map<std.string, Node>>
 
 
-def (call_macro_impl, definition: MacroDefinition, match: std.map<std.string, Node>:
+def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.string, Node>:ref:
     handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak it for now
     if (not handle:
         throw (std.runtime_error("Failed to open macro dll: " + definition.dll_path))
@@ -210,7 +210,7 @@ def (call_macro_impl, definition: MacroDefinition, match: std.map<std.string, No
     if (not fptr:
         throw (std.runtime_error("Failed to find symbol " + definition.impl_function_name + " in dll " + definition.dll_path))
     )
-    f = reinterpret_cast<decltype(+(lambda(m: std.map<std.string, Node>, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    f = reinterpret_cast<decltype(+(lambda(m: const:std.map<std.string, Node>:ref, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
     return (*f)(match)
 ) : Node
 

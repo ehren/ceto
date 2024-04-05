@@ -207,7 +207,7 @@ struct MacroScope : public ceto::object {
         return submatches;
     }
 
-    inline auto call_macro_impl(const std::shared_ptr<const MacroDefinition>&  definition, const std::map<std::string,std::shared_ptr<const Node>>  match) -> std::shared_ptr<const Node> {
+    inline auto call_macro_impl(const std::shared_ptr<const MacroDefinition>&  definition,  const std::map<std::string,std::shared_ptr<const Node>> &  match) -> std::shared_ptr<const Node> {
         const auto handle = CETO_DLOPEN((*ceto::mad((*ceto::mad(definition)).dll_path)).c_str());
         if (!handle) {
             throw std::runtime_error("Failed to open macro dll: " + (*ceto::mad(definition)).dll_path);
@@ -216,7 +216,7 @@ struct MacroScope : public ceto::object {
         if (!fptr) {
             throw std::runtime_error((("Failed to find symbol " + (*ceto::mad(definition)).impl_function_name) + " in dll ") + (*ceto::mad(definition)).dll_path);
         }
-        const auto f = reinterpret_cast<decltype(+[](const std::map<std::string,std::shared_ptr<const Node>>  m) -> std::shared_ptr<const Node> {
+        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,std::shared_ptr<const Node>> &  m) -> std::shared_ptr<const Node> {
                 if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<std::shared_ptr<const Node>>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(fptr);
         return (*f)(match);
