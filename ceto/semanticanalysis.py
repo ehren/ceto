@@ -735,11 +735,13 @@ def prepare_macro_ready_callback(module, module_path):
         macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
 
         # this is unfortunate: (codegen and sema are performing some bad mutability)
-        macro_impl_module = eval(macro_impl_module.ast_repr(preserve_source_loc=False))
+        # also need a clone() method for Node instead of repr evaling
+        macro_impl_module_source = macro_impl_module.ast_repr(preserve_source_loc=False)
+        macro_impl_module = eval(macro_impl_module_source)
 
         module_name = os.path.basename(module_path)
         module_dir = os.path.dirname(module_path)
-        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module.ast_repr(preserve_source_loc=False).encode('utf-8')).hexdigest())
+        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
         dll_path = impl_path + ".so"
 
         mcd.dll_path = dll_path
