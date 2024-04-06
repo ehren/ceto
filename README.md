@@ -463,7 +463,83 @@ def (main:
 
 ### Implicit Scope Resolution
 
-The main issue
+For the expression
+
+```python
+x.y.z()
+```
+
+The rules for `.` in ceto are that
+
+- If `x` has a variable definition (in ceto code), the entire expression is treated as a chain of (maybe autoderefed) attribute accesses.
+
+- Otherwise, if `x` has no variable definition in ceto (even if defined in external C++ code), then the above is equivalent to `x::y::z()` in C++ (and ceto)
+
+These rules allow us to avoid requiring constructs like say `import_namespace(std, views)` (which would be too much boilerplate even if ceto ever supported C++ modules and `import std`; parsing C++ headers or maintaining a big crazy list of all useful C++ namespaces is also not an option)
+
+There is a gotcha with these lookup based rewriting rules however. For example if you've written code like this:
+
+```python
+def (function, parameter:
+    return parameter.do_something(100)
+)
+```
+
+and then decide to modify it by adding  a new class definition with maybe a little refactoring:
+
+```python 
+
+class (parameter:  # flounting PEP-8 naming conventions in this case was a bad move
+    def (do_something: static, severity_level: int:
+        corrupt_disk_with_severity(severity_level)
+    )
+)
+
+def (function, parameter_renamed:
+    parameter.do_something(100)  # oops forgot to rename here
+)
+```
+
+resuling in the generated C++ code calling `parameter::do_something(100)` which may not have been your intent.
+
+Nevertheless, this is no argument for `::`. I tire from the 4 strained key engagements typing it even now (looking at it is worse).
+
+Also note the number and severity of C++ misfeatures meant to alleviate the ugliness of `::`.  Cheif among them is encouraging `using` declarations (even locally) so that, for example, the ceto code
+
+```python
+safe: using
+do_something(param)
+```
+
+may be written rather than
+
+```python
+safe.do_something(param)
+# or even
+safe::do_something(param)
+```
+
+The former code calling `do_something` as a free function suffers not just from the possibility that an unexpected definition of do_something is available in the global namespace but also that an unexpected definition exists in an unexpected namespace found via [ADL](https://stackoverflow.com/a/4241547/1391250)!
+
+This is not to mention the namespace pollution problems of using declarations. Arguably they should even be considered another unsafe C++ compatibility feature requiring unsafe block in the future (aside: the backwards PyThOn syntax for using declarations is based on the principle that if a ceto construct already codegens as something like the desired C++, then that construct should be used for that C++)
+
+There is also a GOTCHA/TODO that an error should be issued attempting to mix ceto class types with C++ typedefs or using declarations (Foo_typdef won't follow the same parameter passing rules as Foo when used as a function param type).
+
+Finally, note that scope resolution is still necessary in a few places where `.` is not rewritten to `::`:
+
+```python
+
+class (Foo:
+    pass
+)
+
+def (main:
+    x = Foo() 
+    # It's not a great idea to write code dependent on a particular 
+    # smart pointer implementation for `class` instances
+    static_assert(decltype(x)::element_type, const:Foo.class)
+)
+```
 
 ### Classes instances aren't real smart references / Limitations of "Java" style visitor pattern
 
