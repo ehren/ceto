@@ -471,7 +471,7 @@ x.y.z()
 
 The rules for `.` in ceto are that
 
-- If `x` has a variable definition (in ceto code), the entire expression is treated as a chain of (maybe autoderefed) attribute accesses.
+- If `x` has a variable or parameter definition (in ceto code), the entire expression is treated as a chain of (maybe autoderefed) attribute accesses.
 
 - Otherwise, if `x` has no variable definition in ceto (even if defined in external C++ code), then the above is equivalent to `x::y::z()` in C++ (and ceto)
 
@@ -500,18 +500,14 @@ def (function, parameter_renamed:
 )
 ```
 
-resuling in the generated C++ code calling `parameter::do_something(100)` which may not have been your intent.
+resuling in the generated C++ code calling `parameter::do_something(100)` - a perhaps unexpected scope resolved or static member call.
 
-Nevertheless, this is no argument for `::`. I tire from the 4 strained key engagements typing it even now (looking at it is worse).
+Nevertheless, this is no argument for `::`. I tire from the 4 strained key engagements typing it even now.
 
-Also note the number and severity of C++ misfeatures meant to alleviate the ugliness of `::`.  Cheif among them is encouraging `using` declarations (even locally) so that, for example, the ceto code
+Also note the number and severity of C++ misfeatures meant to alleviate the ugliness of `::`.  Cheif among them is encouraging `using` declarations (even locally).
 
-```python
-safe: using
-do_something(param)
-```
+For example, writing
 
-may be written rather than
 
 ```python
 safe.do_something(param)
@@ -519,7 +515,14 @@ safe.do_something(param)
 safe::do_something(param)
 ```
 
-The former code calling `do_something` as a free function suffers not just from the possibility that an unexpected definition of do_something is available in the global namespace but also that an unexpected definition exists in an unexpected namespace found via [ADL](https://stackoverflow.com/a/4241547/1391250)!
+is generally preferable to the ceto code
+
+```python
+safe: using
+do_something(param)
+```
+
+because calling `do_something` as a free function suffers not just from the possibility that an unexpected definition of `do_something` is available in the global namespace but also that an unexpected definition exists in an unexpected namespace found via [ADL](https://stackoverflow.com/a/4241547/1391250)!
 
 This is not to mention the namespace pollution problems of using declarations. Arguably they should even be considered another unsafe C++ compatibility feature requiring unsafe block in the future (aside: the backwards PyThOn syntax for using declarations is based on the principle that if a ceto construct already codegens as something like the desired C++, then that construct should be used for that C++)
 
