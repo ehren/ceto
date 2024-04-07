@@ -522,9 +522,22 @@ safe: using
 do_something(param)
 ```
 
-because calling `do_something` as a free function suffers not just from the possibility that an unexpected definition of `do_something` is available in the global namespace but also that an unexpected definition exists in an unexpected namespace found via [ADL](https://stackoverflow.com/a/4241547/1391250)!
+because calling `do_something` as a free function suffers not just from the possibility that an unexpected definition of `do_something` is available in the global namespace (upon the removal of the `using` declaration) but also that an unexpected definition in an unexpected namespace is found via [ADL](https://stackoverflow.com/a/4241547/1391250)!
 
 This is not to mention the namespace pollution problems of using declarations. Arguably they should even be considered another unsafe C++ compatibility feature requiring unsafe block in the future (aside: the backwards PyThOn syntax for using declarations is based on the principle that if a ceto construct already codegens as something like the desired C++, then that construct should be used for that C++)
+
+There's another C++ mispattern where a global variable definition of `struct` type is given in a header allowing the utility.foo() syntax instead of `::`. If one forgets the ```inline``` or ```constexpr``` then say hello to IFNDR. Calling such a (C++ header defined) global variable is actually impossible in ceto unless the PyThOn style ```global``` keyword is used:
+
+```python
+
+include"utility.h"
+
+def (main:
+    utility: global  # TODO 'global' declarations need implementing in codegen.py (emitting no code should suffice)
+    utility.foo()    # maybe autoderef but not a scope resolution
+)
+
+```
 
 There is also a GOTCHA/TODO that an error should be issued attempting to mix ceto class types with C++ typedefs or using declarations (Foo_typdef won't follow the same parameter passing rules as Foo when used as a function param type).
 
