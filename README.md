@@ -526,14 +526,14 @@ because calling `do_something` as a free function suffers not just from the poss
 
 This is not to mention the namespace pollution problems of using declarations. Arguably they should even be considered another unsafe C++ compatibility feature requiring unsafe block in the future (aside: the backwards PyThOn syntax for using declarations is based on the principle that if a ceto construct already codegens as something like the desired C++, then that construct should be used for that C++)
 
-There's another C++ mispattern where a global variable definition of `struct` type is given in a header allowing the utility.foo() syntax instead of `::`. If one forgets the ```inline``` or ```constexpr``` then say hello to IFNDR. Calling such a (C++ header defined) global variable is actually impossible in ceto unless the PyThOn style ```global``` keyword is used:
+There's another C++ mispattern where a global variable of a `struct` type with a few data members is defined in a header allowing the `utility.foo()` syntax instead of `::`. If one forgets the ```inline``` or ```constexpr``` in such a definition then say hello to IFNDR. Calling such a (C++ header defined) global variable is actually impossible in ceto unless the PyThOn style ```global``` keyword is used:
 
 ```python
 
 include"utility.h"
 
 def (main:
-    utility: global  # TODO 'global' declarations need implementing in codegen.py (emitting no code should suffice)
+    utility: global  # TODO 'global' declarations need implementing in codegen.py (emitting no code (plus avoiding automatic const similar to the 'using' implementation) should suffice)
     utility.foo()    # maybe autoderef but not a scope resolution
 )
 
