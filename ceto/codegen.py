@@ -113,6 +113,13 @@ def codegen_block_item(b : Node, cx):
     if b.declared_type is not None:
         # typed declaration
 
+        if b.declared_type.name == "global":
+            if not cx.in_function_body:
+                raise CodeGenError("global declarations only allowed in function bodies", b)
+            if not isinstance(b, Identifier):
+                raise CodeGenError("global declarations only apply to an Identifier", b)
+            return ""  # default variable declaration handling in Scope already handles
+
         types = type_node_to_list_of_types(b.declared_type)
         if any(t.name in ["typedef", "using"] for t in types):
             # TODO more error checking here

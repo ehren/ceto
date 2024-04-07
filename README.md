@@ -533,7 +533,7 @@ There's another C++ mispattern where a global variable of a `struct` type with a
 include"utility.h"
 
 def (main:
-    utility: global  # TODO 'global' declarations need implementing in codegen.py (emitting no code (plus avoiding automatic const similar to the 'using' implementation) should suffice)
+    utility: global
     utility.foo()    # maybe autoderef but not a scope resolution
 )
 
