@@ -43,7 +43,8 @@ def _build_grammar():
     not_op = pp.Keyword("not")
     and_op = pp.Keyword("and")
     or_op = pp.Keyword("or")
-    reserved_words = not_op | and_op | or_op
+    in_op = pp.Keyword("in")
+    reserved_words = not_op | and_op | or_op | in_op  # not strictly necessary but better for sanity's sake
     ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).setParseAction(_parse_identifier)
 
     integer_literal = set_parse_action(pp.Regex(r"\d+") + pp.Optional(ident).leaveWhitespace(), _parse_integer_literal)
@@ -147,7 +148,6 @@ def _build_grammar():
     bitwise_xor_assign_op = pp.Literal("^=")
 
     _compar_atoms = list(map(pp.Literal, ["<=",">=", "<" , ">", "!=", "=="]))
-    _compar_atoms.extend(map(pp.Keyword, ["in", "not in", "is", "is not"]))
     comparisons = _compar_atoms.pop()
     for c in _compar_atoms:
         comparisons |= c
@@ -169,10 +169,10 @@ def _build_grammar():
             ((pp.Literal("<<")|pp.Literal(">>")), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("<=>"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (comparisons, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            # TODO: maybe move 'not' here like python? (with parenthesese in codegen)
             (amp_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("^"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("|"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (in_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),  # differs from Python but plays better with "|" used with std.views and for-in loops
             (and_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (or_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
