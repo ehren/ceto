@@ -14,6 +14,7 @@ def compile(s, compile_cpp=True):
 # these require range_value_t for untyped / forward typed vectors (not worth adding #ifdefs to fallback to using ::value_type - just upgrade your clang)
 clang_xfailing_tests = ["atomic_weak.ctp",
                         "tuples_for.ctp",
+                        "example.ctp",  # std.span use also fails on apple clang 14
                         "regression/tuples_for_typed.ctp",
                         "regression/range_iota.ctp",
                         "regression/contains_helper.ctp",

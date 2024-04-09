@@ -33,7 +33,7 @@ jobs:
         pip install -v --editable .  # editable because we want the dll inside the source directory (we're testing with the code in the source directory below instead of testing the system/installed version)
     - name: Test with pytest
       run: |
-        pytest -s
+        clang++ -v &&  pytest -s
       env:
         CXX: clang++
 
