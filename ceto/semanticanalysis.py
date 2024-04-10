@@ -748,7 +748,9 @@ def prepare_macro_ready_callback(module, module_path):
         impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
 
         dll_path = impl_path
-        if sys.platform == "darwin":
+        if sys.platform == "win32":
+            dll_path += ".dll"
+        elif sys.platform == "darwin":
             dll_path += ".dylib"
         else:
             dll_path += ".so"
@@ -793,15 +795,26 @@ def prepare_macro_ready_callback(module, module_path):
         with open(dll_cpp, "w") as f:
             f.write(macro_impl_code)
 
-        dll_options = f"-fPIC -shared -Wl,-soname,{dll_path}.so -ldl"
-        if sys.platform == "darwin":
-            dll_options = "-dynamiclib"
-
         project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
-        build_command = f"c++ -Wall -Wextra -std=c++20 -I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} {dll_options} -o {dll_path} {dll_cpp}"
+
+        include_opts = f"-I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')}"
+
+        if sys.platform == "win32":
+            include_opts = include_opts.replace('-I', '/I')
+            build_command = f"cl.exe /std:c++20 /Wall /permissive- /EHsc {include_opts} /LD /Fe:{dll_path} {dll_cpp}"
+        else:
+            dll_options = f"-fPIC -shared -Wl,-soname,{dll_path}.so -ldl"
+            if sys.platform == "darwin":
+                dll_options = "-dynamiclib"
+            build_command = f"c++ -Wall -Wextra -std=c++20 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
 
         print(build_command)
-        subprocess.check_output(build_command, shell=True)
+        try:
+            output = subprocess.check_output(build_command, stderr=subprocess.STDOUT, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(e.output.decode())
+            print(e)
+            raise
 
     return on_macro_def
 

@@ -206,13 +206,16 @@ def main():
     if not module.has_main_function or cmdargs.compileonly:
         sys.exit(0)
 
+    is_msvc = sys.platform == "win32" #CXX.startswith("cl") and not CXX.startswith("clang")
+
     CXX = "c++"
     CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread"
 
+    if is_msvc:
+        CXX = "cl.exe"
+
     if "CXX" in os.environ:
         CXX = os.environ["CXX"]
-
-    is_msvc = CXX.startswith("cl") and not CXX.startswith("clang")
 
     if is_msvc:
         CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc /I{os.path.join(os.path.dirname(__file__))}/../include/"
