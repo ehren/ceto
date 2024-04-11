@@ -113,6 +113,15 @@ struct MacroScope : public ceto::object {
                         if ((((((*ceto::mad(param_type)).name() == "BinOp") && (std::dynamic_pointer_cast<const BinOp>(node) != nullptr)) || (((*ceto::mad(param_type)).name() == "UnOp") && (std::dynamic_pointer_cast<const UnOp>(node) != nullptr))) || ((*ceto::mad(param_type)).name() == "Node")) || ((*ceto::mad(node)).classname() == (*ceto::mad((*ceto::mad(typeop)).rhs())).name())) {
                             return std::map<std::string,std::shared_ptr<const Node>>{{param_name, node}};
                         }
+                    } else if (const auto or_type = std::dynamic_pointer_cast<const BitwiseOrOp>(param_type)) {
+                        const std::map<std::string,std::shared_ptr<const Node>> lhs_alternate_param = {{param_name, (*ceto::mad(or_type)).lhs()}};
+                        if (const auto m = macro_matches(node, pattern, lhs_alternate_param)) {
+                            return m;
+                        }
+                        const std::map<std::string,std::shared_ptr<const Node>> rhs_alternate_param = {{param_name, (*ceto::mad(or_type)).rhs()}};
+                        if (const auto m = macro_matches(node, pattern, rhs_alternate_param)) {
+                            return m;
+                        }
                     }
                 }
             }

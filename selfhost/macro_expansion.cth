@@ -77,6 +77,15 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                          node.classname() == typeop.rhs().name()):                    # exact match
                         return std.map<std.string, Node>{{param_name, node}}
                     )
+                elif (or_type = asinstance(param_type, BitwiseOrOp)):
+                    lhs_alternate_param: std.map<std.string, Node> = { {param_name, or_type.lhs()} }
+                    if ((m = macro_matches(node, pattern, lhs_alternate_param)):
+                        return m
+                    )
+                    rhs_alternate_param: std.map<std.string, Node> = { {param_name, or_type.rhs()} }
+                    if ((m = macro_matches(node, pattern, rhs_alternate_param)):
+                        return m
+                    )
                 )
             )
         )
