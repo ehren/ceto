@@ -43,12 +43,12 @@ try:
     shutil.copyfile(os.path.join(rootdir, "selfhost", "utility.cth"), packaged_ceto_utility_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "visitor.cth"), packaged_ceto_visitor_header)
 
-    _extra_compile_args = ["-O0", "-g3"]
     if sys.platform == "win32":
         _extra_compile_args = ["/Zc:__cplusplus", "/Wall", "/permissive-"]
         _extra_link_args = []
     else:
         _extra_link_args = ["-Wl,-ldl"]
+        _extra_compile_args = [] #["-O0", "-g3"]
 
     ext_modules = [
         Pybind11Extension("ceto._abstractsyntaxtree",

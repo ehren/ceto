@@ -66,6 +66,11 @@ jobs:
         pytest -s
       env:
         CXX: clang++-16
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ceto-artifact-clang-16-ubuntu
+        path: ./ceto
 
   gcc_12_build:
     runs-on: ubuntu-latest
@@ -88,6 +93,11 @@ jobs:
         pytest -s
       env:
         CXX: g++-12
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ceto-artifact-gcc-12-ubuntu
+        path: ./ceto
 
   msvc_build:
     runs-on: windows-latest
