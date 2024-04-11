@@ -123,8 +123,7 @@ using VariableDefinition::VariableDefinition;
         return false;
     }
 
-    template <typename T1, typename T2, typename T3>
-auto comes_before(const T1& root, const T2& before, const T3& after) -> std::optional<bool> {
+    inline auto comes_before(const std::shared_ptr<const Node>&  root, const std::shared_ptr<const Node>&  before, const std::shared_ptr<const Node>&  after) -> std::optional<bool> {
         if (root == before) {
             return true;
         } else if ((root == after)) {

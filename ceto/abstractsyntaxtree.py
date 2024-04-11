@@ -1,7 +1,7 @@
 import typing
 
 try:
-    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, InfixWrapper_, RedundantParens, ListLike_
+    from ._abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, BitwiseOrOp, InfixWrapper_, RedundantParens, ListLike_
     # raise ImportError()
 except ImportError:
     raise
@@ -81,6 +81,10 @@ except ImportError:
 
 
     class ScopeResolution(BinOp):
+        pass
+
+
+    class BitwiseOrOp(BinOp):
         pass
 
 

@@ -234,6 +234,16 @@ using Assign::Assign;
 
 };
 
+struct BitwiseOrOp : public BinOp {
+
+using BinOp::BinOp;
+
+        inline auto accept( Visitor &  visitor) const -> void override {
+            (*ceto::mad(visitor)).visit((*this));
+        }
+
+};
+
 struct Identifier : public Node {
 
     std::string _name;

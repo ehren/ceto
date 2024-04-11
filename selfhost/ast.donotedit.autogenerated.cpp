@@ -45,7 +45,6 @@
 ;
 namespace py = pybind11;
     inline auto module_path() -> auto {
-        const auto acquire = py::gil_scoped_acquire();
         const py::object module = py::module::import("ceto"); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::module::import("ceto")), std::remove_cvref_t<decltype(module)>>);
         const py::object os = py::module::import("os"); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::module::import("os")), std::remove_cvref_t<decltype(os)>>);
         const auto exeloc = (*ceto::mad(module)).attr("__file__");
@@ -73,6 +72,7 @@ PYBIND11_MODULE(_abstractsyntaxtree, m) {
         (*ceto::mad(py::class_<AttributeAccess,std::shared_ptr<AttributeAccess>>(m, "AttributeAccess", binop))).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));
         (*ceto::mad(py::class_<ArrowOp,std::shared_ptr<ArrowOp>>(m, "ArrowOp", binop))).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));
         (*ceto::mad(py::class_<ScopeResolution,std::shared_ptr<ScopeResolution>>(m, "ScopeResolution", binop))).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));
+        (*ceto::mad(py::class_<BitwiseOrOp,std::shared_ptr<BitwiseOrOp>>(m, "BitwiseOrOp", binop))).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));
         auto assign { py::class_<Assign,std::shared_ptr<Assign>>(m, "Assign", binop) } ;
         (*ceto::mad(assign)).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));
         (*ceto::mad(py::class_<NamedParameter,std::shared_ptr<NamedParameter>>(m, "NamedParameter", assign))).def(py::init<const std::string &,std::vector<std::shared_ptr<const Node>>,std::tuple<std::string,int>>(), py::arg("op"), py::arg("args"), py::arg("source") = std::make_tuple("", 0));

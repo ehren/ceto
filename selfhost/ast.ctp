@@ -19,7 +19,6 @@ py: namespace = pybind11
 
 
 def (module_path:
-    acquire = py.gil_scoped_acquire()
     module: py.object = py.module.import("ceto");
     os: py.object = py.module.import("os");
     exeloc = module.attr("__file__")
@@ -88,6 +87,10 @@ lambda(m : mut:auto:rref:
         py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
 
     py.class_<ScopeResolution.class, ScopeResolution:mut>(m, "ScopeResolution", binop).def(
+        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+
+    py.class_<BitwiseOrOp.class, BitwiseOrOp:mut>(m, "BitwiseOrOp", binop).def(
         py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
         py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
 

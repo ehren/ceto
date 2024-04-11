@@ -171,6 +171,12 @@ class (NamedParameter(Assign):
     )
 )
 
+class (BitwiseOrOp(BinOp):
+    def (accept: override, visitor: Visitor:mut:ref:
+        visitor.visit(*this)
+    )
+)
+
 class (Identifier(Node):
     _name : string
 

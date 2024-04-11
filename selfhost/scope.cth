@@ -86,7 +86,7 @@ def (creates_new_variable_scope, e: Node:
 )
 
 
-def (comes_before, root, before, after:
+def (comes_before, root: Node, before: Node, after: Node:
     if (root == before:
         return true
     elif root == after:

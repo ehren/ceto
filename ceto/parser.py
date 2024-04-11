@@ -12,7 +12,7 @@ from time import perf_counter
 
 from .preprocessor import preprocess
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
-    Identifier, AttributeAccess, ScopeResolution, ArrowOp, Call, ArrayAccess, \
+    Identifier, AttributeAccess, ScopeResolution, ArrowOp, BitwiseOrOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
     Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_
 
@@ -268,6 +268,8 @@ def _parse_left_associative_bin_op(s, l, t):
 
     if b := _make_scope_resolution_op(func, args, source):
         return b
+    elif func == "|":
+        return BitwiseOrOp(func, args, source)
     else:
         # TODO "bin_op" constructor func (taking an op string plus args) with proper subclasses for AddOp etc
         # (and make 'BinOp' effectively an abstract base class)
