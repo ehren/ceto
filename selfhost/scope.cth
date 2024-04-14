@@ -190,7 +190,7 @@ class (Scope:
 
                 # we should just compute a 'node_loc' in a previous pass
                 parent_block: mut = d.defined_node.parent()
-                while (true:
+                while (True:
                     if (isinstance(parent_block, Module):
                         break
                     )

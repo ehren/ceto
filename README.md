@@ -421,7 +421,7 @@ class (Timer:
         w: weak:Delegate = self._delegate
 
         self._thread = std.thread(lambda(:
-            while (true:
+            while (True:
                 std.this_thread.sleep_for(std.chrono.seconds(1))
                 if ((s = w.lock()):
                     s.action()
