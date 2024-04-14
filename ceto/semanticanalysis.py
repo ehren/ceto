@@ -833,10 +833,6 @@ def replace_macro_expansion(node: Node, replacements):
 def semantic_analysis(expr: Module):
     assert isinstance(expr, Module) # enforced by parser
 
-    expr = one_liner_expander(expr)
-    expr = assign_to_named_parameter(expr)
-    expr = warn_and_remove_redundant_parens(expr)
-
     module_path = None
     if expr.file_path:
         module_path = expr.file_path
@@ -849,6 +845,10 @@ def semantic_analysis(expr: Module):
         replacements = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
         print("macro replacements", replacements)
         expr = replace_macro_expansion(expr, replacements)
+
+    expr = one_liner_expander(expr)
+    expr = assign_to_named_parameter(expr)
+    expr = warn_and_remove_redundant_parens(expr)
 
     expr = build_types(expr)
     expr = build_parents(expr)
