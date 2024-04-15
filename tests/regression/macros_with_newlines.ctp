@@ -15,23 +15,28 @@ defmacro (with_newlines (:
     for (a in args:
         new_args.append(quote(unquote(a) << "\n"))
     )
-
+    
     new_block = Block(new_args)
+    #return quote(if (1, unquote(new_block)))  # this works fine
+    return quote(if (1, unquote(new_block)): constexpr)  # should silence any potential constant comparison warnings?
 
-    # need a simple 'scope' special form
-    #l = quote(lambda[ref] (unquote(new_block)))  # this doesn't work because of "helpful" "lambda returns last arg automatically" behavior. similar probs with if stmts
-    #return quote((lambda[ref] (unquote(new_block)): void) ())  # still fails
-    #return quote(if (1, unquote(new_block)))  # similar probs ("bad first if arg") (think it's a one-liner if...)
-
-    # workaround
-    call_args: [Node] = [new_block]
-    l = Call(quote(lambda[ref]), call_args)
-    return quote(unquote(l)())
-
-    # this also works (while loops aren't subject to the hardcoded dubious transformations that should be macros in semanticanalysis.py)
+    #new_args.append(quote(return))
+    #new_block = Block(new_args)
+    #return quote(lambda[ref] (unquote(new_block)) ())  # this works now
+    
+    # this also works
     #new_args.append(quote(break))
     #new_block = Block(new_args)
     #return quote(while(true, unquote(new_block)))
+
+
+    #return quote((lambda[ref] (unquote(new_block)): void) ())  # this doesn't work, 'Unexpected typed call' ?
+
+    # this works but be careful to mark as void or return nothing
+    # new_args.append(quote(return))
+    #call_args: [Node] = [new_block]
+    #l = Call(quote(lambda[ref]), call_args)
+    #return quote(unquote(l)())
 )
 
 

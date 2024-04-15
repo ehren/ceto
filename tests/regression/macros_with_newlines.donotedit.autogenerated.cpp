@@ -25,9 +25,9 @@
 ;
 ;
     auto main() -> int {
-        [&]() {
-                (std::cout << "Hello") << "\n";
-                (std::cout << "World") << "\n";
-                }();
+        if constexpr (1) {
+            (std::cout << "Hello") << "\n";
+            (std::cout << "World") << "\n";
+        }
     }
 
