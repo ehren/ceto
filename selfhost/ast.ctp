@@ -226,10 +226,9 @@ lambda(m : mut:auto:rref:
     m.def("parse_test", &parse_test)
 
     py.class_<MacroDefinition.class, MacroDefinition:mut>(m, "MacroDefinition").def(
-        py.init<Call, Node, Block, std.map<string, Node>>()).def_readonly(
+        py.init<Node, Node, std.map<string, Node>>()).def_readonly(
         "defmacro_node", &MacroDefinition.defmacro_node).def_readonly(
         "pattern_node", &MacroDefinition.pattern_node).def_readonly(
-        "body", &MacroDefinition.body).def_readonly(
         "parameters", &MacroDefinition.parameters).def_readwrite(
         "dll_path", &MacroDefinition.dll_path).def_readwrite(
         "impl_function_name", &MacroDefinition.impl_function_name)

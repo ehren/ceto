@@ -62,11 +62,9 @@ using std::runtime_error::runtime_error;
 
 struct MacroDefinition : public ceto::shared_object, public std::enable_shared_from_this<MacroDefinition> {
 
-    std::shared_ptr<const Call> defmacro_node;
+    std::shared_ptr<const Node> defmacro_node;
 
     std::shared_ptr<const Node> pattern_node;
-
-    std::shared_ptr<const Block> body;
 
     std::map<std::string,std::shared_ptr<const Node>> parameters;
 
@@ -74,7 +72,7 @@ struct MacroDefinition : public ceto::shared_object, public std::enable_shared_f
 
     std::string impl_function_name = {};
 
-    explicit MacroDefinition(std::shared_ptr<const Call> defmacro_node, std::shared_ptr<const Node> pattern_node, std::shared_ptr<const Block> body, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), body(std::move(body)), parameters(parameters) {}
+    explicit MacroDefinition(std::shared_ptr<const Node> defmacro_node, std::shared_ptr<const Node> pattern_node, std::map<std::string,std::shared_ptr<const Node>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
 
     MacroDefinition() = delete;
 
@@ -233,30 +231,33 @@ struct MacroScope : public ceto::object {
 
 struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
-    std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition;
+    std::function<void(std::shared_ptr<const MacroDefinition>, const std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> &)> on_visit_definition;
 
     std::unique_ptr<MacroScope> current_scope = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(current_scope)>>);
 
     std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> replacements = {};
 
-        inline auto expand(const std::shared_ptr<const Node>&  node) -> void {
+        inline auto expand(const std::shared_ptr<const Node>&  node) -> auto {
             auto const * scope { (&(this -> current_scope)) -> get() } ;
             while (scope) {                for(const auto& definition : reversed(scope -> macro_definitions)) {
                     const auto match = macro_matches(node, (*ceto::mad(definition)).pattern_node, (*ceto::mad(definition)).parameters);
                     if (match) {
+                        std::cout << "found match\n";
                         const auto replacement = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
                         if (replacement) {
+                            ((((std::cout << "found replacement for ") << (*ceto::mad(node)).repr()) << ": ") << (*ceto::mad(replacement)).repr()) << std::endl;
                             ceto::maybe_bounds_check_access(this -> replacements,node) = replacement;
-                            return;
+                            return replacement;
                         }
                     }
                 }
                 scope = (scope -> parent);
             }
+            return node;
         }
 
-        inline auto visit(const Node&  node) -> void override {
-            this -> expand(ceto::shared_from((&node)));
+        inline auto visit(const Node&  generic_node) -> void override {
+            const auto node = this -> expand(ceto::shared_from((&generic_node)));
             if ((*ceto::mad(node)).func) {
                 (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             }
@@ -265,21 +266,20 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             }
         }
 
-        inline auto visit(const Call&  node) -> void override {
-            this -> expand(ceto::shared_from((&node)));
+        inline auto visit(const Call&  call_node) -> void override {
+            const auto node = this -> expand(ceto::shared_from((&call_node)));
+            (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
+            for(const auto& arg : (*ceto::mad(node)).args) {
+                (*ceto::mad(arg)).accept((*this));
+            }
             if ((*ceto::mad((*ceto::mad(node)).func)).name() != "defmacro") {
-                (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
-                for(const auto& arg : (*ceto::mad(node)).args) {
-                    (*ceto::mad(arg)).accept((*this));
-                }
                 return;
             }
             if ((*ceto::mad((*ceto::mad(node)).args)).size() < 2) {
                 throw SemanticAnalysisError{"bad defmacro args"};
             }
             const auto pattern = ceto::maybe_bounds_check_access((*ceto::mad(node)).args,0);
-            const auto body = std::dynamic_pointer_cast<const Block>((*ceto::mad((*ceto::mad(node)).args)).back());
-            if (!body) {
+            if (!(std::dynamic_pointer_cast<const Block>((*ceto::mad((*ceto::mad(node)).args)).back()) != nullptr)) {
                 throw SemanticAnalysisError{"last defmacro arg must be a Block"};
             }
             auto parameters { std::map<std::string,std::shared_ptr<const Node>>{} } ;
@@ -306,9 +306,9 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                 }
                 (*ceto::mad_smartptr(parameters)).emplace(name, arg);
             }
-            const auto defn = std::make_shared<const decltype(MacroDefinition{ceto::shared_from((&node)), pattern, body, parameters})>(ceto::shared_from((&node)), pattern, body, parameters);
+            const auto defn = std::make_shared<const decltype(MacroDefinition{node, pattern, parameters})>(node, pattern, parameters);
             (*ceto::mad(this -> current_scope)).add_definition(defn);
-            this -> on_visit_definition(defn);
+            this -> on_visit_definition(defn, this -> replacements);
         }
 
         inline auto visit(const Module&  node) -> void override {
@@ -329,13 +329,13 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             (this -> current_scope) = std::move(outer);
         }
 
-    explicit MacroDefinitionVisitor(std::function<void(std::shared_ptr<const MacroDefinition>)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
+    explicit MacroDefinitionVisitor(std::function<void(std::shared_ptr<const MacroDefinition>, const std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> &)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
 
     MacroDefinitionVisitor() = delete;
 
 };
 
-    inline auto expand_macros(const std::shared_ptr<const Module>&  node, const std::function<void(std::shared_ptr<const MacroDefinition>)>  on_visit) -> std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> {
+    inline auto expand_macros(const std::shared_ptr<const Module>&  node, const std::function<void(std::shared_ptr<const MacroDefinition>, const std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> &)>  on_visit) -> std::unordered_map<std::shared_ptr<const Node>,std::shared_ptr<const Node>> {
         auto visitor { MacroDefinitionVisitor{on_visit} } ;
         (*ceto::mad(node)).accept(visitor);
         return (*ceto::mad(visitor)).replacements;

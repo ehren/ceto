@@ -29,9 +29,8 @@ struct (SemanticAnalysisError(std.runtime_error):
 )
 
 class (MacroDefinition:
-    defmacro_node: Call
+    defmacro_node: Node
     pattern_node: Node
-    body: Block
     parameters: std.map<string, Node>
     dll_path: std.string = {}
     impl_function_name: std.string = {}
@@ -225,7 +224,7 @@ def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.stri
 
 
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
-    on_visit_definition: std.function<void(MacroDefinition)>
+    on_visit_definition: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>
 
     current_scope: MacroScope:mut = None
     replacements: std.unordered_map<Node, Node> = {}
@@ -236,20 +235,23 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             for (definition in reversed(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
+                    std.cout << "found match\n"
                     replacement = call_macro_impl(definition, match.value())
                     if (replacement:
+                        std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
                         self.replacements[node] = replacement
-                        return
+                        return replacement
                     )
                 )
             )
 
             scope = scope->parent
         )
+        return node
     )
 
-    def (visit: override:mut, node: Node.class:
-        self.expand(ceto.shared_from(&node))
+    def (visit: override:mut, generic_node: Node.class:
+        node = self.expand(ceto.shared_from(&generic_node))
 
         if (node.func:
             node.func.accept(*this)
@@ -260,15 +262,16 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         )
     )
 
-    def (visit: override:mut, node: Call.class:
-        self.expand(ceto.shared_from(&node))
+    def (visit: override:mut, call_node: Call.class:
+        node = self.expand(ceto.shared_from(&call_node))
+
+        node.func.accept(*this)
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
 
         if (node.func.name() != "defmacro":
-            node.func.accept(*this)
-
-            for (arg in node.args:
-                arg.accept(*this)
-            )
             return
         )
 
@@ -278,8 +281,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
         pattern = node.args[0]
 
-        body = asinstance(node.args.back(), Block)
-        if (not body:
+        if (not isinstance(node.args.back(), Block):
             throw (SemanticAnalysisError("last defmacro arg must be a Block"))
         )
 
@@ -308,9 +310,9 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             parameters.emplace(name, arg)
         )
 
-        defn = MacroDefinition(ceto.shared_from(&node), pattern, body, parameters)
+        defn = MacroDefinition(node, pattern, parameters)
         self.current_scope.add_definition(defn)
-        self.on_visit_definition(defn)
+        self.on_visit_definition(defn, self.replacements)
     )
 
     def (visit: override:mut, node: Module.class:
@@ -335,7 +337,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 )
 
 
-def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition)>:
+def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>:
     visitor: mut = MacroDefinitionVisitor(on_visit)
     node.accept(visitor)
     return visitor.replacements

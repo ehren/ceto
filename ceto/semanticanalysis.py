@@ -292,6 +292,13 @@ def one_liner_expander(parsed):
         if not isinstance(op, Node):
             return op
 
+        if isinstance(op, Call) and op.func.name == "defmacro":
+            # This is a defmacro that will just be ignored by codegen, transformations are fine but we don't want to
+            # validate the use of "if" appearing in a pattern.
+            # note that for the e.g. if one liners that really do need expanding in a macro body, they will be handled
+            # during separate compilation of the macro_impl module.
+            return op
+
         if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
             op = SyntaxTypeOp(op.op, op.args, op.source)
 
@@ -706,21 +713,29 @@ def prepare_macro_ready_callback(module, module_path):
 
     macro_number = 0
 
-    def on_macro_def(mcd: MacroDefinition):
+    def on_macro_def(mcd: MacroDefinition, replacements):
         from .parser import parse
         from .codegen import codegen
 
         nonlocal macro_number
 
-        print("mcd", mcd.defmacro_node)
+        # apply current replacement decisions at the time of encountering the current macro def (for a defmacro that relies on other defmacros)
+        # allowing expand_macros to do the replacements in place (add mutable visitor) would avoid this
+        defmacro_node = replace_macro_expansion(mcd.defmacro_node, replacements)
+        new_module = replace_macro_expansion(module, replacements)
+        #mcd.pattern = replace_macro_expansion(mcd.pattern, replacements)  # not necessary? or is it too late to even handle this (bug)
+        parameters = { k: replace_macro_expansion(v, replacements) for k, v in mcd.parameters.items() }  # not necessary?
+
+        print("mcd", defmacro_node)
+
         mcd.impl_function_name = f"macro_impl{macro_number}"
 
         # prepare a function that implements the body of the "defmacro"
         impl_str = f'def ({mcd.impl_function_name}: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
-        for param_name in mcd.parameters:
+        for param_name in parameters:
             init_param = 'CETO_PRIVATE_params.at("' + param_name + '")'
-            for param in mcd.defmacro_node.args[1:]:
+            for param in defmacro_node.args[1:]:
                 if isinstance(param, TypeOp) and param_name == param.lhs.name:
                     if isinstance(param.rhs, Identifier):
                         init_param = "asinstance(" + init_param + ", " + param.rhs.name + ")"
@@ -737,12 +752,13 @@ def prepare_macro_ready_callback(module, module_path):
         assert isinstance(impl_def, Call)
         impl_block = impl_def.args[-1]
         assert isinstance(impl_block, Block)
-        assert isinstance(mcd.body, Block)
+        defmacro_body = defmacro_node.args[-1]
+        assert isinstance(defmacro_body, Block)
 
-        expanded = quote_expander(mcd.body)
+        expanded = quote_expander(defmacro_body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
-        macro_impl_module = create_macro_impl_module(module, mcd, macro_impl)
+        macro_impl_module = create_macro_impl_module(new_module, mcd, macro_impl)
 
         # this is unfortunate: (codegen and sema are performing some bad mutability)
         # also need a clone() method for Node instead of repr evaling
@@ -753,7 +769,7 @@ def prepare_macro_ready_callback(module, module_path):
         module_dir = os.path.dirname(module_path)
 
         #impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
-        #impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{mcd.defmacro_node.source[1]}")
+        #impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{defmacro_node.source[1]}")
         impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{macro_number}")
 
         dll_path = impl_path
@@ -796,6 +812,12 @@ def prepare_macro_ready_callback(module, module_path):
 
         include_ast = parse("include (ceto__private__ast)")
         macro_impl_module.args = include_ast.args + macro_impl_module.args
+
+        # Ignore any other defmacro nodes (we don't want to compile them just yet - we're busy with the current defmacro.
+        macro_impl_module.args = [a for a in macro_impl_module.args if not (isinstance(a, Call) and a.func.name == "defmacro")]
+
+        # However, we do want to run macro expansion on the body of our current defmacro:
+        macro_impl_module = macro_expansion(macro_impl_module)
 
         macro_impl_module = semantic_analysis(macro_impl_module)
         macro_impl_code = codegen(macro_impl_module)
