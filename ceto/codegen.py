@@ -2056,6 +2056,8 @@ def codegen_call(node: Call, cx: Scope):
             if func_name == "isinstance":
                 cast_string = "(" + cast_string + " != nullptr)"
             return cast_string
+        elif func_name == "defmacro":
+            return "\n"
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)

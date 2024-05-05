@@ -1,6 +1,6 @@
 from .parser import parse, parse_from_cmdargs, Node, Module
 from .parser import ParseException
-from .semanticanalysis import semantic_analysis, SemanticAnalysisError
+from .semanticanalysis import semantic_analysis, macro_expansion, SemanticAnalysisError
 from .codegen import codegen, CodeGenError
 
 import os
@@ -35,6 +35,10 @@ perf_messages = []
 
 
 def compile_node(node) -> (str, Module):
+    t = perf_counter()
+    node = macro_expansion(node)
+    perf_messages.append(f"macro time {perf_counter() - t}")
+    print("after macro expand", node)
     t = perf_counter()
     node = semantic_analysis(node)
     perf_messages.append(f"semantic time {perf_counter() - t}")

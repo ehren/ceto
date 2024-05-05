@@ -606,12 +606,18 @@ def parse_from_cmdargs(cmdargs):
     dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
     repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
 
-    return _parse_maybe_cached(filename, repr_path)
+    result = _parse_maybe_cached(filename, repr_path)
+    global seen_modules
+    seen_modules = set()
+    return result
 
 
 def parse(source: str):
     p = parse_string(source)
-    return expand_includes(p)
+    result = expand_includes(p)
+    global seen_modules
+    seen_modules = set()
+    return result
 
 
 if sys.platform != "win32":

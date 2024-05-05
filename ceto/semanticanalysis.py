@@ -704,13 +704,19 @@ def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macr
 
 def prepare_macro_ready_callback(module, module_path):
 
+    macro_number = 0
+
     def on_macro_def(mcd: MacroDefinition):
         from .parser import parse
         from .codegen import codegen
+
+        nonlocal macro_number
+
         print("mcd", mcd.defmacro_node)
+        mcd.impl_function_name = f"macro_impl{macro_number}"
 
         # prepare a function that implements the body of the "defmacro"
-        impl_str = 'def (macro_impl: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
+        impl_str = f'def ({mcd.impl_function_name}: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
         indt = "    "
         for param_name in mcd.parameters:
             init_param = 'CETO_PRIVATE_params.at("' + param_name + '")'
@@ -745,7 +751,10 @@ def prepare_macro_ready_callback(module, module_path):
 
         module_name = os.path.basename(module_path)
         module_dir = os.path.dirname(module_path)
-        impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
+
+        #impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
+        #impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{mcd.defmacro_node.source[1]}")
+        impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{macro_number}")
 
         dll_path = impl_path
         if sys.platform == "win32":
@@ -756,7 +765,8 @@ def prepare_macro_ready_callback(module, module_path):
             dll_path += ".so"
 
         mcd.dll_path = dll_path
-        mcd.impl_function_name = "macro_impl"
+
+        macro_number += 1
 
         if os.path.isfile(dll_path):
             return
@@ -830,8 +840,8 @@ def replace_macro_expansion(node: Node, replacements):
     return node
 
 
-def semantic_analysis(expr: Module):
-    assert isinstance(expr, Module) # enforced by parser
+def macro_expansion(expr: Module):
+    assert isinstance(expr, Module)
 
     module_path = None
     if expr.file_path:
@@ -845,6 +855,12 @@ def semantic_analysis(expr: Module):
         replacements = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
         print("macro replacements", replacements)
         expr = replace_macro_expansion(expr, replacements)
+
+    return expr
+
+
+def semantic_analysis(expr: Module):
+    assert isinstance(expr, Module) # enforced by parser
 
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
