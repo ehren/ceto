@@ -17,7 +17,9 @@ defmacro (a, a: IntegerLiteral|FloatLiteral:
         if (f:
             d = std.strtod(f.float_string.c_str(), nullptr)
             if (d >= 2.0 and d <= 3.0:
-                return quote(unquote(f) - 0.5)
+                suffix = quote(l)
+                n = FloatLiteral(std.to_string(d - 0.5), suffix)
+                return n
             )
         )
     )

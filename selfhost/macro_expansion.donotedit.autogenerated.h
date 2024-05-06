@@ -244,20 +244,23 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                     if (match) {
                         std::cout << "found match\n";
                         const auto replacement = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
-                        if (replacement) {
+                        if (replacement && (replacement != node)) {
                             ((((std::cout << "found replacement for ") << (*ceto::mad(node)).repr()) << ": ") << (*ceto::mad(replacement)).repr()) << std::endl;
                             ceto::maybe_bounds_check_access(this -> replacements,node) = replacement;
-                            return replacement;
+                            (*ceto::mad(replacement)).accept((*this));
+                            return true;
                         }
                     }
                 }
                 scope = (scope -> parent);
             }
-            return node;
+            return false;
         }
 
-        inline auto visit(const Node&  generic_node) -> void override {
-            const auto node = this -> expand(ceto::shared_from((&generic_node)));
+        inline auto visit(const Node&  node) -> void override {
+            if (this -> expand(ceto::shared_from((&node)))) {
+                return;
+            }
             if ((*ceto::mad(node)).func) {
                 (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             }
@@ -267,7 +270,10 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
         }
 
         inline auto visit(const Call&  call_node) -> void override {
-            const auto node = this -> expand(ceto::shared_from((&call_node)));
+            const auto node = ceto::shared_from((&call_node));
+            if (this -> expand(node)) {
+                return;
+            }
             (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             for(const auto& arg : (*ceto::mad(node)).args) {
                 (*ceto::mad(arg)).accept((*this));
@@ -322,7 +328,9 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
         inline auto visit(const Block&  node) -> void override {
             std::unique_ptr<MacroScope> outer = std::move(this -> current_scope); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move(this -> current_scope)), std::remove_cvref_t<decltype(outer)>>);
             (this -> current_scope) = (*ceto::mad(outer)).enter_scope();
-            this -> expand(ceto::shared_from((&node)));
+            if (this -> expand(ceto::shared_from((&node)))) {
+                return;
+            }
             for(const auto& arg : (*ceto::mad(node)).args) {
                 (*ceto::mad(arg)).accept((*this));
             }
