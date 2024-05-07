@@ -50,7 +50,8 @@ lambda(m : mut:auto:rref:
     ), py.arg("preserve_source_loc") = true, py.arg("ceto_evalable") = false).def_property_readonly(
     "name", &Node.name).def_property(
     "parent", &Node.parent, &Node.set_parent).def_readwrite(
-    "file_path", &Node.file_path)
+    "header_path_cth", &Node.header_path_cth).def_readwrite(
+    "header_path_h", &Node.header_path_h)
 
     py.class_<UnOp.class, UnOp:mut>(m, "UnOp", node).def(
         py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),

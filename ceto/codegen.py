@@ -68,8 +68,8 @@ def codegen_module(module: Module, cx: Scope):
         else:
             modarg_code = codegen_block_item(modarg, cx)
 
-        if modarg.file_path:
-            included_module_code[modarg.file_path] += modarg_code
+        if modarg.header_path_h:
+            included_module_code[modarg.header_path_h] += modarg_code
         else:
             modcpp += modarg_code
 

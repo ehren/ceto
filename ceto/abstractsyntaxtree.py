@@ -18,7 +18,8 @@ except ImportError:
             self.func : Node = func
             self.args : typing.List[Node] = args
             self.source : typing.Tuple[str, int] = source
-            self.file_path : str = None
+            self.header_path_cth : str = None
+            self.header_path_h : str = None
 
         def __repr__(self):
             return "{}({})({!r})".format(self.__class__.__name__,

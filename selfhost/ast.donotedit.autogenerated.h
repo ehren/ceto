@@ -46,7 +46,9 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
 
     std::weak_ptr<const Node> _parent = {};
 
-    decltype(std::string {""}) file_path = std::string {""};
+    decltype(std::string {""}) header_path_cth = std::string {""};
+
+    decltype(std::string {""}) header_path_h = std::string {""};
 
          virtual inline auto classname() const -> std::string {
             return typeid_name((*this));

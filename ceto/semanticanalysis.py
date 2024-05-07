@@ -866,8 +866,8 @@ def macro_expansion(expr: Module):
     assert isinstance(expr, Module)
 
     module_path = None
-    if expr.file_path:
-        module_path = expr.file_path
+    if expr.header_path_cth:
+        module_path = expr.header_path_cth
     else:
         from .compiler import cmdargs
         if cmdargs:

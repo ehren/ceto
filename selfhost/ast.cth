@@ -25,7 +25,8 @@ class (Node:
     declared_type: Node = None
     scope: Scope = None
     _parent: Node:weak = {}
-    file_path = ""s
+    header_path_cth = ""s
+    header_path_h = ""s
 
     def (classname: virtual:
         return typeid_name(*this)
