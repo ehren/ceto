@@ -5,6 +5,7 @@ include <typeinfo>
 
 include (visitor)
 include (utility)
+include (range_utility)
 
 
 class (Node)
@@ -25,8 +26,8 @@ class (Node:
     declared_type: Node = None
     scope: Scope = None
     _parent: Node:weak = {}
-    header_path_cth = ""s
-    header_path_h = ""s
+    header_path_cth: std.string = {}
+    header_path_h: std.string = {}
 
     def (classname: virtual:
         return typeid_name(*this)
@@ -45,6 +46,21 @@ class (Node:
     def (accept: virtual, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone_func_args: mut:
+        for (i in range(self.args.size()):
+            self.args[i] = self.args[i].clone()
+        )
+        if (self.func:
+            self.func = self.func.clone()
+        )
+    )
+
+    def (clone: virtual:
+        c: mut = std.make_shared<Node.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 
     def (parent:
         return self._parent.lock()
@@ -74,6 +90,12 @@ class (UnOp(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<UnOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (LeftAssociativeUnOp(Node):
@@ -91,6 +113,12 @@ class (LeftAssociativeUnOp(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<LeftAssociativeUnOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (BinOp(Node):
@@ -116,6 +144,12 @@ class (BinOp(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<BinOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (TypeOp(BinOp):
@@ -123,6 +157,12 @@ class (TypeOp(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<TypeOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (SyntaxTypeOp(TypeOp):
@@ -131,6 +171,12 @@ class (SyntaxTypeOp(TypeOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<SyntaxTypeOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (AttributeAccess(BinOp):
@@ -142,24 +188,48 @@ class (AttributeAccess(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<AttributeAccess.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (ArrowOp(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<ArrowOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (ScopeResolution(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<ScopeResolution.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Assign(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Assign.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (NamedParameter(Assign):
@@ -170,12 +240,24 @@ class (NamedParameter(Assign):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<NamedParameter.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (BitwiseOrOp(BinOp):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<BitwiseOrOp.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Identifier(Node):
@@ -197,6 +279,12 @@ class (Identifier(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Identifier.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Call(Node):
@@ -210,6 +298,12 @@ class (Call(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Call.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (ArrayAccess(Node):
@@ -221,6 +315,12 @@ class (ArrayAccess(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<ArrayAccess.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (BracedCall(Node):
@@ -232,6 +332,12 @@ class (BracedCall(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<BracedCall.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Template(Node):
@@ -243,6 +349,12 @@ class (Template(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Template.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 
@@ -304,6 +416,12 @@ class (StringLiteral(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<StringLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (IntegerLiteral(Node):
@@ -323,6 +441,12 @@ class (IntegerLiteral(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<IntegerLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (FloatLiteral(Node):
@@ -342,6 +466,12 @@ class (FloatLiteral(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<FloatLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (ListLike_(Node):
@@ -357,30 +487,60 @@ class (ListLike_(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<ListLike_.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (ListLiteral(ListLike_):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<ListLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (TupleLiteral(ListLike_):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<TupleLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (BracedLiteral(ListLike_):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<BracedLiteral.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Block(ListLike_):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Block.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (Module(Block):
@@ -389,6 +549,12 @@ class (Module(Block):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<Module.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (RedundantParens(Node):
@@ -404,6 +570,12 @@ class (RedundantParens(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<RedundantParens.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 class (InfixWrapper_(Node):
@@ -419,6 +591,12 @@ class (InfixWrapper_(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (clone: override:
+        c: mut = std.make_shared<InfixWrapper_.class>(*this)
+        c.clone_func_args()
+        return c
+    ) : Node:mut
 )
 
 

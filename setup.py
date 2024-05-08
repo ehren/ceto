@@ -22,9 +22,10 @@ manifest = os.path.join(rootdir, "MANIFEST.in")
 packaged_ceto_header = os.path.join(rootdir, "ceto", "ceto.h")
 packaged_ceto_ast_header = os.path.join(rootdir, "ceto", "ast.cth")
 packaged_ceto_utility_header = os.path.join(rootdir, "ceto", "utility.cth")
+packaged_ceto_range_utility_header = os.path.join(rootdir, "ceto", "range_utility.cth")
 packaged_ceto_visitor_header = os.path.join(rootdir, "ceto", "visitor.cth")
 
-extra_packaged = [manifest, packaged_ceto_header, packaged_ceto_ast_header, packaged_ceto_utility_header, packaged_ceto_visitor_header]
+extra_packaged = [manifest, packaged_ceto_header, packaged_ceto_ast_header, packaged_ceto_utility_header, packaged_ceto_range_utility_header, packaged_ceto_visitor_header]
 
 for f in extra_packaged:
     if os.path.isfile(f):
@@ -41,6 +42,7 @@ try:
     shutil.copyfile(os.path.join(rootdir, "include", "ceto.h"), packaged_ceto_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "ast.cth"), packaged_ceto_ast_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "utility.cth"), packaged_ceto_utility_header)
+    shutil.copyfile(os.path.join(rootdir, "selfhost", "range_utility.cth"), packaged_ceto_range_utility_header)
     shutil.copyfile(os.path.join(rootdir, "selfhost", "visitor.cth"), packaged_ceto_visitor_header)
 
     if sys.platform == "win32":

@@ -42,6 +42,7 @@ lambda(m : mut:auto:rref:
     "declared_type", &Node.declared_type).def_readwrite(   #.def_property(
     "scope", &Node.scope).def_readwrite(
     "source", &Node.source).def(
+    "clone", &Node.clone).def(
     "__repr__", &Node.repr).def(
     "ast_repr", lambda(n: Node.class, preserve_source_loc: bool, ceto_evalable: bool:
         vis: mut = EvalableAstReprVisitor(preserve_source_loc, ceto_evalable)
@@ -54,119 +55,119 @@ lambda(m : mut:auto:rref:
     "header_path_h", &Node.header_path_h)
 
     py.class_<UnOp.class, UnOp:mut>(m, "UnOp", node).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "op", &UnOp.op)
 
     py.class_<LeftAssociativeUnOp.class, LeftAssociativeUnOp:mut>(m, "LeftAssociativeUnOp", node).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "op", &LeftAssociativeUnOp.op)
 
     binop : mut = py.class_<BinOp.class, BinOp:mut>(m, "BinOp", node)
-    binop.def(py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+    binop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "op", &BinOp.op).def_property_readonly(
         "lhs", &BinOp.lhs).def_property_readonly(
         "rhs", &BinOp.rhs)
 
     typeop: mut = py.class_<TypeOp.class, TypeOp:mut>(m, "TypeOp", binop)
-    typeop.def(py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-               py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+    typeop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+               py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<SyntaxTypeOp.class, SyntaxTypeOp:mut>(m, "SyntaxTypeOp", typeop).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "synthetic_lambda_return_lambda", &SyntaxTypeOp.synthetic_lambda_return_lambda)
 
     py.class_<AttributeAccess.class, AttributeAccess:mut>(m, "AttributeAccess", binop).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<ArrowOp.class, ArrowOp:mut>(m, "ArrowOp", binop).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<ScopeResolution.class, ScopeResolution:mut>(m, "ScopeResolution", binop).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<BitwiseOrOp.class, BitwiseOrOp:mut>(m, "BitwiseOrOp", binop).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     assign:mut = py.class_<Assign.class, Assign:mut>(m, "Assign", binop)
-    assign.def(py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-    py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+    assign.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+    py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<NamedParameter.class, NamedParameter:mut>(m, "NamedParameter", assign).def(
-        py.init<const:string:ref, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<Call.class, Call:mut>(m, "Call", node).def(
-        py.init<Node, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "is_one_liner_if", &Call.is_one_liner_if)
 
     py.class_<ArrayAccess.class, ArrayAccess:mut>(m, "ArrayAccess", node).def(
-        py.init<Node, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<BracedCall.class, BracedCall:mut>(m, "BracedCall", node).def(
-        py.init<Node, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<Template.class, Template:mut>(m, "Template", node).def(
-        py.init<Node, std.vector<Node>, std.tuple<string, int>>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<Identifier.class, Identifier:mut>(m, "Identifier", node).def(
-        py.init<const:string:ref, std.tuple<string, int>>(),
-        py.arg("name"), py.arg("source") = ("", 0))
+        py.init<const:string:ref, const:std.tuple<std.string,int>:ref>(),
+        py.arg("name"), py.arg("source") = (""s, 0))
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, "StringLiteral", node).def(
-        py.init<const:string:ref, Identifier, Identifier, std.tuple<string, int>>(),
-        py.arg("str"), py.arg("prefix"), py.arg("suffix"), py.arg("source") = ("", 0)).def_readonly(
+        py.init<const:string:ref, Identifier, Identifier, const:std.tuple<std.string,int>:ref>(),
+        py.arg("str"), py.arg("prefix"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
         "str", &StringLiteral.str).def_readwrite(
         "prefix", &StringLiteral.prefix).def_readwrite(
         "suffix", &StringLiteral.suffix).def(
         "escaped", &StringLiteral.escaped)
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, "IntegerLiteral", node).def(
-        py.init<const:string:ref, Identifier, std.tuple<string, int>>(),
-        py.arg("integer_string"), py.arg("suffix"), py.arg("source") = ("", 0)).def_readonly(
+        py.init<const:string:ref, Identifier, const:std.tuple<std.string,int>:ref>(),
+        py.arg("integer_string"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
         "integer_string", &IntegerLiteral.integer_string).def_readonly(
         "suffix", &IntegerLiteral.suffix)
 
     py.class_<FloatLiteral.class, FloatLiteral:mut>(m, "FloatLiteral", node).def(
-        py.init<const:string:ref, Identifier, std.tuple<string, int>>(),
-        py.arg("float_string"), py.arg("suffix"), py.arg("source") = ("", 0)).def_readonly(
+        py.init<const:string:ref, Identifier, const:std.tuple<std.string,int>:ref>(),
+        py.arg("float_string"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
         "float_string", &FloatLiteral.float_string).def_readonly(
         "suffix", &FloatLiteral.suffix)
 
     list_like: mut = py.class_<ListLike_.class, ListLike_:mut>(m, "ListLike_", node)
 
     py.class_<ListLiteral.class, ListLiteral:mut>(m, "ListLiteral", list_like).def(
-        py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<TupleLiteral.class, TupleLiteral:mut>(m, "TupleLiteral", list_like).def(
-        py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<BracedLiteral.class, BracedLiteral:mut>(m, "BracedLiteral", list_like).def(
-        py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
     block:mut = py.class_<Block.class, Block:mut>(m, "Block", list_like)
-    block.def(py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+    block.def(py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
-    py.class_<Module.class, Module:mut>(m, "Module", block).def(py.init<std.vector<Node>,
-        std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0)).def_readwrite(
+    py.class_<Module.class, Module:mut>(m, "Module", block).def(py.init<const:std.vector<Node>:ref,
+        const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
         "has_main_function", &Module.has_main_function)
 
     py.class_<RedundantParens.class, RedundantParens:mut>(m, "RedundantParens", node).def(
-        py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
     py.class_<InfixWrapper_.class, InfixWrapper_:mut>(m, "InfixWrapper_", node).def(
-        py.init<std.vector<Node>, std.tuple<string, int>>(), py.arg("args"), py.arg("source") = ("", 0))
+        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
 
     # Scope bindings:
     # These should probably go in a separate python module at some point (C++ namespace support would be more useful in general though)

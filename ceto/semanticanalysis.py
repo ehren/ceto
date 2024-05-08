@@ -709,7 +709,7 @@ def create_macro_impl_module(node: Node, macro_definition: MacroDefinition, macr
     return node
 
 
-def prepare_macro_ready_callback(module, module_path):
+def prepare_macro_ready_callback(module):
 
     macro_number = 0
 
@@ -755,15 +755,32 @@ def prepare_macro_ready_callback(module, module_path):
         defmacro_body = defmacro_node.args[-1]
         assert isinstance(defmacro_body, Block)
 
+        #expanded = eval(defmacro_body.ast_repr(preserve_source_loc=False))  # need clone
+        #expanded = quote_expander(expanded)
         expanded = quote_expander(defmacro_body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         macro_impl_module = create_macro_impl_module(new_module, mcd, macro_impl)
 
-        # this is unfortunate: (codegen and sema are performing some bad mutability)
+        # ignore anything in module after the current defmacro
+        #macro_impl_module_args = macro_impl_module.args[0:macro_impl_module.args.index(macro_impl) + 1]
+        #macro_impl_module = Module(macro_impl_module_args)
+
+        # this is unfortunate: (bad mutability)
         # also need a clone() method for Node instead of repr evaling
-        macro_impl_module_source = macro_impl_module.ast_repr(preserve_source_loc=False)
-        macro_impl_module = eval(macro_impl_module_source)
+        #macro_impl_module_source = macro_impl_module.ast_repr(preserve_source_loc=False)
+        #macro_impl_module = eval(macro_impl_module_source)
+        macro_impl_module = macro_impl_module.clone()
+
+        impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
+        macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
+        macro_impl_module.args = macro_impl_module_args
+
+        if mcd.defmacro_node.header_path_cth:
+            module_path = mcd.defmacro_node.header_path_cth
+        else:
+            from .compiler import cmdargs
+            module_path = cmdargs.filename
 
         module_name = os.path.basename(module_path)
         module_dir = os.path.dirname(module_path)
@@ -791,7 +808,7 @@ def prepare_macro_ready_callback(module, module_path):
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
 
         # prepare dependency of macro dll on a few selfhost sources
-        for orig_name in ["ast.cth", "utility.cth", "visitor.cth"]:
+        for orig_name in ["ast.cth", "utility.cth", "range_utility.cth", "visitor.cth"]:
             destination_name = "ceto__private__" + orig_name
             destination_path = os.path.join(module_dir, destination_name)
             if os.path.isfile(destination_path):
@@ -803,6 +820,7 @@ def prepare_macro_ready_callback(module, module_path):
                         with open(orig_path) as f:
                             ast_str = f.read()
                         ast_str = ast_str.replace("include (utility)", "include (ceto__private__utility)")
+                        ast_str = ast_str.replace("include (range_utility)", "include (ceto__private__range_utility)")
                         ast_str = ast_str.replace("include (visitor)", "include (ceto__private__visitor)")
                         with open(destination_path, "w") as f:
                             f.write(ast_str)
@@ -814,7 +832,8 @@ def prepare_macro_ready_callback(module, module_path):
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 
         # Ignore any other defmacro nodes (we don't want to compile them just yet - we're busy with the current defmacro.
-        macro_impl_module.args = [a for a in macro_impl_module.args if not (isinstance(a, Call) and a.func.name == "defmacro")]
+        # (TODO is this necessary now that we're discarding all nodes in module after the current macro impl?)
+        #macro_impl_module.args = [a for a in macro_impl_module.args if not (isinstance(a, Call) and a.func.name == "defmacro")]
 
         # However, we do want to run macro expansion on the body of our current defmacro:
         macro_impl_module = macro_expansion(macro_impl_module)
@@ -865,18 +884,9 @@ def replace_macro_expansion(node: Node, replacements):
 def macro_expansion(expr: Module):
     assert isinstance(expr, Module)
 
-    module_path = None
-    if expr.header_path_cth:
-        module_path = expr.header_path_cth
-    else:
-        from .compiler import cmdargs
-        if cmdargs:
-            module_path = cmdargs.filename
-
-    if module_path:
-        replacements = expand_macros(expr, prepare_macro_ready_callback(expr, module_path))
-        print("macro replacements", replacements)
-        expr = replace_macro_expansion(expr, replacements)
+    replacements = expand_macros(expr, prepare_macro_ready_callback(expr))
+    print("macro replacements", replacements)
+    expr = replace_macro_expansion(expr, replacements)
 
     return expr
 

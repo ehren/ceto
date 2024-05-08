@@ -845,7 +845,7 @@ def codegen_class(node : Call, cx):
         def initializer_list_initializer_from_field_param(field, param):
             field_code = codegen_node(field, initcx)
             rhs_code = codegen_node(param, initcx)
-            if param.name in should_std_move_constructor_param_names:
+            if param.name in should_std_move_constructor_param_names and constructor_node is None:
                 rhs_code = "std::move(" + rhs_code + ")"
             return field_code + "(" + rhs_code + ")"
 
@@ -871,7 +871,7 @@ def codegen_class(node : Call, cx):
             super_init_args = []
             for a in super_init_call.args:
                 arg_code = codegen_node(a, inner_cx)
-                if a.name in args_only_passed_to_super_init:
+                if a.name in args_only_passed_to_super_init and constructor_node is None:
                     arg_code = "std::move(" + arg_code + ")"
                 super_init_args.append(arg_code)
 
@@ -912,7 +912,7 @@ def codegen_class(node : Call, cx):
             return False
 
         def initializer_list_initializer(a):
-            if should_std_move_constructor_param(a):
+            if should_std_move_constructor_param(a) and constructor_node is None:
                 return a.name + "(std::move(" + a.name + "))"
             else:
                 return a.name + "(" + a.name + ")"

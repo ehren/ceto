@@ -42,6 +42,8 @@ struct Assign;
 
 struct NamedParameter;
 
+struct BitwiseOrOp;
+
 struct Identifier;
 
 struct Call;
@@ -97,6 +99,8 @@ struct Visitor : public ceto::object {
          virtual auto visit(const ScopeResolution&  node) -> void = 0;
 
          virtual auto visit(const NamedParameter&  node) -> void = 0;
+
+         virtual auto visit(const BitwiseOrOp&  node) -> void = 0;
 
          virtual auto visit(const Identifier&  node) -> void = 0;
 
@@ -177,6 +181,10 @@ using Visitor::Visitor;
         }
 
         inline auto visit(const NamedParameter&  node) -> void override {
+            static_cast<Derived *>(this) -> visit(node);
+        }
+
+        inline auto visit(const BitwiseOrOp&  node) -> void override {
             static_cast<Derived *>(this) -> visit(node);
         }
 
