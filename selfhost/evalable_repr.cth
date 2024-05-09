@@ -12,12 +12,12 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     repr = ""s
 
     def (generate_loc: mut, node:
-        if (not preserve_source_loc:
+        if (not self.preserve_source_loc:
             return
         )
         # preserve source location but don't worry about the source string for now
-        loc = std.get<1>(node.source)
-        self.repr += '("", ' + std.to_string(loc) + ")"
+        loc = node.source.loc
+        self.repr += 'SourceLoc(None, ' + std.to_string(loc) + ')'
     )
 
     def (visit: override:mut, node: Node.class:

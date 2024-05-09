@@ -185,8 +185,9 @@ class (Scope:
 
         for (d in self.variable_definitions:
             if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:
-                defined_loc = std.get<1>(d.defined_node.source)
-                var_loc = std.get<1>(var_node.source)
+                # macro expansion (as currently implemented) breaks this:
+                #defined_loc = std.get<1>(d.defined_node.source.source)
+                #var_loc = std.get<1>(var_node.source.loc)
 
                 # we should just compute a 'node_loc' in a previous pass
                 parent_block: mut = d.defined_node.parent()

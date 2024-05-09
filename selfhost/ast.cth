@@ -8,16 +8,31 @@ include (utility)
 include (range_utility)
 
 
-class (Node)
-class (Scope)
+class (Source:
+    source = ""s
+)
 
+struct (SourceLoc:
+    source: Source
+    loc: int
+
+    def (init, source: Source = None, loc: int = 0:
+        self.source = source
+        self.loc = loc
+    )
+
+    header_file_cth = ""s
+    header_file_h = ""s
+)
+
+class (Scope)
 
 class (Node:
     func: Node
     args: [Node]
-    source: (std.string, int)
+    source: SourceLoc
 
-    def (init, func, args, source = (""s, 0):
+    def (init, func, args, source = SourceLoc():
         self.func = func
         self.args = args
         self.source = source
@@ -26,8 +41,6 @@ class (Node:
     declared_type: Node = None
     scope: Scope = None
     _parent: Node:weak = {}
-    header_path_cth: std.string = {}
-    header_path_h: std.string = {}
 
     def (classname: virtual:
         return typeid_name(*this)
@@ -58,8 +71,6 @@ class (Node:
     def (clone: virtual:
         none: Node:mut = None
         c: mut = Node(if (self.func: self.func.clone() else: none), self.cloned_args(), self.source)
-        c.header_path_cth = self.header_path_cth
-        c.header_path_h = self.header_path_h
         return c
     ) : Node:mut
 
@@ -79,7 +90,7 @@ class (Node:
 class (UnOp(Node):
     op : std.string
 
-    def (init, op, args:[Node], source = (""s, 0):
+    def (init, op, args:[Node], source = SourceLoc():
         self.op = op
         super.init(None, args, source)
     )
@@ -101,7 +112,7 @@ class (UnOp(Node):
 class (LeftAssociativeUnOp(Node):
     op : std.string
 
-    def (init, op, args:[Node], source = (""s, 0):
+    def (init, op, args:[Node], source = SourceLoc():
         self.op = op
         super.init(None, args, source)
     )
@@ -123,7 +134,7 @@ class (LeftAssociativeUnOp(Node):
 class (BinOp(Node):
     op : std.string
 
-    def (init, op, args:[Node], source = (""s, 0):
+    def (init, op, args:[Node], source = SourceLoc():
         self.op = op
         super.init(None, args, source)
     )
@@ -253,7 +264,7 @@ class (BitwiseOrOp(BinOp):
 class (Identifier(Node):
     _name : string
 
-    def (init, name, source = (""s, 0):
+    def (init, name, source = SourceLoc():
         self._name = name
         super.init(None, [] : Node, source)
     )
@@ -357,7 +368,7 @@ class (StringLiteral(Node):
     prefix : Identifier
     suffix : Identifier
 
-    def (init, str, prefix: Identifier = None, suffix: Identifier = None, source = (""s, 0):
+    def (init, str, prefix: Identifier = None, suffix: Identifier = None, source = SourceLoc():
         self.str = str
         self.prefix = prefix
         self.suffix = suffix
@@ -415,7 +426,7 @@ class (IntegerLiteral(Node):
     integer_string : std.string
     suffix : Identifier
 
-    def (init, integer_string, suffix: Identifier = None, source = (""s, 0):
+    def (init, integer_string, suffix: Identifier = None, source = SourceLoc():
         self.integer_string = integer_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -441,7 +452,7 @@ class (FloatLiteral(Node):
     float_string : std.string
     suffix : Identifier
 
-    def (init, float_string, suffix : Identifier, source = (""s, 0):
+    def (init, float_string, suffix : Identifier, source = SourceLoc():
         self.float_string = float_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -464,7 +475,7 @@ class (FloatLiteral(Node):
 )
 
 class (ListLike_(Node):
-    def (init, args: [Node], source = (""s, 0):
+    def (init, args: [Node], source = SourceLoc():
         super.init(None, args, source)
     )
 
@@ -541,7 +552,7 @@ class (Module(Block):
 )
 
 class (RedundantParens(Node):
-    def (init, args: [Node], source = (""s, 0):
+    def (init, args: [Node], source = SourceLoc():
         super.init(None, args, source)
     )
 
@@ -561,7 +572,7 @@ class (RedundantParens(Node):
 )
 
 class (InfixWrapper_(Node):
-    def (init, args: [Node], source = (""s, 0):
+    def (init, args: [Node], source = SourceLoc():
         super.init(None, args, source)
     )
 

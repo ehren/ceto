@@ -36,11 +36,11 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
         template <typename T1>
 auto generate_loc(const T1& node) -> void {
-            if (!preserve_source_loc) {
+            if (!(this -> preserve_source_loc)) {
                 return;
             }
-            const auto loc = std::get<1>((*ceto::mad(node)).source);
-            (this -> repr) += (("(\"\", " + std::to_string(loc)) + ")");
+            const auto loc = (*ceto::mad((*ceto::mad(node)).source)).loc;
+            (this -> repr) += (("SourceLoc(None, " + std::to_string(loc)) + ")");
         }
 
         inline auto visit(const Node&  node) -> void override {

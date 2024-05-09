@@ -223,8 +223,6 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             std::vector<std::shared_ptr<const VariableDefinition>> results = std::vector<std::shared_ptr<const VariableDefinition>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const VariableDefinition>>{}), std::remove_cvref_t<decltype(results)>>);
             for(const auto& d : (this -> variable_definitions)) {
                 if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
-                    const auto defined_loc = std::get<1>((*ceto::mad((*ceto::mad(d)).defined_node)).source);
-                    const auto var_loc = std::get<1>((*ceto::mad(var_node)).source);
                     auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
                     while (true) {                        if ((std::dynamic_pointer_cast<const Module>(parent_block) != nullptr)) {
                             break;

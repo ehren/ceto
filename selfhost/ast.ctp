@@ -35,11 +35,22 @@ lambda(m : mut:auto:rref:
 
     pybind11.literals: using:namespace  # to bring in the `_a` literal
 
+    py.class_<Source.class, Source:mut>(m, "Source").def(
+        py.init<>()).def_readwrite(
+        "source", &Source.source)
+
+    py.class_<SourceLoc>(m, "SourceLoc").def(
+        py.init<Source, int>(), py.arg("source") = None, py.arg("loc") = 0).def_readwrite(
+        "source", &SourceLoc.source).def_readwrite(
+        "loc", &SourceLoc.loc).def_readwrite(
+        "header_file_cth", &SourceLoc.header_file_cth).def_readwrite(
+        "header_file_h", &SourceLoc.header_file_h)
+
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
     node : mut = py.class_<Node.class, Node:mut>(m, "Node").def_readwrite(
     "func", &Node.func).def_readwrite(
     "args", &Node.args).def_readwrite(
-    "declared_type", &Node.declared_type).def_readwrite(   #.def_property(
+    "declared_type", &Node.declared_type).def_readwrite(
     "scope", &Node.scope).def_readwrite(
     "source", &Node.source).def(
     "clone", &Node.clone).def(
@@ -50,124 +61,122 @@ lambda(m : mut:auto:rref:
         vis.repr
     ), py.arg("preserve_source_loc") = true, py.arg("ceto_evalable") = false).def_property_readonly(
     "name", &Node.name).def_property(
-    "parent", &Node.parent, &Node.set_parent).def_readwrite(
-    "header_path_cth", &Node.header_path_cth).def_readwrite(
-    "header_path_h", &Node.header_path_h)
+    "parent", &Node.parent, &Node.set_parent)
 
     py.class_<UnOp.class, UnOp:mut>(m, "UnOp", node).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "op", &UnOp.op)
 
     py.class_<LeftAssociativeUnOp.class, LeftAssociativeUnOp:mut>(m, "LeftAssociativeUnOp", node).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "op", &LeftAssociativeUnOp.op)
 
     binop : mut = py.class_<BinOp.class, BinOp:mut>(m, "BinOp", node)
-    binop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+    binop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "op", &BinOp.op).def_property_readonly(
         "lhs", &BinOp.lhs).def_property_readonly(
         "rhs", &BinOp.rhs)
 
     typeop: mut = py.class_<TypeOp.class, TypeOp:mut>(m, "TypeOp", binop)
-    typeop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-               py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+    typeop.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+               py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<SyntaxTypeOp.class, SyntaxTypeOp:mut>(m, "SyntaxTypeOp", typeop).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "synthetic_lambda_return_lambda", &SyntaxTypeOp.synthetic_lambda_return_lambda)
 
     py.class_<AttributeAccess.class, AttributeAccess:mut>(m, "AttributeAccess", binop).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<ArrowOp.class, ArrowOp:mut>(m, "ArrowOp", binop).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<ScopeResolution.class, ScopeResolution:mut>(m, "ScopeResolution", binop).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<BitwiseOrOp.class, BitwiseOrOp:mut>(m, "BitwiseOrOp", binop).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     assign:mut = py.class_<Assign.class, Assign:mut>(m, "Assign", binop)
-    assign.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-    py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+    assign.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+    py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<NamedParameter.class, NamedParameter:mut>(m, "NamedParameter", assign).def(
-        py.init<const:string:ref, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("op"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<Call.class, Call:mut>(m, "Call", node).def(
-        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+        py.init<Node, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "is_one_liner_if", &Call.is_one_liner_if)
 
     py.class_<ArrayAccess.class, ArrayAccess:mut>(m, "ArrayAccess", node).def(
-        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<Node, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<BracedCall.class, BracedCall:mut>(m, "BracedCall", node).def(
-        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<Node, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<Template.class, Template:mut>(m, "Template", node).def(
-        py.init<Node, const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("func"), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<Node, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<Identifier.class, Identifier:mut>(m, "Identifier", node).def(
-        py.init<const:string:ref, const:std.tuple<std.string,int>:ref>(),
-        py.arg("name"), py.arg("source") = (""s, 0))
+        py.init<const:string:ref, const:SourceLoc:ref>(),
+        py.arg("name"), py.arg("source") = SourceLoc())
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, "StringLiteral", node).def(
-        py.init<const:string:ref, Identifier, Identifier, const:std.tuple<std.string,int>:ref>(),
-        py.arg("str"), py.arg("prefix"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
+        py.init<const:string:ref, Identifier, Identifier, const:SourceLoc:ref>(),
+        py.arg("str"), py.arg("prefix"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "str", &StringLiteral.str).def_readwrite(
         "prefix", &StringLiteral.prefix).def_readwrite(
         "suffix", &StringLiteral.suffix).def(
         "escaped", &StringLiteral.escaped)
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, "IntegerLiteral", node).def(
-        py.init<const:string:ref, Identifier, const:std.tuple<std.string,int>:ref>(),
-        py.arg("integer_string"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
+        py.init<const:string:ref, Identifier, const:SourceLoc:ref>(),
+        py.arg("integer_string"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "integer_string", &IntegerLiteral.integer_string).def_readonly(
         "suffix", &IntegerLiteral.suffix)
 
     py.class_<FloatLiteral.class, FloatLiteral:mut>(m, "FloatLiteral", node).def(
-        py.init<const:string:ref, Identifier, const:std.tuple<std.string,int>:ref>(),
-        py.arg("float_string"), py.arg("suffix"), py.arg("source") = (""s, 0)).def_readonly(
+        py.init<const:string:ref, Identifier, const:SourceLoc:ref>(),
+        py.arg("float_string"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "float_string", &FloatLiteral.float_string).def_readonly(
         "suffix", &FloatLiteral.suffix)
 
     list_like: mut = py.class_<ListLike_.class, ListLike_:mut>(m, "ListLike_", node)
 
     py.class_<ListLiteral.class, ListLiteral:mut>(m, "ListLiteral", list_like).def(
-        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<TupleLiteral.class, TupleLiteral:mut>(m, "TupleLiteral", list_like).def(
-        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<BracedLiteral.class, BracedLiteral:mut>(m, "BracedLiteral", list_like).def(
-        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     block:mut = py.class_<Block.class, Block:mut>(m, "Block", list_like)
-    block.def(py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+    block.def(py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<Module.class, Module:mut>(m, "Module", block).def(py.init<const:std.vector<Node>:ref,
-        const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0)).def_readwrite(
+        const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
         "has_main_function", &Module.has_main_function)
 
     py.class_<RedundantParens.class, RedundantParens:mut>(m, "RedundantParens", node).def(
-        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     py.class_<InfixWrapper_.class, InfixWrapper_:mut>(m, "InfixWrapper_", node).def(
-        py.init<const:std.vector<Node>:ref, const:std.tuple<std.string,int>:ref>(), py.arg("args"), py.arg("source") = (""s, 0))
+        py.init<const:std.vector<Node>:ref, const:SourceLoc:ref>(), py.arg("args"), py.arg("source") = SourceLoc())
 
     # Scope bindings:
     # These should probably go in a separate python module at some point (C++ namespace support would be more useful in general though)

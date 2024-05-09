@@ -776,8 +776,8 @@ def prepare_macro_ready_callback(module):
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
         macro_impl_module.args = macro_impl_module_args
 
-        if mcd.defmacro_node.header_path_cth:
-            module_path = mcd.defmacro_node.header_path_cth
+        if mcd.defmacro_node.source.header_file_cth:
+            module_path = mcd.defmacro_node.source.header_file_cth
         else:
             from .compiler import cmdargs
             module_path = cmdargs.filename

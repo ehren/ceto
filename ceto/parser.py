@@ -14,7 +14,7 @@ from .preprocessor import preprocess
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
     Identifier, AttributeAccess, ScopeResolution, ArrowOp, BitwiseOrOp, Call, ArrayAccess, \
     BracedCall, IntegerLiteral, FloatLiteral, ListLiteral, TupleLiteral, BracedLiteral, \
-    Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_
+    Block, Module, StringLiteral, RedundantParens, Assign, Template, InfixWrapper_, Source, SourceLoc
 
 try:
     import cPyparsing as pp
@@ -45,7 +45,7 @@ def _build_grammar():
     or_op = pp.Keyword("or")
     in_op = pp.Keyword("in")
     reserved_words = not_op | and_op | or_op | in_op  # not strictly necessary but better for sanity's sake
-    ident = pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")).setParseAction(_parse_identifier)
+    ident = set_parse_action(pp.Combine(~reserved_words + pp.Word(pp.alphas + "_", pp.alphanums + "_")), _parse_identifier)
 
     integer_literal = set_parse_action(pp.Regex(r"\d+") + pp.Optional(ident).leaveWhitespace(), _parse_integer_literal)
     float_literal = set_parse_action(pp.Regex(r"\d+\.\d*") + pp.Optional(ident).leaveWhitespace(), _parse_float_literal)
@@ -191,7 +191,12 @@ class ParserError(Exception):
     pass
 
 
-last_location = 0
+main_source = Source()
+
+
+def _source_loc(s: str, l: int) -> SourceLoc:
+    sl = SourceLoc(main_source, l)
+    return sl
 
 
 def set_parse_action(element, parse_action):
@@ -215,7 +220,7 @@ def set_parse_action(element, parse_action):
 
 
 def _parse_right_unop(s, l, t):
-    source = s, l
+    source = _source_loc(s, l)
     func = t[0][0]  # TODO should be an Identifier
     args = [t[0][1]]
     u = UnOp(func, args, source)
@@ -225,7 +230,7 @@ def _parse_right_unop(s, l, t):
 def _parse_left_unop(s, l, t):
     func = t[0][1]  # TODO should be an Identifier
     args = [t[0][0]]
-    source = s, l
+    source = _source_loc(s, l)
     u = LeftAssociativeUnOp(func, args, source)
     return u
 
@@ -233,7 +238,7 @@ def _parse_left_unop(s, l, t):
 def _parse_right_associative_bin_op(s, l, t):
     args = t[0][::2]
     func = t[0][1]
-    source = s, l
+    source = _source_loc(s, l)
 
     if func == ":":
         b = TypeOp(func, args, source)
@@ -264,7 +269,7 @@ def _parse_left_associative_bin_op(s, l, t):
         args = [_parse_left_associative_bin_op(s, l, pp.ParseResults([beg])), last_arg]
     else:
         args = [t[0], last_arg]
-    source = s, l
+    source = _source_loc(s, l)
 
     if b := _make_scope_resolution_op(func, args, source):
         return b
@@ -288,7 +293,7 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
         func = _parse_maybe_scope_resolved_call_like(s, l, pp.ParseResults(tokens[:-1]))
         args = tokens[-1]
 
-    source = s, l
+    source = _source_loc(s, l)
 
     scope_resolve_part = args.pop()
     leading_punctuation = args.pop(0)
@@ -313,21 +318,21 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
 
 def _parse_identifier(s, l, t):
     name = str(t[0])
-    source = s, l
+    source = _source_loc(s, l)
     return Identifier(name, source)
 
 
 def _parse_integer_literal(s, l, t):
     integer = str(t[0])
     suffix = t[1] if len(t) > 1 else None
-    source = s, l
+    source = _source_loc(s, l)
     return IntegerLiteral(integer, suffix, source)
 
 
 def _parse_float_literal(s, l, t):
     float_str = str(t[0])
     suffix = t[1] if len(t) > 1 else None
-    source = s, l
+    source = _source_loc(s, l)
     return FloatLiteral(float_str, suffix, source)
 
 
@@ -335,12 +340,12 @@ def _parse_template(s, l, t):
     lst = t.asList()
     func = lst[0]
     args = lst[1:]
-    source = s, l
+    source = _source_loc(s, l)
     return Template(func, args, source)
 
 
 def _parse_string_literal(s, loc, tokens):
-    source = s, loc
+    source = _source_loc(s, loc)
     prefix = None
     suffix = None
 
@@ -362,14 +367,14 @@ def _parse_string_literal(s, loc, tokens):
 def _make_parse_action_list_like(clazz):
     def parse_action(s, l, t):
         args = t.asList()
-        source = s, l
+        source = _source_loc(s, l)
         return clazz(args, source)
     return parse_action
 
 
 def _parse_infix_wrapper(s, l, t):
     args = [t.asList()[0]]
-    source = s, l
+    source = _source_loc(s, l)
     return InfixWrapper_(args, source)
 
 
@@ -445,7 +450,10 @@ def parse_string(source: str):
         assert isinstance(m, Module)
         parsed_nodes.extend(m.args)
 
+    main_source.source = source
+
     res = Module(parsed_nodes)
+
     # preprocessed = preprocessed.getvalue()
     # res = _parse_preprocessed(preprocessed)
 
@@ -561,11 +569,11 @@ seen_modules = set()
 
 def expand_includes(node: Module):
     def set_header_paths(node, cth_path, h_path):
-        if node.header_path_cth:
+        if node.source.header_file_cth:
             # avoid setting include path for nodes from a sub-include
             return
-        node.header_path_cth = cth_path
-        node.header_path_h = h_path
+        node.source.header_file_cth = cth_path
+        node.source.header_file_h = h_path
         for a in node.args:
             set_header_paths(a, cth_path, h_path)
         if node.func:
@@ -588,6 +596,9 @@ def expand_includes(node: Module):
                     # if not isinstance(call.parent, Module):  # TODO validate elsewhere
                     #    raise SemanticAnalysisError("unexpected location for include (must be at module level)", call)
                     index = node.args.index(call)
+                    #if not module_ast.args:
+                    #    # We don't properly handle creation of a .h for empty .cth files
+                    #    module_ast.args = [Identifier("pass")]  # so convert them to non-empty .cth files
                     for a in module_ast.args:
                         set_header_paths(a, module_path_cth, module_path_h)
                     new_args = node.args[0:index] + module_ast.args + node.args[index:]
