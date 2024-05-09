@@ -72,18 +72,29 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone_func_args() -> void {
+        inline auto cloned_args() const -> std::vector<std::shared_ptr<const Node>> {
+            auto new_args { std::vector<std::shared_ptr<const Node>>((*ceto::mad(this -> args)).size()) } ;
             for(const auto& i : range((*ceto::mad(this -> args)).size())) {
-                ceto::maybe_bounds_check_access(this -> args,i) = (*ceto::mad(ceto::maybe_bounds_check_access(this -> args,i))).clone();
+                ceto::maybe_bounds_check_access(new_args,i) = (*ceto::mad(ceto::maybe_bounds_check_access(this -> args,i))).clone();
             }
-            if (this -> func) {
-                (this -> func) = (*ceto::mad(this -> func)).clone();
-            }
+            return new_args;
         }
 
          virtual inline auto clone() const -> std::shared_ptr<Node> {
-            auto c { std::make_shared<Node>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            std::shared_ptr<Node> none = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none)>>);
+            auto c { std::make_shared<decltype(Node{[&]() {if (this -> func) {
+                return (*ceto::mad(this -> func)).clone();
+            } else {
+                return none;
+            }}()
+, this -> cloned_args(), this -> source})>([&]() {if (this -> func) {
+                return (*ceto::mad(this -> func)).clone();
+            } else {
+                return none;
+            }}()
+, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c)).header_path_cth = (this -> header_path_cth);
+            (*ceto::mad(c)).header_path_h = (this -> header_path_h);
             return c;
         }
 
@@ -119,8 +130,7 @@ struct UnOp : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<UnOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(UnOp{this -> op, this -> cloned_args(), source})>(this -> op, this -> cloned_args(), source) } ;
             return c;
         }
 
@@ -144,8 +154,7 @@ struct LeftAssociativeUnOp : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<LeftAssociativeUnOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(LeftAssociativeUnOp{this -> op, this -> cloned_args(), source})>(this -> op, this -> cloned_args(), source) } ;
             return c;
         }
 
@@ -177,8 +186,7 @@ struct BinOp : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<BinOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(BinOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -198,8 +206,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<TypeOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(TypeOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -216,8 +223,7 @@ using TypeOp::TypeOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<SyntaxTypeOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(SyntaxTypeOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -236,8 +242,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<AttributeAccess>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(AttributeAccess{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -252,8 +257,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<ArrowOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(ArrowOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -268,8 +272,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<ScopeResolution>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(ScopeResolution{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -284,8 +287,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<Assign>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(Assign{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -306,8 +308,7 @@ using Assign::Assign;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<NamedParameter>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(NamedParameter{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -322,8 +323,7 @@ using BinOp::BinOp;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<BitwiseOrOp>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(BitwiseOrOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -347,7 +347,6 @@ struct Identifier : public Node {
 
         inline auto clone() const -> std::shared_ptr<Node> override {
             auto c { std::make_shared<Identifier>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
             return c;
         }
 
@@ -376,8 +375,7 @@ using Node::Node;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<Call>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(Call{(*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source})>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -399,8 +397,7 @@ using Node::Node;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<ArrayAccess>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(ArrayAccess{(*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source})>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -422,8 +419,7 @@ using Node::Node;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<BracedCall>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(BracedCall{(*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source})>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -445,8 +441,7 @@ using Node::Node;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<Template>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(Template{(*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source})>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -496,8 +491,27 @@ struct StringLiteral : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<StringLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(StringLiteral{this -> str, [&]() {if (this -> prefix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> prefix)).clone());
+            } else {
+                return (this -> prefix);
+            }}()
+, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source})>(this -> str, [&]() {if (this -> prefix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> prefix)).clone());
+            } else {
+                return (this -> prefix);
+            }}()
+, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source) } ;
             return c;
         }
 
@@ -528,8 +542,17 @@ struct IntegerLiteral : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<IntegerLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(IntegerLiteral{this -> integer_string, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source})>(this -> integer_string, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source) } ;
             return c;
         }
 
@@ -560,8 +583,17 @@ struct FloatLiteral : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<FloatLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(FloatLiteral{this -> float_string, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source})>(this -> float_string, [&]() {if (this -> suffix) {
+                return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> suffix)).clone());
+            } else {
+                return (this -> suffix);
+            }}()
+, this -> source) } ;
             return c;
         }
 
@@ -586,8 +618,7 @@ struct ListLike_ : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<ListLike_>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(ListLike_{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -607,8 +638,7 @@ using ListLike_::ListLike_;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<ListLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(ListLiteral{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -623,8 +653,7 @@ using ListLike_::ListLike_;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<TupleLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(TupleLiteral{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -639,8 +668,7 @@ using ListLike_::ListLike_;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<BracedLiteral>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(BracedLiteral{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -655,8 +683,7 @@ using ListLike_::ListLike_;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<Block>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(Block{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -673,8 +700,7 @@ using Block::Block;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<Module>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(Module{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -694,8 +720,7 @@ struct RedundantParens : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<RedundantParens>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(RedundantParens{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -720,8 +745,7 @@ struct InfixWrapper_ : public Node {
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {
-            auto c { std::make_shared<InfixWrapper_>((*this)) } ;
-            (*ceto::mad(c)).clone_func_args();
+            auto c { std::make_shared<decltype(InfixWrapper_{this -> cloned_args(), this -> source})>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
