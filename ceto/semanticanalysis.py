@@ -757,7 +757,7 @@ def prepare_macro_ready_callback(module):
 
         #expanded = eval(defmacro_body.ast_repr(preserve_source_loc=False))  # need clone
         #expanded = quote_expander(expanded)
-        expanded = quote_expander(defmacro_body)
+        expanded = quote_expander(defmacro_body.clone())
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         macro_impl_module = create_macro_impl_module(new_module, mcd, macro_impl)

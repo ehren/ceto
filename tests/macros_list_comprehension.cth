@@ -1,0 +1,28 @@
+defmacro([x, for (y in z), if (c)], x, y, z, c:
+    result_append = quote(result.append(unquote(x)))
+
+    conditional_append = if (c.name() == "True":
+        # Optimize out only an "if (True)" filter:
+        # - to avoid an always true warning from C++ 
+        # - more importanly to demo code sharing between macros 
+        result_append
+    else:
+        quote(if (unquote(c):
+            unquote(result_append)
+        ))
+    )
+
+    return quote(lambda[ref] (:
+        # TODO move gensym to ast.cth (for now rely on shadowing for hygiene)
+        result: mut = []
+        for (unquote(y) in unquote(z):
+            unquote(conditional_append)
+        )
+        return result
+    ) ())
+)
+
+defmacro([x, for (y in z)], x, y, z:
+    # use existing def:
+    return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
+)
