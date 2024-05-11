@@ -802,7 +802,14 @@ def prepare_macro_ready_callback(module):
         macro_number += 1
 
         if os.path.isfile(dll_path):
-            return
+            # TODO this doesn't handle changes in dependent headers
+            # - To fix we should be checking the mtime of the header path of all preceding
+            #   nodes in the module. Note comment in parser.py about not setting header path 
+            #   on nodes from a subinclude (easier caching??) - may interfere with fix
+            module_time = os.path.getmtime(module_path)
+            dll_time = os.path.getmtime(dll_path)
+            if dll_time > module_time:
+                return
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
