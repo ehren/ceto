@@ -2139,7 +2139,6 @@ def codegen_call(node: Call, cx: Scope):
                 method_name = method_name.rhs
 
         func_str = None
-        new_args = node.args
         new_func = node.func
 
         if method_name is not None:
@@ -2152,15 +2151,13 @@ def codegen_call(node: Call, cx: Scope):
                     na = list(method_parent.parent.args)
                     na.remove(method_parent)
                     na.append(method_parent.lhs)
-                    return AttributeAccess(".", na), method_parent.parent.parent.args
-                    #return node.func, method_parent.parent.parent.args
+                    return AttributeAccess(".", na)
                 elif method_parent is method_parent.parent.func:
-                    return method_parent.lhs, node.args
+                    return method_parent.lhs
 
             if method_name.name == "operator" and len(
-                    node.args) == 1 and isinstance(
-                operator_name_node := node.args[0], StringLiteral):
-                new_func, new_args = consume_method_name()
+                    node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
+                new_func = consume_method_name()
                 return "(*ceto::mad(" + codegen_node(new_func, cx) + ")).operator" + operator_name_node.str
 
             elif method_name.parent and not isinstance(method_name.parent,
@@ -2168,10 +2165,10 @@ def codegen_call(node: Call, cx: Scope):
                 # method_name.parent is None for a method call inside a decltype in a return type
                 # TODO we maybe still have to handle cases where method_name.parent is None. silly example: x : decltype([].append(1)[0])
 
-                new_func, new_args = consume_method_name()
+                new_func = consume_method_name()
 
                 if method_name.name == "unsafe_at" and len(node.args) == 1:
-                    return codegen_node(new_func, cx) + "[" + codegen_node(new_args[0], cx) + "]"
+                    return codegen_node(new_func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
 
                 if method_name.name == "append" and len(node.args) == 1:
                     # perhaps controversial rewriting of append to push_back
@@ -2183,9 +2180,7 @@ def codegen_call(node: Call, cx: Scope):
                     if isinstance(new_func, ListLiteral):
                         is_list = True
                     else:
-                        #for d in find_defs(node.func):
                         for d in node.scope.find_defs(new_func):
-                            # print("found def", d, "when determining if an append is really a push_back")
                             if isinstance(d.defining_node, Assign) and isinstance(
                                     d.defining_node.rhs, ListLiteral):
                                 is_list = True
@@ -2195,7 +2190,6 @@ def codegen_call(node: Call, cx: Scope):
 
                     func_str = "(*ceto::mad(" + codegen_node(new_func, cx) + "))." + append_str
                 else:
-
                     new_attr_access = AttributeAccess(".", [new_func, method_name])
                     new_attr_access.parent = node
                     func_str = codegen_attribute_access(new_attr_access, cx)
@@ -2204,7 +2198,7 @@ def codegen_call(node: Call, cx: Scope):
             func_str = codegen_node(new_func, cx)
 
         return func_str + "(" + ", ".join(
-            map(lambda a: codegen_node(a, cx), new_args)) + ")"
+            map(lambda a: codegen_node(a, cx), node.args)) + ")"
 
 
 def _is_const_make(node : Call):
