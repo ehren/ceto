@@ -2152,7 +2152,8 @@ def codegen_call(node: Call, cx: Scope):
                     na = list(method_parent.parent.args)
                     na.remove(method_parent)
                     na.append(method_parent.lhs)
-                    return node.func, na
+                    return AttributeAccess(".", na), method_parent.parent.parent.args
+                    #return node.func, method_parent.parent.parent.args
                 elif method_parent is method_parent.parent.func:
                     return method_parent.lhs, node.args
 
