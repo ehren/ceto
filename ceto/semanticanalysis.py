@@ -755,22 +755,10 @@ def prepare_macro_ready_callback(module):
         defmacro_body = defmacro_node.args[-1]
         assert isinstance(defmacro_body, Block)
 
-        #expanded = eval(defmacro_body.ast_repr(preserve_source_loc=False))  # need clone
-        #expanded = quote_expander(expanded)
-        expanded = quote_expander(defmacro_body.clone())
+        expanded = quote_expander(defmacro_body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
         macro_impl_module = create_macro_impl_module(new_module, mcd, macro_impl)
-
-        # ignore anything in module after the current defmacro
-        #macro_impl_module_args = macro_impl_module.args[0:macro_impl_module.args.index(macro_impl) + 1]
-        #macro_impl_module = Module(macro_impl_module_args)
-
-        # this is unfortunate: (bad mutability)
-        # also need a clone() method for Node instead of repr evaling
-        #macro_impl_module_source = macro_impl_module.ast_repr(preserve_source_loc=False)
-        #macro_impl_module = eval(macro_impl_module_source)
-        macro_impl_module = macro_impl_module.clone()
 
         impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
