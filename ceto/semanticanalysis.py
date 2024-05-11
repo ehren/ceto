@@ -4,7 +4,6 @@ import sys
 import os
 import subprocess
 import concurrent.futures
-from hashlib import sha256
 import shutil
 
 from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
@@ -719,6 +718,41 @@ def prepare_macro_ready_callback(module):
 
         nonlocal macro_number
 
+        mcd.impl_function_name = f"macro_impl{macro_number}"
+
+        if mcd.defmacro_node.source.header_file_cth:
+            module_path = mcd.defmacro_node.source.header_file_cth
+        else:
+            from .compiler import cmdargs
+            module_path = cmdargs.filename
+
+        module_name = os.path.basename(module_path)
+        module_dir = os.path.dirname(module_path)
+
+        impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{macro_number}")
+
+        dll_path = impl_path
+        if sys.platform == "win32":
+            dll_path += ".dll"
+        elif sys.platform == "darwin":
+            dll_path += ".dylib"
+        else:
+            dll_path += ".so"
+
+        mcd.dll_path = dll_path
+
+        macro_number += 1
+
+        if os.path.isfile(dll_path):
+            # TODO this doesn't handle changes in dependent headers
+            # - To fix we should be checking the mtime of the header path of all preceding
+            #   nodes in the module. Note comment in parser.py about not setting header path 
+            #   on nodes from a subinclude (easier caching??) - may interfere with fix
+            module_time = os.path.getmtime(module_path)
+            dll_time = os.path.getmtime(dll_path)
+            if dll_time > module_time:
+                return
+
         # apply current replacement decisions at the time of encountering the current macro def (for a defmacro that relies on other defmacros)
         # allowing expand_macros to do the replacements in place (add mutable visitor) would avoid this
         defmacro_node = replace_macro_expansion(mcd.defmacro_node, replacements)
@@ -727,8 +761,6 @@ def prepare_macro_ready_callback(module):
         parameters = { k: replace_macro_expansion(v, replacements) for k, v in mcd.parameters.items() }  # not necessary?
 
         print("mcd", defmacro_node)
-
-        mcd.impl_function_name = f"macro_impl{macro_number}"
 
         # prepare a function that implements the body of the "defmacro"
         impl_str = f'def ({mcd.impl_function_name}: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
@@ -763,41 +795,6 @@ def prepare_macro_ready_callback(module):
         impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
         macro_impl_module.args = macro_impl_module_args
-
-        if mcd.defmacro_node.source.header_file_cth:
-            module_path = mcd.defmacro_node.source.header_file_cth
-        else:
-            from .compiler import cmdargs
-            module_path = cmdargs.filename
-
-        module_name = os.path.basename(module_path)
-        module_dir = os.path.dirname(module_path)
-
-        #impl_path = os.path.join(module_dir, module_name + ".macro_impl." + sha256(macro_impl_module_source.encode('utf-8')).hexdigest())
-        #impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{defmacro_node.source[1]}")
-        impl_path = os.path.join(module_dir, f"{module_name}.macro_impl.{macro_number}")
-
-        dll_path = impl_path
-        if sys.platform == "win32":
-            dll_path += ".dll"
-        elif sys.platform == "darwin":
-            dll_path += ".dylib"
-        else:
-            dll_path += ".so"
-
-        mcd.dll_path = dll_path
-
-        macro_number += 1
-
-        if os.path.isfile(dll_path):
-            # TODO this doesn't handle changes in dependent headers
-            # - To fix we should be checking the mtime of the header path of all preceding
-            #   nodes in the module. Note comment in parser.py about not setting header path 
-            #   on nodes from a subinclude (easier caching??) - may interfere with fix
-            module_time = os.path.getmtime(module_path)
-            dll_time = os.path.getmtime(dll_path)
-            if dll_time > module_time:
-                return
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
