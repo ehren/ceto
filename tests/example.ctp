@@ -55,20 +55,36 @@ defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
 
-def (main, argc: int, argv: const:char:ptr:const:ptr:
-    args: mut = []
+defmacro([x, for (y in z), if (c)], x, y, z, c:
+    result_append = quote(result.append(unquote(x)))
 
-    for (a in std.span(argv, argc):
-        args.append(std.string(a))
+    conditional_append = if (c.name() == "True":
+        # Optimize out a literal "if (True)" filter (reduce clutter for 2-arg case below)
+        result_append
+    else:
+        quote(if (unquote(c):
+            unquote(result_append)
+        ))
     )
 
-    args.append("args:"s + if (argc == 0:
-        "no args\n"
-    elif argc > 15:
-        throw (Oops("too many args entirely"))
-    else:
-        "some args\n"
-    ))
+    return quote(lambda (:
+        # TODO move gensym to ast.cth (for now rely on shadowing for hygiene)
+        result: mut = []
+        for (unquote(y) in unquote(z):
+            unquote(conditional_append)
+        )
+        return result
+    ) ())
+)
+
+defmacro([x, for (y in z)], x, y, z:
+    # 2-arg list comprehension - Use the existing 3-arg definition:
+    return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
+)
+
+def (main, argc: int, argv: const:char:ptr:const:ptr:
+
+    args = [std.string(a), for (a in std.span(argv, argc))]
 
     summary = ", ".join(args)
 
@@ -77,18 +93,22 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of 'calls_method'
 
-    i = 42u
+    i = 42
     fut: mut = std.async(std.launch.async, lambda(:
         # Implicit copy capture (no capture list specified) for shared/weak instances, arithmetic types, 
         # and enums only (but not pointers or expensive to copy things)
         data = f.method(f).data_member
-        if (data.size() + i < 1000: data else: "too much data!"s)
+        if (data.size() + i < 1000:
+            data
+        else:
+            throw (Oops("too much data!"s))
+        )
     ))
 
-    std.cout << fut.get()
+    std.cout << fut.get() << std.endl
 
     u: mut = UniqueFoo()
     u2 = UniqueFoo()
-    u.consuming_method(u2)  # auto std.move from last use of u2
+    u.consuming_method(u2)  # implicit std.move from last use of u2
     u.consuming_method(u)   # same (i.e. same as CETO_AUTODEREF(u).consuming_method(std::move(u)) in C++)
 )

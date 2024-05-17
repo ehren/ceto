@@ -523,8 +523,10 @@ def codegen_lambda(node, cx):
 
         capture_list = [codegen_capture_list_item(a) for a in node.func.args]
 
+    elif cx.parent.in_function_body and isinstance(node.parent, Call) and node is node.parent.func:
+        # immediately invoked
+        capture_list = "&"
     elif cx.parent.in_function_body:
-
         def is_capture(n):
             if not isinstance(n, Identifier):
                 return False
@@ -558,7 +560,7 @@ def codegen_lambda(node, cx):
                     possible_captures.append(i.name)
 
         capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
-    # elif TODO is nonescaping or immediately invoked:
+    # elif TODO is nonescaping:
     #    capture_list = "&"
     else:
         capture_list = ""

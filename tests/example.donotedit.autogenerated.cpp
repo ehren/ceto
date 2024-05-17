@@ -27,9 +27,9 @@
 ;
 #include <future>
 ;
-template <typename ceto__private__C3>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C5>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    ceto__private__C3 data_member;
+    ceto__private__C5 data_member;
 
         template <typename T1>
 auto method(const T1& param) const -> auto {
@@ -42,7 +42,7 @@ auto method(const T1& param) const -> auto {
             return (*ceto::mad(this -> data_member)).size();
         }
 
-    explicit Foo(ceto__private__C3 data_member) : data_member(std::move(data_member)) {}
+    explicit Foo(ceto__private__C5 data_member) : data_member(std::move(data_member)) {}
 
     Foo() = delete;
 
@@ -86,45 +86,42 @@ using std::runtime_error::runtime_error;
     }
 
 ;
+;
+;
     auto main(const int  argc,  const char * const *  argv) -> int {
-        auto args { std::vector<decltype(std::string(std::declval<std::ranges::range_value_t<decltype(std::span(argv, std::declval<int>()))>>()))>() } ;
-        for(const auto& a : std::span(argv, argc)) {
-            (*ceto::mad(args)).push_back(std::string(a));
-        }
-        (*ceto::mad(args)).push_back(std::string {"args:"} + [&]() {if (argc == 0) {
-            return "no args\n";
-        } else if ((argc > 15)) {
-            throw Oops{"too many args entirely"};
-        } else {
-            return "some args\n";
-        }}()
-);
+        const auto args = [&]() {
+                auto result { std::vector<decltype(std::string(std::declval<std::ranges::range_value_t<decltype(std::span(argv, std::declval<int>()))>>()))>() } ;
+                for(const auto& a : std::span(argv, argc)) {
+                    (*ceto::mad(result)).push_back(std::string(a));
+                }
+                return result;
+                }();
         const auto summary = string_join(args, ", ");
         const auto f = std::make_shared<const decltype(Foo{summary})>(summary);
         (*ceto::mad(f)).method(args);
         (*ceto::mad(f)).method(f);
         calls_method(f);
-        const auto i = 42u;
+        const auto i = 42;
         auto fut { std::async(std::launch::async, [f = ceto::default_capture(f), i = ceto::default_capture(i)]() {
                 const auto data = (*ceto::mad((*ceto::mad(f)).method(f))).data_member;
                 if constexpr (!std::is_void_v<decltype([&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
                     return data;
                 } else {
-                    return std::string {"too much data!"};
+                    throw Oops{std::string {"too much data!"}};
                 }}()
 )>) { return [&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
                     return data;
                 } else {
-                    return std::string {"too much data!"};
+                    throw Oops{std::string {"too much data!"}};
                 }}()
 ; } else { static_cast<void>([&]() {if (((*ceto::mad(data)).size() + i) < 1000) {
                     return data;
                 } else {
-                    return std::string {"too much data!"};
+                    throw Oops{std::string {"too much data!"}};
                 }}()
 ); };
                 }) } ;
-        std::cout << (*ceto::mad(fut)).get();
+        (std::cout << (*ceto::mad(fut)).get()) << std::endl;
         auto u = std::make_unique<decltype(UniqueFoo())>();
         auto u2 = std::make_unique<const decltype(UniqueFoo())>();
         (*ceto::mad(u)).consuming_method(std::move(u2));

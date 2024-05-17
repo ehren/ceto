@@ -12,7 +12,7 @@ defmacro([x, for (y in z), if (c)], x, y, z, c:
         ))
     )
 
-    return quote(lambda[ref] (:
+    return quote(lambda (:
         # TODO move gensym to ast.cth (for now rely on shadowing for hygiene)
         result: mut = []
         for (unquote(y) in unquote(z):
