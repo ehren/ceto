@@ -169,10 +169,11 @@ def main():
     global cmdargs
     cmdargs = ap.parse_args()
 
-    # if cmdargs.runstring:
-    #     source = cmdargs.filename
-    #     basename = safe_unique_filename("cetodashccode", extension="")
-    # else:
+    cmdargs.filename = os.path.abspath(cmdargs.filename)
+    if not os.path.isfile(cmdargs.filename):
+        print("Could not find file:", cmdargs.filename, sys.stderr)
+        sys.exit(-1)
+
     basename = str(pathlib.Path(cmdargs.filename).with_suffix(""))
 
     try:

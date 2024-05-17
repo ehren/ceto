@@ -1,15 +1,13 @@
-
-    
-# TODO: anything of explicit array type in a function param list should be const& by default
 def (f, a : [[int]]:
     std.cout << a[0][0]
     static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
     static_assert(std.is_reference_v<decltype(a)>)
 )
 
-# should also be const ref by default
 def (f2, a: [[int]] = [[0, 1]]:
     std.cout << a[0][0]
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
+    static_assert(std.is_reference_v<decltype(a)>)
 )
     
 def (main:
@@ -66,5 +64,3 @@ def (main:
         )
     )
 )
-    
-    

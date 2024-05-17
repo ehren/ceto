@@ -1758,7 +1758,8 @@ def (main:
 
     x = 1
     f = Foo()
-    lambda (f.foo(x)) ()
+    l = lambda (f.foo(x))
+    l()  # we avoid an immediatelly invoked lambda (now implicit refcapture) to bump refcount for test
     
     i = Inner(f)
     lambda (i.foo(x)) ()

@@ -19,7 +19,11 @@ def (main:
 
     x = 1
     f = Foo()
-    lambda (f.foo(x)) ()
+    l = lambda (f.foo(x))
+    l()  # Test output depends on the refcount of f.
+         # This is written as a non-immediately invoked lambda:
+         # in the future (because l is non-escaping) this test may
+         # need adjusting
     
     i = Inner(f)
     lambda (i.foo(x)) ()

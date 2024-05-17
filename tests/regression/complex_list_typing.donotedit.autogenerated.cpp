@@ -27,6 +27,8 @@
 
     inline auto f2(const std::vector<std::vector<int>>& a = std::vector<std::vector<int>>{std::vector {{0, 1}}}) -> void {
         std::cout << ceto::maybe_bounds_check_access(ceto::maybe_bounds_check_access(a,0),0);
+        static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
+        static_assert(std::is_reference_v<decltype(a)>);
     }
 
     auto main() -> int {
