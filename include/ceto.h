@@ -343,7 +343,7 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
 
 
 auto maybe_bounds_check_access(auto&& v, size_t index CETO_SOURCE_LOC_PARAM) -> decltype(auto)
-    requires requires { std::size(v); v[index]; }
+    requires (std::is_same_v<decltype(std::size(v)), size_t>)
 {
     if (index >= std::size(v)) {
         issue_out_of_bounds_access_message(CETO_SOURCE_LOC_ARG);
