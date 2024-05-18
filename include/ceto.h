@@ -5,7 +5,8 @@
 #include <vector>
 #include <utility>
 #include <type_traits>
-#include <stdexcept>
+#include <optional>
+#include <iostream>
 
 #ifndef __clang__
 #include <source_location>
@@ -55,29 +56,34 @@ shared_from(That* that) {
     return std::static_pointer_cast<That>(shared_from_base(that));
 }
 
-
-class null_deref_error : public std::runtime_error
-{
-public:
-    using std::runtime_error::runtime_error;
-};
-
 #ifdef CETO_HAS_SOURCE_LOCATION
-    static inline std::string build_null_deref_message(const std::source_location& location) {
-        std::string message = "Attempted null deref in attribute access:";
-        message += location.file_name();
-        message += ":";
-        message += std::to_string(location.line());
-        message += " (" + std::string(location.function_name()) + ")";
-        message += " column " + std::to_string(location.column()) + "\n";
-        return message;
-    }
-#else
-    static inline std::string build_null_deref_message() {
-        return "Attempted null deref in attribute access";
-    }
-#endif
+static inline void issue_null_deref_message(const std::source_location& location) {
+    std::cerr << "Attempted null autoderef in attribute access:";
+    std::cerr << location.file_name();
+    std::cerr << ":";
+    std::cerr << std::to_string(location.line());
+    std::cerr << " (" + std::string(location.function_name()) + ")";
+    std::cerr << " column " + std::to_string(location.column()) << std::endl;
+}
 
+static inline void issue_out_of_bounds_access_message(const std::source_location& location) {
+    std::cerr << "Attempted out of bounds access:";
+    std::cerr << location.file_name();
+    std::cerr << ":";
+    std::cerr << std::to_string(location.line());
+    std::cerr << " (" + std::string(location.function_name()) + ")";
+    std::cerr << " column " + std::to_string(location.column()) << std::endl;
+}
+
+#else
+static inline void issue_null_deref_message() {
+    std::cerr << "Attempted null autoderef." << std::endl;
+}
+
+static inline void issue_out_of_bounds_access_message() {
+    std::cerr << "Attempted out of bounds access." << std::endl;
+}
+#endif
 
 // mad = maybe allow deref
 
@@ -86,7 +92,7 @@ public:
 
 // no autoderef
 template<typename T>
-auto mad_smartptr(T&& obj) {
+auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) {
     return std::addressof(obj);
 }
 
@@ -95,7 +101,8 @@ template<typename T>
 std::shared_ptr<T>&
 mad_smartptr(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return obj;
 }
@@ -106,7 +113,8 @@ template<typename T>
 std::shared_ptr<T>  // alternately, could return std::shared_ptr<T>& here and remove the std::move
 mad_smartptr(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return std::move(obj);
 }
@@ -116,7 +124,8 @@ template<typename T>
 const std::shared_ptr<T>&
 mad_smartptr(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return obj;
 }
@@ -126,7 +135,8 @@ template<typename T>
 std::unique_ptr<T>&
 mad_smartptr(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return obj;
 }
@@ -136,7 +146,8 @@ template<typename T>
 const std::unique_ptr<T>&
 mad_smartptr(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return obj;
 }
@@ -146,7 +157,8 @@ template<typename T>
 std::unique_ptr<T>  // alternately, could return std::unique_ptr<T>& here and remove the std::move
 mad_smartptr(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
-        throw null_deref_error(build_null_deref_message(CETO_SOURCE_LOC_ARG));
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
     }
     return std::move(obj);
 }
@@ -155,29 +167,45 @@ mad_smartptr(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
 // general autoderef including std::optional (and maybe a double autoderef if it's an optional of a class (should be discouraged))
 template<typename T>
 decltype(auto)
-mad(std::optional<T>& obj) {
+mad(std::optional<T>& obj CETO_SOURCE_LOC_PARAM) {
+    if (!obj) {
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
+    }
     return mad_smartptr(obj.value());
 }
 
 // autoderef optional
 template<typename T>
 decltype(auto)
-mad(const std::optional<T>& obj) {
+mad(const std::optional<T>& obj CETO_SOURCE_LOC_PARAM) {
+    if (!obj) {
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
+    }
     return mad_smartptr(obj.value());
 }
 
 // autoderef optional
 template<typename T>
 decltype(auto)
-mad(std::optional<T>&& obj) {
+mad(std::optional<T>&& obj CETO_SOURCE_LOC_PARAM) {
+    if (!obj) {
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
+    }
     return mad_smartptr(obj.value());
 }
 
 // no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
 decltype(auto)
-mad(T&& obj) {
+mad(T&& obj CETO_SOURCE_LOC_PARAM) {
+#ifdef CETO_HAS_SOURCE_LOCATION
+    return mad_smartptr(obj, CETO_SOURCE_LOC_ARG);
+#else
     return mad_smartptr(obj);
+#endif
 }
 
 
@@ -314,16 +342,17 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
      is_convertible_without_narrowing_v<From, To>);
 
 
-// just let .at() do the bounds checking
-auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
-    requires (std::is_integral_v<std::remove_cvref_t<decltype(index)>> &&
-              requires { std::size(v); v.at(index); v[index]; } &&
-              std::is_same_v<decltype(v.at(index)), decltype(v[index])>)
+auto maybe_bounds_check_access(auto&& v, size_t index CETO_SOURCE_LOC_PARAM) -> decltype(auto)
+    requires requires { std::size(v); v[index]; }
 {
-    return std::forward<decltype(v)>(v).at(std::forward<decltype(index)>(index));
+    if (index >= std::size(v)) {
+        issue_out_of_bounds_access_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
+    }
+    return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
 }
 
-auto maybe_bounds_check_access(auto&& v, auto&& index) -> decltype(auto)
+auto maybe_bounds_check_access(auto&& v, auto&& index CETO_SOURCE_LOC_PARAM) -> decltype(auto)
     requires (!(std::is_integral_v<std::remove_cvref_t<decltype(index)>>))
 {
     return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
