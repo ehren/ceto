@@ -111,6 +111,29 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             return c;
         }
 
+         virtual inline auto equals(const std::shared_ptr<const Node>&  other) const -> bool {
+            if (other == nullptr) {
+                return false;
+            }
+            if (typeid((*this)) != typeid((*other))) {
+                return false;
+            }
+            if ((this -> func) && !(*ceto::mad(this -> func)).equals((*ceto::mad(other)).func)) {
+                return false;
+            } else if ((!(this -> func) && (*ceto::mad(other)).func)) {
+                return false;
+            }
+            if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
+                return false;
+            }
+            for(const auto& i : range((*ceto::mad(this -> args)).size())) {
+                if (!(*ceto::mad(ceto::maybe_bounds_check_access(this -> args,i))).equals(ceto::maybe_bounds_check_access((*ceto::mad(other)).args,i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         inline auto parent() const -> auto {
             return (*ceto::mad(this -> _parent)).lock();
         }
@@ -201,6 +224,17 @@ struct BinOp : public Node {
         inline auto clone() const -> std::shared_ptr<Node> override {
             auto c { std::make_shared<decltype(BinOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
             return c;
+        }
+
+        inline auto equals(const std::shared_ptr<const Node>&  other_node) const -> bool override {
+            const auto other = std::dynamic_pointer_cast<const BinOp>(other_node);
+            if (!other) {
+                return false;
+            }
+            if ((this -> op) != (*ceto::mad(other)).op) {
+                return false;
+            }
+            return ((this -> lhs() == (*ceto::mad(other)).lhs()) && (this -> rhs() == (*ceto::mad(other)).rhs()));
         }
 
     explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (nullptr, args, source), op(op) {
@@ -358,6 +392,14 @@ struct Identifier : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
+        inline auto equals(const std::shared_ptr<const Node>&  other_node) const -> bool override {
+            const auto other = std::dynamic_pointer_cast<const Identifier>(other_node);
+            if (!other) {
+                return false;
+            }
+            return ((this -> _name) == (*ceto::mad(other))._name);
+        }
+
         inline auto clone() const -> std::shared_ptr<Node> override {
             auto c { std::make_shared<Identifier>((*this)) } ;
             return c;
@@ -503,6 +545,27 @@ struct StringLiteral : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
+        inline auto equals(const std::shared_ptr<const Node>&  other_node) const -> bool override {
+            const auto other = std::dynamic_pointer_cast<const StringLiteral>(other_node);
+            if (!other) {
+                return false;
+            }
+            if ((this -> str) != (*ceto::mad(other)).str) {
+                return false;
+            }
+            if ((this -> prefix) && !(*ceto::mad(this -> prefix)).equals((*ceto::mad(other)).prefix)) {
+                return false;
+            } else if ((!(this -> prefix) && (*ceto::mad(other)).prefix)) {
+                return false;
+            }
+            if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
+                return false;
+            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+                return false;
+            }
+            return true;
+        }
+
         inline auto clone() const -> std::shared_ptr<Node> override {
             auto c { std::make_shared<decltype(StringLiteral{this -> str, [&]() {if (this -> prefix) {
                 return std::dynamic_pointer_cast<const Identifier>((*ceto::mad(this -> prefix)).clone());
@@ -569,6 +632,22 @@ struct IntegerLiteral : public Node {
             return c;
         }
 
+        inline auto equals(const std::shared_ptr<const Node>&  other_node) const -> bool override {
+            const auto other = std::dynamic_pointer_cast<const IntegerLiteral>(other_node);
+            if (!other) {
+                return false;
+            }
+            if ((this -> integer_string) != (*ceto::mad(other)).integer_string) {
+                return false;
+            }
+            if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
+                return false;
+            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+                return false;
+            }
+            return true;
+        }
+
     explicit IntegerLiteral(const std::string&  integer_string, const std::shared_ptr<const Identifier>& suffix = nullptr, const decltype(SourceLoc())& source = SourceLoc()) : Node (nullptr, {}, source), integer_string(integer_string), suffix(suffix) {
     }
 
@@ -593,6 +672,22 @@ struct FloatLiteral : public Node {
 
         inline auto accept( Visitor &  visitor) const -> void override {
             (*ceto::mad(visitor)).visit((*this));
+        }
+
+        inline auto equals(const std::shared_ptr<const Node>&  other_node) const -> bool override {
+            const auto other = std::dynamic_pointer_cast<const FloatLiteral>(other_node);
+            if (!other) {
+                return false;
+            }
+            if ((this -> float_string) != (*ceto::mad(other)).float_string) {
+                return false;
+            }
+            if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
+                return false;
+            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+                return false;
+            }
+            return true;
         }
 
         inline auto clone() const -> std::shared_ptr<Node> override {

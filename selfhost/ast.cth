@@ -74,6 +74,34 @@ class (Node:
         return c
     ) : Node:mut
 
+    def (equals: virtual, other: Node:
+        if (other == None:
+            return False
+        )
+
+        if (typeid(*this) != typeid(*other):
+            return False
+        )
+
+        if (self.func and not self.func.equals(other.func):
+            return False
+        elif not self.func and other.func:
+            return False
+        )
+
+        if (self.args.size() != other.args.size():
+            return False
+        )
+
+        for (i in range(self.args.size()):
+            if (not self.args[i].equals(other.args[i]):
+                return False
+            )
+        )
+
+        return True
+    ) : bool
+
     def (parent:
         return self._parent.lock()
     )
@@ -159,6 +187,19 @@ class (BinOp(Node):
         c: mut = BinOp(self.op, self.cloned_args(), self.source)
         return c
     ) : Node:mut
+
+    def (equals: override, other_node: Node:
+        other = asinstance(other_node, BinOp)
+
+        if (not other:
+            return False
+        )
+
+        if (self.op != other.op:
+            return False
+        )
+        return self.lhs() == other.lhs() and self.rhs() == other.rhs()
+    ) : bool
 )
 
 class (TypeOp(BinOp):
@@ -280,6 +321,14 @@ class (Identifier(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (equals: override, other_node: Node:
+        other = asinstance(other_node, Identifier)
+        if (not other:
+            return False
+        )
+        return self._name == other._name
+    ) : bool
 
     def (clone: override:
         c: mut = std.make_shared<Identifier.class>(*this)
@@ -413,6 +462,27 @@ class (StringLiteral(Node):
         visitor.visit(*this)
     )
 
+    def (equals: override, other_node: Node:
+        other = asinstance(other_node, StringLiteral)
+        if (not other:
+            return False
+        )
+        if (self.str != other.str:
+            return False
+        )
+        if (self.prefix and not self.prefix.equals(other.prefix):
+            return False
+        elif not self.prefix and other.prefix:
+            return False
+        )
+        if (self.suffix and not self.suffix.equals(other.suffix):
+            return False
+        elif not self.suffix and other.suffix:
+            return False
+        )
+        return True
+    ) : bool
+
     def (clone: override:
         c: mut = StringLiteral(self.str, 
             if (self.prefix: asinstance(self.prefix.clone(), Identifier) else: self.prefix),
@@ -446,6 +516,22 @@ class (IntegerLiteral(Node):
             self.source)
         return c
     ) : Node:mut
+
+    def (equals: override, other_node: Node:
+        other = asinstance(other_node, IntegerLiteral)
+        if (not other:
+            return False
+        )
+        if (self.integer_string != other.integer_string:
+            return False
+        )
+        if (self.suffix and not self.suffix.equals(other.suffix):
+            return False
+        elif not self.suffix and other.suffix:
+            return False
+        )
+        return True
+    ) : bool
 )
 
 class (FloatLiteral(Node):
@@ -465,6 +551,22 @@ class (FloatLiteral(Node):
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
+
+    def (equals: override, other_node: Node:
+        other = asinstance(other_node, FloatLiteral)
+        if (not other:
+            return False
+        )
+        if (self.float_string != other.float_string:
+            return False
+        )
+        if (self.suffix and not self.suffix.equals(other.suffix):
+            return False
+        elif not self.suffix and other.suffix:
+            return False
+        )
+        return True
+    ) : bool
 
     def (clone: override:
         c: mut = FloatLiteral(self.float_string, 
