@@ -234,7 +234,7 @@ struct BinOp : public Node {
             if ((this -> op) != (*ceto::mad(other)).op) {
                 return false;
             }
-            return ((this -> lhs() == (*ceto::mad(other)).lhs()) && (this -> rhs() == (*ceto::mad(other)).rhs()));
+            return ((*ceto::mad(this -> lhs())).equals((*ceto::mad(other)).lhs()) && (*ceto::mad(this -> rhs())).equals((*ceto::mad(other)).rhs()));
         }
 
     explicit BinOp(const std::string&  op, const std::vector<std::shared_ptr<const Node>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (nullptr, args, source), op(op) {
@@ -863,4 +863,11 @@ struct InfixWrapper_ : public Node {
     InfixWrapper_() = delete;
 
 };
+
+    inline auto gensym() -> auto {
+        static unsigned long long counter { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(counter)>);
+        const auto s = std::make_shared<const decltype(Identifier{"ceto__private__ident__" + std::to_string(counter)})>("ceto__private__ident__" + std::to_string(counter));
+        counter += 1;
+        return s;
+    }
 

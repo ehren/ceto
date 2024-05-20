@@ -74,8 +74,6 @@ def build_parents(node: Node):
             node.parent = None
         if not isinstance(node, Node):
             return node
-        if not hasattr(node, "name"):
-            node.name = None
         rebuilt = []
         for arg in node.args:
             if isinstance(arg, Node):
@@ -383,7 +381,7 @@ def assign_to_named_parameter(expr):
     return replacer(expr)
 
 
-def warn_and_remove_redundant_parens(expr, error=False):
+def warn_and_remove_redundant_parenthesese(expr, error=False):
 
     def replacer(op):
         if isinstance(op, RedundantParens):
@@ -864,7 +862,7 @@ def prepare_macro_ready_callback(module):
 
 def replace_macro_expansion(node: Node, replacements):
     if node in replacements:
-        return replacements[node]
+        return replacements[node].clone()
 
     node.args = [replace_macro_expansion(a, replacements) for a in node.args]
     if node.func:
@@ -888,7 +886,7 @@ def semantic_analysis(expr: Module):
 
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
-    expr = warn_and_remove_redundant_parens(expr)
+    expr = warn_and_remove_redundant_parenthesese(expr)
 
     expr = build_types(expr)
     expr = build_parents(expr)

@@ -198,7 +198,8 @@ class (BinOp(Node):
         if (self.op != other.op:
             return False
         )
-        return self.lhs() == other.lhs() and self.rhs() == other.rhs()
+
+        return self.lhs().equals(other.lhs()) and self.rhs().equals(other.rhs())
     ) : bool
 )
 
@@ -693,6 +694,12 @@ class (InfixWrapper_(Node):
     ) : Node:mut
 )
 
+def (gensym:
+    counter: mut:static:unsigned:long:long = 0
+    s = Identifier("ceto__private__ident__" + std.to_string(counter))
+    counter += 1
+    return s
+)
 
 #no:
 #defmacro (wild(x) : std.Function = lambda(wild(b)), x, b:

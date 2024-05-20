@@ -2513,6 +2513,10 @@ def vector_decltype_str(node, cx):
                     append_arg = found_use_context.parent.args[0]
                     rhs_str = decltype_str(append_arg, cx)
 
+            if isinstance(found_use_context, Assign) and isinstance(found_use_context.lhs, ArrayAccess) and found_use_context.lhs.func is found_use_node:
+                array_element_new_val = found_use_context.rhs
+                rhs_str = decltype_str(array_element_new_val, cx)
+
             parent = parent.parent
 
         if rhs_str is not None:
