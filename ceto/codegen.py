@@ -2037,8 +2037,22 @@ def codegen_call(node: Call, cx: Scope):
             if not len(node.args) == 1:
                 raise CodeGenError("throw takes 1 arg", node)
             return "throw " + codegen_node(node.args[0], cx)
-        elif func_name == "defmacro":
-            return ""
+        elif func_name == "requires":
+            assert len(node.args) > 0
+            block = node.args[-1]
+            assert isinstance(block, Block)
+            args = node.args[0:-1]
+            param_strs = []
+
+            for a in args:
+                param_str = codegen_typed_def_param(a, cx)
+                if not param_str and isinstance(a, Identifier):
+                    param_str = codegen_node(a, cx)
+                if not len(param_str) > 0:
+                    raise CodeGenError("bad requires expression param", a)
+                param_strs.append(param_str)
+
+            return "requires (" + ", ".join(param_strs) + ") {" + codegen_block(block, cx) + "}"
         elif func_name in ["asinstance", "isinstance"]:
             if not len(node.args) == 2:
                 raise CodeGenError("asinstance takes 2 args", node)

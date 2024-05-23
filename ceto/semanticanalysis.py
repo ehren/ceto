@@ -319,6 +319,12 @@ def one_liner_expander(parsed):
                         op.is_one_liner_if = True
                     else:
                         break
+            elif op.func.name == "requires":
+                if len(op.args) == 0:
+                    raise SemanticAnalysisError("empty requires expression", op)
+                if not isinstance(op.args[-1], Block):
+                    # last arg becomes one-element block
+                    op = Call(op.func, op.args[0:-1] + [Block([op.args[-1]])], op.source)
             # if op.func.name in ["def", "lambda"]:  # no def one liners
             if is_call_lambda(op):
                 if not isinstance(op.args[-1], Block):
