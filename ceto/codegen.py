@@ -2477,12 +2477,12 @@ def _decltype_str(node, cx):
         return True, node.name
 
     # TODO cleanup dodgy 'continue' use above
-    last_def = eligible_defs[-1]
+    last_def = eligible_defs[0]
     if isinstance(last_def, tuple):
-        last_ident, last_context = eligible_defs[-1]
+        last_ident, last_context = eligible_defs[0]
     else:
-        last_ident = eligible_defs[-1].defined_node
-        last_context = eligible_defs[-1].defining_node
+        last_ident = eligible_defs[0].defined_node
+        last_context = eligible_defs[0].defining_node
 
     assert isinstance(last_ident, Identifier)
 
