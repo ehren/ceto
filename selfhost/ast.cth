@@ -303,6 +303,17 @@ class (BitwiseOrOp(BinOp):
     ) : Node:mut
 )
 
+class (EqualsCompareOp(BinOp):
+    def (accept: override, visitor: Visitor:mut:ref:
+        visitor.visit(*this)
+    )
+
+    def (clone: override:
+        c: mut = EqualsCompareOp(self.op, self.cloned_args(), self.source)
+        return c
+    ) : Node:mut
+)
+
 class (Identifier(Node):
     _name : string
 

@@ -631,9 +631,6 @@ def unquote_remover(node):
         if isinstance(unquote, Call) and unquote.func.name == "unquote":
             if len(unquote.args) != 1:
                 raise SemanticAnalysisError("unquote takes a single arg", unquote)
-            if not isinstance(unquote.args[0], Identifier):
-                # don't worry about nested quote/unquote at least for now (or any complex unquoting)
-                raise SemanticAnalysisError("unquote must be called on an Identifier", unquote.args[0])
             return Identifier(gensym())
         return None
 
@@ -661,6 +658,13 @@ def unquote_remover(node):
     return replacements, node
 
 
+def replace_node(node: Node, replacing_function):
+    node.args = [replace_node(replacing_function(a), replacing_function) for a in node.args]
+    if node.func:
+        node.func = replace_node(replacing_function(node.func), replacing_function)
+    return node
+
+
 def quote_expander(node):
     from .parser import parse
 
@@ -672,8 +676,12 @@ def quote_expander(node):
             repr = quote_arg.ast_repr(preserve_source_loc=False, ceto_evalable=True)
             for r in replacements:
                 # should be improved to work with non-Identifier unquote args
-                repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), str(replacements[r]))
+                repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), r.name)
             expanded = parse(repr).args[0]
+
+            for r in replacements:
+                expanded = replace_node(expanded, lambda n: quote_expander(replacements[r]) if n.name == r.name else n)
+
             return expanded
         return None
 

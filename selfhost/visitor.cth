@@ -10,6 +10,7 @@ class (ScopeResolution)
 class (Assign)
 class (NamedParameter)
 class (BitwiseOrOp)
+class (EqualsCompareOp)
 class (Identifier)
 class (Call)
 class (ArrayAccess)
@@ -40,6 +41,7 @@ struct (Visitor:
     def (visit: virtual:mut, node: ScopeResolution.class): void = 0
     def (visit: virtual:mut, node: NamedParameter.class): void = 0
     def (visit: virtual:mut, node: BitwiseOrOp.class): void = 0
+    def (visit: virtual:mut, node: EqualsCompareOp.class): void = 0
     def (visit: virtual:mut, node: Identifier.class): void = 0
     def (visit: virtual:mut, node: Call.class): void = 0
     def (visit: virtual:mut, node: ArrayAccess.class): void = 0
@@ -108,6 +110,10 @@ struct (BaseVisitor<class:Derived>(Visitor):
     )
 
     def (visit: override:mut, node: BitwiseOrOp.class:
+        static_cast<Derived:ptr>(this)->visit(node)
+    )
+
+    def (visit: override:mut, node: EqualsCompareOp.class:
         static_cast<Derived:ptr>(this)->visit(node)
     )
 

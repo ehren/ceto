@@ -105,6 +105,10 @@ lambda(m : mut:auto:rref:
         py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
         py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
 
+    py.class_<EqualsCompareOp.class, EqualsCompareOp:mut>(m, "EqualsCompareOp", binop).def(
+        py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())
+
     assign:mut = py.class_<Assign.class, Assign:mut>(m, "Assign", binop)
     assign.def(py.init<const:string:ref, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
     py.arg("op"), py.arg("args"), py.arg("source") = SourceLoc())

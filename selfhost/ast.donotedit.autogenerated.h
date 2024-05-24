@@ -376,6 +376,21 @@ using BinOp::BinOp;
 
 };
 
+struct EqualsCompareOp : public BinOp {
+
+using BinOp::BinOp;
+
+        inline auto accept( Visitor &  visitor) const -> void override {
+            (*ceto::mad(visitor)).visit((*this));
+        }
+
+        inline auto clone() const -> std::shared_ptr<Node> override {
+            auto c { std::make_shared<decltype(EqualsCompareOp{this -> op, this -> cloned_args(), this -> source})>(this -> op, this -> cloned_args(), this -> source) } ;
+            return c;
+        }
+
+};
+
 struct Identifier : public Node {
 
     std::string _name;

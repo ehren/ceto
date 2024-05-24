@@ -1,26 +1,48 @@
-defmacro ([x, for (y in z), if (c)], x, y, z, c:
-    result_append = quote(result.append(unquote(x)))
+# tests/macros_list_comprehension.cth
 
-    conditional_append = if (c.name() == "True":
-        # Optimize out a literal "if (True)" filter (reduce clutter for 2-arg case below)
-        result_append
+include <ranges>
+
+defmacro ([x, for (y in z), if (c)], x, y, z, c:
+
+    result = gensym()
+    zz = gensym()
+
+    pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
+                           c.args, lambda(a, a.equals(x) or a.equals(y))):
+        # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
+        # e.g. [x, for (y in z) if (y == something)]
+        dont_reserve: Node = quote(pass)
+        dont_reserve
     else:
-        quote(if (unquote(c):
-            unquote(result_append)
-        ))
+        reserve: Node = quote(if (requires(std.size(unquote(zz))):
+            unquote(result).reserve(std.size(unquote(zz)))
+        ) : constexpr)
+        reserve
     )
 
     return quote(lambda (:
-        # TODO move gensym to ast.cth (for now rely on shadowing for hygiene)
-        result: mut = []
-        for (unquote(y) in unquote(z):
-            unquote(conditional_append)
+
+        unquote(result): mut = []
+        unquote(zz): mut:auto:ref:ref = unquote(z)
+
+        unquote(pre_reserve_stmt)
+
+        for (unquote(y) in unquote(zz):
+            unquote(if (c.name() == "True":
+                # Omit literal if (True) check (reduce clutter for 2-arg case below)
+                quote(unquote(result).append(unquote(x)))
+            else:
+                quote(if (unquote(c):
+                    unquote(result).append(unquote(x))
+                ))
+            ))
         )
-        return result
-    ) ())  # immediately invoked lambda (eventually) in function scope - implicit ref capture
+
+        unquote(result)
+    ) ())
 )
 
 defmacro ([x, for (y in z)], x, y, z:
-    # 2-arg list comprehension - Use the existing 3-arg definition:
+    # Use the existing 3-arg definition
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
