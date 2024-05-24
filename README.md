@@ -5,41 +5,61 @@
 ```python
 # tests/macros_list_comprehension.cth
 
-defmacro ([x, for (y in z), if (c)], x, y, z, c:
-    result_append = quote(result.append(unquote(x)))
+include <ranges>
 
-    conditional_append = if (c.name() == "True":
-        # Optimize out a literal "if (True)" filter (reduce clutter for 2-arg case below)
-        result_append
+defmacro ([x, for (y in z), if (c)], x, y, z, c:
+
+    result = gensym()
+    zz = gensym()
+
+    pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
+                           c.args, lambda(a, a.equals(x) or a.equals(y))):
+        # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
+        # e.g. [x, for (y in z), if (y == something)]
+        dont_reserve: Node = quote(pass)
+        dont_reserve
     else:
-        quote(if (unquote(c):
-            unquote(result_append)
-        ))
+        reserve: Node = quote(if (requires(std.size(unquote(zz))):
+            unquote(result).reserve(std.size(unquote(zz)))
+        ) : constexpr)
+        reserve
     )
 
     return quote(lambda (:
-        # TODO move gensym to ast.cth (for now rely on shadowing for hygiene)
-        result: mut = []
-        for (unquote(y) in unquote(z):
-            unquote(conditional_append)
+
+        unquote(result): mut = []
+        unquote(zz): mut:auto:ref:ref = unquote(z)
+
+        unquote(pre_reserve_stmt)
+
+        for (unquote(y) in unquote(zz):
+            unquote(if (c.name() == "True":
+                # Omit literal if (True) check (reduce clutter for 2-arg case below)
+                quote(unquote(result).append(unquote(x)))
+            else:
+                quote(if (unquote(c):
+                    unquote(result).append(unquote(x))
+                ))
+            ))
         )
-        return result
-    ) ())  # immediately invoked lambda (eventually) in function scope - implicit ref capture
+
+        unquote(result)
+    ) ())
 )
 
 defmacro ([x, for (y in z)], x, y, z:
-    # 2-arg list comprehension - Use the existing 3-arg definition:
+    # Use the existing 3-arg definition
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
 ```
 
 ```python
 # tests/example.ctp
-
-include <numeric>
 include <ranges>
 include <iostream>
+include <numeric>
 include <future>
+include <map>
 
 include (macros_list_comprehension)
 
@@ -68,24 +88,19 @@ class (UniqueFoo:
     )
     
     def (consuming_method: mut, u: UniqueFoo:
-        # u is a (passed by value) unique_ptr<const UniqueFoo> in C++
-        Foo(42).method(u)  # u passed by const:ref (to a method taking a generic param)
-        self.consumed.push_back(u)   # Automatic std::move from last use of 'u'
+        Foo(42).method(u)
+        self.consumed.push_back(u)
     )
 ) : unique
 
 def (string_join, vec: [std.string], sep = ", "s:
-    # std.string, std.vector and various other things passed by const:ref by default
-    static_assert(std.is_same_v<decltype(vec), const:std.vector<std.string>:ref>)
-    static_assert(std.is_same_v<decltype(sep), const:std.string:ref>)
-
     if (vec.empty():
         return ""
     )
 
     return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
         lambda[&sep] (a, b, a + sep + b))
-): std.string  # as a return type (or a class member) it's by value
+): std.string
 
 defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
@@ -97,7 +112,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     args = [std.string(a), for (a in std.span(argv, argc))]
     summary = ", ".join(args)
 
-    f = Foo(summary)  # in C++, f is a const std::shared_ptr<const Foo<decltype(summary)>>
+    f = Foo(summary)  # in C++ f is a const std::shared_ptr<const Foo<decltype(summary)>>
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of 'calls_method'
@@ -112,9 +127,13 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
     std.cout << fut.get()
 
-    u: mut = UniqueFoo()
-    u2 = UniqueFoo()
-    u.consuming_method(u2)  # implicit std.move from last use of u2 (because :unique)
+    u: mut = UniqueFoo()    # u is a (non-const) std::unique_ptr<non-const UniqueFoo> in C++
+    u2 = UniqueFoo()        # u2 is a std::unique_ptr<const UniqueFoo>
+
+    u.consuming_method(u2)  # Implicit std.move from last use of u2:
+                            # -To allow moves without copying :unique are non-const by default 
+                            # -Note they're still unique_ptr-to-const by default!
+
     u.consuming_method(u)   # in C++: CETO_AUTODEREF(u).consuming_method(std::move(u))
 )
 ```
@@ -157,8 +176,33 @@ auto calls_foo(const auto& f) -> auto {
 }
 ```
 
-where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a throwing nullptr check (use `->` for an unsafe unchecked access).
+where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a terminating nullptr check (use `->` for an unsafe unchecked access).
 
+Autoderef also works with optionals
+
+```python
+include <iostream>
+include <map>
+include <optional>
+
+def (main:
+    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
+        {"zero", 0}, {"one", 1}}
+    if (optional_map:
+        updated: mut:std.map<std.string, int> = {{ "two", 2}}
+
+        # autoderef (optional_map.value.begin() is allowed but unnecessary):
+        updated.insert(optional_map.begin(), optional_map.end())
+
+        updated["three"] = 3
+        for ((key, value) in updated:
+            std.cout << key << value
+        )
+    )
+)
+```
+
+(this example also illustrates that for ceto classes and structs round parenthese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is still a 50 element vector of 50!)
 
 ### Less typing (at least as in your input device\*)
 
