@@ -2451,15 +2451,21 @@ def _decltype_str(node, cx):
         if def_node.declared_type:
 
             if def_node.declared_type.name in ["mut", "const", "auto", "weak", "shared", "unique"]:
-                # plain mut/const/auto provides no element type info
-                continue
+                # plain mut/const/auto provides no element type info for declarations (assign rhs may inform type)
+                if isinstance(def_context, Identifier):
+                    eligible_defs.remove(d)
+                    continue
+
             elif isinstance(def_node.declared_type, TypeOp):
 
                 type_list = type_node_to_list_of_types(def_node.declared_type)
 
                 if any(t.name == "auto" for t in type_list):
                     # any use of auto also gives us no type info
-                    continue
+                    if isinstance(def_context, Identifier):
+                        eligible_defs.remove(d)
+                        continue
+
                 elif "mut" in [type_list[0].name, type_list[-1].name]:
                     # discard east or west mut
                     if type_list[0].name == "mut":
@@ -2477,19 +2483,17 @@ def _decltype_str(node, cx):
         return True, node.name
 
     # TODO cleanup dodgy 'continue' use above
-    last_def = eligible_defs[0]
+    last_def = eligible_defs[-1]
     if isinstance(last_def, tuple):
-        last_ident, last_context = eligible_defs[0]
+        last_ident, last_context = eligible_defs[-1]
     else:
-        last_ident = eligible_defs[0].defined_node
-        last_context = eligible_defs[0].defining_node
+        last_ident = eligible_defs[-1].defined_node
+        last_context = eligible_defs[-1].defining_node
 
     assert isinstance(last_ident, Identifier)
 
-    if isinstance(last_context, Assign):
-        assign = last_context
-
-        return _decltype_str(assign.rhs, cx)
+    if isinstance(last_context, Assign) and not (isinstance(last_context.rhs, ListLiteral) and not last_context.rhs.args and not last_context.rhs.declared_type):
+        return _decltype_str(last_context.rhs, cx)
 
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
