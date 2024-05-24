@@ -172,10 +172,10 @@ def _build_grammar():
             (amp_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("^"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (pp.Literal("|"), 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
-            (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),  # this will introduce need for parenthesese when working with compound requires _clauses_ e.g. "requires:(p and q)" rather than "requires:p and q" (also prevents "and" and "or" type-connectives which is fine - a&b a|b is better (another reason to prefer keyword 'ref' in type signatures as opposed to &)). Note that tighter binding compared to 'in' is better with typed for loops: for (x:int in inter)
-            (in_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),  # differs from python with respect to comparison operators but plays better with "|" used in e.g. for (x in iter|std.views.drop(1))
             (and_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (or_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
+            (colon, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
+            (in_op, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),  # note one must write (x in y) and (y in z) rather than x in y and y in z (which is parsed as x in (y and z))  - acceptable tradeoff to allow e.g. for (x:int in iter|std.views.drop(1)) but also allow one-liner ifs e.g. if (a and b: do_something) rather than requiring if ((a and b): do_something)
             (assign_op | plus_assign_op | minus_assign_op | times_assign_op | div_assign_op | mod_assign_op | lshift_assign_op | rshift_assign_op | bitwise_and_assign_op | bitwise_or_assign_op | bitwise_xor_assign_op, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
             (pp.Keyword("return") | pp.Keyword("yield"), 1, pp.opAssoc.RIGHT, _parse_right_unop),
             (ellipsis_op, 1, pp.opAssoc.LEFT, _parse_left_unop),
