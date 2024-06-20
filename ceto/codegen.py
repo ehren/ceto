@@ -7,7 +7,7 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
     LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
-    nested_same_binop_to_list, gensym
+    nested_same_binop_to_list, gensym, FieldDefinition
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 from collections import defaultdict
@@ -2597,6 +2597,9 @@ def codegen_node(node: Node, cx: Scope):
             return "std::string"
         # elif name == "object":
         #     return "std::shared_ptr<object>"
+
+        if cx.in_function_body and not (isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)) and node is node.parent.rhs) and isinstance(node.scope.find_def(node), FieldDefinition):
+            raise CodeGenError(f"no direct access to fields - use self.{node.name} instead of just {node.name}", node)
 
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
                 node is node.parent.lhs) and (

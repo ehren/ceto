@@ -26,7 +26,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
     int x { 1 } ; static_assert(std::is_convertible_v<decltype(1), decltype(x)>);
 
         inline auto long_running_method() -> void {
-            while (x <= 5) {                ((std::cout << "in Foo: ") << (this -> x)) << "\n";
+            while ((this -> x) <= 5) {                ((std::cout << "in Foo: ") << (this -> x)) << "\n";
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 (this -> x) += 1;
             }
@@ -43,7 +43,7 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
     std::shared_ptr<Foo> f = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f)>>);
 
         inline auto getter() const -> auto {
-            return f;
+            return (this -> f);
         }
 
 };

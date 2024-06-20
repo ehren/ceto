@@ -14,7 +14,7 @@ class (Foo:
     x : int = 1
 
     def (long_running_method: mut:
-        while (x <= 5:
+        while (self.x <= 5:
             std.cout << "in Foo: " << self.x << "\n"
             std.this_thread.sleep_for(std.chrono.seconds(1))
             self.x += 1
@@ -30,7 +30,7 @@ class (Holder:
     f : Foo:mut = None
     
     def (getter:
-        return f
+        return self.f
     )
 )
 
