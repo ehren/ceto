@@ -127,11 +127,11 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
     std.cout << fut.get()
 
-    u: mut = UniqueFoo()    # u is a (non-const) std::unique_ptr<non-const UniqueFoo> in C++
-    u2 = UniqueFoo()        # u2 is a std::unique_ptr<const UniqueFoo>
+    u: mut = UniqueFoo()    # u is a (non-const) std::unique_ptr<"non-const" UniqueFoo> in C++
+    u2 = UniqueFoo()        # u2 is a (non-const) std::unique_ptr<const UniqueFoo> in C++
 
     u.consuming_method(u2)  # Implicit std.move from last use of u2:
-                            # -To allow moves without copying :unique are non-const by default 
+                            # -To allow moves without copying, :unique are non-const by default 
                             # -Note they're still unique_ptr-to-const by default!
 
     u.consuming_method(u)   # in C++: CETO_AUTODEREF(u).consuming_method(std::move(u))
@@ -177,32 +177,6 @@ auto calls_foo(const auto& f) -> auto {
 ```
 
 where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a terminating nullptr check (use `->` for an unsafe unchecked access).
-
-Autoderef also works with optionals
-
-```python
-include <iostream>
-include <map>
-include <optional>
-
-def (main:
-    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
-        {"zero", 0}, {"one", 1}}
-    if (optional_map:
-        updated: mut:std.map<std.string, int> = {{ "two", 2}}
-
-        # autoderef (optional_map.value.begin() is allowed but unnecessary):
-        updated.insert(optional_map.begin(), optional_map.end())
-
-        updated["three"] = 3
-        for ((key, value) in updated:
-            std.cout << key << value
-        )
-    )
-)
-```
-
-(this example also illustrates that for ceto classes and structs round parenthese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is still a 50 element vector of 50!)
 
 ### Less typing (at least as in your input device\*)
 
@@ -523,9 +497,48 @@ def (main:
 )
 ```
 
+### std.optional autoderef
+
+In this example, ```optional_map.begin()``` suffices where C++ would require ```optional_map.value().begin()```:
+
+```python
+include <iostream>
+include <map>
+include <optional>
+
+def (main:
+    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
+        {"zero", 0}, {"one", 1}}
+
+    if (optional_map:
+        updated: mut:std.map<std.string, int> = {{ "two", 2}}
+
+        # Autoderef
+        updated.insert(optional_map.begin(), optional_map.end())
+
+        updated["three"] = 3
+        for ((key, value) in updated:
+            std.cout << key << value
+        )
+    )
+)
+```
+
+Note that for ```std.optional``` instances, no deref takes place when calling a method of ```std.optional```. That is, to call a method `value()` on the underlying value rather than the optional call `.value().value()`. This allows you to write in the above example e.g. ```optional_map.value().begin()``` (making the deref explicit - at least useful when copy pasting existing C++).
+
+(this example also illustrates that for ceto classes and structs round parenthese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is still a 50 element vector of 50!)
+
+### Evading autoderef
+
+In contrast to the behavior of optionals above, for "class instances" or even explicit std.shared/unique_ptrs you must use a construct like 
+
+```python
+(&o)->get()
+```
+
+to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
 
 ## Gotchas
-
 
 ### Implicit Scope Resolution
 
