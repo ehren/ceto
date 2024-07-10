@@ -110,13 +110,13 @@ mad_smartptr(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef of temporary
 template<typename T>
-std::shared_ptr<T>  // alternately, could return std::shared_ptr<T>& here and remove the std::move
+std::shared_ptr<T>&
 mad_smartptr(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         issue_null_deref_message(CETO_SOURCE_LOC_ARG);
         std::terminate();
     }
-    return std::move(obj);
+    return obj;  // could change instead return std::move(obj) 
 }
 
 // autoderef
@@ -138,7 +138,8 @@ mad_smartptr(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
         issue_null_deref_message(CETO_SOURCE_LOC_ARG);
         std::terminate();
     }
-    return obj;
+    return obj;  // could also change the return type to std::shared_ptr (not by reference) but return std::move(obj) 
+
 }
 
 // autoderef
@@ -154,13 +155,13 @@ mad_smartptr(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
 
 // autoderef of temporary
 template<typename T>
-std::unique_ptr<T>  // alternately, could return std::unique_ptr<T>& here and remove the std::move
+std::unique_ptr<T>&
 mad_smartptr(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
     if (!obj) {
         issue_null_deref_message(CETO_SOURCE_LOC_ARG);
         std::terminate();
     }
-    return std::move(obj);
+    return obj;  // could also change the return type to std::unique_ptr (not by reference) but return std::move(obj) 
 }
 
 
