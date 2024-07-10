@@ -266,7 +266,7 @@ def (main:
 
 ```
 
-You can code a simple visitor pattern just like\* Java (see GOTCHAs)
+You can code a simple visitor pattern just like\* Java (see GOTCHAs).
 
 ```python
 class (Node)
@@ -376,6 +376,18 @@ def (main:
 # visiting Node
 # visiting Identifier a
 ```
+
+In this example, a trivial use of `self` like in the attribute access `self.args` is rewritten to `this->args` for performance.
+
+Any occurence of `self` outside of an attribute access, however, like in
+
+```python
+visitor.visit(self)
+```
+
+is implicitly relying on a call to```shared_from_this()```. This is also evident in the use of `return self` in the first example in this README.
+
+Note that using ```self.foo()``` in a lambda is also considered non-trivial and results in a swiftish implicit refcount bump when self is a (shared) instance (C++ compile time error for :unique or struct).
 
 ### Tuples, "tuple unpacking" (std::tuple / structured bindings / std::tie)
 
