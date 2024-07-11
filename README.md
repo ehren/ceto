@@ -184,7 +184,7 @@ This project uses many of the ideas from the wonderful https://github.com/lukasm
 
 We've also derived our code generation of Python like lists as *std.vector* from the project.
 
-For example, from the [README](https://github.com/lukasmartinelli/py14?tab=readme-ov-file#how-it-works):
+For example, from [their README](https://github.com/lukasmartinelli/py14?tab=readme-ov-file#how-it-works):
 
 ```python
 # Test Output: 123424681234123412341234
@@ -549,6 +549,39 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 ```
 
 to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
+
+### class reference semantics, shared\_ptr appologia
+
+We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-sharedptrparam-const) to heart:
+
+    R.36: Take a const shared_ptr<widget>& parameter to express that it might retain a reference count to the object ???
+
+Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. For example, `x` and `y` are both passed to `func` by const ref in this example:
+
+```
+
+class (Foo:
+    pass
+)
+
+def (func, x, y: Foo
+    # TODO static_assert both passed by const:ref
+)
+
+def (main:
+    x = Foo()
+    y = Foo()
+    func(x, y)
+)
+```
+
+TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
+
+Note however that we don't entirely embrace the suggestions of this core guideline R.36 especially with regard to a suggested warning that
+
+    (Simple) ((Foundation)) Warn if a function takes a Shared_pointer<T> by value or by reference to const and does not copy or move it to another Shared_pointer on at least one code path. Suggest taking a T* or T& instead.
+
+If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! And note that switching class to struct doesn't require changing a whole bunch of `x->foo` to `x.foo` as would be the case in C++ (the annoying assymetry of `x->foo` vs `x.foo` being one of the better reasons to embrace R.36 fully in non-ceto generated C++ code). Yes, flounting this suggested warning results in code that unnecessarilly requires a parameter ownership regime (shared_ptr) when unowned raw pointers or mutable references suffice. But this is a reasonable performance compromise for safety purposes (see Chrome's banning of all raw pointers in favor of miracle_ptr).
 
 ## Gotchas
 
