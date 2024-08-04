@@ -603,6 +603,70 @@ def (main:
 
 the generated C++ contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It is debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
 
+### struct (not class)
+
+"The struct is a class notion is what has stopped C++ from drifting into becoming a much higher level language with a disconnected low-level subset." - Bjarne Stroustrup
+
+```python
+
+include<string>
+
+struct (Foo:
+    x: std.string
+)
+
+def (by_const_ref, f: Foo:  # pass by const ref
+    static_assert(std.is_same_v<decltype(f), const:Foo:ref>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    std.cout << f.x
+)
+
+def (by_val, f: Foo:mut:  # pass by value (mut:Foo also fine)
+    static_assert(std.is_same_v<decltype(f), Foo>)
+    static_assert(not std.is_reference_v<decltype(f)>)
+    static_assert(not std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    std.cout << f.x
+)
+
+def (by_const_val, f: Foo:const:  # pass by const value (west const also acceptable)
+    # TODO this should perhaps be pass by const ref instead (or an error!) - bit of a perf gotcha. Same problem with std.string and [T])
+    # Note that for the class case - Foo and Foo:mut are both passed by const ref (to shared_ptr)
+    static_assert(std.is_same_v<decltype(f), const:Foo>)
+    static_assert(not std.is_reference_v<decltype(f)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    std.cout << f.x
+)
+
+def (by_mut_ref, f: Foo:ref:mut:  # pass by non-const reference (mut:Foo:ref also fine - west mut)
+    static_assert(std.is_same_v<decltype(f), Foo:ref>)
+    static_assert(std.is_reference_v<decltype(f)>)
+    static_assert(not std.is_const_v<std.remove_reference_t<decltype(f)>>)
+    f.x += "hi"
+    std.cout << f.x
+)
+
+# TODO: Note that using fully notated const pointers like below is recommended for all ceto code. 
+# The const by default (unless :unique) for function parameters feature behaves a bit like add_const_t currently
+# (the multiple mut syntax "mut:Foo:ptr:mut" is not even currently supported for Foo** in C++ -
+#  while mut:Foo:ptr or Foo:ptr:mut works currently, future ceto versions may require additional mut/const annotations)
+def (by_ptr, f: const:Foo:ptr:const:
+    static_assert(std.is_same_v<decltype(f), const:Foo:ptr:const>)
+    std.cout << f->x  # no autoderef for raw pointers
+)
+
+def (main:
+    f = Foo("blah")
+    by_const_ref(f)
+    by_val(f)
+    by_const_val(f)
+    # by_mut_ref(f)  # error: binding reference of type ‘Foo&’ to ‘const Foo’ discards qualifiers
+    fm : mut = f  # copy
+    by_mut_ref(fm)
+    by_ptr(&f)
+)
+```
+    
 ## Gotchas
 
 ### Implicit Scope Resolution
