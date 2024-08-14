@@ -20,10 +20,9 @@ class (Foo: # this is the parse prob
     def (foo:
         printf("in foo method %p\n", static_cast<const:void:ptr>(this))
 
-        bar()
+        bar()  # should be disallowed but needs call-def lookup (not just "is it a class?")
         self.bar()
         printf("bar attribute access %d\n", self.x)
-        printf("bar attribute access %d\n", x)
         # shared_from_base()
         return self
     )

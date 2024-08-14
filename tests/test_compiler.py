@@ -1752,7 +1752,7 @@ def (main:
         f: Foo
         def (foo, x:int:
             std.cout << "hi"
-            f.foo(x)
+            self.f.foo(x)
         )
     )
 
@@ -3720,10 +3720,9 @@ class (Foo: # this is the parse prob
     def (foo:
         printf("in foo method %p\n", static_cast<const:void:ptr>(this))
 
-        bar()
+        bar()  # should be disallowed but needs call-def lookup (not just "is it a class constructor call?")
         self.bar()
         printf("bar attribute access %d\n", self.x)
-        printf("bar attribute access %d\n", x)
         # shared_from_base()
         return self
     )
@@ -3755,7 +3754,7 @@ def (main:
     assert len(deadlines) == 3
 
     attrib_accesses = list(re.findall("bar attribute access.*", output))
-    assert attrib_accesses == ["bar attribute access 0"]*4 + ["bar attribute access 55"]*2 + ["bar attribute access 0"]*6
+    assert attrib_accesses == ["bar attribute access 0"]*2 + ["bar attribute access 55"] + ["bar attribute access 0"]*3
 
 
 def test_lottastuff_lambdas_lists():

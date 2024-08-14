@@ -13,7 +13,7 @@ def (main:
         f: Foo
         def (foo, x:int:
             std.cout << "hi"
-            f.foo(x)
+            self.f.foo(x)
         )
     )
 
