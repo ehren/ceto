@@ -61,9 +61,10 @@ class (Node:
     )
     
     def (cloned_args:
-        new_args: mut = std.vector<Node>(self.args.size())
-        for (i in range(self.args.size()):
-            new_args[i] = self.args[i].clone()
+        new_args: mut:[Node] = []
+        new_args.reserve(self.args.size())
+        for (a in self.args:
+            new_args.append(a.clone())
         )
         return new_args
     ) : [Node]

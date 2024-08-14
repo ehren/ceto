@@ -88,9 +88,10 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
         }
 
         inline auto cloned_args() const -> std::vector<std::shared_ptr<const Node>> {
-            auto new_args { std::vector<std::shared_ptr<const Node>>((*ceto::mad(this -> args)).size()) } ;
-            for(const auto& i : range((*ceto::mad(this -> args)).size())) {
-                ceto::maybe_bounds_check_access(new_args,i) = (*ceto::mad(ceto::maybe_bounds_check_access(this -> args,i))).clone();
+            std::vector<std::shared_ptr<const Node>> new_args = std::vector<std::shared_ptr<const Node>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Node>>{}), std::remove_cvref_t<decltype(new_args)>>);
+            (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
+            for(const auto& a : (this -> args)) {
+                (*ceto::mad(new_args)).push_back((*ceto::mad(a)).clone());
             }
             return new_args;
         }

@@ -50,13 +50,11 @@ auto generate_loc(const T1& node) -> void {
                 (this -> repr) += ", ";
             }
             (this -> repr) += "[";
-            if ((*ceto::mad((*ceto::mad(node)).args)).size() > 0) {
-                for(const auto& arg : (*ceto::mad(node)).args) {
-                    (*ceto::mad(arg)).accept((*this));
-                    (this -> repr) += ", ";
-                }
+            for(const auto& arg : (*ceto::mad(node)).args) {
+                (*ceto::mad(arg)).accept((*this));
+                (this -> repr) += ", ";
             }
-            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
@@ -69,7 +67,7 @@ auto generate_loc(const T1& node) -> void {
         inline auto visit(const UnOp&  node) -> void override {
             (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).op) + "\", [");
             (*ceto::mad(ceto::maybe_bounds_check_access((*ceto::mad(node)).args,0))).accept((*this));
-            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
@@ -82,7 +80,7 @@ auto generate_loc(const T1& node) -> void {
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             (this -> repr) += (((std::string(typeid_name(node)) + "(\"") + (*ceto::mad(node)).op) + "\", [");
             (*ceto::mad(ceto::maybe_bounds_check_access((*ceto::mad(node)).args,0))).accept((*this));
-            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
@@ -98,7 +96,7 @@ auto generate_loc(const T1& node) -> void {
                 (*ceto::mad(arg)).accept((*this));
                 (this -> repr) += ", ";
             }
-            (this -> repr) += ((std::string {"]"} + [&]() {if (ceto_evalable) {
+            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";

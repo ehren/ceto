@@ -29,14 +29,12 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         )
 
         self.repr += "["
-        if (node.args.size() > 0:
-            for (arg in node.args:
-                arg.accept(*this)
-                self.repr += ", "
-            )
+        for (arg in node.args:
+            arg.accept(*this)
+            self.repr += ", "
         )
 
-        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
+        self.repr += "]"s + if (self.ceto_evalable: ": Node" else: "") + ", "
 
         self.generate_loc(node)
         self.repr += ")"
@@ -45,7 +43,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     def (visit: override:mut, node: UnOp.class:
         self.repr += std.string(typeid_name(node)) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
+        self.repr += "]"s + if (self.ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )
@@ -53,7 +51,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     def (visit: override:mut, node: LeftAssociativeUnOp.class:
         self.repr += std.string(typeid_name(node)) + '("' +  node.op + '", ['
         node.args[0].accept(*this)
-        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
+        self.repr += "]"s + if (self.ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )
@@ -64,7 +62,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
             arg.accept(*this)
             self.repr += ", "
         )
-        self.repr += "]"s + if (ceto_evalable: ": Node" else: "") + ", "
+        self.repr += "]"s + if (self.ceto_evalable: ": Node" else: "") + ", "
         self.generate_loc(node)
         self.repr += ")"
     )
