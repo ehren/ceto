@@ -1765,7 +1765,7 @@ def (main:
     lambda (i.foo(x)) ()
 )
     """)
-    assert c == "hi13hihi13dead"
+    assert c == "hi13hihi14dead"
 
     c = compile(r"""
 def (main:

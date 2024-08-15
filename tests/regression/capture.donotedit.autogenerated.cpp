@@ -40,7 +40,7 @@ auto foo(const T1& x) const -> void {
 
                 inline auto foo(const int  x) const -> void {
                     std::cout << "hi";
-                    (*ceto::mad(f)).foo(x);
+                    (*ceto::mad(this -> f)).foo(x);
                 }
 
             explicit Inner(std::shared_ptr<const Foo> f) : f(std::move(f)) {}
@@ -51,11 +51,12 @@ auto foo(const T1& x) const -> void {
 
         const auto x = 1;
         const auto f = std::make_shared<const decltype(Foo())>();
-        [x = ceto::default_capture(x), f = ceto::default_capture(f)]() {
+        const auto l = [x = ceto::default_capture(x), f = ceto::default_capture(f)]() {
                 if constexpr (!std::is_void_v<decltype((*ceto::mad(f)).foo(x))>) { return (*ceto::mad(f)).foo(x); } else { static_cast<void>((*ceto::mad(f)).foo(x)); };
-                }();
+                };
+        l();
         const auto i = std::make_shared<const decltype(Inner{f})>(f);
-        [x = ceto::default_capture(x), i = ceto::default_capture(i)]() {
+        [&]() {
                 if constexpr (!std::is_void_v<decltype((*ceto::mad(i)).foo(x))>) { return (*ceto::mad(i)).foo(x); } else { static_cast<void>((*ceto::mad(i)).foo(x)); };
                 }();
     }

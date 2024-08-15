@@ -378,7 +378,7 @@ def codegen_function_body(defnode : Call, block, cx):
 
     # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
     need_self = False
-    for s in find_all(defnode, test=lambda a: a.name == "self"):
+    for s in find_all(defnode, test=lambda a: a.name == "self", stop=lambda n: n.func and n.func.name in ["class", "struct"]):
 
         replace_self = True
         p = s
