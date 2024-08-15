@@ -1786,12 +1786,13 @@ def (main:
         compile(r"""
 def (main:
     y = 5
-    x : int:ptr = &y
+    x : const:int:ptr:const = &y  # TODO just int:ptr used to work but now doesn't (though multiple mut syntax for pointers arguably should be implemented)
 
-    lambda (:
+    l = lambda (:
         std.cout << x
         return
-    ) ()
+    )
+    l()  # NOTE: in the event we scan for non-escaping lambdas this may need updating (ref capture would be fine in such a case)
 )
         """)
     raises(f2)
@@ -1800,10 +1801,11 @@ def (main:
 def (main:
     s = "nope"
 
-    lambda (:
+    l = lambda (:
         std.cout << s
         return
-    ) ()
+    )
+    l()
 )
         """)
     raises(f3)
