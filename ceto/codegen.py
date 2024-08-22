@@ -523,9 +523,6 @@ def codegen_lambda(node, cx):
 
         capture_list = [codegen_capture_list_item(a) for a in node.func.args]
 
-    elif cx.parent.in_function_body and isinstance(node.parent, Call) and node is node.parent.func:
-        # immediately invoked
-        capture_list = "&"
     elif cx.parent.in_function_body:
         def is_capture(n):
             if not isinstance(n, Identifier):
@@ -559,9 +556,13 @@ def codegen_lambda(node, cx):
                 if is_capture:
                     possible_captures.append(i.name)
 
-        capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
-    # elif TODO is nonescaping:
-    #    capture_list = "&"
+        if isinstance(node.parent, Call) and node is node.parent.func:
+            # immediately invoked (TODO: nonescaping)
+            # capture by const ref: https://stackoverflow.com/questions/3772867/lambda-capture-as-const-reference/32440415#32440415
+            capture_list = ["&" + i + " = " + "std::as_const(" + i + ")" for i in possible_captures]
+        else:
+            # capture only a few things by const value (shared/weak instances, arithithmetic_v, enums):
+            capture_list = [i + " = " + "std::as_const(ceto::default_capture(" + i + "))" for i in possible_captures]
     else:
         capture_list = ""
 
