@@ -563,6 +563,13 @@ class ScopeVisitor:
                 elif isinstance(a.lhs, TupleLiteral):
                     for tuple_arg in a.lhs.args:
                         a.scope.add_variable_definition(defined_node=tuple_arg, defining_node=call)
+            elif isinstance(a, Block) and is_def_or_class_like(call):
+                if call.func.name in ["class", "struct"]:
+                    a.scope.in_function_body = False
+                    a.scope.in_class_body = True
+                else:
+                    #a.scope.in_class_body = False  # maybe we should do this
+                    a.scope.in_function_body = True
 
     # def visit_Block(self, block):
     #     block.scope = block.scope.enter_scope()
