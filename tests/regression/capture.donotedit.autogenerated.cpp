@@ -56,7 +56,7 @@ auto foo(const T1& x) const -> void {
                 };
         l();
         const auto i = std::make_shared<const decltype(Inner{f})>(f);
-        [&]() {
+        [&x = std::as_const(x), &i = std::as_const(i)]() {
                 if constexpr (!std::is_void_v<decltype((*ceto::mad(i)).foo(x))>) { return (*ceto::mad(i)).foo(x); } else { static_cast<void>((*ceto::mad(i)).foo(x)); };
                 }();
     }

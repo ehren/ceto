@@ -562,7 +562,7 @@ def codegen_lambda(node, cx):
             capture_list = ["&" + i + " = " + "std::as_const(" + i + ")" for i in possible_captures]
         else:
             # capture only a few things by const value (shared/weak instances, arithithmetic_v, enums):
-            capture_list = [i + " = " + "std::as_const(ceto::default_capture(" + i + "))" for i in possible_captures]
+            capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
     else:
         capture_list = ""
 
