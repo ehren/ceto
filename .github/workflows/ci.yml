@@ -72,6 +72,35 @@ jobs:
         name: ceto-artifact-clang-16-ubuntu
         path: ./ceto
 
+  clang_18_build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 18
+        python -m pip install --upgrade pip
+        pip install pytest
+    - name: Install package
+      run: |
+        pip install -v --editable .
+    - name: Test with pytest
+      run: |
+        pytest -s
+      env:
+        CXX: clang++
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ceto-artifact-clang-18-ubuntu
+        path: ./ceto
+
   gcc_12_build:
     runs-on: ubuntu-latest
     steps:
