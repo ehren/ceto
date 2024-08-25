@@ -2721,11 +2721,7 @@ def codegen_node(node: Node, cx: Scope):
         elements = [codegen_node(e, cx) for e in node.args]
         return "std::make_tuple(" + ", ".join(elements) + ")"
     elif isinstance(node, ArrayAccess):
-        if len(node.args) > 1:
-            raise CodeGenError("advanced slicing not supported yet")
-        func_str = codegen_node(node.func, cx)
-        idx_str = codegen_node(node.args[0], cx)
-        return "ceto::maybe_bounds_check_access(" + func_str + "," + idx_str + ")"
+        raise CodeGenError("Array accesses should have been lowered in a macro pass! You've probably written your own array[access] defmacro (it's buggy)", node)
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)

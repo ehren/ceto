@@ -66,23 +66,11 @@ static inline void issue_null_deref_message(const std::source_location& location
     std::cerr << " column " + std::to_string(location.column()) << std::endl;
 }
 
-static inline void issue_out_of_bounds_access_message(const std::source_location& location) {
-    std::cerr << "Attempted out of bounds access:";
-    std::cerr << location.file_name();
-    std::cerr << ":";
-    std::cerr << std::to_string(location.line());
-    std::cerr << " (" + std::string(location.function_name()) + ")";
-    std::cerr << " column " + std::to_string(location.column()) << std::endl;
-}
-
 #else
 static inline void issue_null_deref_message() {
     std::cerr << "Attempted null autoderef." << std::endl;
 }
 
-static inline void issue_out_of_bounds_access_message() {
-    std::cerr << "Attempted out of bounds access." << std::endl;
-}
 #endif
 
 // mad = maybe allow deref
@@ -341,23 +329,6 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
     std::is_aggregate_v<From> == std::is_aggregate_v<To> &&
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
-
-
-auto maybe_bounds_check_access(auto&& v, size_t index CETO_SOURCE_LOC_PARAM) -> decltype(auto)
-    requires (std::is_same_v<decltype(std::size(v)), size_t>)
-{
-    if (index >= std::size(v)) {
-        issue_out_of_bounds_access_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
-}
-
-auto maybe_bounds_check_access(auto&& v, auto&& index CETO_SOURCE_LOC_PARAM) -> decltype(auto)
-    requires (!(std::is_integral_v<std::remove_cvref_t<decltype(index)>>))
-{
-    return std::forward<decltype(v)>(v)[std::forward<decltype(index)>(index)];
-}
 
 } // namespace ceto
 
