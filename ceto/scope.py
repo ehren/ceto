@@ -1,7 +1,7 @@
 import pdb
 import typing
 from collections import defaultdict
-from .abstractsyntaxtree import Identifier, Call, Node, Assign, Block, Module
+from .abstractsyntaxtree import Identifier, Call, Node, Assign, Block, Module, ArrayAccess
 
 try:
     from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
@@ -61,7 +61,12 @@ except ImportError:
 
 
     def creates_new_variable_scope(e: Node) -> bool:
-        return isinstance(e, Call) and e.func.name in ["def", "lambda", "class", "struct"]
+        if isinstance(e, Call):
+            if e.func.name in ["def", "lambda", "class", "struct"]:
+                return True
+            elif isinstance(e.func, ArrayAccess) and e.func.func.name == "lambda":
+                return True
+        return False
 
 
     def _node_depth(node):

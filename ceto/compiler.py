@@ -136,18 +136,21 @@ def report_error(e):
         print(" " * (col) + "^", file=sys.stderr)
         return
     elif isinstance(e, (SemanticAnalysisError, CodeGenError)):
+        print(e.args)
         try:
             msg, node = e.args
         except ValueError:
             pass
         else:
             if isinstance(node, Node):
-                loc = node.source[1]
+                loc = node.source.loc
+                #source = node.source.source
                 # # lineindex = source.count("\n", 0, loc)
                 # beg = source.rfind("\n", loc)
                 # end = source.find("\n", loc)
                 # print(source[beg:end], file=sys.stderr)
                 # print(" " * (beg) + "^", file=sys.stderr)
+                print(e.__class__.__name__)
                 print(source[loc:loc+10], file=sys.stderr)
                 # print(" " * (beg) + "^", file=sys.stderr)
                 print(msg, file=sys.stderr)

@@ -559,7 +559,10 @@ def codegen_lambda(node, cx):
         if isinstance(node.parent, Call) and node is node.parent.func:
             # immediately invoked (TODO: nonescaping)
             # capture by const ref: https://stackoverflow.com/questions/3772867/lambda-capture-as-const-reference/32440415#32440415
-            capture_list = ["&" + i + " = " + "std::as_const(" + i + ")" for i in possible_captures]
+            # TODO we still have some work with lowering implicit captures to explicit capture lists as an ast->ast pass in semanticanalysis
+            # before this can work (scope handling and _decltype_string with explicit capture lists fixes)
+            #capture_list = ["&" + i + " = " + "std::as_const(" + i + ")" for i in possible_captures]
+            capture_list = ["&"]  # just allow mutable ref capture until we resolve the above
         else:
             # capture only a few things by const value (shared/weak instances, arithithmetic_v, enums):
             capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
@@ -1711,7 +1714,7 @@ def codegen_type(expr_node, type_node, cx):
         pass
     elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess)):
         raise CodeGenError("unexpected typed expression", expr_node)
-    if isinstance(expr_node, Call) and expr_node.func.name not in ["lambda", "def"]:
+    if isinstance(expr_node, Call) and not is_call_lambda(expr_node) and expr_node.func.name != "def":
         raise CodeGenError("unexpected typed call", expr_node)
 
     types = type_node_to_list_of_types(type_node)
@@ -2572,7 +2575,7 @@ def codegen_node(node: Node, cx: Scope):
                 raise CodeGenError("unexpected context for typed construct", node)
 
             return codegen_type(node, node, cx)  # this is a type inside a more complicated expression e.g. std.is_same_v<Foo, int:ptr>
-        elif isinstance(node, Call) and node.func.name not in ["lambda", "def"] and node.declared_type.name not in ["const", "mut"]:
+        elif isinstance(node, Call) and node.func.name != "def" and not is_call_lambda(node) and node.declared_type.name not in ["const", "mut"]:
             raise CodeGenError("Unexpected typed call", node)
 
     if isinstance(node, Call):

@@ -597,6 +597,96 @@ class ScopeVisitor:
         self._module_scope = module.scope
 
 
+class ImplicitLambdaCaptureVisitor:
+
+    def visit_Call(self, call):
+        # TODO needs fixes + fixes for explicit capture lists in _decltype_str
+        return call
+
+        def replace_lambda(old_call, new_capture_list):
+            # this is why scope/parent/declared_type are unavailable to the macro system!
+            # TODO allow scope lookup in the macro system and selfhost passes without this brittleness
+            lmb = Identifier("lambda")
+            lmb.scope = old_call.func.scope
+            new_call = Call(func=ArrayAccess(func=lmb, args=[]), args=old_call.args)
+            new_call.parent = old_call.parent
+            new_call.scope = old_call.scope
+            if old_call.declared_type:
+                new_call.declared_type = old_call.declared_type
+                print("new_call.declared_type", new_call.declared_type)
+                new_call.declared_type.parent = new_call
+                if old_call.declared_type.scope:
+                    new_call.declared_type.scope = old_call.declared_type.scope
+            new_call.func.parent = new_call
+            new_call.func.scope = old_call.func.scope
+            block = new_call.args[-1]
+            assert isinstance(block, Block)
+            last_statement = block.args[-1]
+            if hasattr(last_statement, "synthetic_lambda_return_lambda") and last_statement.synthetic_lambda_return_lambda:
+                last_statement.synthetic_lambda_return_lambda = new_call
+            for a in new_call.args:
+                a.parent = new_call
+            return new_call
+
+        from .parser import parse
+
+        if not call.func.name == "lambda":
+            # we don't want is_call_lambda here (lambdas with explicit capture lists handled in codegen)
+            return call
+
+        if not call.parent.scope.in_function_body:
+            return replace_lambda(call, [])
+
+        def is_capture(n):
+            if not isinstance(n, Identifier):
+                return False
+            elif isinstance(n.parent, (Call, ArrayAccess, BracedCall, Template)) and n is n.parent.func:
+                return False
+            elif isinstance(n.parent, AttributeAccess) and n is n.parent.rhs:
+                return False
+            return True
+
+        # find all identifiers but not call funcs etc or anything in a nested class
+        idents = find_all(call, test=is_capture, stop=lambda c: isinstance(c.func, Identifier) and c.func.name in ["class", "struct"])
+
+        idents = {i.name: i for i in idents}.values()  # remove duplicates
+
+        possible_captures = []
+        for i in idents:
+            if i.name == "self":
+                possible_captures.append(i.name)
+            elif isinstance(i.parent, Call) and i.parent.func.name in ["def", "lambda"]:
+                pass  # don't capture a lambda parameter
+            elif (d := i.scope.find_def(i)) and isinstance(d, (LocalVariableDefinition, ParameterDefinition)):
+                defnode = d.defined_node
+                is_capture = True
+                while defnode is not None:
+                    if defnode is call:
+                        # defined in lambda or by lambda params (not a capture)
+                        is_capture = False
+                        break
+                    defnode = defnode.parent
+                if is_capture:
+                    possible_captures.append(i.name)
+
+        if isinstance(call.parent, Call) and call is call.parent.func:
+            # immediately invoked (TODO: nonescaping)
+            # capture by const ref: https://stackoverflow.com/questions/3772867/lambda-capture-as-const-reference/32440415#32440415
+            capture_list = ["&" + i + " = " + "std::as_const(" + i + ")" for i in possible_captures]
+        else:
+            # capture only a few things by const value (shared/weak instances, arithithmetic_v, enums):
+            capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
+
+        # this is lazy but it's fine
+        capture_list_ast = [parse(s).args[0] for s in capture_list]
+
+        new_lambda = replace_lambda(call, capture_list_ast)
+        #for capture_list_arg in new_lambda.func.args:
+        # TODO need to add_variable_definition for newly added capture list
+        #    capture_list_arg.scope
+        return new_lambda
+
+
 def apply_replacers(module: Module, visitors):
 
     def replace(node):
@@ -912,6 +1002,7 @@ def semantic_analysis(expr: Module):
     expr = build_types(expr)
     expr = build_parents(expr)
     expr = apply_replacers(expr, [ScopeVisitor()])
+    expr = apply_replacers(expr, [ImplicitLambdaCaptureVisitor()])
 
     def defs(node):
         if not isinstance(node, Node):

@@ -80,9 +80,13 @@ class (ParameterDefinition(VariableDefinition):
 def (creates_new_variable_scope, e: Node:
     if (isinstance(e, Call):
         name = e.func.name()
-        return name and contains(["def"s, "lambda"s, "class"s, "struct"s], name.value())
+        if (name:
+            return contains(["def"s, "lambda"s, "class"s, "struct"s], name.value())
+        elif isinstance(e.func, ArrayAccess) and e.func.func.name() == "lambda":
+            return True
+        )
     )
-    return false
+    return False
 )
 
 
