@@ -9,6 +9,7 @@ import os
 import pathlib
 import concurrent.futures
 from time import perf_counter
+import shutil
 
 from .preprocessor import preprocess
 from .abstractsyntaxtree import Node, UnOp, LeftAssociativeUnOp, BinOp, TypeOp, \
@@ -543,6 +544,49 @@ def parse_included_module(module: Identifier) -> typing.Tuple[str, str, Module]:
     return module_path, cpp_module_path, _parse_maybe_cached(module_path, repr_path)
 
 
+slm_modules = ["checked_array_access"]
+
+def _add_standard_lib_macro_imports(module: Module):
+    return
+
+    # TODO need a -I include path mechanism to avoid this file copying (and extra macro compilation time for new projects!)
+    from .compiler import cmdargs
+
+    if not cmdargs:
+        return
+
+    destination_dir = os.path.dirname(os.path.realpath(cmdargs.filename))
+    print(destination_dir)
+    print(module.source.header_file_cth)
+
+    package_dir = os.path.dirname(__file__)
+    include_dir = os.path.join(package_dir, os.pardir, "include")
+
+    private_prefix = "ceto__private__"
+
+    for m in slm_modules:
+        orig_name = m + ".cth"
+        destination_name = private_prefix + orig_name
+        destination_path = os.path.join(destination_dir, destination_name)
+        for d in [package_dir, include_dir]:
+            orig_path = os.path.join(d, orig_name)
+            if os.path.isfile(orig_path):
+                if not os.path.isfile(destination_path) or os.path.getmtime(orig_path) > os.path.getmtime(destination_path):
+                    shutil.copyfile(orig_path, destination_path)
+                break
+
+    module_names = [private_prefix + m for m in slm_modules]
+
+    #for name in module_names:
+    #    seen_modules.add(name)
+
+    extra_includes = [Call(func=Identifier("include"), args=[Identifier(name)]) for name in module_names]
+    module.args = extra_includes + module.args
+
+
+add_standard_lib_macros = True
+
+
 def _parse_maybe_cached(filepath, repr_path):
     if os.path.isfile(repr_path):
         module_time = os.path.getmtime(filepath)
@@ -560,6 +604,9 @@ def _parse_maybe_cached(filepath, repr_path):
 
     parsed_module = parse_string(source)
 
+    if add_standard_lib_macros and not any("ceto__private__" + m in filepath for m in slm_modules):
+        _add_standard_lib_macro_imports(parsed_module)
+
     with open(repr_path, "w") as f:
         if hasattr(parsed_module, "ast_repr"):  # not implemented in pure python ast
             f.write(parsed_module.ast_repr())
@@ -568,6 +615,7 @@ def _parse_maybe_cached(filepath, repr_path):
 
 
 seen_modules = set()
+
 
 def expand_includes(node: Module):
     def set_header_paths(node, cth_path, h_path):
@@ -620,13 +668,20 @@ def parse_from_cmdargs(cmdargs):
     dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
     repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
 
+    global add_standard_lib_macros
+    add_standard_lib_macros = True
+
     result = _parse_maybe_cached(filename, repr_path)
+
     global seen_modules
     seen_modules = set()
     return result
 
 
 def parse(source: str):
+    global add_standard_lib_macros
+    add_standard_lib_macros = False
+
     p = parse_string(source)
     result = expand_includes(p)
     global seen_modules

@@ -985,9 +985,12 @@ def replace_macro_expansion(node: Node, replacements):
 def macro_expansion(expr: Module):
     assert isinstance(expr, Module)
 
-    replacements = expand_macros(expr, prepare_macro_ready_callback(expr))
-    print("macro replacements", replacements)
-    expr = replace_macro_expansion(expr, replacements)
+    while True:
+        replacements = expand_macros(expr, prepare_macro_ready_callback(expr))
+        print("macro replacements", replacements)
+        if not replacements:
+            break
+        expr = replace_macro_expansion(expr, replacements)
 
     return expr
 
