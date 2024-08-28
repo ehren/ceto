@@ -43,7 +43,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
         }
 
          virtual inline auto class_name() const -> std::string {
-            return typeid_name((*this));
+            return ceto::util::typeid_name((*this));
         }
 
          virtual ~ClassDefinition() {
@@ -74,7 +74,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
         }
 
          virtual inline auto class_name() const -> std::string {
-            return typeid_name((*this));
+            return ceto::util::typeid_name((*this));
         }
 
          virtual ~VariableDefinition() {
@@ -191,7 +191,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         }
 
         inline auto add_interface_method(const std::string&  interface_name, const std::shared_ptr<const Node>&  interface_method_def_node) -> void {
-            (*ceto::mad(ceto_bounds_check(this -> interfaces,interface_name))).push_back(interface_method_def_node);
+            (*ceto::mad(ceto::bounds_check(this -> interfaces,interface_name))).push_back(interface_method_def_node);
         }
 
         inline auto add_class_definition(const std::shared_ptr<const ClassDefinition>&  class_definition) -> void {
@@ -255,7 +255,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             const auto find_all = false;
             const auto found = this -> find_defs(var_node, find_all);
             return [&]() {if ((*ceto::mad(found)).size() > 0) {
-                return ceto_bounds_check(found,0);
+                return ceto::bounds_check(found,0);
             } else {
                 const std::shared_ptr<const VariableDefinition> none_result = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none_result)>>);
                 return none_result;

@@ -958,7 +958,7 @@ def prepare_macro_ready_callback(module):
             dll_options = f"-fPIC -shared -Wl,-soname,{dll_path}.so -ldl"
             if sys.platform == "darwin":
                 dll_options = "-dynamiclib"
-            build_command = f"c++ -Wall -Wextra -std=c++20 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
+            build_command = f"c++ -Wall -Wextra -std=c++20 -O0 -g3 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
 
         print(build_command)
         try:

@@ -29,7 +29,7 @@ class (ClassDefinition:
     )
 
     def (class_name: virtual:
-        return typeid_name(*this)
+        return ceto.util.typeid_name(*this)
     ) : std.string
 
     def (destruct: virtual:
@@ -52,7 +52,7 @@ class (VariableDefinition:
     )
 
     def (class_name: virtual:
-        return typeid_name(*this)
+        return ceto.util.typeid_name(*this)
     ) : std.string
 
     def (destruct: virtual:

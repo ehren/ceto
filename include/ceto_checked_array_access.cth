@@ -1,32 +1,34 @@
 include <iostream>
 include <map>
 
+namespace (ceto:
 
-def (ceto_bounds_check, arr: mut:auto:ref:ref, index: mut:size_t:
-    if (index >= std.size(arr):
-        std.cerr << "terminating on out of bounds access"
-        std.terminate()
-    )
+    def (bounds_check, arr: mut:auto:ref:ref, index: mut:size_t:
+        if (index >= std.size(arr):
+            std.cerr << "terminating on out of bounds access"
+            std.terminate()
+        )
 
-    return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index));
-) : decltype(auto):requires:requires(std.size(arr))
+        return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index));
+    ) : decltype(auto):requires:requires(std.size(arr))
 
-def (ceto_bounds_check, o: mut:auto:ref:ref, index: mut:auto:ref:ref:
-    return std.forward<decltype(o)>(o).unsafe_at(std.forward<decltype(index)>(index));
-) : decltype(auto):requires:not std.is_integral_v<std.remove_cvref_t<decltype(index)>>
+    def (bounds_check, o: mut:auto:ref:ref, index: mut:auto:ref:ref:
+        return std.forward<decltype(o)>(o).unsafe_at(std.forward<decltype(index)>(index));
+    ) : decltype(auto):requires:not std.is_integral_v<std.remove_cvref_t<decltype(index)>>
 
-# from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
-ceto_is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
+    # from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
+    is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
 
-def (ceto_bounds_check, m: mut:auto:ref:ref, key: mut:auto:ref:ref:
-    return std.forward<decltype(m)>(m).unsafe_at(std.forward<decltype(key)>(key));
-) : decltype(auto):requires:std.is_integral_v<std.remove_cvref_t<decltype(key)>> and ceto_is_map_type<std.remove_cvref_t<decltype(m)>>
+    def (bounds_check, m: mut:auto:ref:ref, key: mut:auto:ref:ref:
+        return std.forward<decltype(m)>(m).unsafe_at(std.forward<decltype(key)>(key));
+    ) : decltype(auto):requires:std.is_integral_v<std.remove_cvref_t<decltype(key)>> and is_map_type<std.remove_cvref_t<decltype(m)>>
+)
 
-# something wacky with current 'decltype_str' ArrayAccess handling (this still needs to be a late transformation in codegen.py)
+# TODO something wacky with current 'decltype_str' ArrayAccess handling (or rather the handling of bounds_check with a decltype(auto) return type in decltype_str). This needs to be a late transformation in codegen.py for now.
 #defmacro (array[index], array, index:
 #    if (array.name() == "lambda":
 #        # not actually an array access (general syntax ftl)
 #        return None
 #    )
-#    return quote(ceto_bounds_check(unquote(array), unquote(index)))
+#    return quote(ceto.bounds_check(unquote(array), unquote(index)))
 #)

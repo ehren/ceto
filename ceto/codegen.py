@@ -2084,6 +2084,23 @@ def codegen_call(node: Call, cx: Scope):
             if func_name == "isinstance":
                 cast_string = "(" + cast_string + " != nullptr)"
             return cast_string
+        elif func_name == "namespace":
+            if len(node.args) == 0:
+                raise CodeGenError("empty namespace args", node)
+            block = node.args[-1]
+            if not isinstance(block, Block):
+                raise CodeGenError("namespace last args must be a Block", node)
+            if len(node.args) > 2:
+                raise CodeGenError("too many namespace args", node)
+            if len(node.args) == 2:
+                name = node.args[0]
+                if not isinstance(name, (Identifier, ScopeResolution, AttributeAccess)):
+                    raise CodeGenError("bad namespace name", node)
+                name_code = codegen_node(name, cx)
+            else:
+                name_code = ""
+            block_code = codegen_block(block, cx.enter_scope())
+            return "namespace " + name_code + " {\n" + block_code + "\n}"
         elif func_name == "defmacro":
             return "\n"
         else:
@@ -2735,7 +2752,7 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("advanced slicing not supported yet")
         func_str = codegen_node(node.func, cx)
         idx_str = codegen_node(node.args[0], cx)
-        return "ceto_bounds_check(" + func_str + "," + idx_str + ")"
+        return "ceto::bounds_check(" + func_str + "," + idx_str + ")"
         #raise CodeGenError("Array accesses should have been lowered in a macro pass! You've probably written your own array[access] defmacro (it's buggy)", node)
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):

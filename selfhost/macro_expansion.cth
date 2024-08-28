@@ -232,7 +232,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     def (expand: mut, node: Node:
         scope: mut:auto:const:ptr = (&self.current_scope)->get()
         while (scope:
-            for (definition in reversed(scope->macro_definitions):
+            for (definition in ceto.util.reversed(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
                     std.cout << "found match\n"

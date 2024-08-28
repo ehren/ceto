@@ -34,17 +34,18 @@
     ;
 #endif
 
-    template <typename T1, typename T2>
+namespace ceto::util {
+        template <typename T1, typename T2>
 auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
         if ((*ceto::mad(v)).empty()) {
             return std::string {""};
         }
-        return std::accumulate((*ceto::mad(v)).cbegin() + 1, (*ceto::mad(v)).cend(), to_string(ceto_bounds_check(v,0)), [&to_string, &sep](const auto &a, const auto &el) {
+        return std::accumulate((*ceto::mad(v)).cbegin() + 1, (*ceto::mad(v)).cend(), to_string(ceto::bounds_check(v,0)), [&to_string, &sep](const auto &a, const auto &el) {
                 if constexpr (!std::is_void_v<decltype(((a + sep) + to_string(el)))>) { return ((a + sep) + to_string(el)); } else { static_cast<void>(((a + sep) + to_string(el))); };
                 });
     }
 
-    inline auto string_replace(const std::string&  source, const std::string&  from, const std::string&  to) -> auto {
+        inline auto string_replace(const std::string&  source, const std::string&  from, const std::string&  to) -> auto {
         auto new_string { std::string() } ;
         (*ceto::mad(new_string)).reserve((*ceto::mad(source)).length());
         std::string::size_type last_pos { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(last_pos)>);
@@ -57,12 +58,12 @@ auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  s
         return new_string;
     }
 
-    template <typename T1>
+        template <typename T1>
 auto contains(const T1& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
         return (std::find((*ceto::mad(container)).begin(), (*ceto::mad(container)).end(), element) != (*ceto::mad(container)).end());
     }
 
-    template <typename T1>
+        template <typename T1>
 auto typeid_name(const T1& object) -> auto {
         #if _MSC_VER
             const auto name = (*ceto::mad(typeid(object))).name();
@@ -79,3 +80,5 @@ auto typeid_name(const T1& object) -> auto {
 
     }
 
+
+};

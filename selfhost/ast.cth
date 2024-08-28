@@ -43,12 +43,12 @@ class (Node:
     _parent: Node:weak = {}
 
     def (classname: virtual:
-        return typeid_name(*this)
+        return ceto.util.typeid_name(*this)
     ) : std.string
 
     def (repr: virtual:
         classname = self.classname()
-        csv = join(self.args, lambda(a, a.repr()), ", ")
+        csv = ceto.util.join(self.args, lambda(a, a.repr()), ", ")
         return classname + "(" + self.func.repr() + ")([" + csv + "])"
     ) : std.string
 
@@ -94,7 +94,7 @@ class (Node:
             return False
         )
 
-        for (i in range(self.args.size()):
+        for (i in ceto.util.range(self.args.size()):
             if (not self.args[i].equals(other.args[i]):
                 return False
             )
@@ -280,7 +280,7 @@ class (Assign(BinOp):
 
 class (NamedParameter(Assign):
     def (repr: override:
-        return "NamedParameter("s + join(self.args, lambda(a, a.repr()), ", ")  + ")"
+        return "NamedParameter("s + ceto.util.join(self.args, lambda(a, a.repr()), ", ")  + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:
@@ -353,7 +353,7 @@ class (Call(Node):
     is_one_liner_if = false
 
     def (repr: override:
-        csv = join(self.args, lambda (a, a.repr()), ", ")
+        csv = ceto.util.join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "(" + csv + ")"
     ) : std.string
 
@@ -369,7 +369,7 @@ class (Call(Node):
 
 class (ArrayAccess(Node):
     def (repr: override:
-        csv = join(self.args, lambda (a, a.repr()), ", ")
+        csv = ceto.util.join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "[" + csv + "]"
     ) : std.string
 
@@ -385,7 +385,7 @@ class (ArrayAccess(Node):
 
 class (BracedCall(Node):
     def (repr: override:
-        csv = join(self.args, lambda (a, a.repr()), ", ")
+        csv = ceto.util.join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "{" + csv + "}"
     ) : std.string
 
@@ -401,7 +401,7 @@ class (BracedCall(Node):
 
 class (Template(Node):
     def (repr: override:
-        csv = join(self.args, lambda (a, a.repr()), ", ")
+        csv = ceto.util.join(self.args, lambda (a, a.repr()), ", ")
         return self.func.repr() + "<" + csv + ">"
     ) : std.string
 
@@ -596,7 +596,7 @@ class (ListLike_(Node):
 
     def (repr: override:
         classname = self.classname()
-        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+        return classname + "(" + ceto.util.join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:
@@ -673,7 +673,7 @@ class (RedundantParens(Node):
 
     def (repr: override:
         classname = self.classname()
-        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+        return classname + "(" + ceto.util.join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:
@@ -693,7 +693,7 @@ class (InfixWrapper_(Node):
 
     def (repr: override:
         classname = self.classname()
-        return classname + "(" + join(self.args, lambda (a, a.repr()), ", ") + ")"
+        return classname + "(" + ceto.util.join(self.args, lambda (a, a.repr()), ", ") + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:

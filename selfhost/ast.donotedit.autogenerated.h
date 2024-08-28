@@ -64,12 +64,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
     std::weak_ptr<const Node> _parent = {};
 
          virtual inline auto classname() const -> std::string {
-            return typeid_name((*this));
+            return ceto::util::typeid_name((*this));
         }
 
          virtual inline auto repr() const -> std::string {
             const auto classname = this -> classname();
-            const auto csv = join(this -> args, [](const auto &a) {
+            const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
             return (((((classname + "(") + (*ceto::mad(this -> func)).repr()) + ")([") + csv) + "])");
@@ -123,8 +123,8 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
                 return false;
             }
-            for(const auto& i : range((*ceto::mad(this -> args)).size())) {
-                if (!(*ceto::mad(ceto_bounds_check(this -> args,i))).equals(ceto_bounds_check((*ceto::mad(other)).args,i))) {
+            for(const auto& i : ceto::util::range((*ceto::mad(this -> args)).size())) {
+                if (!(*ceto::mad(ceto::bounds_check(this -> args,i))).equals(ceto::bounds_check((*ceto::mad(other)).args,i))) {
                     return false;
                 }
             }
@@ -155,7 +155,7 @@ struct UnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return ((((std::string {"("} + (this -> op)) + " ") + (*ceto::mad(ceto_bounds_check(this -> args,0))).repr()) + ")");
+            return ((((std::string {"("} + (this -> op)) + " ") + (*ceto::mad(ceto::bounds_check(this -> args,0))).repr()) + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -179,7 +179,7 @@ struct LeftAssociativeUnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return (((("(" + (*ceto::mad(ceto_bounds_check(this -> args,0))).repr()) + " ") + (this -> op)) + ")");
+            return (((("(" + (*ceto::mad(ceto::bounds_check(this -> args,0))).repr()) + " ") + (this -> op)) + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -203,11 +203,11 @@ struct BinOp : public Node {
     std::string op;
 
         inline auto lhs() const -> auto {
-            return ceto_bounds_check(this -> args,0);
+            return ceto::bounds_check(this -> args,0);
         }
 
         inline auto rhs() const -> auto {
-            return ceto_bounds_check(this -> args,1);
+            return ceto::bounds_check(this -> args,1);
         }
 
         inline auto repr() const -> std::string override {
@@ -342,7 +342,7 @@ struct NamedParameter : public Assign {
 using Assign::Assign;
 
         inline auto repr() const -> std::string override {
-            return ((std::string {"NamedParameter("} + join(this -> args, [](const auto &a) {
+            return ((std::string {"NamedParameter("} + ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ")) + ")");
         }
@@ -431,7 +431,7 @@ using Node::Node;
     decltype(false) is_one_liner_if = false;
 
         inline auto repr() const -> std::string override {
-            const auto csv = join(this -> args, [](const auto &a) {
+            const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
             return ((((*ceto::mad(this -> func)).repr() + "(") + csv) + ")");
@@ -453,7 +453,7 @@ struct ArrayAccess : public Node {
 using Node::Node;
 
         inline auto repr() const -> std::string override {
-            const auto csv = join(this -> args, [](const auto &a) {
+            const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
             return ((((*ceto::mad(this -> func)).repr() + "[") + csv) + "]");
@@ -475,7 +475,7 @@ struct BracedCall : public Node {
 using Node::Node;
 
         inline auto repr() const -> std::string override {
-            const auto csv = join(this -> args, [](const auto &a) {
+            const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
             return ((((*ceto::mad(this -> func)).repr() + "{") + csv) + "}");
@@ -497,7 +497,7 @@ struct Template : public Node {
 using Node::Node;
 
         inline auto repr() const -> std::string override {
-            const auto csv = join(this -> args, [](const auto &a) {
+            const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
             return ((((*ceto::mad(this -> func)).repr() + "<") + csv) + ">");
@@ -728,7 +728,7 @@ struct ListLike_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + join(this -> args, [](const auto &a) {
+            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ")) + ")");
         }
@@ -830,7 +830,7 @@ struct RedundantParens : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + join(this -> args, [](const auto &a) {
+            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ")) + ")");
         }
@@ -855,7 +855,7 @@ struct InfixWrapper_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + join(this -> args, [](const auto &a) {
+            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ")) + ")");
         }
