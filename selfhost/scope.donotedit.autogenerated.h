@@ -115,7 +115,7 @@ using VariableDefinition::VariableDefinition;
         if ((std::dynamic_pointer_cast<const Call>(e) != nullptr)) {
             const auto name = (*ceto::mad((*ceto::mad(e)).func)).name();
             if (name) {
-                return contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, (*ceto::mad_smartptr(name)).value());
+                return ceto::util::contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, (*ceto::mad_smartptr(name)).value());
             } else if (((std::dynamic_pointer_cast<const ArrayAccess>((*ceto::mad(e)).func) != nullptr) && ((*ceto::mad((*ceto::mad((*ceto::mad(e)).func)).func)).name() == "lambda"))) {
                 return true;
             }

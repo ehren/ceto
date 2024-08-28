@@ -514,15 +514,6 @@ using Node::Node;
 
 };
 
-    inline auto get_string_replace_function() -> auto {
-        static std::function<std::string(std::string)> func = {};
-        return func;
-    }
-
-    inline auto set_string_replace_function(const decltype(get_string_replace_function())  f) -> void {
-        get_string_replace_function() = f;
-    }
-
 struct StringLiteral : public Node {
 
     std::string str;
@@ -532,9 +523,9 @@ struct StringLiteral : public Node {
     std::shared_ptr<const Identifier> suffix;
 
         inline auto escaped() const -> auto {
-            auto s { string_replace(this -> str, "\\", "\\\\") } ;
-            s = string_replace(s, "\n", "\\n");
-            s = string_replace(s, "\"", "\\\"");
+            auto s { ceto::util::string_replace(this -> str, "\\", "\\\\") } ;
+            s = ceto::util::string_replace(s, "\n", "\\n");
+            s = ceto::util::string_replace(s, "\"", "\\\"");
             s = ((std::string {"\""} + s) + "\"");
             return s;
         }

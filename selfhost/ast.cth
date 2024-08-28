@@ -415,16 +415,6 @@ class (Template(Node):
     ) : Node:mut
 )
 
-
-def (get_string_replace_function:
-    func : mut:static:std.function<std.string(std.string)> = {}
-    return func
-)
-
-def (set_string_replace_function, f: decltype(get_string_replace_function()):
-    get_string_replace_function() = f
-)
-
 class (StringLiteral(Node):
     str : string
     prefix : Identifier
@@ -438,25 +428,11 @@ class (StringLiteral(Node):
     )
 
     def (escaped:
-        # broken
-        s : mut = string_replace(self.str, "\\", "\\\\")  # replace \ with \\ escape sequence
-        s = string_replace(s, "\n", "\\n")                # now "fixed"
-#        s = string_replace(s, "\n", "\\" + "n")          # cheating workaround no longer necessary
-        s = string_replace(s, '"', '\\"')                 # replace actual " with \" escape sequence.
+        s: mut = ceto.util.string_replace(self.str, "\\", "\\\\")
+        s = ceto.util.string_replace(s, "\n", "\\n")
+        s = ceto.util.string_replace(s, '"', '\\"')
         s = '"'s + s + '"'
         return s
-
-         # this is still very broken
-#        cpp'
-#            std::string s = string_replace(this->str, "\\", "\\\\");
-#            s = string_replace(s, "\n", "\\n");
-#            s = string_replace(s, "\"", "\\"");
-#        '
-
-        # TODO make this a testcase
-#        replacer = get_string_replace_function()
-#        return replacer(std.string)
-
     )
 
     def (repr: override:
