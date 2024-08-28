@@ -13,60 +13,59 @@ else:
     '
 ): preprocessor
 
-namespace (ceto.util:
+namespace (ceto.util)
 
-    def (join, v, to_string, sep=""s:
-        if (v.empty():
-            return ""s
+def (join, v, to_string, sep=""s:
+    if (v.empty():
+        return ""s
+    )
+    return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
+        lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
+)
+
+def (string_replace, source: std.string, from: std.string, to: std.string:
+    # Ingmar: https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/29752943#29752943
+
+    new_string: mut = std.string()
+    new_string.reserve(source.length())  # avoids a few memory allocations
+
+    last_pos: mut:std.string.size_type = 0
+    find_pos: mut:std.string.size_type = 0
+
+    while (std.string.npos != (find_pos = source.find(from, last_pos)):
+        new_string.append(source, last_pos, find_pos - last_pos)
+        new_string += to
+        last_pos = find_pos + from.length()
+    )
+
+    # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – User tav
+    new_string.append(source, last_pos, source.length() - last_pos)
+
+    # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
+    return new_string
+)
+
+def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
+    return std.find(container.begin(), container.end(), element) != container.end()
+)
+
+def (typeid_name, object:
+    if (_MSC_VER:
+        # already demangled:
+        name = typeid(object).name()
+
+        # remove 'struct ' prefix (another annoyance from msvc due to using 'struct' in C++ for 'class' in ceto):
+        std.literals: using:namespace
+        prefix = "struct "sv
+
+        name_view = std.string_view(name)
+
+        if (name_view.starts_with(prefix):
+            return name_view.substr(prefix.size()).data()
         )
-        return std.accumulate(v.cbegin() + 1, v.cend(), to_string(v[0]),
-            lambda[&to_string, &sep] (a, el, a + sep + to_string(el)))
-    )
 
-    def (string_replace, source: std.string, from: std.string, to: std.string:
-        # Ingmar: https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string/29752943#29752943
-
-        new_string: mut = std.string()
-        new_string.reserve(source.length())  # avoids a few memory allocations
-
-        last_pos: mut:std.string.size_type = 0
-        find_pos: mut:std.string.size_type = 0
-
-        while (std.string.npos != (find_pos = source.find(from, last_pos)):
-            new_string.append(source, last_pos, find_pos - last_pos)
-            new_string += to
-            last_pos = find_pos + from.length()
-        )
-
-        # better than new_string += source.substr(last_pos) to avoid creating temporary string [as substr() does]. – User tav
-        new_string.append(source, last_pos, source.length() - last_pos)
-
-        # clang and g++ -O3 produce less code returning by value than taking source by mut:ref as in answer url
-        return new_string
-    )
-
-    def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
-        return std.find(container.begin(), container.end(), element) != container.end()
-    )
-
-    def (typeid_name, object:
-        if (_MSC_VER:
-            # already demangled:
-            name = typeid(object).name()
-
-            # remove 'struct ' prefix (another annoyance from msvc due to using 'struct' in C++ for 'class' in ceto):
-            std.literals: using:namespace
-            prefix = "struct "sv
-
-            name_view = std.string_view(name)
-
-            if (name_view.starts_with(prefix):
-                return name_view.substr(prefix.size()).data()
-            )
-
-            return name
-        else:
-            return abi.__cxa_demangle(typeid(object).name(), 0, 0, 0)
-        ) : preprocessor
-    )
+        return name
+    else:
+        return abi.__cxa_demangle(typeid(object).name(), 0, 0, 0)
+    ) : preprocessor
 )

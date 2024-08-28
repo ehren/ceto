@@ -522,13 +522,42 @@ def parse_string(source: str):
 
         op.args = [replacer(arg) for arg in op.args]
         op.func = replacer(op.func)
+
         return op
 
     res = replacer(res)
+    res = expand_namespace_calls(res)
 
     print("final parse:", res)
 
     return res
+
+
+def expand_namespace_calls(module: Module):
+    namespace_name = None
+    namespace_block = []
+    outer_block = []
+
+    for node in module.args:
+        if isinstance(node, Call) and node.func.name == "namespace":
+            if not len(node.args) == 1:
+                raise SemanticAnalysisError("namespace call takes 1 arg", node)
+            if namespace_name:
+                raise SemanticAnalysisError("only 1 namespace call per file")
+            namespace_name = node.args[0]
+            continue
+
+        if namespace_name:
+            namespace_block.append(node)
+        else:
+            outer_block.append(node)
+
+    if namespace_name:
+        namespace = Call(func=Identifier("namespace"), args=[namespace_name, Block(namespace_block)])
+        outer_block.append(namespace)
+        module = Module(outer_block)
+
+    return module
 
 
 # TODO this will probably need a -I like include path mechanism in the future
