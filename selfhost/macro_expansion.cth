@@ -77,11 +77,11 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                         return std.map<std.string, Node>{{param_name, node}}
                     )
                 elif (or_type = asinstance(param_type, BitwiseOrOp)):
-                    lhs_alternate_param: std.map<std.string, Node> = { {param_name, or_type.lhs()} }
+                    lhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.lhs()])} }
                     if ((m = macro_matches(node, pattern, lhs_alternate_param)):
                         return m
                     )
-                    rhs_alternate_param: std.map<std.string, Node> = { {param_name, or_type.rhs()} }
+                    rhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.rhs()])} }
                     if ((m = macro_matches(node, pattern, rhs_alternate_param)):
                         return m
                     )
@@ -119,7 +119,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
     pattern_iterator: mut = pattern.args.cbegin()
     arg_iterator: mut = node.args.cbegin()
 
-    while (true:
+    while (True:
         if (pattern_iterator == pattern.args.end():
             if (arg_iterator != node.args.end():
                 # no match - no pattern for args
