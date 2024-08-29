@@ -615,7 +615,7 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 
 to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
 
-### class reference semantics, shared\_ptr appologia
+### class reference semantics, shared\_ptr apologia
 
 We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-sharedptrparam-const) to heart:
 
@@ -644,17 +644,17 @@ def (main:
 )
 ```
 
-Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. As an example, consider the function ```expand``` in a typical computer algebra system. Given say ```expand(x - x)```, the result is `0` (parameters not retained). Given another expression, ```expand``` might return its input unchanged or even return an expression retaining a subexpression of its input. "Maybe retain" is the right choice for such an API (see e.g. [the signature of expand in symengine](https://github.com/symengine/symengine/blob/ed1e3e4fd8260097fa25aa1282e1d3a4ac4527f3/symengine/expand.cpp#L369)).
+Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. As an example, consider the function ```expand``` in a typical computer algebra system. Given say ```expand(x - x)```, the result is `0` (parameter not retained). Given another expression, ```expand``` might return it unchanged or even return an expression retaining a subexpression of its input. "Maybe retain" is the right choice for such an API (see e.g. [the signature of expand in symengine](https://github.com/symengine/symengine/blob/ed1e3e4fd8260097fa25aa1282e1d3a4ac4527f3/symengine/expand.cpp#L369)).
 
 Note however that we don't entirely embrace the suggestions of this core guideline R.36 especially with regard to a suggested warning that
 
     (Simple) ((Foundation)) Warn if a function takes a Shared_pointer<T> by value or by reference to const and does not copy or move it to another Shared_pointer on at least one code path. Suggest taking a T* or T& instead.
 
-If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! Autoderef, though not implicit lambda capture, still works for explicit std.shared_ptrs so the annoying asymmetry of `x->foo` vs `x.foo`, one of the better reasons to embrace R.36 fully in *C++*, is gone in ceto! And when the above warning applies we're paying only for an extra indirection not an unnecessary refcount bump due to passing by reference to const (even for ```Foo:mut```). Unnecessarily enforcing parameter lifetimes when unowned raw pointers or mutable references suffice is debatably a bug or feature.
+If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway (autoderef, though not implicit lambda capture, still works for explicit std.shared\_ptrs). The annoying asymmetry of `x->foo` vs `x.foo`, one of the better reasons to embrace R.36 fully in *C++*, is gone in ceto. When the above warning applies we're also paying only for an extra indirection not an unnecessary refcount bump due to passing by reference to const (even for ```Foo:mut```). Unnecessarily enforcing parameter lifetimes when unowned raw pointers or mutable references suffice is debatably a bug or feature.
 
-TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
+Consider also [this stackoverflow comment chain](https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626), where it's suggested that even though passing by ref to const is the (somewhat more) performant choice in some cases, the extra verbosity makes passing by value attractive (I'm aware of several programming language implementations and even an educational graphics engine that follow this advice). None of the replies at present suggesting to make a typedef for ```shared_ptr<Foo>``` mention that 2 typedefs would be better (with the ```shared_ptr<const Foo>``` typedef preferred!)
 
-Note that e.g. in this case:
+Note also that e.g. in this case:
 
 ```python
 class (Foo:
@@ -670,7 +670,7 @@ def (main:
 
 the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It's debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
 
-One may also object to the unnecessary performance overhead of std.shared_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pYthOnIc ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
+One may also object to the unnecessary performance overhead of std.shared\_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pythOnic ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
     
 ## Gotchas
 
