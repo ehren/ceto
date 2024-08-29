@@ -510,103 +510,7 @@ def (main:
 )
 ```
 
-### std.optional autoderef
-
-In this example, ```optional_map.begin()``` suffices where C++ would require ```optional_map.value().begin()```:
-
-```python
-include <iostream>
-include <map>
-include <optional>
-
-def (main:
-    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
-        {"zero", 0}, {"one", 1}}
-
-    if (optional_map:
-        updated: mut:std.map<std.string, int> = {{ "two", 2}}
-
-        # Autoderef
-        updated.insert(optional_map.begin(), optional_map.end())
-
-        updated["three"] = 3
-        for ((key, value) in updated:
-            std.cout << key << value
-        )
-    )
-)
-```
-
-Note that for ```std.optional``` instances, no deref takes place when calling a method of ```std.optional```. That is, to call a method `value()` on the underlying value rather than the optional call `.value().value()`. This allows you to write in the above example e.g. ```optional_map.value().begin()``` (making the deref explicit - at least useful when copy pasting existing C++).
-
-(this example also illustrates that for ceto classes and structs round parenthese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is still a 50 element vector of 50!)
-
-### Evading autoderef
-
-In contrast to the behavior of optionals above, for "class instances" or even explicit std.shared/unique_ptrs you must use a construct like 
-
-```python
-(&o)->get()
-```
-
-to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
-
-### class reference semantics, shared\_ptr appologia
-
-We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-sharedptrparam-const) to heart:
-
-    R.36: Take a const shared_ptr<widget>& parameter to express that it might retain a reference count to the object ???
-
-Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. For example, `x` and `y` are both passed to `func` by reference to const in this example:
-
-```python
-class (Foo:
-    pass
-)
-
-def (func, x, y: Foo:
-    static_assert(std.is_reference_v<decltype(x)>)
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(x)>>)
-    static_assert(std.is_reference_v<decltype(y)>)
-    static_assert(std.is_const_v<std.remove_reference_t<decltype(y)>>)
-    static_assert(std.is_same_v<decltype(y), const:std.shared_ptr<const:Foo.class>:ref>)
-)
-
-def (main:
-    x = Foo()
-    y = Foo()
-    func(x, y)
-    func(1, x)
-)
-```
-
-Note however that we don't entirely embrace the suggestions of this core guideline R.36 especially with regard to a suggested warning that
-
-    (Simple) ((Foundation)) Warn if a function takes a Shared_pointer<T> by value or by reference to const and does not copy or move it to another Shared_pointer on at least one code path. Suggest taking a T* or T& instead.
-
-If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! (autoderef, though not implicit lambda capture, still works for explicit std.shared_ptrs). Note that the annoying asymmetry of `x->foo` vs `x.foo` is one of the better reasons to embrace R.36 fully in C++! And when the above warning applies we're paying only for an extra indirection not an unnecessary refcount bump due to passing by reference to const. Unnecessarily enforcing parameter lifetimes when unowned raw pointers or mutable references suffice is debatably a bug or feature.
-
-TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
-
-Note that e.g. in this case:
-
-```python
-class (Foo:
-    x: Foo
-    y: Foo
-)
-
-def (main:
-    x = Foo(None, None)
-    Foo(x, x)
-)
-```
-
-the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It's debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
-
-One may also object to the unnecessary performance overhead of std.shared_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pYthOnIc ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
-
-### struct (not class)
+### struct
 
 "The struct is a class notion is what has stopped C++ from drifting into becoming a much higher level language with a disconnected low-level subset." - Bjarne Stroustrup
 
@@ -669,6 +573,104 @@ def (main:
     by_ptr(&f)
 )
 ```
+
+### std.optional autoderef
+
+In this example, ```optional_map.begin()``` suffices where C++ would require ```optional_map.value().begin()```:
+
+```python
+include <iostream>
+include <map>
+include <optional>
+
+def (main:
+    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
+        {"zero", 0}, {"one", 1}}
+
+    if (optional_map:
+        updated: mut:std.map<std.string, int> = {{ "two", 2}}
+
+        # Autoderef
+        updated.insert(optional_map.begin(), optional_map.end())
+
+        updated["three"] = 3
+        for ((key, value) in updated:
+            std.cout << key << value
+        )
+    )
+)
+```
+
+For ```std.optional``` instances, no deref takes place when calling a method of ```std.optional```. That is, to call a method `value()` on the underlying value rather than the optional call `.value().value()`.
+
+(this example also illustrates that for ceto classes and structs round parenthese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is a 50 element vector of 50)
+
+### Evading autoderef
+
+In contrast to the behavior of optionals above, for "class instances" or even explicit std.shared/unique_ptrs you must use a construct like 
+
+```python
+(&o)->get()
+```
+
+to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
+
+### class reference semantics, shared\_ptr appologia
+
+We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-sharedptrparam-const) to heart:
+
+    R.36: Take a const shared_ptr<widget>& parameter to express that it might retain a reference count to the object ???
+
+For example, `x` and `y` are both passed to `func` by reference to const in this example:
+
+```python
+class (Foo:
+    pass
+)
+
+def (func, x, y: Foo:
+    static_assert(std.is_reference_v<decltype(x)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(x)>>)
+    static_assert(std.is_reference_v<decltype(y)>)
+    static_assert(std.is_const_v<std.remove_reference_t<decltype(y)>>)
+    static_assert(std.is_same_v<decltype(y), const:std.shared_ptr<const:Foo.class>:ref>)
+)
+
+def (main:
+    x = Foo()
+    y = Foo()
+    func(x, y)
+    func(1, x)
+)
+```
+
+Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. As an example, consider the function ```expand``` in a typical computer algebra system. Given say ```expand(x - x)```, the result is `0` (parameters not retained). Given another expression, ```expand``` might return its input unchanged or even return an expression retaining a subexpression of its input. "Maybe retain" is the right choice for such an API (see e.g. [the signature of expand in symengine](https://github.com/symengine/symengine/blob/ed1e3e4fd8260097fa25aa1282e1d3a4ac4527f3/symengine/expand.cpp#L369)).
+
+Note however that we don't entirely embrace the suggestions of this core guideline R.36 especially with regard to a suggested warning that
+
+    (Simple) ((Foundation)) Warn if a function takes a Shared_pointer<T> by value or by reference to const and does not copy or move it to another Shared_pointer on at least one code path. Suggest taking a T* or T& instead.
+
+If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! Autoderef, though not implicit lambda capture, still works for explicit std.shared_ptrs so the annoying asymmetry of `x->foo` vs `x.foo`, one of the better reasons to embrace R.36 fully in *C++*, is gone in ceto! And when the above warning applies we're paying only for an extra indirection not an unnecessary refcount bump due to passing by reference to const (even for ```Foo:mut```). Unnecessarily enforcing parameter lifetimes when unowned raw pointers or mutable references suffice is debatably a bug or feature.
+
+TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
+
+Note that e.g. in this case:
+
+```python
+class (Foo:
+    x: Foo
+    y: Foo
+)
+
+def (main:
+    x = Foo(None, None)
+    Foo(x, x)
+)
+```
+
+the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It's debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
+
+One may also object to the unnecessary performance overhead of std.shared_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pYthOnIc ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
     
 ## Gotchas
 
