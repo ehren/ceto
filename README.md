@@ -1,9 +1,9 @@
 ## Intro
 
-**ceto** is an experimental programming language transpiled to C++ but inspired by Python in variable declaration style, \*syntax, safe(ish) reference semantics for `class`, and generic programming as an exercise in forgetting the type annotations. Every special control structure is a function call.
+**ceto** is an experimental programming language transpiled to C++ but inspired by Python in variable declaration style, \*syntax, safe(ish) reference semantics for `class`, and generic programming as an exercise in forgetting the type annotations. Syntactically, every control structure is a function call and every expression might be a macro.
 
 ```python
-# tests/macros_list_comprehension.cth
+# see the tests and selfhost directories for more examples
 
 include <ranges>
 
@@ -26,7 +26,7 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
     pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
                            c.args, lambda(a, a.equals(x) or a.equals(y))):
         # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
-        # e.g. [x, for (y in z) if (y == something)]
+        # e.g. [x, for (y in z), if (y == something)]
         dont_reserve: Node = quote(pass)
         dont_reserve
     else:
@@ -34,10 +34,12 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
         reserve
     )
 
-    return quote(lambda[ref] (:
+    return quote(lambda (:
 
-        unquote(result): mut = []
-        unquote(zz): mut:auto:ref:ref = unquote(z)
+        unquote(result): mut = []  # immutable by default (mostly!), so mark it "mut"
+
+        unquote(zz): mut:auto:ref:ref = unquote(z)  # explicit use of "auto" or "ref" requires
+                                                    # an explicit "mut" or "const" annotation.
         unquote(pre_reserve_stmt)
 
         for (unquote(y) in unquote(zz):
@@ -62,7 +64,6 @@ defmacro ([x, for (y in z)], x, y, z:
 ```
 
 ```python
-# tests/example.ctp
 include <ranges>
 include <iostream>
 include <numeric>
@@ -70,6 +71,8 @@ include <future>
 include <map>
 
 include (macros_list_comprehension)
+
+# No neEd for type declarations! iT's PyThoN!
 
 class (Foo:
     data_member
@@ -96,8 +99,13 @@ class (UniqueFoo:
     )
     
     def (consuming_method: mut, u: UniqueFoo:
+
+        # "u" is passed by reference to const to the generic method "method" here.
         Foo(42).method(u)
-        self.consumed.push_back(u)
+
+        # The last use of a :unique instance is std::move'd automatically.
+        # This is heavily inspired by the feature/idea in Herb Sutter's cppfront:
+        self.consumed.append(u)
     )
 ) : unique
 
@@ -138,14 +146,13 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     u: mut = UniqueFoo()    # u is a (non-const) std::unique_ptr<"non-const" UniqueFoo> in C++
     u2 = UniqueFoo()        # u2 is a (non-const) std::unique_ptr<const UniqueFoo> in C++
 
-    u.consuming_method(u2)  # Implicit std.move from last use of u2:
-                            # -To allow moves without copying, :unique are non-const by default 
-                            # -Note they're still unique_ptr-to-const by default!
+    u.consuming_method(u2)  # Implicit std.move from last use of u2.
+                            # Note that :unique are non-const (allowing move) but
+                            # unique_ptr-to-const by default.
 
     u.consuming_method(u)   # in C++: CETO_AUTODEREF(u).consuming_method(std::move(u))
 )
 ```
-
 
 ## Usage
 
@@ -188,7 +195,7 @@ where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the de
 
 ### Less typing (at least as in your input device\*)
 
-This project uses many of the ideas from the wonderful https://github.com/lukasmartinelli/py14 project such as the implicit insertion of *auto* (though in ceto it's implict *const auto* for untyped locals and *const auto&* for untyped params). The very notion of generic python functions as C++ template functions is also largely the same (including our backend implementation). 
+This project uses many of the ideas from the wonderful https://github.com/lukasmartinelli/py14 project such as the implicit insertion of *auto* (though in ceto it's implict *const auto* for untyped locals and *const auto&* for untyped params). The very notion of generic python functions as C++ template functions is also largely the same.
 
 We've also derived our code generation of Python like lists as *std.vector* from the project.
 
@@ -233,11 +240,9 @@ def (main:
 )
 ```
 
-Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as *std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>*  derives from the py14 implementation.
-	
+Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as *std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>* derives from the py14 implementation.
 
 (*tempered with the dubiously attainable goal of less typing in the language implementation)
-
 
 ### Classes, Inheritance
 
@@ -351,7 +356,7 @@ class (SimpleVisitor(Visitor):
         self.record += "visiting BinOp\n"
 
         for (arg in node.args:
-            arg.accept(self)
+            arg.accept(self)  # non-trivial use of self (hidden shared_from_this)
         )
     )
 
@@ -385,18 +390,6 @@ def (main:
 # visiting Identifier a
 ```
 
-In this example, a trivial use of `self` like in the attribute access `self.args` is rewritten to `this->args` for performance.
-
-Any occurence of `self` outside of an attribute access, however, like in
-
-```python
-visitor.visit(self)
-```
-
-is implicitly relying on a call to```shared_from_this()```. This is also evident in the use of `return self` in the first example in this README.
-
-Note that using ```self.foo()``` in a lambda is also considered non-trivial and results in a swiftish implicit refcount bump when self is a (shared) instance (C++ compile time error for :unique or struct).
-
 ### Tuples, "tuple unpacking" (std::tuple / structured bindings / std::tie)
 
 ```python
@@ -415,8 +408,8 @@ Note that using ```self.foo()``` in a lambda is also considered non-trivial and 
 include <ranges>
 include <iostream>
 
-#def (foo, (x, y):   # maybe TODO
 def (foo, tuple1: (int, int), tuple2 = (0, 1):
+    # TODO perhaps Python like tuple1[0] notation for transpiler known tuples
     return (std.get<0>(tuple1), std.get<1>(tuple2))
 )
 
@@ -434,7 +427,7 @@ def (main:
 
     (std.get<0>(tuples[7]), std.get<1>(tuples[7])) = foo(tuples[7])
 
-    for ((x, y) in tuples:
+    for ((x, y) in tuples:  # const auto&
         std.cout << x << y << "\n"
     )
 
@@ -483,7 +476,7 @@ class (Timer:
         self._thread = std.thread(lambda(:
             while (True:
                 std.this_thread.sleep_for(std.chrono.seconds(1))
-                if ((s = w.lock()):
+                if ((s = w.lock()):  # implicit capture of "w"
                     s.action()
                 else:
                     break
@@ -571,7 +564,7 @@ class (Foo:
     pass
 )
 
-def (func, x, y: Foo
+def (func, x, y: Foo:
     static_assert(std.is_reference_v<decltype(x)>)
     static_assert(std.is_const_v<std.remove_reference_t<decltype(x)>>)
     static_assert(std.is_reference_v<decltype(y)>)
@@ -595,7 +588,7 @@ Note however that we don't entirely embrace the suggestions of this core guideli
 
 If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! And note that switching class to struct doesn't require changing a whole bunch of `x->foo` to `x.foo` as would be the case in C++ (the annoying assymetry of `x->foo` vs `x.foo` being one of the better reasons to embrace R.36 fully in non-ceto generated C++ code). Yes, flounting this suggested warning results in code that unnecessarilly requires a parameter ownership regime (shared_ptr) when unowned raw pointers or mutable references suffice. But this is a reasonable performance compromise for safety purposes (see Chrome's banning of all raw pointers in favor of miracle_ptr).
 
-Note that for classes with "uninitialized" data members
+Note that e.g. in this case:
 
 ```python
 class (Foo:
@@ -609,7 +602,7 @@ def (main:
 )
 ```
 
-the generated C++ contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It is debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
+the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It's debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
 
 ### struct (not class)
 
