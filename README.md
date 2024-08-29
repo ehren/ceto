@@ -557,7 +557,7 @@ We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppC
 
     R.36: Take a const shared_ptr<widget>& parameter to express that it might retain a reference count to the object ???
 
-Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. For example, `x` and `y` are both passed to `func` by const ref in this example:
+Because we want (non-unique) class instances to behave roughly as class instances do in Python (that is, to be "maybe retained" when passed as parameters), we make this core guideline advice the implicit default for untyped/generic params and params of explicit class type. For example, `x` and `y` are both passed to `func` by reference to const in this example:
 
 ```python
 class (Foo:
@@ -580,13 +580,13 @@ def (main:
 )
 ```
 
-TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
-
 Note however that we don't entirely embrace the suggestions of this core guideline R.36 especially with regard to a suggested warning that
 
     (Simple) ((Foundation)) Warn if a function takes a Shared_pointer<T> by value or by reference to const and does not copy or move it to another Shared_pointer on at least one code path. Suggest taking a T* or T& instead.
 
-If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! And note that switching class to struct doesn't require changing a whole bunch of `x->foo` to `x.foo` as would be the case in C++ (the annoying assymetry of `x->foo` vs `x.foo` being one of the better reasons to embrace R.36 fully in non-ceto generated C++ code). Yes, flounting this suggested warning results in code that unnecessarilly requires a parameter ownership regime (shared_ptr) when unowned raw pointers or mutable references suffice. But this is a reasonable performance compromise for safety purposes (see Chrome's banning of all raw pointers in favor of miracle_ptr).
+If passing by T* or T& suffices in C++ (especially const T&), maybe you should be using `struct` instead of `class` in ceto anyway! (autoderef, though not implicit lambda capture, still works for explicit std.shared_ptrs). Note that the annoying asymmetry of `x->foo` vs `x.foo` is one of the better reasons to embrace R.36 fully in C++! And when the above warning applies we're paying only for an extra indirection not an unnecessary refcount bump due to passing by reference to const. Unnecessarily enforcing parameter lifetimes when unowned raw pointers or mutable references suffice is debatably a bug or feature.
+
+TODO discuss: https://stackoverflow.com/questions/3310737/should-we-pass-a-shared-ptr-by-reference-or-by-value#comment63125143_8741626
 
 Note that e.g. in this case:
 
@@ -603,6 +603,8 @@ def (main:
 ```
 
 the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_ptrs by value and initializing the data members via std::move in the initializer list. It's debatable whether a future optimization should be added to ceto so that parameters of ceto-class type used only once are taken by value but std::moved to their destination (it further complicates the meaning of ```Foo``` and may require some kind of ```export``` keyword (perhaps the existing ```noinline``` can be used) given our current support for forward function declarations).
+
+One may also object to the unnecessary performance overhead of std.shared_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pYthOnIc ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
 
 ### struct (not class)
 
