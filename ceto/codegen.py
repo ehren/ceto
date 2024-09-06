@@ -884,6 +884,8 @@ def codegen_class(node : Call, cx):
                 super_init_args.append(arg_code)
 
             inherits_dfn = cx.lookup_class(inherits)
+            if inherits_dfn and not inherits_dfn.is_concrete:
+                classdef.is_concrete = False
 
             if inherits_dfn and not inherits_dfn.is_concrete and not inherits_dfn.is_pure_virtual and isinstance(inherits, Identifier):
                 # TODO lookup_class should maybe ignore forward_declarations when the full definition is available. Alt
@@ -2125,8 +2127,8 @@ def codegen_call(node: Call, cx: Scope):
                     func_str = class_name
                     args_str = curly_args
                 else:
-                    #if not class_def.is_concrete:  # this is not being set adequately 
-                    class_name = "decltype(" + class_name + curly_args + ")"
+                    if not class_def.is_concrete:
+                        class_name = "decltype(" + class_name + curly_args + ")"
 
                     const_part = "const " if _is_const_make(node) else ""
 
