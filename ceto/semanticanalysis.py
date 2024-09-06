@@ -859,7 +859,10 @@ def prepare_macro_ready_callback(module):
             #   on nodes from a subinclude (easier caching??) - may interfere with fix
             module_time = os.path.getmtime(module_path)
             dll_time = os.path.getmtime(dll_path)
-            if dll_time > module_time:
+            if dll_time >= module_time:
+                return
+            elif "ceto_private" in module_name:
+                # hack to avoid unnecessary recompilation of standard library macros: module_path mtime updated after dll mtime (due to pip install moving files after macro compilation)
                 return
 
         # apply current replacement decisions at the time of encountering the current macro def (for a defmacro that relies on other defmacros)
