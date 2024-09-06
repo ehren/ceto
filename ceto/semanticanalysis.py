@@ -907,6 +907,7 @@ def prepare_macro_ready_callback(module):
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
+        toremove = []
 
         # prepare dependency of macro dll on a few selfhost sources
         for orig_name in ["ast.cth", "utility.cth", "range_utility.cth", "visitor.cth"]:
@@ -927,9 +928,14 @@ def prepare_macro_ready_callback(module):
                             f.write(ast_str)
                     else:
                         shutil.copyfile(orig_path, destination_path)
+                    toremove.append(destination_path)
                     break
 
         include_ast = parse("include (ceto__private__ast)")
+
+        for f in toremove:
+            os.remove(f)
+
         macro_impl_module.args = include_ast.args + macro_impl_module.args
 
         # Ignore any other defmacro nodes (we don't want to compile them just yet - we're busy with the current defmacro.
@@ -949,7 +955,7 @@ def prepare_macro_ready_callback(module):
 
         project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 
-        include_opts = f"-I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')}"
+        include_opts = f"-I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -I{os.path.dirname(__file__)}"
 
         if sys.platform == "win32":
             include_opts = include_opts.replace('-I', '/I')

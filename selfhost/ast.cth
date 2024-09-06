@@ -95,7 +95,7 @@ class (Node:
         )
 
         for (i in ceto.util.range(self.args.size()):
-            if (not self.args[i].equals(other.args[i]):
+            if (not self.args.at(i).equals(other.args.at(i)):
                 return False
             )
         )
@@ -125,7 +125,7 @@ class (UnOp(Node):
     )
 
     def (repr: override:
-        return "("s +  self.op + " " + self.args[0].repr() + ")"
+        return "("s +  self.op + " " + self.args.at(0).repr() + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:
@@ -147,7 +147,7 @@ class (LeftAssociativeUnOp(Node):
     )
 
     def (repr: override:
-        return "(" + self.args[0].repr() + " " + self.op + ")"
+        return "(" + self.args.at(0).repr() + " " + self.op + ")"
     ) : std.string
 
     def (accept: override, visitor: Visitor:mut:ref:
@@ -169,11 +169,11 @@ class (BinOp(Node):
     )
 
     def (lhs:
-        return self.args[0]
+        return self.args.at(0)
     )
 
     def (rhs:
-        return self.args[1]
+        return self.args.at(1)
     )
 
     def (repr: override:

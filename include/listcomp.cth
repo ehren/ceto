@@ -1,0 +1,54 @@
+include <ranges>
+
+def (maybe_reserve: template<typename:T>,
+               vec: mut:[T]:ref,
+             sized: mut:auto:ref:ref:
+    vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
+) : void:requires:requires(std.size(sized))
+
+def (maybe_reserve: template<typename:T>,
+               vec: mut:[T]:ref,
+           unsized: mut:auto:ref:ref:
+    pass
+) : void:requires:not requires(std.size(unsized))
+
+defmacro ([x, for (y in z), if (c)], x, y, z, c:
+    result = gensym()
+    zz = gensym()
+
+    pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
+                           c.args, lambda(a, a.equals(x) or a.equals(y))):
+        # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
+        # e.g. [x, for (y in z) if (y == something)]
+        dont_reserve: Node = quote(pass)
+        dont_reserve
+    else:
+        reserve: Node = quote(maybe_reserve(unquote(result), unquote(zz)))
+        reserve
+    )
+
+    return quote(lambda[ref] (:
+
+        unquote(result): mut = []
+        unquote(zz): mut:auto:ref:ref = unquote(z)
+        unquote(pre_reserve_stmt)
+
+        for (unquote(y) in unquote(zz):
+            unquote(if (c.name() == "True":
+                # Omit literal if (True) check (reduce clutter for 2-arg case below)
+                quote(unquote(result).append(unquote(x)))
+            else:
+                quote(if (unquote(c):
+                    unquote(result).append(unquote(x))
+                ))
+            ))
+        )
+
+        unquote(result)
+    ) ())
+)
+
+defmacro ([x, for (y in z)], x, y, z:
+    # Use the existing 3-arg definition
+    return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
+)

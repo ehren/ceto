@@ -164,13 +164,16 @@ def main():
     ap.add_argument("-o", "--exename", help="Executable program name (including suffix if any)")
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
     ap.add_argument("--donotexecute", action='store_true', help="If compiling C++, do not attempt to run an executable")
-    # ap.add_argument("-c", "--runstring", help="Compile and run string", action="store_true")
-    ap.add_argument("-i", "--implementation", help="Create an implementation (.cpp) file even if filename does not end in .ctp", action="store_true")
+    ap.add_argument("--_nostandardlibmacros", action='store_true', help="Do not include standard lib macros during compilation (not recommended unless compiling the standard lib macros themselves)")
+    ap.add_argument("-I", "--include", type=str, nargs="*", help="Additional search directory for ceto headers (.cth files). Directory of transpiled file (first positional arg) takes priority in search.")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
 
     global cmdargs
     cmdargs = ap.parse_args()
+
+    if not cmdargs.include:
+        cmdargs.include = []
 
     cmdargs.filename = os.path.abspath(cmdargs.filename)
     if not os.path.isfile(cmdargs.filename):
@@ -186,7 +189,7 @@ def main():
         sys.exit(-1)
 
     ext = ".h"
-    if module.has_main_function or cmdargs.implementation:
+    if module.has_main_function:
         ext = ".cpp"
 
     if cmdargs.filename:
@@ -194,9 +197,6 @@ def main():
             ext = ".h"
             if module.has_main_function:
                 print("don't put 'main' function in a header", sys.stderr)
-                sys.exit(-1)
-            if cmdargs.implementation:
-                print("-i/--implementation incompatible with .cth (header) extension", sys.stderr)
                 sys.exit(-1)
         elif cmdargs.filename.endswith("ctp"):
             ext = ".cpp"
@@ -226,15 +226,20 @@ def main():
         CXX = os.environ["CXX"]
 
     if is_msvc:
-        CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc /I{os.path.join(os.path.dirname(__file__))}/../include/"
+        CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc"
 
     if "CXXFLAGS" in os.environ:
         CXXFLAGS = os.environ["CXXFLAGS"]
 
+    include_opts = f" -I{os.path.join(os.path.dirname(__file__))}/../include/"
+    include_opts += f" -I{os.path.dirname(__file__)}"
+    for inc in cmdargs.include:
+        include_opts += f" -I{inc}"
+
     if is_msvc:
-        CXXFLAGS += f" /I{os.path.join(os.path.dirname(__file__))}/../include/"
-    else:
-        CXXFLAGS += f" -I{os.path.join(os.path.dirname(__file__))}/../include/"
+        include_opts = include_opts.replace('-I', '/I')
+
+    CXXFLAGS += include_opts
 
     exename = cmdargs.exename
     if not cmdargs.exename:
