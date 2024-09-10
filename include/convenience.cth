@@ -1,12 +1,12 @@
 
 
 # def (foo<T> -> def (foo:template<typename T>
-defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
+defmacro(def (func_name<t>:specifier, args), func_name, t: Identifier, specifier: Node|None, args: [Node]:
     tmp = if (specifier:
-        specified_template: Node = quote(template<typename:unquote(T)>:unquote(specifier))
+        specified_template: Node = quote(template<typename:unquote(t)>:unquote(specifier))
         specified_template
     else:
-        just_template: Node = quote(template<unquote(T)>)
+        just_template: Node = quote(template<typename:unquote(t)>)
         just_template
     )
 

@@ -31,7 +31,7 @@ class BuildExt(build_ext):
 
         # TODO stop copying files during macro compilation
         # Ensure above macros are compiled prior to possible first use in another user program (avoid excessive macro compilation time as first impression) TODO this will be proken when installing via pypi (until these are shipped with the package)
-        for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp")]:
+        for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp"), os.path.join(rootdir, "tests", "regression", "template_func_builtin_macro_convenience.ctp")]:
             print(f)
             subprocess.run([sys.executable, "-m", "ceto", f])
         
