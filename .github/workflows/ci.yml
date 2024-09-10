@@ -30,7 +30,7 @@ jobs:
         pip install pytest
     - name: Install package
       run: |
-        pip install -v --editable .  # editable because we want the dll inside the source directory (we're testing with the code in the source directory below instead of testing the system/installed version)
+        pip install -v .
     - name: Test with pytest
       run: |
         clang++ -v &&  pytest -s
@@ -54,7 +54,7 @@ jobs:
         pip install flake8 pytest
     - name: Install package
       run: |
-        pip install -v --editable .
+        pip install -v .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -89,7 +89,7 @@ jobs:
         pip install pytest
     - name: Install package
       run: |
-        pip install -v --editable .
+        pip install -v .
     - name: Test with pytest
       run: |
         pytest -s
@@ -116,7 +116,7 @@ jobs:
         pip install pytest
     - name: Install package
       run: |
-        pip install -v --editable .
+        pip install -v .
     - name: Test with pytest
       run: |
         pytest -s
@@ -143,7 +143,7 @@ jobs:
         pip install pytest
     - name: Install package
       run: |
-        pip install -v --editable .
+        pip install -v .
     - name: Test with pytest
       run: |
         pytest -s

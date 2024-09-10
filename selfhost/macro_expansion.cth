@@ -54,7 +54,7 @@ class (MacroScope:
 
 
 def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
-    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr() << "\n"
+    #std.cout << "node: " << node.repr() << " pattern: " << pattern.repr() << "\n"
 
     if (isinstance(pattern, Identifier):
         search = params.find(pattern.name().value())
@@ -92,17 +92,14 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 
     elif (binop_pattern = asinstance(pattern, BinOp)):
         idents: mut:[Node] = []
-        std.cout << "binop_pattern:" << binop_pattern.repr() << "\n"
 
         for (a in binop_pattern.args:
             if (isinstance(a, Identifier):
-                std.cout << "ident" << a.name().value() <<"\n"
                 idents.append(a)
             )
         )
 
         for (i in idents:
-            std.cout << "ident2" << i.name().value() <<"\n"
             search = params.find(i.name().value())
             if (search != params.end():
                 param_name = search->first
@@ -110,15 +107,12 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                 if (not typed_param:
                     continue
                 )
-                std.cout << "param_name" << param_name <<"\n"
-                std.cout << "matched_param" << typed_param.repr() <<"\n"
                 if ((or_param = asinstance(typed_param.rhs(), BitwiseOrOp)):
                     if (or_param.lhs().name() == "None" or or_param.rhs().name() == "None":
                         # this will need adjusting for the more than 3 BinOp args case once we 
                         # flatten the ast after/during parsing (prior to macro expand)
                         for (a in binop_pattern.args:
                             if (a.name() != i.name():
-                                std.cout << "alternate" << a.repr()
                                 m = macro_matches(node, a, params)
                                 if (m:
                                     return m
@@ -289,10 +283,10 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             for (definition in ceto.util.reversed(scope->macro_definitions):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
-                    std.cout << "found match\n"
+                    #std.cout << "found match\n"
                     replacement = call_macro_impl(definition, match.value())
                     if (replacement and replacement != node:
-                        std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
+                        #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
                         self.replacements[node] = replacement
                         replacement.accept(*this)
                         return True

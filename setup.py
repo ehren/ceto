@@ -24,10 +24,15 @@ class BuildExt(build_ext):
         main_dir = os.path.dirname(main_file)
         print("main_dir", main_dir)
 
+        for f in os.listdir(main_dir):
+            if ".macro_impl" in f:
+                os.remove(os.path.join(main_dir, f))
+
         for f in os.listdir(os.path.join(rootdir, "include")):
             if f.endswith(".cth"):
                 print(f)
                 subprocess.run([sys.executable, "-m", "ceto", "--_nostandardlibmacros", os.path.join(main_dir, "ceto_private_" + f)])
+
 
         # TODO stop copying files during macro compilation
         # Ensure above macros are compiled prior to possible first use in another user program (avoid excessive macro compilation time as first impression) TODO this will be proken when installing via pypi (until these are shipped with the package)

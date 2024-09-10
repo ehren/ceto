@@ -99,7 +99,6 @@ struct MacroScope : public ceto::object {
 };
 
     inline auto macro_matches(const std::shared_ptr<const Node>&  node, const std::shared_ptr<const Node>&  pattern,  const std::map<std::string,std::shared_ptr<const Node>> &  params) -> std::optional<std::map<std::string,std::shared_ptr<const Node>>> {
-        ((((std::cout << "node: ") << (*ceto::mad(node)).repr()) << " pattern: ") << (*ceto::mad(pattern)).repr()) << "\n";
         if ((std::dynamic_pointer_cast<const Identifier>(pattern) != nullptr)) {
             const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(pattern)).name())).value());
             if (search != (*ceto::mad(params)).end()) {
@@ -127,15 +126,12 @@ struct MacroScope : public ceto::object {
             }
         } else if (const auto binop_pattern = std::dynamic_pointer_cast<const BinOp>(pattern)) {
             std::vector<std::shared_ptr<const Node>> idents = std::vector<std::shared_ptr<const Node>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::shared_ptr<const Node>>{}), std::remove_cvref_t<decltype(idents)>>);
-            ((std::cout << "binop_pattern:") << (*ceto::mad(binop_pattern)).repr()) << "\n";
             for(const auto& a : (*ceto::mad(binop_pattern)).args) {
                 if ((std::dynamic_pointer_cast<const Identifier>(a) != nullptr)) {
-                    ((std::cout << "ident") << (*ceto::mad_smartptr((*ceto::mad(a)).name())).value()) << "\n";
                     (*ceto::mad(idents)).push_back(a);
                 }
             }
             for(const auto& i : idents) {
-                ((std::cout << "ident2") << (*ceto::mad_smartptr((*ceto::mad(i)).name())).value()) << "\n";
                 const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(i)).name())).value());
                 if (search != (*ceto::mad(params)).end()) {
                     const auto param_name = (search -> first);
@@ -143,13 +139,10 @@ struct MacroScope : public ceto::object {
                     if (!typed_param) {
                         continue;
                     }
-                    ((std::cout << "param_name") << param_name) << "\n";
-                    ((std::cout << "matched_param") << (*ceto::mad(typed_param)).repr()) << "\n";
                     if (const auto or_param = std::dynamic_pointer_cast<const BitwiseOrOp>((*ceto::mad(typed_param)).rhs())) {
                         if (((*ceto::mad((*ceto::mad(or_param)).lhs())).name() == "None") || ((*ceto::mad((*ceto::mad(or_param)).rhs())).name() == "None")) {
                             for(const auto& a : (*ceto::mad(binop_pattern)).args) {
                                 if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
-                                    (std::cout << "alternate") << (*ceto::mad(a)).repr();
                                     const auto m = macro_matches(node, a, params);
                                     if (m) {
                                         return m;
@@ -279,10 +272,8 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             while (scope) {                for(const auto& definition : ceto::util::reversed(scope -> macro_definitions)) {
                     const auto match = macro_matches(node, (*ceto::mad(definition)).pattern_node, (*ceto::mad(definition)).parameters);
                     if (match) {
-                        std::cout << "found match\n";
                         const auto replacement = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
                         if (replacement && (replacement != node)) {
-                            ((((std::cout << "found replacement for ") << (*ceto::mad(node)).repr()) << ": ") << (*ceto::mad(replacement)).repr()) << std::endl;
                             ceto::bounds_check(this -> replacements, node) = replacement;
                             (*ceto::mad(replacement)).accept((*this));
                             return true;

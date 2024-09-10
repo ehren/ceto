@@ -498,7 +498,7 @@ def _find_uses(node, search_node):
 
 def is_def_or_class_like(call : Call):
     assert isinstance(call, Call)
-    if call.func.name in ["def", "lambda", "class", "struct"]:
+    if call.func.name in ["def", "defmacro", "lambda", "class", "struct"]:
         return True
     if isinstance(call.func, ArrayAccess) and call.func.func.name == "lambda":
         # lambda with explicit capture list
