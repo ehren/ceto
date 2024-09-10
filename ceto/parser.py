@@ -611,7 +611,7 @@ def _add_standard_lib_macro_imports(module: Module):
 #                    shutil.copyfile(orig_path, destination_path)
 #                break
 
-    builtin_modules = ["listcomp", "boundscheck"]
+    builtin_modules = ["listcomp", "boundscheck", "convenience"]
 
     module_names = [private_prefix + m for m in builtin_modules]
 

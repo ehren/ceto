@@ -1,0 +1,17 @@
+
+
+# def (foo<T> -> def (foo:template<typename T>
+defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
+    tmp = if (specifier:
+        specified_template: Node = quote(template<typename:unquote(T)>:unquote(specifier))
+        specified_template
+    else:
+        just_template: Node = quote(template<unquote(T)>)
+        just_template
+    )
+
+    new_args: mut:[Node] = [quote(unquote(func_name):unquote(tmp))]
+    new_args.insert(new_args.end(), args.begin(), args.end())
+
+    return Call(quote(def), new_args)
+)

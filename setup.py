@@ -75,7 +75,7 @@ try:
         _extra_link_args = []
     else:
         _extra_link_args = ["-Wl,-ldl"]
-        _extra_compile_args = [] #["-O0", "-g3"]
+        _extra_compile_args = ["-O0", "-g3"]
 
     ext_modules = [
         Pybind11Extension("ceto._abstractsyntaxtree",

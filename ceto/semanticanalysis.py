@@ -885,6 +885,13 @@ def prepare_macro_ready_callback(module):
                         init_param = "asinstance(" + init_param + ", " + param.rhs.name + ")"
                     elif isinstance(param.rhs, ListLiteral):
                         init_param = init_param + ".args"
+                    elif isinstance(param.rhs, BitwiseOrOp):
+                        non_none = [b.name for b in param.rhs.args if isinstance(b, Identifier) and b.name != "None"]
+                        if len(non_none) == 1:
+                            alternate_type = non_none[0]
+                        else:
+                            alternate_type = "Node"
+                        init_param = "if (CETO_PRIVATE_params.find('" + param_name + "') != CETO_PRIVATE_params.end():\n" + indt * 2 + "asinstance(CETO_PRIVATE_params.at('" + param_name + "'), " + alternate_type + ")\n" + indt + "else:\n" + indt * 2 + "CETO_PRIVATE_none: " + alternate_type  + " = None; CETO_PRIVATE_none\n" + indt + ")\n"
                     break
 
             impl_str += indt + param_name + " = " + init_param + "\n"
