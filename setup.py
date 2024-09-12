@@ -33,22 +33,31 @@ def _post_install():
 #    def run(self):
 #        install_lib.run(self)
 
-    main_file = subprocess.check_output([sys.executable, "-c", "import ceto; print(ceto.__file__)"], text=True)
-    main_dir = os.path.dirname(main_file)
-    print("main_dir", main_dir)
+    cwd = os.getcwd()
+    osroot = os.path.abspath(os.sep)
 
-    for f in os.listdir(main_dir):
-        if ".macro_impl" in f:
-            os.remove(os.path.join(main_dir, f))
+    try:
+        os.chdir(osroot)
 
-    for f in os.listdir(os.path.join(rootdir, "include")):
-        if f.endswith(".cth"):
+        main_file = subprocess.check_output([sys.executable, "-c", "import ceto; print(ceto.__file__)"], text=True)
+        main_dir = os.path.dirname(main_file)
+        print("main_dir", main_dir)
+
+        for f in os.listdir(main_dir):
+            if ".macro_impl" in f:
+                os.remove(os.path.join(main_dir, f))
+
+        for f in os.listdir(os.path.join(rootdir, "include")):
+            if f.endswith(".cth"):
+                print(f)
+                subprocess.run([sys.executable, "-m", "ceto", "--_nostandardlibmacros", os.path.join(main_dir, "ceto_private_" + f)])
+
+        for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp"), os.path.join(rootdir, "tests", "regression", "template_func_builtin_macro_convenience.ctp")]:
             print(f)
-            subprocess.run([sys.executable, "-m", "ceto", "--_nostandardlibmacros", os.path.join(main_dir, "ceto_private_" + f)])
+            subprocess.run([sys.executable, "-m", "ceto", f])
 
-    for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp"), os.path.join(rootdir, "tests", "regression", "template_func_builtin_macro_convenience.ctp")]:
-        print(f)
-        subprocess.run([sys.executable, "-m", "ceto", f])
+    finally:
+        os.chdir(cwd)
         
 
 
