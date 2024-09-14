@@ -1,4 +1,3 @@
-
 # def (foo<T> -> def (foo:template<typename:T>
 defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
     template_header: Node = quote(template<typename:unquote(T)>)
@@ -11,4 +10,26 @@ defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier
     new_args: mut:[Node] = [quote(unquote(func_name):unquote(specified_template))]
     new_args.insert(new_args.end(), args.begin(), args.end())
     return Call(quote(def), new_args)
+)
+
+# canonical empty destructor to default destructor:
+# e.g.
+# def (destruct:virtual:
+#     pass
+# )
+# goes to
+# def (destruct:virtual) = default
+# For an empty non-default destructor
+# use pass; pass
+defmacro (def (destruct:specifier:
+    pass
+), specifier: Node|None:
+    name: Node = quote(destruct)
+    destructor = if (specifier:
+        specified: Node = quote(unquote(name): unquote(specifier))
+        specified
+    else:
+        name
+    )
+    return quote(def (unquote(destructor)) = default)
 )

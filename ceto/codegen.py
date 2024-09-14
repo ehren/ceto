@@ -348,11 +348,7 @@ def codegen_def(defnode: Call, cx):
 
             rhs = defnode.parent.rhs
 
-            if name == "init" and rhs.name in ["default", "delete"]:
-                # return class_name + "() = " + defnode.parent.rhs.name
-                raise CodeGenError("TODO decide best way to express = default/delete", defnode)
-
-            if return_type_node is None:
+            if return_type_node is None and not is_destructor:
                 raise CodeGenError("declarations must specify a return type", defnode)
 
             if isinstance(rhs, IntegerLiteral) and rhs.integer_string == "0":
@@ -364,6 +360,8 @@ def codegen_def(defnode: Call, cx):
                 classdef.is_pure_virtual = True
 
                 # pure virtual function (codegen_assign handles the "= 0" part)
+                return indt + funcdef
+            elif rhs.name in ["default", "delete"]:
                 return indt + funcdef
             else:
                 raise CodeGenError("bad assignment to function declaration", defnode)
