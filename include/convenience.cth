@@ -33,3 +33,12 @@ defmacro (def (destruct:specifier:
     )
     return quote(def (unquote(destructor)) = default)
 )
+
+# note codegen.py contains checks to prevent using { } as an anonymous scope
+defmacro(scope (:
+    stmts
+), stmts: [Node]:
+    block = Block(stmts)
+    # debatable if if constexpr is necessary
+    return quote(if (1, unquote(block)): constexpr)
+)

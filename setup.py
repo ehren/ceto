@@ -52,7 +52,7 @@ def _post_install():
                 print(f)
                 subprocess.run([sys.executable, "-m", "ceto", "--_nostandardlibmacros", os.path.join(main_dir, "ceto_private_" + f)])
 
-        for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp"), os.path.join(rootdir, "tests", "regression", "template_func_builtin_macro_convenience.ctp"), os.path.join(rootdir, "tests", "regression", "default_destructor_builtin_macro.ctp")]:
+        for f in [os.path.join(rootdir, "tests", "regression", "bounds_check.ctp"), os.path.join(rootdir, "tests", "macros_list_comprehension.ctp"), os.path.join(rootdir, "tests", "regression", "template_func_builtin_macro_convenience.ctp"), os.path.join(rootdir, "tests", "regression", "default_destructor_builtin_macro.ctp"), os.path.join(rootdir, "tests", "regression", "scope_block_builtin_macro.ctp")]:
             print(f)
             subprocess.run([sys.executable, "-m", "ceto", f])
 
