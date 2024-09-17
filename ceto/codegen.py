@@ -1535,7 +1535,7 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
             if stripped := _strip_non_class_non_plain_mut_type(arg.lhs, cx):
                 arg_type = stripped
                 should_add_outer_const = False
-            elif any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):
+            elif any(t.name == "const" for t in type_node_to_list_of_types(arg.lhs.declared_type)):
                 should_add_outer_const = False
 
             automatic_const_part = " "

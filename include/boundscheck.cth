@@ -10,34 +10,34 @@ defmacro (array[index], array, index:
 
 namespace (ceto)
 
-#if (defined(__clang__) and __clang_major__ < 16 and __APPLE__:
-def (bounds_check, arr: mut:auto:ref:ref, index: size_t:
-    if (index >= std.size(arr):
-        std.cerr << "terminating on out of bounds access\n"
-        std.terminate()
-    )
+if (defined(CETO_HAS_SOURCE_LOCATION):
+    def (bounds_check, arr: mut:auto:ref:ref, index: size_t, loc: const:std.source_location:ref = std.source_location.current():
+        if (index >= std.size(arr):
+            std.cerr << "terminating on out of bounds access: " << loc.file_name() << ":"
+            std.cerr << loc.function_name() << ":" << loc.line() << ":" << loc.column() << "\n"
+            std.terminate()
+        )
 
-    return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index));
-) : decltype(auto):requires:requires(std.size(arr))
-#else:
-#    def (bounds_check, arr: mut:auto:ref:ref, index: size_t, loc: const:std.source_location:ref = std.source_location.current():
-#        if (index >= std.size(arr):
-#            std.cerr << "terminating on out of bounds access: " << loc.file_name() << ":"
-#            std.cerr << loc.function_name() << ":" << loc.line() << ":" << loc.column() << "\n"
-#            std.terminate()
-#        )
-#
-#        return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index));
-#    ) : decltype(auto):requires:requires(std.size(arr))
-#) : preprocessor
+        return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index))
+    ) : decltype(auto):requires:requires(std.size(arr))
+else:
+    def (bounds_check, arr: mut:auto:ref:ref, index: size_t:
+        if (index >= std.size(arr):
+            std.cerr << "terminating on out of bounds access\n"
+            std.terminate()
+        )
 
-def (bounds_check, o: mut:auto:ref:ref, index: mut:auto:ref:ref:
-    return std.forward<decltype(o)>(o).unsafe_at(std.forward<decltype(index)>(index));
-) : decltype(auto):requires:not std.is_integral_v<std.remove_cvref_t<decltype(index)>>
+        return std.forward<decltype(arr)>(arr).unsafe_at(std.forward<decltype(index)>(index))
+    ) : decltype(auto):requires:requires(std.size(arr))
+) : preprocessor
+
+def (bounds_check, non_array: mut:auto:ref:ref, obj: mut:auto:ref:ref:
+    return std.forward<decltype(non_array)>(non_array).unsafe_at(std.forward<decltype(obj)>(obj))
+) : decltype(auto):requires:not std.is_integral_v<std.remove_cvref_t<decltype(obj)>>
 
 # from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
 is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
 
-def (bounds_check, m: mut:auto:ref:ref, key: mut:auto:ref:ref:
-    return std.forward<decltype(m)>(m).unsafe_at(std.forward<decltype(key)>(key));
-) : decltype(auto):requires:std.is_integral_v<std.remove_cvref_t<decltype(key)>> and is_map_type<std.remove_cvref_t<decltype(m)>>
+def (bounds_check, map_like: mut:auto:ref:ref, key: mut:auto:ref:ref:
+    return std.forward<decltype(map_like)>(map_like).unsafe_at(std.forward<decltype(key)>(key))
+) : decltype(auto):requires:std.is_integral_v<std.remove_cvref_t<decltype(key)>> and is_map_type<std.remove_cvref_t<decltype(map_like)>>
