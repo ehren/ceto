@@ -877,6 +877,53 @@ At this point, you might be objecting on performance grounds alone. While the ab
 While this is true (though we claim zero overhead because you can always avoid `class`
 
 
+### Misc
+
+
+## Features/TODO
+
+- Classes
+- [ ] Special member functions
+    - [ ] init method
+        - [x] implicit init (but ```explicit``` as in the C++ keyword constructor). [x] params taken by value but std::moved to destination for implicit init
+        - [x] explicit init methods (same parameter passing defaults as other functions/methods)
+            - [x] super init call. works with template base classes via decltype thing (possibly unnecessary in c++23) 
+        - [ ] should take params by value but std::move in the explicit init method case so long as params not used outside of implicit initializer list (initial block of self.x assignments + optional super.init call)
+        - [ ] multiple init methods / designated initializers (need to check that data members properly initialized)
+    - [ ] other special member functions
+        - [ ] ```def (copyinit, other)``` with other always untyped. [ ] raise CodeGenError upon encountering a copy constructor defined like in C++ e.g. with a param ```other: Foo``` (```other``` implicitly ```const:Foo:ref``` for Foo a struct) or ```other: Foo.class``` (for ```Foo``` a ceto class)
+        - [ ] moveinit, copyassign, moveassign (no parameter types or return types specifiable; leave e.g. member functions that are conditionally copy constructors etc to external C++?) 
+
+```python
+# last example at https://en.cppreference.com/w/cpp/language/rule_of_three
+class (BaseOfFiveDefaults:
+    def (copyinit, other) = default
+    def (moveinit, other) = default
+    def (copyassign, other) = default
+    def (moveassign, other) = default
+    def (destruct: virtual) = default
+)
+```
+    - [x] empty canonical destructor is default (aka use ```pass; pass``` for non-default). Implemented via builtin macro - see include/convenience.cth
+    - [x] macro system in current state sufficient to add special member functions (defaulted deleted or otherwise) to classes of certain "type"? Ideally need:
+        - [ ] more fine grained pattern matching (subpattern is ZeroOrMore/OneOrMore of a particular pattern rather than just [x] a particular Node subclass)
+
+- Macros
+    - [x] generic (implicit Node) and specific class type params (see ast.cth)
+    - [x] Alternational params: e.g. ```BinOp|Call|ArrayAccess```
+    - [x] Optional via pattern_var: ```Node|None``` syntax. Rename to ```Optional(Node)``` or ```ZeroOrOne(Node)``` [ ]? Note: ```defmacro (foo: optional_var, optional_var: Node|None, ...)``` matches both ```foo``` and ```foo:whatever + 1*some([thing])``` - perhaps implied not obvious  `Optional` syntax
+        - [ ] TODO Allow Optional in list-like context
+    - [x] Zero or more via ```exprs: [Node]``` syntax
+    - [ ] finer grained macro matching e.g. Zero or more applied to a particular subpattern (not just a Node subclass). Either need to allow special functions (perhaps with mandatory namespacing) e.g. ceto.ast.ZeroOrMore to occur in the first pattern param or allow pattern params e.g. ()```param : [pattern(1 + x, x)]
+    - [ ] defmacro elif else
+    - [ ] Better/canonical way to avoid processing of a node by the same or other macros (especially without having to access the C/C++ preprocessor via cpp"strings") - `Forget` / `Launder` ? Note: comparing Node addresses is problematic due to some cloning out of your control - [ ] should be reiged in bit.
+    - [ ] Compile two or more macros in the same file into the same DLL (unless the second macro contains patterns potentially expandable by the first...). This would simplify shared memory between macro implementation bodies (whether a good idea or not)
+    - [ ] IMPORTANT TODO flattening of ast BinOp args after/during parse: `1 + 2 + 3` should be a single `Add` with 3 args not 2 `Add` with 2 left/right args. WARNING: macro code that depends on the ```lhs``` or ```rhs``` ```BinOp``` methods (or the assumption that ```some_binop.args.size() == 2```) will likely be broken in the future. Why the bother in that a nested ast simplifies code printing and perhaps other things? Codegen (and macros) very frequently wants to manipulate multi-word "types" like ```mut:static:int``` (to e.g. remove the ```mut``` prior to generating C++ code or to determine if ```mut``` is merely present). This is much nicer with the flattened representation. Macros that add function attributes or keywords as the default (only if they're not already present) benefit from the flattened representation.
+    - [ ] Macros should have access to scope/lookup table info. Especially necessary for macro patterns involving ```.``` (AttributeAccess) including method-call macros that don't want to also override implicit scope resolution via ".". For example, ```defmacro(string_var.split(optional_delim), ...)``` is problematic because it overrides the implicit scope resolution for code like e.g. ```my_library.split(str)```. Though ```my_library::split(str)``` can still be written, it's ugly and should be avoided. 
+        - [ ] Note current scope.cth in selfhost is a direct port of the bootstrap Python scope.py and is intentionally unavailable to the macro system. The main deficiency of this code is relying on the unflattened ast for ```TypeOp``` (it also interacts with other poor handling of TypeOp - particularly semanticanalysys.py and codegen.py relying on a .declared_type property of Node - rather than something like the Identifier|TypeOp|None optional matching available to the macro system). Also while we do need to attach scopes to each node prior to beginning codegen scope should not be an actual attribute of Node. Note that the empty list append forward inference via decltype requires every Node to have an associated Scope prior to codegen - to write a simlar macro all scope info must be computed before the first attempted macro invocation.
+            - [ ] Updating scope info after a macro expand. Probably can do better than a complete re-traversal?
+
+
 -----
 
 ### Further Explanation
