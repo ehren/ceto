@@ -4,12 +4,61 @@ import subprocess
 
 import pytest
 
-from ceto.compiler import runtest
+from ceto.compiler import compile_node, perf_counter
 from ceto.parser import parse
 
 
 def compile(s, compile_cpp=True):
-    return runtest(s, compile_cpp)
+    perf_messages = []
+    t = perf_counter()
+    node = parse(s)
+    perf_messages.append(f"parse time {perf_counter() - t}")
+    code, _ = compile_node(node)
+
+    output = None
+
+    if compile_cpp:
+        build_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "build")
+        if not os.path.exists(build_dir):
+            os.makedirs(build_dir)
+        filename = os.path.join(build_dir, "testsuitegenerated.cpp")
+
+        with open(filename, "w") as f:
+            f.write(code)
+
+        if "CXX" in os.environ:
+            CXX = os.environ["CXX"]
+        else:
+            CXX = "c++"
+
+        if CXX == "cl":
+            CXXFLAGS = f"/std:c++20 /Wall /permissive- /EHsc /I{os.path.join(os.path.dirname(__file__))}/../include/"
+            exe_name = "testsuitegenerated.exe"
+        else:
+            CXXFLAGS = f"-std=c++20 -Wall -pedantic-errors -Wconversion -Wno-parentheses -lpthread -I{os.path.join(os.path.dirname(__file__))}/../include/"
+            exe_name = "./a.out"
+
+        command = f"{CXX} {filename} {CXXFLAGS}"
+
+        print(command)
+
+        t1 = perf_counter()
+        p = subprocess.Popen(command, shell=True)
+
+        output, error = p.communicate()
+        print("c++ compiling time", perf_counter() - t1)
+
+        output = subprocess.check_output(exe_name).decode("utf-8")#, shell=True)
+        print(output)
+
+        os.remove(os.path.join(".", filename))
+        os.remove(exe_name)
+
+        if CXX == "cl":
+            output = output.replace("\r\n", "\n")
+
+    return output
+
 
 # these require range_value_t for untyped / forward typed vectors (not worth adding #ifdefs to fallback to using ::value_type - just upgrade your clang)
 clang_xfailing_tests = ["atomic_weak.ctp",
@@ -77,7 +126,7 @@ def test_file(file):
         expected_output = None
 
     if _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS:
-        runtest("\n".join(content), compile_cpp=False)
+        compile("\n".join(content), compile_cpp=False)
         return
 
     build_command = f"{sys.executable} -m ceto -o a.exe --donotexecute {path}"

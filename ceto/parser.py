@@ -564,10 +564,17 @@ def parse_included_module(module: Identifier) -> typing.Tuple[str, str, Module]:
     from .compiler import cmdargs
 
     module_name = module.name
-    maindir = os.path.dirname(os.path.realpath(cmdargs.filename))
     package_dir = os.path.dirname(__file__)
     include_dir = os.path.join(package_dir, os.pardir, "include")
-    dirs = [maindir, package_dir] + cmdargs.include  # include_dir?
+
+    if cmdargs:
+        dirs = [package_dir] + cmdargs.include
+        if cmdargs.filename:
+            maindir = os.path.dirname(os.path.realpath(cmdargs.filename))
+            dirs = [maindir] + dirs
+    else:
+        dirs = [package_dir]
+
     cpp_module_path = None
     for dirname in dirs:
         module_path = os.path.join(dirname, module_name + ".cth")
@@ -585,10 +592,7 @@ def parse_included_module(module: Identifier) -> typing.Tuple[str, str, Module]:
 def _add_standard_lib_macro_imports(module: Module):
     from .compiler import cmdargs
 
-    if not cmdargs:
-        return
-
-    if cmdargs._nostandardlibmacros:
+    if cmdargs and cmdargs._nostandardlibmacros:
         return
 
 #    destination_dir = os.path.dirname(os.path.realpath(cmdargs.filename))
@@ -693,26 +697,29 @@ def expand_includes(node: Module):
     return node
 
 
-def parse_from_cmdargs(cmdargs):
-    filename = cmdargs.filename
-    dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
-    repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
+def parse_from_file(filepath):
+    dirname = os.path.dirname(os.path.realpath(filepath))
+    repr_path = os.path.join(dirname, pathlib.Path(filepath).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
 
     global add_standard_lib_macros
     add_standard_lib_macros = True
 
-    result = _parse_maybe_cached(filename, repr_path)
+    result = _parse_maybe_cached(filepath, repr_path)
 
     global seen_modules
     seen_modules = set()
     return result
 
 
-def parse(source: str):
-    global add_standard_lib_macros
-    add_standard_lib_macros = False
+def parse_from_cmdargs(cmdargs):
+    filename = cmdargs.filename
+    return parse_from_file(filename)
 
+
+def parse(source: str, _add_standard_lib_macros=True):
     p = parse_string(source)
+    if _add_standard_lib_macros:
+        _add_standard_lib_macro_imports(p)
     result = expand_includes(p)
     global seen_modules
     seen_modules = set()
