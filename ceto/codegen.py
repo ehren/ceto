@@ -2526,6 +2526,9 @@ def _decltype_str(node, cx):
 
     if isinstance(last_context, Assign) and not (isinstance(last_context.rhs, ListLiteral) and not last_context.rhs.args and not last_context.rhs.declared_type):
         return _decltype_str(last_context.rhs, cx)
+    elif isinstance(last_context, Assign) and isinstance(last_context.rhs, ListLiteral):
+        if vds := vector_decltype_str(last_context, cx):
+            return False, "std::vector<" + vds + ">"
 
     elif isinstance(last_context, Call) and last_context.func.name == "for":
         instmt = last_context.args[0]
