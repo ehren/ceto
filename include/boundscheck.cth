@@ -48,9 +48,17 @@ else:
     ) : decltype(auto):requires:requires(std.size(arr))
 ) : preprocessor
 
+# Peering Forward - C++’s Next Decade - Herb Sutter - CppCon 2024
+# https://www.youtube.com/watch?v=FNi1-x4pojs&t=5271s
+# "For every a[b] where a is a contiguous container (incl. std::size(a)) and b is integral...
+#  Inject a call-site bounds check for 0 < b && b < std::size(a)"
+
+# Non-integral 'index' - not a contiguous container
 def (bounds_check, non_array: mut:auto:ref:ref, obj: mut:auto:ref:ref:
     return std.forward<decltype(non_array)>(non_array).unsafe[std.forward<decltype(obj)>(obj)]
 ) : decltype(auto):requires:not std.is_integral_v<std.remove_cvref_t<decltype(obj)>>
+
+# We'll allow an integral index for std.map/std.unordered_map ish types only
 
 # from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
 is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
