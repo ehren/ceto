@@ -577,7 +577,7 @@ class ScopeVisitor:
 
     def visit_Identifier(self, ident):
         self.visit_Node(ident)
-        if ident.declared_type and not isinstance(ident.parent, Template) and not ident.declared_type.name in ["using", "namespace", "typedef"]:
+        if ident.declared_type and not isinstance(ident.parent, Template) and not ident.declared_type.name in ["using", "namespace", "typedef"] :
             ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
 
     def visit_Assign(self, assign):
@@ -678,7 +678,7 @@ class ImplicitLambdaCaptureVisitor:
             capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
 
         # this is lazy but it's fine
-        capture_list_ast = [parse(s, _add_standard_lib_macros=False).args[0] for s in capture_list]
+        capture_list_ast = [parse(s).args[0] for s in capture_list]
 
         new_lambda = replace_lambda(call, capture_list_ast)
         #for capture_list_arg in new_lambda.func.args:
@@ -774,7 +774,7 @@ def quote_expander(node):
             for r in replacements:
                 # should be improved to work with non-Identifier unquote args
                 repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), r.name)
-            expanded = parse(repr, _add_standard_lib_macros=False).args[0]
+            expanded = parse(repr).args[0]
 
             for r in replacements:
                 expanded = replace_node(expanded, lambda n: quote_expander(replacements[r]) if n.name == r.name else n)
@@ -897,7 +897,7 @@ def prepare_macro_ready_callback(module):
             impl_str += indt + param_name + " = " + init_param + "\n"
         impl_str += indt + "pass\n): Node"
 
-        macro_impl = parse(impl_str, _add_standard_lib_macros=False).args[0]
+        macro_impl = parse(impl_str).args[0]
         assert isinstance(macro_impl, TypeOp)
         impl_def = macro_impl.args[0]
         assert isinstance(impl_def, Call)
@@ -941,7 +941,7 @@ def prepare_macro_ready_callback(module):
                     toremove.append(destination_path)
                     break
 
-        include_ast = parse("include (ceto__private__ast)", _add_standard_lib_macros=False)
+        include_ast = parse("include (ceto__private__ast)")
 
         for f in toremove:
             os.remove(f)
