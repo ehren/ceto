@@ -731,19 +731,22 @@ def codegen_class(node : Call, cx):
         else:
             raise CodeGenError("Unexpected expression in class body", b)
 
+    # classdef.is_concrete = not classdef.is_generic_param_index
+    classdef.is_concrete = not is_template
+
     base_class_type : typing.Optional[str] = None
     if isinstance(inherits, Identifier):
         # TODO this avoids some error checking (many uses of 'name' have the same issue)
         base_class_type = inherits.name
+        inherits_dfn = cx.lookup_class(inherits)
+        if inherits_dfn and not inherits_dfn.is_concrete:
+            classdef.is_concrete = False
     if isinstance(inherits, (AttributeAccess, ScopeResolution)):
         # when ceto defined namespaces implemented this will have to evaluate
         # inherits without adding shared_ptr etc like in the Identifier case
         base_class_type = codegen_node(inherits, cx)
     elif isinstance(inherits, Template):
         base_class_type = inherits.func.name + "<" + ", ".join(codegen_node(t, cx) for t in inherits.args) + ">"
-
-    # classdef.is_concrete = not classdef.is_generic_param_index
-    classdef.is_concrete = not is_template
 
     fields_used_only_in_initializer_list = set()
     args_only_passed_to_super_init = set()
