@@ -1179,6 +1179,8 @@ def codegen_if(ifcall : Call, cx):
     cpp += indt + block_closing
 
     if is_expression:
+        if ifkind is not None:
+            raise CodeGenError(f"An expression-if can't be used with a 'type', namely {ifkind}", ifnode)
         if cx.in_function_body:
             capture = "&"
         else:

@@ -7,18 +7,6 @@
 
 include <ranges>
 
-def (maybe_reserve: template<typename:T>,
-               vec: mut:[T]:ref,
-             sized: mut:auto:ref:ref:
-    vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
-) : void:requires:requires(std.size(sized))
-
-def (maybe_reserve: template<typename:T>,
-               vec: mut:[T]:ref,
-           unsized: mut:auto:ref:ref:
-    pass
-) : void:requires:not requires(std.size(unsized))
-
 defmacro ([x, for (y in z), if (c)], x, y, z, c:
     result = gensym()
     zz = gensym()
@@ -61,6 +49,14 @@ defmacro ([x, for (y in z)], x, y, z:
     # Use the existing 3-arg definition
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
+
+def (maybe_reserve<T>, vec: mut:[T]:ref, sized: mut:auto:ref:ref:
+    vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
+) : void:requires:requires(std.size(sized))
+
+def (maybe_reserve<T>, vec: mut:[T]:ref, unsized: mut:auto:ref:ref:
+    pass
+) : void:requires:not requires(std.size(unsized))
 ```
 
 ```python
@@ -71,8 +67,6 @@ include <future>
 include <map>
 
 include (macros_list_comprehension)
-
-# No neEd for type declarations! iT's PyThoN!
 
 class (Foo:
     data_member
@@ -157,7 +151,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 ## Usage
 
 ```bash
-$ pip install ceto
+$ git clone https://github.com/ehren/ceto.git
+$ cd ceto
+$ pip install .
 $ ceto ./tests/example.ctp a b c
 ./example a b c
 4
@@ -615,6 +611,8 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 
 to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
 
+## Gotchas
+
 ### class reference semantics, shared\_ptr apologia
 
 We take [this C++ Core guideline](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-sharedptrparam-const) to heart:
@@ -672,8 +670,6 @@ the generated C++ for Foo contains a 2-arg constructor taking x and y as shared_
 
 One may also object to the unnecessary performance overhead of std.shared\_ptr's atomic counters in single threaded code. The view of the C++ committee applies doubly: the main deficiency of a given boatload of pythOnic ceto/C++ is probably not "too much thread safety" (see GOTCHAs)
     
-## Gotchas
-
 ### Implicit Scope Resolution
 
 For the expression
