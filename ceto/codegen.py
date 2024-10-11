@@ -972,7 +972,7 @@ def codegen_class(node : Call, cx):
     class_header = "struct " + name.name + " : " + ", ".join(default_inherits)
     class_header += " {\n\n"
 
-    if inherits and not constructor_node:
+    if inherits and not (constructor_node or uninitialized_attributes):
         # There may be gotchas inheriting the base class constructors automatically especially for
         # external C++ defined classes (also will need fixes for multiple inheritance!).
         # Though can be avoided by defining an explicit init method.
