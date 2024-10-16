@@ -123,9 +123,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     summary = ", ".join(args)
 
     f = Foo(summary)  # in C++ f is a const std::shared_ptr<const Foo<decltype(summary)>>
-    f.method(args)    # autoderef
+    f.method(args)    # autoderef of f
     f.method(f)       # autoderef also in the body of 'method'
-    calls_method(f)   # autoderef in the body of 'calls_method'
+    calls_method(f)   # autoderef in the body of calls_method (and method)
 
     fut: mut = std.async(std.launch.async, lambda(:
 
@@ -165,7 +165,21 @@ $ ceto ./tests/example.ctp a b c
 1
 ```
 
-## Features
+### Continued Intro
+
+While you can express a great deal of existing C++ constructs in ceto code (you can even write ceto macros that output, and rely on for their compiled to DLL implementation, a mix of C++ template and C/C++ preprocessor metaprogramming - or even other ceto macros!) the emphasis is not on system programming but more so called "Pythonic glue code" (whether it's a good idea to write such code in C++ to begin with). One should be able to translate ordinary Python code to pythonic ceto just by adding the necessary parenthesese and viral ```:mut``` annotations but without worrying about additional complicated parameter passing rules, explicit reference/pointer type annotations, nor call site referencing/dereferencing syntax. While e.g. the keywords ```ref```, ```ptr``` and operator ```->``` and unary operators```*``` and ```&``` exist in ceto (for expressing native C++ constructs and interfacing with external C++) they should be regarded as constituents of a disconnected low level subset of the language that will even TODO require explicit ```unsafe``` blocks/contexts in the future. Though, lacking a complete ```unsafe``` blocks implementation, current ceto should be regarded as *unsafe ceto*, runtime safety checks are nevertheless performed for pythonic looking code: ```.``` (when a smart pointer or optional deref) is null checked and ```array[index]``` is runtime bounds checked when array is a contiguous container (the technique of checking if std::size is available for ```array``` using a ceto/C++ ```requires``` clause before inserting a runtime bounds check has been taken from Herb Sutter's cppfront - see include/boundscheck.cth).
+
+### More Features:
+
+- reference to const and value semantics emphasized.
+- Python like class system but immutable by default (more like an immutable by default Java halfway naively implemented with std::shared_ptr and std::enable_shared_from_this).
+- structs passed by reference to const by default, by value if just "mut" (raw pointers or references allowed via ref or ptr keywords but may be relegated to unsafe blocks in the future)
+- Implicit swiftish lambda capture
+- Implicit move from last use of unique (and TODO non-class mut)
+- non-type annotated "Python" == unconstrained C++ function and class templates
+- extra CTAD
+
+## Features Explanation
 
 ### Autoderef (use *.* not *->*)
 
@@ -618,6 +632,364 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 ```
 
 to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
+
+### Kitchen Sink / mixing higher level and lower level ceto / external C++
+
+Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown above, the selfhost sources use a lower level version making use of C++ CRTP as well as the ```Foo.class``` syntax to access the underlying ```Foo``` in C++ (rather than ```shared_ptr<const Foo>```) . This code also demonstrates working with external C++ and more general/unsafe constructs like C++ iterators and raw pointers in combination with :unique classes. This is an earlier version of the current selfhost/macro_expansion.cth:
+
+```python
+
+include <map>
+include <unordered_map>
+include <ranges>
+include <functional>
+include <span>
+
+include (ast)
+include (visitor)
+include (range_utility)
+
+if (_MSC_VER:
+    include <windows.h>
+    cpp'
+    #define CETO_DLSYM GetProcAddress
+    #define CETO_DLOPEN LoadLibraryA
+    #define CETO_DLCLOSE FreeLibrary
+    '
+else:
+    include <dlfcn.h>
+    cpp'
+    #define CETO_DLSYM dlsym
+    #define CETO_DLOPEN(L) dlopen(L, RTLD_NOW)
+    #define CETO_DLCLOSE dlclose
+    '
+) : preprocessor
+
+struct (SemanticAnalysisError(std.runtime_error):
+    pass
+)
+
+class (MacroDefinition:
+    defmacro_node: Node
+    pattern_node: Node
+    parameters: std.map<string, Node>
+    dll_path: std.string = {}
+    impl_function_name: std.string = {}
+)
+
+class (MacroScope:
+    parent: MacroScope.class:const:ptr = None
+
+    macro_definitions: [MacroDefinition] = []
+
+    def (add_definition: mut, defn: MacroDefinition:
+        self.macro_definitions.push_back(defn)
+    )
+
+    def (enter_scope:
+        s: mut = MacroScope()
+        s.parent = this
+        return s
+    ) : MacroScope:mut
+) : unique
+
+
+def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
+    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr() << "\n"
+
+    if (isinstance(pattern, Identifier):
+        search = params.find(pattern.name().value())
+        if (search != params.end():
+
+            param_name = search->first
+            matched_param = search->second
+            if (isinstance(matched_param, Identifier):
+                # wildcard match
+                return std.map<std.string, Node>{{param_name, node}}
+            elif (typeop = asinstance(matched_param, TypeOp)):
+                param_type = typeop.rhs()
+
+                # constrained wildcard / match by type
+                if (isinstance(param_type, Identifier):
+                    if ((param_type.name() == "BinOp" and isinstance(node, BinOp) or  # base class handling
+                         param_type.name() == "UnOp" and isinstance(node, UnOp) or    # same
+                         param_type.name() == "Node" or                               # redundant but allowed
+                         node.classname() == typeop.rhs().name()):                    # exact match
+                        return std.map<std.string, Node>{{param_name, node}}
+                    )
+                elif (or_type = asinstance(param_type, BitwiseOrOp)):
+                    lhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.lhs()])} }
+                    if ((m = macro_matches(node, pattern, lhs_alternate_param)):
+                        return m
+                    )
+                    rhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.rhs()])} }
+                    if ((m = macro_matches(node, pattern, rhs_alternate_param)):
+                        return m
+                    )
+                )
+            )
+        )
+    )
+
+    if (typeid(*node) != typeid(*pattern):
+        return {}
+    )
+
+    if ((node.func == None) != (pattern.func == None):
+        return {}
+    )
+
+    if (node.args.size() == 0 and node.func == None and pattern.func == None:
+        if (node.repr() == pattern.repr():
+            # leaf match
+            return std.map<std.string, Node>{}
+        )
+        return {}
+    )
+
+    submatches: mut = std.map<std.string, Node> {}
+
+    if (node.func:
+        m = macro_matches(node.func, pattern.func, params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())  # std::optional autoderef
+    )
+
+    pattern_iterator: mut = pattern.args.cbegin()
+    arg_iterator: mut = node.args.cbegin()
+
+    while (True:
+        if (pattern_iterator == pattern.args.end():
+            if (arg_iterator != node.args.end():
+                # no match - no pattern for args
+                return {}
+            else:
+                break
+            )
+        )
+
+        subpattern: mut = *pattern_iterator
+
+        if (isinstance(subpattern, Identifier):
+            search = params.find(subpattern.name().value())
+
+            if (search != params.end():
+                param_name = search->first
+                matched_param = search->second
+
+                if (isinstance(matched_param, TypeOp):
+                    if ((list_param = asinstance(matched_param.args[1], ListLiteral)):
+                        # variadic wildcard pattern
+
+                        if (list_param.args.size() != 1:
+                            throw (SemanticAnalysisError("bad ListLiteral args in macro param"))
+                        )
+
+                        wildcard_list_type = list_param.args[0]
+                        if (not isinstance(wildcard_list_type, Identifier):
+                            throw (SemanticAnalysisError("bad ListLiteral arg type in macro param"))
+                        )
+
+                        wildcard_list_name = matched_param.args[0]
+                        if (not isinstance(wildcard_list_name, Identifier):
+                            throw (SemanticAnalysisError("arg of type ListLiteral must be an identifier"))
+                        )
+
+                        wildcard_type_op = TypeOp(":", [wildcard_list_name, wildcard_list_type]: Node)
+                        wildcard_list_params: std.map<std.string, Node> = { {wildcard_list_name.name().value(), wildcard_type_op} }
+                        wildcard_list_matches: mut:[Node] = []
+
+                        while (arg_iterator != node.args.end():
+                            arg = *arg_iterator
+                            if (macro_matches(arg, wildcard_list_name, wildcard_list_params):
+                                wildcard_list_matches.append(arg)
+                            else:
+                                break
+                            )
+                            arg_iterator += 1
+                        )
+
+                        submatches[param_name] = ListLiteral(wildcard_list_matches)
+
+                        pattern_iterator += 1
+                        if (pattern_iterator == pattern.args.end():
+                            if (arg_iterator != node.args.end():
+                                # no match - out of patterns, still have args
+                                return {}
+                            )
+                            break
+                        )
+                        subpattern = *pattern_iterator
+                    )
+                )
+            )
+        )
+
+        if (arg_iterator == node.args.end():
+            if (pattern_iterator != pattern.args.end():
+                # no match - out of args, still have patterns
+                return {}
+            )
+            break
+        )
+
+        arg = *arg_iterator
+        m = macro_matches(arg, subpattern, params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())
+
+        arg_iterator += 1
+        pattern_iterator += 1
+    )
+
+    return submatches
+) : std.optional<std.map<std.string, Node>>
+
+
+def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.string, Node>:ref:
+    handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak it for now
+    if (not handle:
+        throw (std.runtime_error("Failed to open macro dll: " + definition.dll_path))
+    )
+    fptr = CETO_DLSYM(handle, definition.impl_function_name.c_str())
+    if (not fptr:
+        throw (std.runtime_error("Failed to find symbol " + definition.impl_function_name + " in dll " + definition.dll_path))
+    )
+    f = reinterpret_cast<decltype(+(lambda(m: const:std.map<std.string, Node>:ref, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    return (*f)(match)
+) : Node
+
+
+struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
+    on_visit_definition: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>
+
+    current_scope: MacroScope:mut = None
+    replacements: std.unordered_map<Node, Node> = {}
+
+    def (expand: mut, node: Node:
+        scope: mut:auto:const:ptr = (&self.current_scope)->get()
+        while (scope:
+            for (definition in ceto.util.reversed(scope->macro_definitions):
+                match = macro_matches(node, definition.pattern_node, definition.parameters)
+                if (match:
+                    std.cout << "found match\n"
+                    replacement = call_macro_impl(definition, match.value())
+                    if (replacement and replacement != node:
+                        std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
+                        self.replacements[node] = replacement
+                        replacement.accept(*this)
+                        return True
+                    )
+                )
+            )
+            scope = scope->parent
+        )
+        return False
+    )
+
+    def (visit: override:mut, node: Node.class:
+        if (self.expand(ceto.shared_from(&node)):
+            return
+        )
+
+        if (node.func:
+            node.func.accept(*this)
+        )
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+    )
+
+    def (visit: override:mut, call_node: Call.class:
+        node = ceto.shared_from(&call_node)
+        if (self.expand(node):
+            return
+        )
+
+        node.func.accept(*this)
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+
+        if (node.func.name() != "defmacro":
+            return
+        )
+
+        if (node.args.size() < 2:
+            throw (SemanticAnalysisError("bad defmacro args"))
+        )
+
+        pattern = node.args[0]
+
+        if (not isinstance(node.args.back(), Block):
+            throw (SemanticAnalysisError("last defmacro arg must be a Block"))
+        )
+
+        parameters: mut = std.map<std.string, Node>{}
+
+        if (defined(__clang__) and __clang_major__ < 16:
+            match_args = std.vector(node.args.cbegin() + 1, node.args.cend() - 1)
+        else:
+            match_args = std.span(node.args.cbegin() + 1, node.args.cend() - 1)
+        ) : preprocessor
+
+        for (arg in match_args:
+            name = if (isinstance(arg, Identifier):
+                arg.name().value()
+            elif not isinstance(arg, TypeOp):
+                throw (SemanticAnalysisError("bad defmacro param type"))
+            elif not isinstance(arg.args[0], Identifier):
+                throw (SemanticAnalysisError("bad typed defmacro param"))
+            else:
+                arg.args[0].name().value()
+            )
+            i = parameters.find(name)
+            if (i != parameters.end():
+                throw (SemanticAnalysisError("duplicate defmacro params"))
+            )
+            parameters.emplace(name, arg)
+        )
+
+        defn = MacroDefinition(node, pattern, parameters)
+        self.current_scope.add_definition(defn)
+        self.on_visit_definition(defn, self.replacements)
+    )
+
+    def (visit: override:mut, node: Module.class:
+        s: mut = MacroScope()
+        self.current_scope = s
+
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+    )
+
+    def (visit: override:mut, node: Block.class:
+        outer: mut:MacroScope = std.move(self.current_scope)
+        self.current_scope = outer.enter_scope()
+        if (self.expand(ceto.shared_from(&node)):
+            return
+        )
+        for (arg in node.args:
+            arg.accept(*this)
+        )
+        self.current_scope = outer  # automatic move from last use
+        # TODO: if outer is just 'mut' above we should still automatically std::move it? OTOH maybe not - keep need for an explicit type for something that is to be auto moved? Also, if you just write "outer2 = outer": Currently outer2 is a const auto definition created from std::moveing outer (creating a unique_ptr<non-const MacroScope>). I'm not so keen on making outer2 implicitly mut without a type annotation
+    )
+)
+
+def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>:
+    visitor: mut = MacroDefinitionVisitor(on_visit)
+    node.accept(visitor)
+    return visitor.replacements
+) : std.unordered_map<Node, Node>
+```
 
 ## Gotchas
 
