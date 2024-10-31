@@ -50,6 +50,8 @@ defmacro ([x, for (y in z)], x, y, z:
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
 
+# metaprogramming in ceto/C++ templates rather than procedural macros is recommended:
+
 def (maybe_reserve<T>, vec: mut:[T]:ref, sized: mut:auto:ref:ref:
     vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
 ) : void:requires:requires(std.size(sized))
@@ -68,12 +70,17 @@ include <map>
 
 include (macros_list_comprehension)
 
+# You can also do your metaprogramming by omitting the type annotations!
+# Classes have immutable shared reference semantics by default
+# (A class with generic data members is implicitly a C++ template class:
+#  - like an immutable by default Python 2 with good C++ interop/baggage and more parenthesese)
+
 class (Foo:
     data_member
 
     def (method, param:
-        std.cout << param.size()  << "\n"
-        return self
+        std.cout << param.size() << std.endl
+        return self  # implicit +1 refcount (shared_from_this)
     )
 
     def (size:
@@ -81,9 +88,18 @@ class (Foo:
     )
 )
 
-def (calls_method, f:
-    return f.method(f)
+# A non type-annotated ceto function is implicitly a sligtly more
+# unconstrained/generic than default C++ template function
+# (calls_method's arg is generic over all ceto class types and structs
+#  because "." is a maybe autoderef)
+
+def (calls_method, arg:
+    return arg.method(arg)
 )
+
+# Unique classes are implicitly managed by std.unique_ptr and use cppfront inspired 
+# move from last use. Instance variables may be reassigned (allowing implicit move) but 
+# point to immutable instances (aka unique_ptr to const by default)
 
 class (UniqueFoo:
     consumed: [UniqueFoo] = []
@@ -92,25 +108,34 @@ class (UniqueFoo:
         return self.consumed.size()
     )
     
+    # For all classes and structs, a method that mutates its data members must be "mut".
+    # Note that "u" is a passed by value std::unique_ptr<const UniqueFoo> in C++
     def (consuming_method: mut, u: UniqueFoo:
+        
+        # u.consuming_method(None)  # Compile time error:
+        # "u" is not a UniqueFoo:mut so a "mut" method call is illegal
 
         # "u" is passed by reference to const to the generic method "method" here.
         Foo(42).method(u)
 
-        # The last use of a :unique instance is std::move'd automatically.
-        # This is heavily inspired by the feature/idea in Herb Sutter's cppfront:
-        self.consumed.append(u)
+        self.consumed.append(u)  # Ownership transfer of "u" on last use (implicit std.move)
     )
 ) : unique
 
+# std.string and vectors (implicit use of std.vector with square brackets) passed 
+# by reference to const by default:
 def (string_join, vec: [std.string], sep = ", "s:
     if (vec.empty():
         return ""
     )
 
+    # Explicit lambda capture brackets required for 
+    # unsafe (potentially dangling) ref capture:
     return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
         lambda[&sep] (a, b, a + sep + b))
 ): std.string
+
+# defmacro param types use the ast Node subclasses defined in selfhost/ast.cth
 
 defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
@@ -122,7 +147,9 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     args = [std.string(a), for (a in std.span(argv, argc))]
     summary = ", ".join(args)
 
-    f = Foo(summary)  # in C++ f is a const std::shared_ptr<const Foo<decltype(summary)>>
+    f = Foo(summary)  # implicit make_shared / extra CTAD:
+                      # in C++ f is a const std::shared_ptr<const Foo<decltype(summary)>>
+
     f.method(args)    # autoderef of f
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of calls_method (and method)
@@ -137,11 +164,11 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
     std.cout << fut.get()
 
-    u: mut = UniqueFoo()    # u is a (non-const) std::unique_ptr<"non-const" UniqueFoo> in C++
-    u2 = UniqueFoo()        # u2 is a (non-const) std::unique_ptr<const UniqueFoo> in C++
+    u: mut = UniqueFoo()    # u is a "non-const" std::unique_ptr<non-const UniqueFoo> in C++
+    u2 = UniqueFoo()        # u2 is a non-const std::unique_ptr<const UniqueFoo> in C++
 
     u.consuming_method(u2)  # Implicit std.move from last use of u2.
-                            # Note that :unique are non-const (allowing move) but
+                            # :unique are non-const (allowing move) but
                             # unique_ptr-to-const by default.
 
     u.consuming_method(u)   # in C++: CETO_AUTODEREF(u).consuming_method(std::move(u))
@@ -297,117 +324,6 @@ def (main:
 )
 ```
 
-You can code a simple visitor pattern just like\* Java (see GOTCHAs).
-
-```python
-class (Node)
-class (Identifier)
-class (BinOp)
-class (Add)
-
-class (Visitor:
-
-    def (visit: virtual:mut, node: Node): void = 0
-
-    def (visit: virtual:mut, node: Identifier): void = 0
-
-    def (visit: virtual:mut, node: BinOp): void = 0
-
-    def (visit: virtual:mut, node: Add): void = 0
-)
-
-class (Node:
-    loc : int
-
-    def (accept: virtual, visitor: Visitor:mut:
-        visitor.visit(self)
-    )
-)
-
-class (Identifier(Node):
-    name : std.string
-
-    def (init, name, loc=0:
-        # a user defined constructor is present - 1-arg constructor of Node is not inherited
-        self.name = name  # implicitly occurs in initializer list
-        super.init(loc)   # same
-    )
-
-    def (accept: override, visitor: Visitor:mut:
-        visitor.visit(self)
-    )
-)
-
-class (BinOp(Node):
-    args : [Node]
-
-    def (init, args, loc=0:
-        self.args = args
-        super.init(loc)
-    )
-
-    def (accept: override, visitor: Visitor:mut:
-        visitor.visit(self)
-    )
-)
-
-class (Add(BinOp):
-    # inherits 2-arg constructor from BinOp (because no user defined init is present)
-
-    def (accept: override, visitor: Visitor:mut:
-        visitor.visit(self)
-    )
-)
-
-class (SimpleVisitor(Visitor):
-    record = s""
-
-    def (visit: override:mut, node: Node:
-        self.record += "visiting Node\n"
-    )
-
-    def (visit: override:mut, ident: Identifier:
-        self.record += "visiting Identifier " + ident.name + "\n"
-    )
-
-    def (visit: override:mut, node: BinOp:
-        self.record += "visiting BinOp\n"
-
-        for (arg in node.args:
-            arg.accept(self)  # non-trivial use of self (hidden shared_from_this)
-        )
-    )
-
-    def (visit: override:mut, node: Add:
-        self.record += "visiting Add\n"
-
-        for (arg in node.args:
-            arg.accept(self)
-        )
-    )
-)
-
-def (main:
-    node = Node(0)
-    ident = Identifier("a", 5)
-    args: [Node] = [ident, node, ident]
-    add: Add = Add(args)
-
-    simple_visitor: mut = SimpleVisitor()
-    ident.accept(simple_visitor)
-    add.accept(simple_visitor)
-
-    std.cout << simple_visitor.record
-)
-
-# Output:
-# visiting Identifier a
-# visiting Add
-# visiting Identifier a
-# visiting Node
-# visiting Identifier a
-```
-
 ### Tuples, "tuple unpacking" (std::tuple / structured bindings / std::tie)
 
 ```python
@@ -528,6 +444,151 @@ def (main:
 )
 ```
 
+### Simple Visitor
+
+This example demonstrates non-trivial use of self and mutable ceto-class instances
+
+```python
+class (Node)
+class (Identifier)
+class (BinOp)
+class (Add)
+
+class (Visitor:
+
+    def (visit: virtual:mut, node: Node): void = 0
+
+    def (visit: virtual:mut, node: Identifier): void = 0
+
+    def (visit: virtual:mut, node: BinOp): void = 0
+
+    def (visit: virtual:mut, node: Add): void = 0
+)
+
+class (Node:
+    loc : int
+
+    def (accept: virtual, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (Identifier(Node):
+    name : std.string
+
+    def (init, name, loc=0:
+        # a user defined constructor is present - 1-arg constructor of Node is not inherited
+        self.name = name  # implicitly occurs in initializer list
+        super.init(loc)   # same
+    )
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (BinOp(Node):
+    args : [Node]
+
+    def (init, args, loc=0:
+        self.args = args
+        super.init(loc)
+    )
+
+    # Note the virality of mut annotations:
+    # (visitor must be a mut:Visitor because visit modifies the data member "record")
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (Add(BinOp):
+    # inherits 2-arg constructor from BinOp (because no user defined init is present)
+
+    def (accept: override, visitor: Visitor:mut:
+        visitor.visit(self)
+    )
+)
+
+class (SimpleVisitor(Visitor):
+    record = s""
+
+    def (visit: override:mut, node: Node:
+        self.record += "visiting Node\n"
+    )
+
+    def (visit: override:mut, ident: Identifier:
+        self.record += "visiting Identifier " + ident.name + "\n"
+    )
+
+    def (visit: override:mut, node: BinOp:
+        self.record += "visiting BinOp\n"
+
+        for (arg in node.args:
+            arg.accept(self)  # non-trivial use of self (hidden shared_from_this)
+        )
+    )
+
+    def (visit: override:mut, node: Add:
+        self.record += "visiting Add\n"
+
+        for (arg in node.args:
+            arg.accept(self)
+        )
+    )
+)
+
+def (main:
+    node = Node(0)
+    ident = Identifier("a", 5)
+    args: [Node] = [ident, node, ident]
+    add: Add = Add(args)
+
+    simple_visitor: mut = SimpleVisitor()
+    ident.accept(simple_visitor)
+    add.accept(simple_visitor)
+
+    std.cout << simple_visitor.record
+)
+
+# Output:
+# visiting Identifier a
+# visiting Add
+# visiting Identifier a
+# visiting Node
+# visiting Identifier a
+```
+
+Note that this example illustrates mutable class instance variables, especially as
+function parameters e.g. ```visitor``` of ```accept```.  However, compared to 
+idiomatic C++ code, there is a considerable runtime overhead (though some safety benefits) in making
+```Visitor``` and ```SimpleVisitor``` ceto-classes rather than ceto-structs (see below).
+
+In selfhost/ast.cth and selfhost/visitor.cth, ```Visitor``` is defined as a ```struct``` and
+the ```accept``` methods take ```visitor``` by ```mut:ref```:
+
+So, for example, the top level ast node ```Module``` is defined in selfhost/ast.cth as:
+
+```python
+class (Module(Block):
+    has_main_function = False
+
+    def (accept: override, visitor: Visitor:mut:ref:
+        visitor.visit(*this)
+    )
+
+    def (clone: override:
+        c: mut = Module(self.cloned_args(), self.source)
+        return c
+    ) : Node:mut
+)
+```
+
+This ```accept``` has better runtime perforance than ```SimpleVisitor```'s class heavy version above but 
+note that raw pointer dereference e.g. ```*this``` and mutable C++ references in
+function params (and elsewhere!) should be / will be TODO relegated to unsafe blocks!
+
 ### struct
 
 "The struct is a class notion is what has stopped C++ from drifting into becoming a much higher level language with a disconnected low-level subset." - Bjarne Stroustrup
@@ -631,11 +692,13 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 (&o)->get()
 ```
 
-to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators `*`, `&`, and `->` outside of unsafe blocks).
+to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators ```*```, ```&```, and ```->``` outside of unsafe blocks).
 
 ### Kitchen Sink / mixing higher level and lower level ceto / external C++
 
-Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown above, the selfhost sources use a lower level version making use of C++ CRTP as well as the ```Foo.class``` syntax to access the underlying ```Foo``` in C++ (rather than ```shared_ptr<const Foo>```) . This code also demonstrates working with external C++ and more general/unsafe constructs like C++ iterators and raw pointers in combination with :unique classes. This is an earlier version of the current selfhost/macro_expansion.cth:
+Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown above, the selfhost sources use a lower level version making use of C++ CRTP as well as the ```Foo.class``` syntax to access the underlying ```Foo``` in C++ (rather than ```shared_ptr<const Foo>```). This sidesteps the gotcha that ceto class instances aren't real "shared smart references" so **overriding** e.g. ```def (visit:override, node: BinOp)``` with ```def(visit: override, node: Add)``` is not possible because an **Add** (```std::shared_ptr<const Node>``` in C++) is not strictly speaking a derived class of ```std::shared_ptr<const BinOp>``` in C++. 
+
+This code also demonstrates working with external C++ and more general/unsafe constructs like C++ iterators, raw pointers in combination with :unique classes, the C/C++ preprocessor, function pointers, and reinterpret_cast. This is an earlier version of the current selfhost/macro_expansion.cth:
 
 ```python
 
