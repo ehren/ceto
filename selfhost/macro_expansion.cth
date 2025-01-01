@@ -3,6 +3,7 @@ include <unordered_map>
 include <ranges>
 include <functional>
 include <span>
+include <variant>
 
 include (ast)
 include (visitor)
@@ -268,38 +269,62 @@ def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.stri
     )
     f = reinterpret_cast<decltype(+(lambda(m: const:std.map<std.string, Node>:ref, None): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
     return (*f)(match)
-) : Node
-
+) : std.variant<Node, ceto.macros.Skip>
 
 struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     on_visit_definition: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>
 
     current_scope: MacroScope:mut = None
     replacements: std.unordered_map<Node, Node> = {}
+    skipped_definitions: std.map<Node, std.vector<MacroDefinition>> = {}
 
     def (expand: mut, node: Node:
         scope: mut:auto:const:ptr = (&self.current_scope)->get()
         while (scope:
             for (definition in ceto.util.reversed(scope->macro_definitions):
+                skip_definition: mut = False
+                for ((key, defns) in self.skipped_definitions:
+                    if (ceto.util.contains(defns, definition):
+                        skip_definition = True
+                        break
+                    )
+                )
+                if (skip_definition:
+                    continue
+                )
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
                     #std.cout << "found match\n"
-                    replacement = call_macro_impl(definition, match.value())
-                    if (replacement and replacement != node:
-                        #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
-                        self.replacements[node] = replacement
-                        replacement.accept(*this)
-                        return True
+                    result_variant = call_macro_impl(definition, match.value())
+                    if (std.holds_alternative<ceto.macros.Skip>(result_variant):
+                        self.skipped_definitions[node].push_back(definition)
+                    else:
+                        replacement = std.get<Node>(result_variant)
+                        if (replacement and replacement != node:
+                            #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
+                            self.replacements[node] = replacement
+                            replacement.accept(*this)
+                            return True
+                        )
                     )
                 )
             )
             scope = scope->parent
         )
+
         return False
     )
 
-    def (visit: override:mut, node: Node.class:
-        if (self.expand(ceto.shared_from(&node)):
+    def (_cleanup_skipped: mut, node: Node:
+        it = self.skipped_definitions.find(node)
+        if (it != self.skipped_definitions.end():
+            it->second.clear()
+        )
+    )
+
+    def (visit: override:mut, n: Node.class:
+        node = ceto.shared_from(&n)
+        if (self.expand(node):
             return
         )
 
@@ -310,6 +335,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         for (arg in node.args:
             arg.accept(*this)
         )
+
+        self._cleanup_skipped(node)
     )
 
     def (visit: override:mut, call_node: Call.class:
@@ -366,6 +393,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         defn = MacroDefinition(node, pattern, parameters)
         self.current_scope.add_definition(defn)
         self.on_visit_definition(defn, self.replacements)
+
+        self._cleanup_skipped(node)
     )
 
     def (visit: override:mut, node: Module.class:
@@ -377,10 +406,11 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         )
     )
 
-    def (visit: override:mut, node: Block.class:
+    def (visit: override:mut, block_node: Block.class:
         outer: mut:MacroScope = std.move(self.current_scope)
         self.current_scope = outer.enter_scope()
-        if (self.expand(ceto.shared_from(&node)):
+        node = ceto.shared_from(&block_node)
+        if (self.expand(node):
             return
         )
         for (arg in node.args:
@@ -388,6 +418,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         )
         self.current_scope = outer  # automatic move from last use
         # TODO: if outer is just 'mut' above we should still automatically std::move it? OTOH maybe not - keep need for an explicit type for something that is to be auto moved? Also, if you just write "outer2 = outer": Currently outer2 is a const auto definition created from std::moveing outer (creating a unique_ptr<non-const MacroScope>). I'm not so keen on making outer2 implicitly mut without a type annotation
+
+        self._cleanup_skipped(node)
     )
 )
 

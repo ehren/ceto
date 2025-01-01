@@ -540,8 +540,8 @@ def expand_namespace_calls(module: Module):
 
     for node in module.args:
         if isinstance(node, Call) and node.func.name == "namespace":
-            if not len(node.args) == 1:
-                raise ParserError("namespace call takes 1 arg", node)
+            if len(node.args) != 1:
+                continue
             if namespace_name:
                 raise ParserError("only 1 namespace call per file")
             namespace_name = node.args[0]

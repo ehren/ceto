@@ -52,9 +52,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
             return ceto::util::typeid_name((*this));
         }
 
-         virtual ~ClassDefinition() {
-            ; // pass
-        }
+         virtual ~ClassDefinition() = default;
 
     explicit ClassDefinition(std::shared_ptr<const Identifier> name_node, std::shared_ptr<const Call> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(std::move(name_node)), class_def_node(std::move(class_def_node)), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
 
@@ -83,9 +81,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
             return ceto::util::typeid_name((*this));
         }
 
-         virtual ~VariableDefinition() {
-            ; // pass
-        }
+         virtual ~VariableDefinition() = default;
 
     explicit VariableDefinition(std::shared_ptr<const Identifier> defined_node, std::shared_ptr<const Node> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
 

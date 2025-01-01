@@ -2,6 +2,7 @@
 
 include <map>
 include <typeinfo>
+include <variant>
 
 include (visitor)
 include (utility)
@@ -687,6 +688,12 @@ def (gensym:
     s = Identifier("ceto__private__ident__" + std.to_string(counter))
     counter += 1
     return s
+)
+
+namespace (ceto.macros:
+    struct (Skip:
+        pass
+    )
 )
 
 #no:

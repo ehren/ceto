@@ -229,6 +229,10 @@ def build_types(node: Node):
 
     node.args = [build_types(arg) for arg in node.args]
     node.func = build_types(node.func)
+
+    # TODO this can perhaps be removed (build_parents call before/after macro expansion is new - we're undoing it here so that latter existing stages are unaffected)
+    node.parent = None
+
     return node
 
 
@@ -895,7 +899,7 @@ def prepare_macro_ready_callback(module):
                     break
 
             impl_str += indt + param_name + " = " + init_param + "\n"
-        impl_str += indt + "pass\n): Node"
+        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip>"
 
         macro_impl = parse(impl_str).args[0]
         assert isinstance(macro_impl, TypeOp)
@@ -1001,12 +1005,15 @@ def replace_macro_expansion(node: Node, replacements):
 def macro_expansion(expr: Module):
     assert isinstance(expr, Module)
 
+    expr = build_parents(expr)
+
     while True:
         replacements = expand_macros(expr, prepare_macro_ready_callback(expr))
         print("macro replacements", replacements)
         if not replacements:
             break
         expr = replace_macro_expansion(expr, replacements)
+        expr = build_parents(expr)
 
     return expr
 
