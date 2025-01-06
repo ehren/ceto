@@ -5,7 +5,7 @@ from collections import defaultdict
 from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
     Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
-    LocalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
+    LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
     nested_same_binop_to_list, gensym, FieldDefinition
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
@@ -1989,13 +1989,20 @@ def codegen_assign(node: Assign, cx: Scope):
 
     # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
     # NOTE 'already_declared' is kludge only for 'noscope' ifs
-    if not hasattr(node, "already_declared") and node.scope.find_def(node.lhs) is None:
+    lhs_def = node.scope.find_def(node.lhs)
+    if not hasattr(node, "already_declared") and lhs_def is None:
         if cx.in_class_body:
-            # "scary" may introduce ODR violation (it's fine plus plan for time being with imports/modules (in ceto sense) is for everything to be shoved into a single translation unit)
+            # "scary" may introduce ODR violation (it's fine or at least no more dangerous than C++ with explicit use of decltype in a function param list...)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
             assign_str = "decltype(" + rhs_str + ") " + lhs_str + " = " + rhs_str
         else:
             assign_str = "const auto " + assign_str
+    elif isinstance(lhs_def, FieldDefinition) and cx.in_function_body:
+        # Shadow the field with a local. Use e.g. self.x = 1 to assign to the data member.
+        assign_str = "const auto " + assign_str
+    elif isinstance(lhs_def, GlobalVariableDefinition):
+        # TODO we should disallow shadowing ceto defined globals in function parameters and fields
+        raise CodeGenError(f"{lhs_str} is a global variable defined in ceto code (which is constexpr). No shadowing or reassignment allowed.", node.lhs)
 
     const_specifier = constexpr_specifier + const_specifier
 
