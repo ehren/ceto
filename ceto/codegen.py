@@ -2143,6 +2143,10 @@ def codegen_call(node: Call, cx: Scope):
             return "namespace " + name_code + " {\n" + block_code + "\n}"
         elif func_name == "defmacro":
             return "\n"
+        elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
+            # calling plain "decltype" in ceto will always strip outer double parenthesese 
+            # (they are often accidentally added by codegen's overeager parenthesization)
+            return "decltype((" + codegen_node(node.args[0], cx) + "))"
         else:
             arg_strs = [codegen_node(a, cx) for a in node.args]
             args_inner = ", ".join(arg_strs)
@@ -2782,7 +2786,7 @@ def codegen_node(node: Node, cx: Scope):
             # no longer necessary CTAD reimplementation:
             # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
-            raise CodeGenError("Cannot create vector without elements")
+            raise CodeGenError("Cannot create vector without elements", node)
     elif isinstance(node, BracedLiteral):
         if isinstance(node.parent, Block):
             raise CodeGenError("Curly brace expression is invalid here. Use 'scope' for an anonymous scope.", node)

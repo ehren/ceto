@@ -91,6 +91,121 @@ def build_parents(node: Node):
     return visitor(node)
 
 
+def no_references_in_subexpressions(node):
+
+    from ceto.compiler import cmdargs
+    if not cmdargs._norefs:
+        return node
+
+    if isinstance(node, Template) and node.func.name == "include":
+        return None
+
+    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for":
+        rhs = no_references_in_subexpressions(node.rhs)
+        if rhs:
+            node.args = [node.lhs, rhs]
+        return node
+
+    if isinstance(node, BinOp) and isinstance(node.parent, Block) and node.op in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "~=", ">>=", "<<="]:
+        rhs = no_references_in_subexpressions(node.rhs)
+        if rhs:
+            node.args = [node.lhs, rhs]
+        return node
+
+    new_args = []
+    found_new = False
+    for a in node.args:
+        new = no_references_in_subexpressions(a)
+        if new:
+            new_args.append(new)
+            found_new = True
+        else:
+            new_args.append(a)
+
+    if found_new:
+        node.args = new_args
+
+    if node.func:
+        new = no_references_in_subexpressions(node.func)
+        if new:
+            node.func = new
+
+    if isinstance(node, Module):
+        return node
+
+    # Note we should do a better job banning Assign in subexpressions even though the Assign vs NamedParameter
+    # distinction was meant to tackle this in the simple case of x=y in a Call
+    if isinstance(node, (Block, TypeOp, ListLiteral, BracedLiteral, ScopeResolution, Template, Identifier, Assign, NamedParameter, IntegerLiteral, FloatLiteral, StringLiteral)):
+        return None
+
+    if isinstance(node.parent, (Block, TypeOp)):
+        return None
+
+    if isinstance(node.parent, (Call, BracedCall, Template, ArrayAccess)) and node is node.parent.func:
+        return None
+
+    if isinstance(node.parent, Call) and node.parent.func.name in ["if", "while"]:
+        return None
+
+    if isinstance(node.parent, Call) and is_def_or_class_like(node.parent):
+        return None
+
+    if isinstance(node, Call) and is_call_lambda(node):
+        return None
+
+    if isinstance(node, Call):
+        pass
+
+    if isinstance(node.parent, Call) and node.parent.func.name == "for":
+        return None
+
+    if isinstance(node.parent, ArrayAccess) and node.parent.func.name == "lambda":
+        return None
+
+    if isinstance(node, AttributeAccess):
+        attr_lhs = node.lhs
+        while isinstance(attr_lhs, (AttributeAccess, ScopeResolution)):
+            attr_lhs = attr_lhs.lhs
+
+        if isinstance(attr_lhs, Identifier) and attr_lhs.name != "self" and not attr_lhs.scope.find_def(attr_lhs):
+            # implicit scope resolution
+            return None
+
+    # note that banning e.g. dereferenable (requires { *foo } ) types on the lhs of an assignment should use
+    # the "no implicit conversions in assignments" logic in codegen_assign
+
+    if isinstance(node.parent, Assign):
+        # a C++ reference is ok as the type of the lhs of an assignment because C++ will perform a copy without 
+        # an explicit reference type (which, for a local variable, will TODO require an unsafe annotation even if const)
+        return None
+
+#    code = """(lambda[ref] (:
+#    static_assert(not std::is_reference_v<decltype(ceto_private_placeholder)>)
+#    return ceto_private_placeholder
+#):decltype(auto))()"""
+
+#    from .parser import parse
+#    ban_references_lambda = parse(code).args[0]
+#    print(ban_references_lambda.ast_repr(ceto_evalable=False, preserve_source_loc=False))
+#    import sys
+#    sys.exit(-1)
+
+    clone = node.clone()
+
+    ban_references_lambda = Call(TypeOp(":", [Call(ArrayAccess(Identifier("lambda", ), [Identifier("ref", ), ], ), [Block([Call(Identifier("static_assert", ), [UnOp("not", [ScopeResolution("::", [Identifier("std", ), Template(Identifier("is_reference_v", ), [Call(Identifier("overparenthesized_decltype", ), [clone, ], ), ], ), ], )], ), ], ), SyntaxTypeOp(":", [Identifier("return"), node], ), ], ), ], ), Call(Identifier("decltype", ), [Identifier("auto", ), ], ), ], ), [], )
+
+    #ban_references_lambda = Call(Identifier("CETO_BAN_REFS"), [node])
+
+    ban_references_lambda.parent = node.parent
+    node.parent = ban_references_lambda
+    clone.parent = ban_references_lambda
+    clone.scope = node.scope
+    ban_references_lambda.scope = node.scope
+    #ban_references_lambda = basic_semantic_analysis(ban_references_lambda)
+
+    return ban_references_lambda
+
+
 def type_inorder_traversal(typenode: Node, func):
     if isinstance(typenode, TypeOp):
         if not type_inorder_traversal(typenode.lhs, func):
@@ -1018,17 +1133,32 @@ def macro_expansion(expr: Module):
     return expr
 
 
-def semantic_analysis(expr: Module):
+def basic_semantic_analysis(expr: Module) -> Module:
+
+
+    expr = build_types(expr)
+    expr = build_parents(expr)
+    expr = apply_replacers(expr, [ScopeVisitor()])
+    expr = apply_replacers(expr, [ImplicitLambdaCaptureVisitor()])
+    return expr
+
+
+def semantic_analysis(expr: Module) -> Module:
     assert isinstance(expr, Module) # enforced by parser
 
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parenthesese(expr)
 
-    expr = build_types(expr)
-    expr = build_parents(expr)
-    expr = apply_replacers(expr, [ScopeVisitor()])
-    expr = apply_replacers(expr, [ImplicitLambdaCaptureVisitor()])
+    expr = basic_semantic_analysis(expr)
+    expr = no_references_in_subexpressions(expr)
+
+    def noscope(n):
+        n.scope = None
+        return n
+    expr = replace_node(expr, noscope)
+
+    expr = basic_semantic_analysis(expr)
 
     def defs(node):
         if not isinstance(node, Node):

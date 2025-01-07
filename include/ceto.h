@@ -73,6 +73,8 @@ static inline void issue_null_deref_message() {
 
 #endif
 
+#define CETO_BAN_REFS(expr) [&]() -> decltype(auto) { static_assert(!(std::is_reference_v<decltype((expr))>)); return expr; }()
+
 // mad = maybe allow deref
 
 // Based on answer of user Nawaz at https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or?noredirect=1&lq=1
