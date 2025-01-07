@@ -372,11 +372,10 @@ def codegen_def(defnode: Call, cx):
     return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
 
 
-def codegen_function_body(defnode : Call, block, cx):
-    # methods or functions only (not lambdas!)
-    assert defnode.func.name == "def"
+# Replace self.x = y in a method (but not an inner lambda unless by-ref this-capturing) with this->x = y
+def _replace_self_with_this(defnode):
+    assert defnode.func.name == "def" or isinstance(defnode.func, ArrayAccess) and defnode.func.func.name == "lambda" and any(c.name == "ref" for c in defnode.func.args)
 
-    # Replace self.x = y in a method (but not an inner lambda!) with this->x = y
     need_self = False
     for s in find_all(defnode, test=lambda a: a.name == "self", stop=lambda n: n.func and n.func.name in ["class", "struct"]):
 
@@ -385,8 +384,13 @@ def codegen_function_body(defnode : Call, block, cx):
         while p is not defnode:
             if creates_new_variable_scope(p):
                 # 'self.foo' inside e.g. a lambda body
-                replace_self = False
-                break
+
+                if isinstance(p.func, ArrayAccess) and p.func.func.name == "lambda" and p.func.args and p.func.args[0].name == "ref":
+                    # TODO this should also check for &this capture etc
+                    pass
+                else:
+                    replace_self = False
+                    break
             p = p.parent
 
         if replace_self and isinstance(s.parent,
@@ -409,6 +413,16 @@ def codegen_function_body(defnode : Call, block, cx):
                 s.parent.parent.func = arrow
         else:
             need_self = True
+
+    return need_self
+
+
+def codegen_function_body(defnode : Call, block, cx):
+    # methods or functions only (not lambdas!)
+    assert defnode.func.name == "def"
+
+    need_self = _replace_self_with_this(defnode)
+
     block_cx = cx.enter_scope()
     block_cx.in_function_body = True
     block_str = codegen_block(block, block_cx)
@@ -488,6 +502,8 @@ def codegen_lambda(node, cx):
     #     node.declared_type = declared_type  # put type in normal position
     #     node.func = node.func.lhs  # func is now 'lambda' keyword
 
+    capture_this_by_ref = False
+
     if isinstance(node.func, ArrayAccess):
         # explicit capture list
 
@@ -499,8 +515,12 @@ def codegen_lambda(node, cx):
                     return "&" + codegen_node(u.args[0], cx)
                 return None
 
+            nonlocal capture_this_by_ref
+
             if isinstance(a, Assign):
                 if ref_capture := codegen_capture_list_address_op(a.lhs):
+                    if a.lhs.args[0].name == "this":
+                        capture_this_by_ref = True
                     lhs = ref_capture
                 elif isinstance(a.lhs, Identifier) and not a.lhs.declared_type:
                     lhs = codegen_node(a.lhs, cx)
@@ -509,6 +529,8 @@ def codegen_lambda(node, cx):
                 return lhs + " = " + codegen_node(a.rhs, cx)
             else:
                 if ref_capture := codegen_capture_list_address_op(a):
+                    if a.args[0].name == "this":
+                        capture_this_by_ref = True
                     return ref_capture
                 if isinstance(a, UnOp) and a.op == "*" and a.args[0].name == "this":
                     return "*" + codegen_node(a.args[0])
@@ -516,8 +538,11 @@ def codegen_lambda(node, cx):
                     raise CodeGenError("Unexpected capture list item", a)
                 if a.name == "ref":
                     # special case non-type usage of ref
+                    capture_this_by_ref = True
                     return "&"
                 elif a.name == "val":
+                    if a.scope.find_def(a):
+                        raise CodeGenError("no generic 'val' capture allowed because a variable named 'val' has been defined.", a)
                     return "="
                 return codegen_node(a, cx)
 
@@ -568,6 +593,9 @@ def codegen_lambda(node, cx):
             capture_list = [i + " = " + "ceto::default_capture(" + i + ")" for i in possible_captures]
     else:
         capture_list = ""
+
+    if capture_this_by_ref:
+        _replace_self_with_this(node)
 
     return ("[" + ", ".join(capture_list) + "](" + ", ".join(params) + ")" + type_str + " {\n" +
             codegen_block(block, newcx) + newcx.indent_str() + "}" + invocation_str)
