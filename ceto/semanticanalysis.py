@@ -100,10 +100,49 @@ def no_references_in_subexpressions(node):
     if isinstance(node, Template) and node.func.name == "include":
         return None
 
-    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for":
-        rhs = no_references_in_subexpressions(node.rhs)
-        if rhs:
-            node.args = [node.lhs, rhs]
+    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for" and len(node.parent.args) == 2 and isinstance(node.parent.args[1], Block):
+        iterable = node.rhs
+        iter_var = node.lhs
+        for_body = node.parent.args[1]
+
+        if isinstance(iterable, Identifier) and any(find_all(for_body, lambda n: n.name == iterable.name)):
+            raise SemanticAnalysisError("you may not refer to the iterable in the body of a for loop!", iterable)
+        elif isinstance(iterable, AttributeAccess) and isinstance(iterable.lhs, Identifier):
+
+            for_scope = node.parent.scope
+
+            is_over_self = iterable.lhs.name == "self"
+            is_over_local_not_aliasing_self = False
+            if 0 and not is_over_self:
+                is_over_local_not_aliasing_self = True
+
+                for defn in for_scope.find_defs(iterable.lhs):
+                    if isinstance(defn, ParameterDefinition):
+                        is_over_local_not_aliasing_self = False
+                        break
+                    elif isinstance(defn, LocalVariableDefinition): # and rhs of defining assignment doesn't alias self
+                        pass
+
+            def node_may_alias_iterable(n):
+                # we assume that e.g. a function call can't modify the iterable through a global variable / static local
+                if not isinstance(n, Identifier):
+                    return False
+                if iter_var.name == n.name:
+                    return False
+                if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
+                    return True
+                if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
+                    # TODO allow more cases where the defined node doesn't alias the iterable
+                    return True
+                return False
+
+            if not any(find_all(for_body, node_may_alias_iterable)):
+                # no need to ban iterating over this maybe reference
+                return node
+
+        iterable = no_references_in_subexpressions(iterable)
+        if iterable:
+            node.args = [iter_var, iterable]
         return node
 
     if isinstance(node, BinOp) and isinstance(node.parent, Block) and node.op in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "~=", ">>=", "<<="]:

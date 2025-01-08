@@ -25,14 +25,30 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     decltype(std::vector {{1, 2, 3}}) a = std::vector {{1, 2, 3}};
 
+        inline auto bar() const -> void {
+            ; // pass
+        }
+
         inline auto foo() const -> void {
+            const auto self = ceto::shared_from(this);
             const auto a = (this -> a);
             for(const auto& x : a) {
                 std::cout << x;
                 std::cout << "\n";
+                this -> bar();
             }
+            const auto l = [self = ceto::default_capture(self)]() {
+                    if constexpr (!std::is_void_v<decltype((*ceto::mad(self)).bar())>) { return (*ceto::mad(self)).bar(); } else { static_cast<void>((*ceto::mad(self)).bar()); };
+                    };
+            const auto s = self;
             auto && b { (this -> a) } ;
             for(const auto& x : b) {
+                std::cout << x;
+                this -> bar();
+                l();
+                (*ceto::mad(s)).bar();
+            }
+            for(const auto& x : (this -> a)) {
                 std::cout << x;
             }
         }
