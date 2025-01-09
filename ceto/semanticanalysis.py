@@ -203,6 +203,16 @@ def no_references_in_subexpressions(node):
 
     if isinstance(node, AttributeAccess):
         attr_lhs = node.lhs
+        
+        # TODO arguably we should allow this->foo to be a reference regardless of the safety of ->
+        # This this-> is arguably ok too (*this is unsafe at least due to current object slicing capabilities)
+
+        if attr_lhs.name == "self":
+            # Access to one's own datamembers is always fine in a method 
+            # (any invalid use in a for loop will trigger a static_assert on the for loop 
+            #   iter rather thatn the self use in the for loop body)
+            return node
+
         while isinstance(attr_lhs, (AttributeAccess, ScopeResolution)):
             attr_lhs = attr_lhs.lhs
 
