@@ -91,7 +91,121 @@ def build_parents(node: Node):
     return visitor(node)
 
 
+
+def _ban_references_lambda(node):
+#    code = """(lambda[ref] (:
+#    static_assert(not std::is_reference_v<decltype(ceto_private_placeholder)>)
+#    return ceto_private_placeholder
+#):decltype(auto))()"""
+
+#    from .parser import parse
+#    ban_references_lambda = parse(code).args[0]
+#    print(ban_references_lambda.ast_repr(ceto_evalable=False, preserve_source_loc=False))
+#    import sys
+#    sys.exit(-1)
+
+    clone = node.clone()
+
+    ban_references_lambda = Call(TypeOp(":", [Call(ArrayAccess(Identifier("lambda", ), [Identifier("ref", ), ], ), [Block([Call(Identifier("static_assert", ), [UnOp("not", [ScopeResolution("::", [Identifier("std", ), Template(Identifier("is_reference_v", ), [Call(Identifier("overparenthesized_decltype", ), [clone, ], ), ], ), ], )], ), ], ), SyntaxTypeOp(":", [Identifier("return"), node], ), ], ), ], ), Call(Identifier("decltype", ), [Identifier("auto", ), ], ), ], ), [], )
+
+    #ban_references_lambda = Call(Identifier("CETO_BAN_REFS"), [node])
+
+    ban_references_lambda.parent = node.parent
+    node.parent = ban_references_lambda
+    clone.parent = ban_references_lambda
+    clone.scope = node.scope
+    ban_references_lambda.scope = node.scope
+    #ban_references_lambda = basic_semantic_analysis(ban_references_lambda)
+
+    return ban_references_lambda
+
+
 def no_references_in_subexpressions(node):
+
+    from ceto.compiler import cmdargs
+    if not cmdargs._norefs:
+        return node
+
+    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for" and len(node.parent.args) == 2 and isinstance(node.parent.args[1], Block):
+        iterable = node.rhs
+        iter_var = node.lhs
+        for_body = node.parent.args[1]
+
+        if isinstance(iterable, Identifier) and any(find_all(for_body, lambda n: n.name == iterable.name)):
+            raise SemanticAnalysisError("you may not refer to the iterable in the body of a for loop!", iterable)
+        elif isinstance(iterable, AttributeAccess) and isinstance(iterable.lhs, Identifier):
+
+            for_scope = node.parent.scope
+
+            is_over_self = iterable.lhs.name == "self"
+            is_over_local_not_aliasing_self = False
+            if 0 and not is_over_self:
+                is_over_local_not_aliasing_self = True
+
+                for defn in for_scope.find_defs(iterable.lhs):
+                    if isinstance(defn, ParameterDefinition):
+                        is_over_local_not_aliasing_self = False
+                        break
+                    elif isinstance(defn, LocalVariableDefinition): # and rhs of defining assignment doesn't alias self
+                        pass
+
+            def node_may_alias_iterable(n):
+                # we assume that e.g. a function call can't modify the iterable through a global variable / static local
+                if not isinstance(n, Identifier):
+                    return False
+                if iter_var.name == n.name:
+                    return False
+                if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
+                    return True
+                if is_over_self:
+                    may_alias_self = False
+                    for defn in for_scope.find_defs(n):
+                        if isinstance(defn, ParameterDefinition):
+                            return True
+                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"])):
+                            may_alias_self = True
+                            break
+                    return may_alias_self
+                if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
+                    # TODO allow more cases where the defined node doesn't alias the iterable
+                    return True
+                return False
+
+            if not any(find_all(for_body, node_may_alias_iterable)):
+                # no need to ban iterating over this maybe reference
+                return node
+
+        elif isinstance(iterable, Identifier):
+            # marked as ref elsewhere
+            return node
+
+        iterable = _ban_references_lambda(iterable)
+        if iterable:
+            node.args = [iter_var, iterable]
+        return node
+
+    new_args = []
+    found_new = False
+    for a in node.args:
+        new = no_references_in_subexpressions(a)
+        if new:
+            new_args.append(new)
+            found_new = True
+        else:
+            new_args.append(a)
+
+    if found_new:
+        node.args = new_args
+
+    if node.func:
+        new = no_references_in_subexpressions(node.func)
+        if new:
+            node.func = new
+
+    return node
+
+
+def no_references_in_subexpressions_old(node):
 
     from ceto.compiler import cmdargs
     if not cmdargs._norefs:
@@ -131,8 +245,19 @@ def no_references_in_subexpressions(node):
                     return False
                 if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
                     return True
+                assert 0
+                if is_over_self:
+                    may_alias_self = False
+                    for defn in for_scope.find_defs(n):
+                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"])):
+                            may_alias_self = True
+                            break
+                    assert 0
+                    return may_alias_self
                 if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
+                    #if var_def.defined_node.scope == 
                     # TODO allow more cases where the defined node doesn't alias the iterable
+
                     return True
                 return False
 
