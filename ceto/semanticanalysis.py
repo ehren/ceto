@@ -8,7 +8,7 @@ import shutil
 
 from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
-from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope
+from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope, comes_before
 
 # from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
 # from ._abstractsyntaxtree import macro_matches, macro_trampoline
@@ -139,7 +139,8 @@ def no_references_in_subexpressions(node):
 
             is_over_self = iterable.lhs.name == "self"
             is_over_local_not_aliasing_self = False
-            if 0 and not is_over_self:
+            aliased_locals = []
+            if not is_over_self:
                 is_over_local_not_aliasing_self = True
 
                 for defn in for_scope.find_defs(iterable.lhs):
@@ -147,7 +148,25 @@ def no_references_in_subexpressions(node):
                         is_over_local_not_aliasing_self = False
                         break
                     elif isinstance(defn, LocalVariableDefinition): # and rhs of defining assignment doesn't alias self
-                        pass
+                        aliased_locals.append(defn.defined_node)
+
+                        to_check = [defn.defining_node]
+                        while to_check:
+                            check = to_check.pop()
+
+                            def is_local(n):
+                                localdef = n.scope.find_def(n)
+                                if isinstance(localdef, LocalVariableDefinition):
+                                    aliased_locals.append(localdef.defined_node)
+                                    check.append(localdef.defining_node)
+                                elif isinstance(localdef, ParameterDefinition):
+                                    nonlocal is_over_local_not_aliasing_self
+                                    is_over_local_not_aliasing_self = False
+
+                            find_all(check, is_local)
+
+                            if not is_over_local_not_aliasing_self:
+                                break
 
             def node_may_alias_iterable(n):
                 # we assume that e.g. a function call can't modify the iterable through a global variable / static local
@@ -157,6 +176,7 @@ def no_references_in_subexpressions(node):
                     return False
                 if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
                     return True
+
                 if is_over_self:
                     may_alias_self = False
                     for defn in for_scope.find_defs(n):
@@ -169,9 +189,27 @@ def no_references_in_subexpressions(node):
                             may_alias_self = True
                             break
                     return may_alias_self
+
+                if is_over_local_not_aliasing_self:
+                    for var_def in for_scope.find_defs(n):
+                        if isinstance(var_def, VariableDefinition):
+
+                            parent_block = var_def.defined_node.parent
+                            while True:
+                                if isinstance(parent_block, Module):
+                                    break
+                                parent_block = parent_block.parent
+
+                            for local_var in aliased_locals:
+                                defined_before = comes_before(parent_block, var_def.defined_node, local_var)
+                                if defined_before:
+                                    return True
+                    return False
+
                 if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
-                    # TODO allow more cases where the defined node doesn't alias the iterable
+                    # TODO allow more cases where the defined node doesn't alias the iterable?
                     return True
+
                 return False
 
             if not any(find_all(for_body, node_may_alias_iterable)):

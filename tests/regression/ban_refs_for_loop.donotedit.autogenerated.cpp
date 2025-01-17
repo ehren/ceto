@@ -95,14 +95,18 @@ struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Bl
     auto main() -> int {
         const auto f = std::make_shared<const Foo>();
         (*ceto::mad(f)).foo();
+        const auto z = std::vector {{2, 3}};
         auto m { std::make_shared<Foo>() } ;
         (*ceto::mad(m)).foo();
         std::cout << ceto::bounds_check((*ceto::mad(m)).a, 3);
         const auto element = ceto::bounds_check((*ceto::mad(m)).a, 3);
         const auto ma = (*ceto::mad(m)).a;
         std::cout << element;
+        const auto y = std::vector {{1, 2}};
         for(const auto& x : (*ceto::mad(m)).a) {
+            const auto zma2 = ma;
             std::cout << x;
+            y;
         }
         auto ma3 { (*ceto::mad(m)).a } ;
         bad(ma3, ma3);

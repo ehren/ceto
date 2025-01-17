@@ -1,7 +1,7 @@
 # Test Output 1
 # Test Output 2
 # Test Output 3
-# Test Output 1231234
+# Test Output 12312341441234
 
 # requires --_norefs
 #
@@ -89,6 +89,8 @@ def (main:
     f = Foo()
     f.foo()
 
+    z = [2, 3]
+
     m: mut = Foo()
     m.foo()
     std.cout << m.a[3] # error
@@ -97,10 +99,14 @@ def (main:
     #element = ma[3]
     std.cout << element
 
+    y = [1, 2]
+
     for (x in m.a:
-        #ma2 = m.a
-        #zma2 = ma
+        #ma2 = m.a  # error
+        zma2 = ma
         std.cout << x
+        y
+        #z  # error
     )
 
     ma3: mut = m.a

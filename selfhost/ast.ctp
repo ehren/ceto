@@ -236,6 +236,7 @@ lambda(m : mut:auto:rref:
         "parent", &Scope.parent)
 
     m.def("creates_new_variable_scope", &creates_new_variable_scope)
+    m.def("comes_before", &comes_before)
 
     # this will need its own module - just for testing for now
     m.def("parse_test", &parse_test)
