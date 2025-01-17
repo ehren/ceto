@@ -64,10 +64,11 @@ class (Foo:
         for (x in self.a:
             std.cout << x
             # b  # error
-            # self.bar()  # error. TODO we can add more logic allowing this known const (because foo const) method call
+            #self.bar()  # error. TODO we can add more logic allowing this known const (because foo const) method call
             #l() # error
             #s  # error
-            #y  # TODO
+            y
+            y[0]
         )
     )
 

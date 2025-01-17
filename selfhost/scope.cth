@@ -81,7 +81,7 @@ def (creates_new_variable_scope, e: Node:
     if (isinstance(e, Call):
         name = e.func.name()
         if (name:
-            return ceto.util.contains(["def"s, "lambda"s, "class"s, "struct"s], name.value())
+            return ceto.util.contains(["def"s, "lambda"s, "class"s, "struct"s, "defmacro"s], name.value())
         elif isinstance(e.func, ArrayAccess) and e.func.func.name() == "lambda":
             return True
         )
@@ -137,8 +137,20 @@ class (Scope:
                 if (name == "class" or name == "struct":
                     defn = FieldDefinition(defined_node, defining_node)
                     self.variable_definitions.push_back(defn)
-                elif name == "def" or name == "lambda":
+                elif name == "def" or name == "lambda" or name == "defmacro":
                     defn = ParameterDefinition(defined_node, defining_node)
+                    self.variable_definitions.push_back(defn)
+                else:
+                    defn = LocalVariableDefinition(defined_node, defining_node)
+                    self.variable_definitions.push_back(defn)
+                    std.cerr << "this is no good?\n"
+                )
+                return
+            elif isinstance(parent, Block) and creates_new_variable_scope(parent.parent()):
+                name = parent.parent().func.name()
+
+                if (name == "class" or name == "struct":
+                    defn = FieldDefinition(defined_node, defining_node)
                     self.variable_definitions.push_back(defn)
                 else:
                     defn = LocalVariableDefinition(defined_node, defining_node)

@@ -165,6 +165,9 @@ def no_references_in_subexpressions(node):
                         if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"])):
                             may_alias_self = True
                             break
+                        if isinstance(defn, LocalVariableDefinition) and any(find_all(defn.defining_node, lambda n: node_may_alias_iterable(n))):
+                            may_alias_self = True
+                            break
                     return may_alias_self
                 if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
                     # TODO allow more cases where the defined node doesn't alias the iterable

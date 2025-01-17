@@ -117,7 +117,7 @@ using VariableDefinition::VariableDefinition;
         if ((std::dynamic_pointer_cast<const Call>(e) != nullptr)) {
             const auto name = (*ceto::mad((*ceto::mad(e)).func)).name();
             if (name) {
-                return ceto::util::contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}}}, (*ceto::mad_smartptr(name)).value());
+                return ceto::util::contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}, std::string {"defmacro"}}}, (*ceto::mad_smartptr(name)).value());
             } else if (((std::dynamic_pointer_cast<const ArrayAccess>((*ceto::mad(e)).func) != nullptr) && ((*ceto::mad((*ceto::mad((*ceto::mad(e)).func)).func)).name() == "lambda"))) {
                 return true;
             }
@@ -177,8 +177,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                     if ((name == "class") || (name == "struct")) {
                         const auto defn = std::make_shared<const FieldDefinition>(defined_node, defining_node);
                         (*ceto::mad(this -> variable_definitions)).push_back(defn);
-                    } else if (((name == "def") || (name == "lambda"))) {
+                    } else if ((((name == "def") || (name == "lambda")) || (name == "defmacro"))) {
                         const auto defn = std::make_shared<const ParameterDefinition>(defined_node, defining_node);
+                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                    } else {
+                        const auto defn = std::make_shared<const LocalVariableDefinition>(defined_node, defining_node);
+                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                        std::cerr << "this is no good?\n";
+                    }
+                    return;
+                } else if (((std::dynamic_pointer_cast<const Block>(parent) != nullptr) && creates_new_variable_scope((*ceto::mad(parent)).parent()))) {
+                    const auto name = (*ceto::mad((*ceto::mad((*ceto::mad(parent)).parent())).func)).name();
+                    if ((name == "class") || (name == "struct")) {
+                        const auto defn = std::make_shared<const FieldDefinition>(defined_node, defining_node);
                         (*ceto::mad(this -> variable_definitions)).push_back(defn);
                     } else {
                         const auto defn = std::make_shared<const LocalVariableDefinition>(defined_node, defining_node);
