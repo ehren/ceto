@@ -168,6 +168,17 @@ def no_references_in_subexpressions(node):
                             if not is_over_local_not_aliasing_self:
                                 break
 
+            def is_acceptable_use_of_self_this(n):
+                assert n.name in ("this", "self")
+                assert is_over_self
+                if isinstance(n.parent, AttributeAccess) and n.parent.lhs is n and not (
+                     isinstance(n.parent.parent, Call) and n.parent is n.parent.parent.func
+                   ) and isinstance(n.parent.rhs, Identifier) and isinstance(iterable.rhs, Identifier) and n.parent.rhs.name != iterable.rhs.name:
+                        # direct access to a data member other than the one being iterated
+                        # - fine under the assumption that data members don't overlap (so long as no C style unions in safe code)
+                    return True
+                return False
+
             def node_may_alias_iterable(n):
                 # we assume that e.g. a function call can't modify the iterable through a global variable / static local
                 if not isinstance(n, Identifier):
@@ -175,14 +186,19 @@ def no_references_in_subexpressions(node):
                 if iter_var.name == n.name:
                     return False
                 if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
+                    if is_over_self and is_acceptable_use_of_self_this(n):
+                        return False
                     return True
-
                 if is_over_self:
                     may_alias_self = False
                     for defn in for_scope.find_defs(n):
                         if isinstance(defn, ParameterDefinition):
                             return True
-                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"])):
+                        if isinstance(defn, LocalVariableDefinition) and isinstance(defn.defining_node, Call) and defn.defining_node.func.name == "for":
+                            iter = defn.defining_node.args[0].rhs
+                            if isinstance(iter, AttributeAccess) and iter.lhs.name == "self" and is_acceptable_use_of_self_this(iter.lhs):
+                                continue  # this one's ok
+                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"] and not is_acceptable_use_of_self_this(n))):
                             may_alias_self = True
                             break
                         if isinstance(defn, LocalVariableDefinition) and any(find_all(defn.defining_node, lambda n: node_may_alias_iterable(n))):
@@ -193,7 +209,6 @@ def no_references_in_subexpressions(node):
                 if is_over_local_not_aliasing_self:
                     for var_def in for_scope.find_defs(n):
                         if isinstance(var_def, VariableDefinition):
-
                             parent_block = var_def.defined_node.parent
                             while True:
                                 if isinstance(parent_block, Module):
