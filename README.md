@@ -692,7 +692,259 @@ In contrast to the behavior of optionals above, for "class instances" or even ex
 (&o)->get()
 ```
 
-to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance). This has the nice benefit of signalling unsafety via the explicit use of `&` and `->` syntax in ceto (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators ```*```, ```&```, and ```->``` outside of unsafe blocks).
+to get around the autoderef system and call the smart ptr `get` method (rather than a `get` method on the autoderefed instance).
+
+Complete example:
+
+```python
+class (Foo:
+    def (bar:
+        std.cout << (&self)->use_count()             # +1 to use_count (non-trivial use of self)
+        std.cout << lambda((&self)->use_count()) ()  # +1 copy capture of self
+                                                     # note: this capture requires a lambda[&this] capture list
+    )
+)
+
+def (main:
+    f = Foo()
+    f.bar()
+
+    (refcount, addr) = lambda (:
+        ((&f)->use_count(), (&f)->get())  # +1 copy capture of f
+    ) ()
+
+    std.cout << refcount << addr->bar()
+)
+```
+
+Requiring the `&` and `->` syntax in these cases has the added benefit of signaling unsafety (a fully safe ceto would require no additional logic to ban all potentially unsafe use of smart pointer member functions outside of unsafe blocks: they're banned automatically by banning any occurence of operators ```*```, ```&```, and ```->``` outside of unsafe blocks).
+
+### C++ templates
+
+Writing simple templates can be achieved by Python style "generic" functions (see the first example). Explicit C++ template functions, classes, and variables may still be written:
+
+```python
+include <ranges>
+
+namespace(myproject.utils)  # everything that follows (in this file only) is defined in this C++ namespace
+
+# explicit template function
+def (range: template<typename:...:Args>, args: mut:Args:rref:...:
+    if ((sizeof...)(Args) == 1:
+        zero : typename:std.tuple_element<0, std.tuple<Args...>>::type = 0
+        return std.ranges.iota_view(zero, std.forward<Args>(args)...)
+    else:
+        return std.ranges.iota_view(std.forward<Args>(args)...)
+    ) : constexpr
+) : decltype(auto)
+
+# generic "Python" style function (container is const auto&)
+def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
+    return std.find(container.begin(), container.end(), element) != container.end()
+)
+
+# additional nested namespaces require a block:
+namespace(extra.crazy.detail:
+
+    # template variable example from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
+    is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
+)
+```
+
+Assuming the above is written to a file myprojectutils.cth, we can include it:
+
+```python
+include <map>
+include (myprojectutils)
+
+def (main:
+    for (x in myproject.utils.range(5, 10):
+        if (myproject.utils.contains([2, 4, 6], x):
+            std.cout << x
+        )
+    )
+
+    m: std.unordered_map<string, int> = {}
+    static_assert(myproject.utils.extra.crazy.detail.is_map_type<decltype(m)>)
+)
+```
+
+### Macros
+
+Macros should be used sparingly for extending the language. When possible, C++ templates or preprocessor macros should be preferred.
+
+Macros are unhygienic (use gensym for locals to avoid horrific capture bugs). Automatic hygiene at least for simple local variables as well as automatic unquoting of params might be implemented in the future.
+
+Continuing with our example of ```pyprojectutils.cth```, we can create a header called ```incontains.cth```:
+
+```python
+include (myprojectutils)
+
+defmacro(a in b, a, b:
+    if ((call = asinstance(a.parent().parent(), Call)):
+        if (call.func.name() == "for":
+            # don't rewrite the "in" of a for-in loop (pitfall of a general syntax!)
+            return None
+        )
+    )
+
+    # using std.contains would also be acceptable (though not supported with current Mac github actions runners)
+    return quote(myproject.utils.contains(unquote(b), unquote(a)))
+)
+```
+
+and include it:
+
+```python
+include <iostream>
+include (incontains)
+include (myprojectutils)  # unnecessary because incontains.cth already includes 
+                          # (but good style to include what you use)
+
+def (main:
+    for (x in myproject.utils.range(5, 10):
+        if (x in [2, 4, 6]:
+            std.cout << x
+        )
+    )
+)
+```
+
+(Once std::contains is accepted on all github actions runners adding our in-macro as a built-in (see include directory) might make sense. Note that redefining macros even with identical duplicates is usually permissable.)
+
+#### Alternational arguments
+
+We can't dynamically redefine integer constants like Python (https://hforsten.com/redefining-the-number-2-in-python.html) but the next best thing is possible if not recommended:
+
+```python
+# Test Output: 1
+# Test Output: 2
+# Test Output: 1.5
+# Test Output: 1.6
+
+include <iostream>
+include <cstdlib>
+
+defmacro (a, a: IntegerLiteral|FloatLiteral:
+
+    # getting at the alternatives requires downcasting
+    # ('match' syntax and defmacro(..., elif ..., else, ...) a future possibility)
+    if ((i = asinstance(a, IntegerLiteral)):
+        if (i.integer_string == "2":
+            # 2 is 1
+            return quote(1)
+        )
+    else:
+        f = asinstance(a, FloatLiteral)
+        d = std.strtod(f.float_string.c_str(), nullptr)
+        if (d >= 2.0 and d <= 3.0:
+            # subtract 0.5 for kicks
+            suffix = quote(l)
+            n = FloatLiteral(std.to_string(d - 0.5), suffix)
+            return n
+        )
+    )
+
+    return None
+)
+
+def (main:
+    std.cout << 2 << "\n"
+    std.cout << 2 + 1 << "\n"
+    std.cout << 1.5 << "\n"
+    std.cout << 2.5 + 0.1 << "\n"  # Macro expansion iterates to a fixed point:
+                                   # One application rewrites 2.5 to 2.0f, a second to 1.5f; no changes on third pass
+)
+```
+
+#### Variadic arguments
+
+```python
+include <ranges>
+include <iostream>
+
+defmacro (summation(args), args: [Node]:
+    if (not args.size():
+        return quote(0)
+    )
+
+    if (defined(__clang__) and __clang_major__ < 16 and __APPLE__:
+        # The below ranges example is still likely busted with the github actions runner's xcode apple clang 14
+
+        sum = std.accumulate(args.cbegin() + 1, args.cend(), args[0], lambda(a, b, quote(unquote(a) + unquote(b))))
+    else:
+        sum: mut = args[0]
+        for (arg in args|std.views.drop(1):
+            sum = quote(unquote(sum) + unquote(arg))
+        )
+    ) : preprocessor
+
+    return sum
+)
+
+def (main:
+    std.cout << summation(1, 2, 3)
+    c = "c"
+    std.cout << summation("a"s, "b", c) << summation(5) << summation()
+)
+```
+
+#### Optional arguments
+
+Here's an example from the standard library macros located in the include directory. We use an optional match var for "specifier" to match virtual and otherwise decorated destructors as well as plain non-virtual destructors with a single macro pattern:
+
+```python
+# canonical empty destructor to default destructor:
+# e.g.
+# def (destruct:virtual:
+#     pass
+# )
+# goes to
+# def (destruct:virtual) = default
+# For an empty non-default destructor
+# use pass; pass
+defmacro (def (destruct:specifier:
+    pass
+), specifier: Node|None:
+    name: Node = quote(destruct)
+    destructor = if (specifier:
+        specified: Node = quote(unquote(name): unquote(specifier))
+        specified
+    else:
+        name
+    )
+    return quote(def (unquote(destructor)) = default)
+)
+```
+
+```python
+# No "includes" needed to make use of the standard library macros
+
+struct (Foo1:
+    def (destruct:
+        pass
+        # pass  # uncomment for a non-default destructor
+    )
+)
+
+struct (Foo2:
+    # you may still write an explicitly default destructor if you must
+    def (destruct:virtual) = default
+)
+
+class (Foo3:
+    # non-None "specifier" match
+    def (destruct:virtual:
+        pass
+    )
+)
+
+def (main:
+    static_assert(not std.has_virtual_destructor_v<Foo1>)
+    static_assert(std.has_virtual_destructor_v<Foo2>)
+    static_assert(std.has_virtual_destructor_v<Foo3.class>)
+)
+```
 
 ### Kitchen Sink / mixing higher level and lower level ceto / external C++
 
