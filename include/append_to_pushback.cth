@@ -1,0 +1,30 @@
+namespace (ceto)
+
+struct (is_vector<class: T>(std.false_type):
+    pass
+)
+
+# TODO we should allow explicit template classes/structs (and class specifiers like MYPROJECT_EXPORT)
+# struct (is_vector<std.vector<T, A>> (std.true_type): template<class:T, class: A>
+#    pass
+#)
+cpp'
+template <class T, class A>
+struct is_vector<std::vector<T, A>> : std::true_type {};
+'
+
+# TODO ".value" should print as "::value" here (we can't rewrite every blah<T>.foo to blah<T>::foo due to C++ template variables (e.g. https://stackoverflow.com/a/21163272/1391250) but codegen_attribute_access should print :: if the .func of blah<T> has a ClassDefinition
+is_vector_v: template<class:T>:concept = is_vector<T>::value
+
+def (append_or_push_back: template<class:T, class:Y>,
+                 non_vec: mut:T:ref:ref,
+                      el: mut:Y:ref:ref:
+    # note we rely on .append performing on autoderef here
+    return std.forward<T>(non_vec).append(std.forward<Y>(el))
+) : decltype(auto):requires:not is_vector_v<T>
+
+def (append_or_push_back: template<class: T>,
+                     vec: mut:[T]:ref,
+                      el: mut:auto:ref:ref:
+    vec.push_back(std.forward<decltype(el)>(el))
+)

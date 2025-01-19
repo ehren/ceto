@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
-    Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, \
+    Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, VariableDefinition, \
     LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
     nested_same_binop_to_list, gensym, FieldDefinition
@@ -2224,8 +2224,10 @@ def codegen_call(node: Call, cx: Scope):
         # not auto-flattening args is becoming annoying!
         # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
         method_name = None
+        method_target = None
         if isinstance(node.func, (AttributeAccess, ScopeResolution)):
             method_name = node.func.rhs
+            method_target = node.func.lhs
             while isinstance(method_name, (AttributeAccess, ScopeResolution)):
                 method_name = method_name.rhs
 
@@ -2258,15 +2260,9 @@ def codegen_call(node: Call, cx: Scope):
 
                 new_func = consume_method_name()
 
-                if method_name.name == "unsafe_at" and len(node.args) == 1:
-                    return codegen_node(new_func, cx) + "[" + codegen_node(node.args[0], cx) + "]"
-
-                if method_name.name == "append" and len(node.args) == 1:
+                if isinstance(node.func, AttributeAccess) and method_name.name == "append" and len(node.args) == 1 and isinstance(node.scope.find_def(method_target), VariableDefinition):
                     # perhaps controversial rewriting of append to push_back
                     # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
-
-                    # TODO replace this with a simple SFINAE ceto::append_or_push_back(arg) so we can .append correctly in fully generic code
-                    append_str = "append"
                     is_list = False
                     if isinstance(new_func, ListLiteral):
                         is_list = True
@@ -2276,10 +2272,13 @@ def codegen_call(node: Call, cx: Scope):
                                     d.defining_node.rhs, ListLiteral):
                                 is_list = True
                                 break
-                    if is_list:
-                        append_str = "push_back"
 
-                    func_str = "(*ceto::mad(" + codegen_node(new_func, cx) + "))." + append_str
+                    if is_list:
+                        func_str = "(" + codegen_node(new_func, cx) + ").push_back"
+                    else:
+                        # we still provide .append as .push_back for all std::vectors even in generic code
+                        # (note this function performs an autoderef on new_func):
+                        return "ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")"
                 else:
                     new_attr_access = AttributeAccess(".", [new_func, method_name])
                     new_attr_access.parent = node

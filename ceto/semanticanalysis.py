@@ -1364,8 +1364,6 @@ def macro_expansion(expr: Module):
 
 
 def basic_semantic_analysis(expr: Module) -> Module:
-
-
     expr = build_types(expr)
     expr = build_parents(expr)
     expr = apply_replacers(expr, [ScopeVisitor()])
@@ -1383,14 +1381,15 @@ def semantic_analysis(expr: Module) -> Module:
     expr = basic_semantic_analysis(expr)
     expr = no_references_in_subexpressions(expr)
 
-    def noscope(n):
+    def clearscope(n):
         n.scope = None
         return n
-    expr = replace_node(expr, noscope)
+
+    expr = replace_node(expr, clearscope)
 
     expr = basic_semantic_analysis(expr)
 
-    def defs(node):
+    def debug_defs(node):
         if not isinstance(node, Node):
             return
 
@@ -1411,6 +1410,6 @@ def semantic_analysis(expr: Module) -> Module:
             defs(a)
             defs(a.func)
 
-    # defs(expr)
+    # debug_defs(expr)
 
     return expr
