@@ -82,7 +82,7 @@ def (foo, items:[string]:
     
 def (main, argc: int, argv: char:ptr:ptr:
     printf("argc %d\n", argc)
-    assert(std.string(argv.unsafe_at(0)).length() > 0)
+    assert(std.string(argv.unsafe[0]).length() > 0)
     
     lst = [s"hello", s"world"]
     foo(lst)

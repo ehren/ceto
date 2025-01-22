@@ -35,8 +35,8 @@ def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic fu
        value: T, 
        Fargs: Targs:...:
       
-    while (*format != c"".unsafe_at(0):  # TODO maybe char"%" for char literal
-        if (*format == c"%".unsafe_at(0):
+    while (*format != char'\0':
+        if (*format == char'%':
             std.cout << value
             tprintf(format + 1, Fargs...) # recursive call
             return
@@ -47,6 +47,6 @@ def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic fu
 )
     
 def (main:
-    tprintf(c"% world% %\n", c"Hello", c"!".unsafe_at(0), 123);
+    tprintf("% world% %\n", "Hello", char"!", 123);
 )
     

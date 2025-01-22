@@ -1,10 +1,11 @@
 # Test Output: 0121019
 
 include <ranges>
+include <algorithm>
 
 # https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
-    return std.find(container.begin(), container.end(), element) != container.end()
+    return std.find(container.cbegin(), container.cend(), element) != container.cend()
 )
 
 def (range: template<typename:...:Args>, args: mut:Args:rref:...:

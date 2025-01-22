@@ -4,12 +4,8 @@ import subprocess
 
 import pytest
 
-from ceto.compiler import runtest
 from ceto.parser import parse
 
-
-def compile(s, compile_cpp=True):
-    return runtest(s, compile_cpp)
 
 # these require range_value_t for untyped / forward typed vectors (not worth adding #ifdefs to fallback to using ::value_type - just upgrade your clang)
 clang_xfailing_tests = ["atomic_weak.ctp",
@@ -57,11 +53,8 @@ if sys.platform == "win32":
 # test_files = ["tuples_for.ctp"]
 # test_files = ["atomic_weak.ctp"]
 # test_files = ["regression/multiple_attribute_access_method_call.ctp"]
-_CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS = False
 
-
-@pytest.mark.parametrize("file", test_files)
-def test_file(file):
+def _run_test(file):
     prefix = "# Test Output:"
 
     path = os.path.join(os.path.dirname(__file__), file)
@@ -75,10 +68,6 @@ def test_file(file):
         expected_output = "\n".join(output_lines)
     else:
         expected_output = None
-
-    if _CETO_DEBUG_PARAMATERIZED_TESTS_ONE_PROCESS:
-        runtest("\n".join(content), compile_cpp=False)
-        return
 
     build_command = f"{sys.executable} -m ceto -o a.exe --donotexecute {path}"
     build_output = subprocess.check_output(build_command, shell=True).decode("utf8")
@@ -94,6 +83,22 @@ def test_file(file):
 
     if expected_output is not None:
         assert output.strip() == expected_output.strip()
+
+    return output
+
+
+@pytest.mark.parametrize("file", test_files)
+def test_file(file):
+    _run_test(file)
+
+
+def compile(string: str, compile_cpp=True):
+    file_path = os.path.join(os.path.dirname(__file__), "testsuitegenerated.ctp")
+
+    with open(file_path, "w") as f:
+        f.write(string)
+
+    return _run_test(file_path)
 
 
 def raises(func, exc=None):
@@ -1069,7 +1074,7 @@ def test_attribute_call_array_access():
 def (main:
     v = [0, 1, 2]
     # std::cout << v.data()[2]  # TODO ensure test_parser is adequate (no longer allowed in codegen)
-    std::cout << v.data().unsafe_at(2)
+    std::cout << v.data().unsafe[2]
 )
     """)
 
@@ -1103,10 +1108,10 @@ def (main:
     c = compile(r"""
 def (main:
     v = [0, 1, 2]
-    # std::cout << (v.data())[50]  # more UB from unsafe API usage (and use of a.unsafe_at(i) aka real c++ a[i])
+    # std::cout << (v.data())[50]  # more UB from unsafe API usage (and use of a.unsafe[i] aka real c++ a[i])
     # TODO ^ these are important precedence/parsing tests but we no longer allow raw array access in codegen. ensure these are tested properly in test_parser.py
     # std::cout << v.data()[50]
-    std::cout << v.data().unsafe_at(50)  # UB
+    std::cout << v.data().unsafe[50]  # UB
     
 )
     """)
@@ -1258,8 +1263,8 @@ def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic fu
        value: T, 
        Fargs: Targs:...:
       
-    while (*format != c"".unsafe_at(0):  # TODO maybe char"%" for char literal
-        if (*format == c"%".unsafe_at(0):
+    while (*format != char"\0":
+        if (*format == char"%":
             std.cout << value
             tprintf(format + 1, Fargs...) # recursive call
             return
@@ -1270,7 +1275,7 @@ def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic fu
 )
     
 def (main:
-    tprintf(c"% world% %\n", c"Hello", c"!".unsafe_at(0), 123);
+    tprintf("% world% %\n", "Hello", char'!', 123);
 )
     """)
 
@@ -1771,7 +1776,7 @@ def (main:
 def (main:
     x = 1
     y : const:int:ref = x  # fine to copy capture
-    c = c"A".unsafe_at(0)  # TODO maybe c'A' for a char literal
+    c = char'A'
     nullbyte: unsigned:char = 0
 
     lambda (:
@@ -3259,7 +3264,7 @@ def (foo, items:[string]:
     
 def (main, argc: int, argv: char:ptr:ptr:
     printf("argc %d\n", argc)
-    assert(std.string(argv.unsafe_at(0)).length() > 0)
+    assert(std.string(argv.unsafe[0]).length() > 0)
     
     lst = [s"hello", s"world"] 
     foo(lst)

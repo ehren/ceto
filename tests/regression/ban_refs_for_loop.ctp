@@ -6,6 +6,9 @@
 # requires --_norefs
 #
 
+include <algorithm>
+
+
 def (bad, a, b:mut:auto:ref:  # should be marked unsafe
     return
     for (x in a:

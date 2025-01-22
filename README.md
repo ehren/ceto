@@ -725,6 +725,7 @@ Writing simple templates can be achieved by Python style "generic" functions (se
 
 ```python
 include <ranges>
+include <algorithm>
 
 namespace(myproject.utils)  # everything that follows (in this file only) is defined in this C++ namespace
 
@@ -740,11 +741,11 @@ def (range: template<typename:...:Args>, args: mut:Args:rref:...:
 
 # generic "Python" style function (container is const auto&)
 def (contains, container, element: const:typename:std.remove_reference_t<decltype(container)>::value_type:ref:
-    return std.find(container.begin(), container.end(), element) != container.end()
+    return std.find(container.cbegin(), container.cend(), element) != container.cend()
 )
 
 # additional nested namespaces require a block:
-namespace(extra.crazy.detail:
+namespace(extra.detail:
 
     # template variable example from https://stackoverflow.com/questions/69785562/c-map-and-unordered-map-template-parameter-check-for-common-behavior-using-c/69869007#69869007
     is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
@@ -765,7 +766,7 @@ def (main:
     )
 
     m: std.unordered_map<string, int> = {}
-    static_assert(myproject.utils.extra.crazy.detail.is_map_type<decltype(m)>)
+    static_assert(myproject.utils.extra.detail.is_map_type<decltype(m)>)
 )
 ```
 
@@ -788,7 +789,7 @@ defmacro(a in b, a, b:
         )
     )
 
-    # using std.contains would also be acceptable (though not supported with current Mac github actions runners)
+    # std.ranges.contains would be better if you're using c++23
     return quote(myproject.utils.contains(unquote(b), unquote(a)))
 )
 ```
@@ -802,7 +803,7 @@ include (myprojectutils)  # unnecessary because incontains.cth already includes
                           # (but good style to include what you use)
 
 def (main:
-    for (x in myproject.utils.range(5, 10):
+    for (x in myproject.utils.range(10):
         if (x in [2, 4, 6]:
             std.cout << x
         )
@@ -810,7 +811,7 @@ def (main:
 )
 ```
 
-(Once std::contains is accepted on all github actions runners adding our in-macro as a built-in (see include directory) might make sense. Note that redefining macros even with identical duplicates is usually permissable.)
+Once std.ranges.contains is accepted on all github actions runners in c++23 mode, we'll likely add our in-macro as a built-in. Note that redefining macros is acceptable (the latest definition in scope gets the first attempt at a match).
 
 #### Alternational arguments
 

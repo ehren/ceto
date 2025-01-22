@@ -8,7 +8,8 @@ class (Foo:
     b = [4, 5, 6]
 
     def (blah: mut:
-        pass
+        self.a.push_back(1)
+        self.b.push_back(2)
     )
 
     def (foo: mut:
@@ -22,6 +23,7 @@ class (Foo:
                 #self.b  # error
                 #self.a  # error
             )
+            std.cout << self.b[0]
         )
     )
 )

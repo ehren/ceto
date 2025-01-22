@@ -159,6 +159,8 @@ jobs:
     - name: Remove directories (avoid importing uninstalled module)
       run: |
         rm -rf ./ceto && rm -rf ./include && rm -rf ./selfhost
+      shell:
+        bash
     - name: Test with pytest
       run: |
         pytest -s
