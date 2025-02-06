@@ -1407,8 +1407,8 @@ def semantic_analysis(expr: Module) -> Module:
         if d:
             print("defs list ", node, d)
         for a in node.args:
-            defs(a)
-            defs(a.func)
+            debug_defs(a)
+            debug_defs(a.func)
 
     # debug_defs(expr)
 

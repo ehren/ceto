@@ -2260,29 +2260,34 @@ def codegen_call(node: Call, cx: Scope):
 
                 new_func = consume_method_name()
 
-                if isinstance(node.func, AttributeAccess) and method_name.name == "append" and len(node.args) == 1 and isinstance(node.scope.find_def(method_target), VariableDefinition):
-                    # perhaps controversial rewriting of append to push_back
-                    # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
-                    is_list = False
-                    if isinstance(new_func, ListLiteral):
-                        is_list = True
-                    else:
-                        for d in node.scope.find_defs(new_func):
-                            if isinstance(d.defining_node, Assign) and isinstance(
-                                    d.defining_node.rhs, ListLiteral):
-                                is_list = True
-                                break
+                if isinstance(node.func, AttributeAccess) and method_name.name == "append" and len(node.args) == 1:
+                    append_target_lhs = method_target
+                    while isinstance(append_target_lhs, BinOp):
+                        append_target_lhs = append_target_lhs.lhs
 
-                    if is_list:
-                        func_str = "(" + codegen_node(new_func, cx) + ").push_back"
-                    else:
-                        # we still provide .append as .push_back for all std::vectors even in generic code
-                        # (note this function performs an autoderef on new_func):
-                        return "ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")"
-                else:
-                    new_attr_access = AttributeAccess(".", [new_func, method_name])
-                    new_attr_access.parent = node
-                    func_str = codegen_attribute_access(new_attr_access, cx)
+                    if append_target_lhs.name in ["this", "self"] or isinstance(node.scope.find_def(append_target_lhs), VariableDefinition):
+                        # perhaps controversial rewriting of append to push_back
+                        # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
+                        is_list = False
+                        if isinstance(new_func, ListLiteral):
+                            is_list = True
+                        else:
+                            for d in node.scope.find_defs(new_func):
+                                if isinstance(d.defining_node, Assign) and isinstance(
+                                        d.defining_node.rhs, ListLiteral):
+                                    is_list = True
+                                    break
+
+                        if is_list:
+                            return "(" + codegen_node(new_func, cx) + ").push_back(" + codegen_node(node.args[0], cx) + ")"
+                        else:
+                            # we still provide .append as .push_back for all std::vectors even in generic code
+                            # (note this function performs an autoderef on new_func):
+                            return "ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")"
+
+                new_attr_access = AttributeAccess(".", [new_func, method_name])
+                new_attr_access.parent = node
+                func_str = codegen_attribute_access(new_attr_access, cx)
 
         if func_str is None:
             func_str = codegen_node(new_func, cx)

@@ -8,8 +8,8 @@ class (Foo:
     b = [4, 5, 6]
 
     def (blah: mut:
-        self.a.push_back(1)
-        self.b.push_back(2)
+        self.a.append(1)
+        self.b.append(2)
     )
 
     def (foo: mut:
