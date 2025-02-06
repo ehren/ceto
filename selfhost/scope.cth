@@ -222,6 +222,23 @@ class (Scope:
         return None
     ) : ClassDefinition
 
+    def (lookup_function, function_name_node: Node:
+        if (not isinstance(function_name_node, Identifier):
+            return None
+        )
+
+        function_definitions: mut:auto:ref:ref = self.function_definitions
+        for (f in function_definitions:
+            if (f.function_name.name() == function_name_node.name():
+                return f
+            )
+        )
+        if ((s = self._parent.lock()):
+            return s.lookup_function(function_name_node)
+        )
+        return None
+    ) : FunctionDefinition
+
     def (find_defs, var_node: Node, find_all=true:
 
         if (not isinstance(var_node, Identifier):

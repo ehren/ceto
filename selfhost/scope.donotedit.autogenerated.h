@@ -261,6 +261,22 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return nullptr;
         }
 
+        inline auto lookup_function(const std::shared_ptr<const Node>&  function_name_node) const -> std::shared_ptr<const FunctionDefinition> {
+            if (!(std::dynamic_pointer_cast<const Identifier>(function_name_node) != nullptr)) {
+                return nullptr;
+            }
+            auto && function_definitions { (this -> function_definitions) } ;
+            for(const auto& f : function_definitions) {
+                if ((*ceto::mad((*ceto::mad(f)).function_name)).name() == (*ceto::mad(function_name_node)).name()) {
+                    return f;
+                }
+            }
+            if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
+                return (*ceto::mad(s)).lookup_function(function_name_node);
+            }
+            return nullptr;
+        }
+
         inline auto find_defs(const std::shared_ptr<const Node>&  var_node, const decltype(true) find_all = true) const -> std::vector<std::shared_ptr<const VariableDefinition>> {
             if (!(std::dynamic_pointer_cast<const Identifier>(var_node) != nullptr)) {
                 return {};

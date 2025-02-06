@@ -897,6 +897,15 @@ class ScopeVisitor:
             elif is_def_or_class_like(call):
                 a.scope = call_inner_scope
 
+                if call.func.name in ["class", "struct"]:
+                    #call.scope.add_class_definition(
+                    pass  # TODO
+                elif call.func.name == "def":
+                    def_name = call.args[0]
+                    while isinstance(def_name, (Template, Call)):
+                        def_name = def_name.func
+                    call.scope.add_function_definition(FunctionDefinition(call, def_name))
+
             if isinstance(a, Identifier) and call.func.name in ["def", "lambda"]: #is_def_or_class_like(call):
                 a.scope.add_variable_definition(defined_node=a, defining_node=call)
                 # note that default parameters handled as generic Assign
@@ -1406,6 +1415,8 @@ def semantic_analysis(expr: Module) -> Module:
         d = list(node.scope.find_defs(node))
         if d:
             print("defs list ", node, d)
+        print("class_def", node.scope.lookup_class(node))
+        print("function_def", node.scope.lookup_function(node))
         for a in node.args:
             debug_defs(a)
             debug_defs(a.func)
