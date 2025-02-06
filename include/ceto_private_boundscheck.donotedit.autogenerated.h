@@ -19,6 +19,11 @@
 #include <iostream>
 ;
 
+#define CETO_UNSAFE_ARRAY_ACCESS(array, index) (array[index])
+;
+
+;
+
 ;
 namespace ceto {
     #if defined(CETO_HAS_SOURCE_LOCATION)
@@ -29,7 +34,7 @@ namespace ceto {
                 (((((std::cerr << (*ceto::mad(loc)).function_name()) << ":") << (*ceto::mad(loc)).line()) << ":") << (*ceto::mad(loc)).column()) << "\n";
                 std::terminate();
             }
-            return std::forward<decltype(arr)>(arr)[std::forward<decltype(index)>(index)];
+            return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
         }
 
     #else
@@ -39,18 +44,18 @@ namespace ceto {
                 std::cerr << "terminating on out of bounds access\n";
                 std::terminate();
             }
-            return std::forward<decltype(arr)>(arr)[std::forward<decltype(index)>(index)];
+            return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
         }
 
     #endif
 
         inline auto bounds_check( auto &&  non_array,  auto &&  obj) -> decltype(auto) requires (!std::is_integral_v<std::remove_cvref_t<decltype(obj)>>) {
-        return std::forward<decltype(non_array)>(non_array)[std::forward<decltype(obj)>(obj)];
+        return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(non_array)>(non_array), std::forward<decltype(obj)>(obj));
     }
 
     template<class T> concept is_map_type = std::same_as<typename T::value_type,std::pair<const typename T::key_type,typename T::mapped_type>>;
         inline auto bounds_check( auto &&  map_like,  auto &&  key) -> decltype(auto) requires ((std::is_integral_v<std::remove_cvref_t<decltype(key)>> && is_map_type<std::remove_cvref_t<decltype(map_like)>>)) {
-        return std::forward<decltype(map_like)>(map_like)[std::forward<decltype(key)>(key)];
+        return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(map_like)>(map_like), std::forward<decltype(key)>(key));
     }
 
 

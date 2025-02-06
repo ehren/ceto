@@ -95,6 +95,9 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
         idents: mut:[Node] = []
 
         for (a in binop_pattern.args:
+            # here we may iterate over binop_pattern.args (a C++ reference) directly
+            # because the local var 'idents' is defined after the local var 'binop_pattern'
+
             if (isinstance(a, Identifier):
                 idents.append(a)
             )
@@ -112,7 +115,11 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                     if (or_param.lhs().name() == "None" or or_param.rhs().name() == "None":
                         # this will need adjusting for the more than 3 BinOp args case once we 
                         # flatten the ast after/during parsing (prior to macro expand)
-                        for (a in binop_pattern.args:
+
+                        # this for loop references parameters (defined before binop_pattern)
+                        # we must explicitly mark the C++ reference to iterate over it:
+                        binop_pattern_args: mut:auto:ref:ref = binop_pattern.args
+                        for (a in binop_pattern_args:
                             if (a.name() != i.name():
                                 m = macro_matches(node, a, params)
                                 if (m:
@@ -283,7 +290,9 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         while (scope:
             for (definition in ceto.util.reversed(scope->macro_definitions):
                 skip_definition: mut = False
-                for ((key, defns) in self.skipped_definitions:
+                skipped_definitions: mut:auto:ref:ref = self.skipped_definitions
+                # TODO norefs: this for loop should be regarded as safe to iterate over "self.skipped_definitions"
+                for ((key, defns) in skipped_definitions:
                     if (ceto.util.contains(defns, definition):
                         skip_definition = True
                         break
@@ -332,7 +341,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             node.func.accept(*this)
         )
 
-        for (arg in node.args:
+        args: mut:auto:ref:ref = node.args
+        for (arg in args:
             arg.accept(*this)
         )
 
@@ -347,7 +357,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 
         node.func.accept(*this)
 
-        for (arg in node.args:
+        args: mut:auto:ref:ref = node.args
+        for (arg in args:
             arg.accept(*this)
         )
 
@@ -401,7 +412,8 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         s: mut = MacroScope()
         self.current_scope = s
 
-        for (arg in node.args:
+        args: mut:auto:ref:ref = node.args
+        for (arg in args:
             arg.accept(*this)
         )
     )

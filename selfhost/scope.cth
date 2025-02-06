@@ -37,9 +37,28 @@ class (ClassDefinition:
     )
 )
 
+# TODO we should just remove this and the built-in codegen "interface" feature
+# (user code can just use abstract base classes/pure virtual functions)
 class (InterfaceDefinition(ClassDefinition):
     def (init:
         super.init(None, None, false, false, false)
+    )
+)
+
+class (FunctionDefinition:
+    def_node: Node
+    function_name: Identifier
+
+    def (class_name: virtual:
+        return ceto.util.typeid_name(*this)
+    ) : std.string
+
+    def (repr:
+        return self.class_name() + "(" + self.def_node.repr() + ", " + self.function_name.repr() + ")"
+    )
+
+    def (destruct: virtual:
+        pass
     )
 )
 
@@ -47,13 +66,13 @@ class (VariableDefinition:
     defined_node: Identifier
     defining_node: Node
 
-    def (repr:
-        return self.class_name() + "(" + self.defined_node.repr() + ", " + self.defining_node.repr() + ")"
-    )
-
     def (class_name: virtual:
         return ceto.util.typeid_name(*this)
     ) : std.string
+
+    def (repr:
+        return self.class_name() + "(" + self.defined_node.repr() + ", " + self.defining_node.repr() + ")"
+    )
 
     def (destruct: virtual:
         pass
@@ -96,7 +115,8 @@ def (comes_before, root: Node, before: Node, after: Node:
     elif root == after:
         return false
     )
-    for (arg in root.args:
+    args: mut:auto:ref:ref = root.args
+    for (arg in args:
         cb = comes_before(arg, before, after)
         if (cb.has_value():
             return cb
@@ -116,6 +136,7 @@ class (Scope:
     interfaces = std.map<std.string, std.vector<Node>>()
     class_definitions: [ClassDefinition] = []
     variable_definitions: [VariableDefinition] = []
+    function_definitions: [FunctionDefinition] = []
 
     indent = 0
     _parent: weak:Scope = {}
@@ -172,11 +193,22 @@ class (Scope:
         self.class_definitions.push_back(class_definition)
     )
 
+    def (add_function_definition: mut, function_definition: FunctionDefinition:
+        self.function_definitions.push_back(function_definition)
+    )
+
     def (lookup_class, class_node: Node:
         if (not isinstance(class_node, Identifier):
             return None
         )
-        for (c in self.class_definitions:
+
+        # TODO even if we recognize class_node as const (and shared_ptr to const)
+        # (and we spam std::experimental::propagate_const in data members to prevent some mutation through const)
+        # can we still statically determine that the 'class_node.name()' call below does not modify self.class_definitions?
+        # This is problematic assumption in e.g. presence of classes with lambda data members 
+        # - hence need to iterate over an explicitly marked reference:
+        class_definitions: mut:auto:ref:ref = self.class_definitions
+        for (c in class_definitions:
             if (c.name_node.name() == class_node.name():
                 return c
             )
@@ -199,7 +231,11 @@ class (Scope:
         # results: mut = []  # untyped lists (implemented using range_value_t) not supported in clang 14/15
         results: mut:[VariableDefinition] = []
 
-        for (d in self.variable_definitions:
+        # we can't tell that e.g. var_node.name() [a method call on a parameter or indeed any use of a parameter]
+        # won't modify self.variable_definitions. Hence we must iterate over an explicitly marked reference:
+        variable_definitions: mut:auto:ref:ref = self.variable_definitions
+
+        for (d in variable_definitions:
             if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:
                 # macro expansion (as currently implemented) breaks this:
                 #defined_loc = std.get<1>(d.defined_node.source.source)

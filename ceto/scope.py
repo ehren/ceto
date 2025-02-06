@@ -4,8 +4,7 @@ from collections import defaultdict
 from .abstractsyntaxtree import Identifier, Call, Node, Assign, Block, Module, ArrayAccess
 
 try:
-    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, creates_new_variable_scope, Scope, comes_before
-    # raise ImportError()
+    from ._abstractsyntaxtree import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, FunctionDefinition, creates_new_variable_scope, Scope, comes_before
 except ImportError:
     raise
 

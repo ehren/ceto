@@ -217,7 +217,13 @@ lambda(m : mut:auto:rref:
 
     py.class_<ParameterDefinition.class, ParameterDefinition:mut>(m, "ParameterDefinition", variable_def).def(
         py.init<Identifier, Node>(), py.arg("defined_node"), py.arg("defining_node"))
-#
+
+    py.class_<FunctionDefinition.class, FunctionDefinition:mut>(m, "FunctionDefinition").def(
+        py.init<Node, Identifier>(), py.arg("def_node"), py.arg("function_name")).def_readwrite(
+        "def_node", &FunctionDefinition.def_node).def_readwrite(
+        "function_name", &FunctionDefinition.function_name).def(
+        "__repr__", &FunctionDefinition.repr)
+
     py.class_<Scope.class, Scope:mut>(m, "Scope").def(
         py.init<>()).def_readwrite(
         "indent", &Scope.indent).def_readwrite(
