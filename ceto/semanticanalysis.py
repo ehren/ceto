@@ -120,7 +120,7 @@ def _ban_references_lambda(node):
     return ban_references_lambda
 
 
-def no_references_in_subexpressions(node):
+def safety_checks(node):
 
     from ceto.compiler import cmdargs
     if not cmdargs._norefs:
@@ -243,7 +243,7 @@ def no_references_in_subexpressions(node):
     new_args = []
     found_new = False
     for a in node.args:
-        new = no_references_in_subexpressions(a)
+        new = safety_checks(a)
         if new:
             new_args.append(new)
             found_new = True
@@ -254,9 +254,21 @@ def no_references_in_subexpressions(node):
         node.args = new_args
 
     if node.func:
-        new = no_references_in_subexpressions(node.func)
+        new = safety_checks(node.func)
         if new:
             node.func = new
+
+    if 0 and isinstance(node, Call) and not is_def_or_class_like(node) and not node.func.name in ["decltype", "static_assert", "if", "while", "for", "include", "defined", "namespace"] and not (isinstance(node.parent, Call) and is_def_or_class_like(node.parent)):
+        # handled in codegen (needs to ignore class constructor calls (e.g. implicit make_shared)
+        ban_derefable = Call(Identifier("CETO_BAN_RAW_DEREFERENCABLE"), [node])
+        ban_derefable.parent = node.parent
+        node.parent = ban_derefable
+        ban_derefable.scope = node.scope
+        return ban_derefable
+
+    if isinstance(node, Call) and node.func.name == "unsafe":
+        # TODO
+        pass
 
     return node
 
@@ -1388,7 +1400,7 @@ def semantic_analysis(expr: Module) -> Module:
     expr = warn_and_remove_redundant_parenthesese(expr)
 
     expr = basic_semantic_analysis(expr)
-    expr = no_references_in_subexpressions(expr)
+    expr = safety_checks(expr)
 
     def clearscope(n):
         n.scope = None

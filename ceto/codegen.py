@@ -2205,7 +2205,7 @@ def codegen_call(node: Call, cx: Scope):
                         return func_str + args_str[1:-1]
                 return simple_call_str
 
-            return simple_call_str
+            return "CETO_BAN_RAW_DEREFERENCABLE(" + simple_call_str + ")"
 
             # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
 
@@ -2283,7 +2283,7 @@ def codegen_call(node: Call, cx: Scope):
                         else:
                             # we still provide .append as .push_back for all std::vectors even in generic code
                             # (note this function performs an autoderef on new_func):
-                            return "ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")"
+                            return "CETO_BAN_RAW_DEREFERENCABLE(ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + "))"
 
                 new_attr_access = AttributeAccess(".", [new_func, method_name])
                 new_attr_access.parent = node
@@ -2292,8 +2292,8 @@ def codegen_call(node: Call, cx: Scope):
         if func_str is None:
             func_str = codegen_node(new_func, cx)
 
-        return func_str + "(" + ", ".join(
-            map(lambda a: codegen_node(a, cx), node.args)) + ")"
+        return "CETO_BAN_RAW_DEREFERENCABLE(" + func_str + "(" + ", ".join(
+            map(lambda a: codegen_node(a, cx), node.args)) + "))"
 
 
 def _is_const_make(node : Call):

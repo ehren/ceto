@@ -332,6 +332,30 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
 
+template<class T>
+struct is_safe_dereferencable : std::false_type {};
+
+template<class T>
+struct is_safe_dereferencable<std::shared_ptr<T>> : std::true_type {};
+
+template<class T>
+struct is_safe_dereferencable<std::unique_ptr<T>> : std::true_type {};
+
+template<class T>
+struct is_safe_dereferencable<std::optional<T>> : std::true_type {};
+
+template<typename T>
+concept is_dereferencable = requires (T t) {
+    *t;
+};
+
+template<typename T>
+concept is_raw_dereferencable = is_dereferencable<T> && !is_safe_dereferencable<T>::value;
+
 } // namespace ceto
+
+// this works but disable until unsafe blocks implemented
+//#define CETO_BAN_RAW_DEREFERENCABLE(expr) [&]() -> decltype(auto) { static_assert(!ceto::is_raw_dereferencable<std::remove_cvref_t<decltype(expr)>>); return expr; }()
+#define CETO_BAN_RAW_DEREFERENCABLE(expr) (expr)
 
 #endif // CETO_H
