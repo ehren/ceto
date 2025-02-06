@@ -2072,6 +2072,20 @@ def codegen_call(node: Call, cx: Scope):
         newcx.in_function_param_list = True
         return codegen_lambda(node, newcx)
 
+    def ban_derefable(expr_str: str):
+        # while this would make it more difficult to write e.g. thin wrappers around std.begin/std.end and std.find (allowing UB),
+        # applying it to every "ordinary" Call will slow down C++ compilation and uglify the output c++ too much
+        return expr_str
+        if node.func.name == "defined":
+            return expr_str
+        capture = "&" if cx.in_function_body else ""
+        # it would be nicer to write this as a c-macro but it results in compilation probs with nested invocations / no recursive expansion 
+        # (e.g. when this is applied to the very large immediately invoked lambda at ast.ctp)
+        return "[" + capture + "]() -> decltype(auto) { static_assert(true || !ceto::is_raw_dereferencable<std::remove_cvref_t<decltype(" + expr_str + ")>>); return " + expr_str + "; }()"
+
+    ban_derefable_start = ""
+    ban_derefable_end = ""
+
     if isinstance(node.func, Identifier):
         func_name = node.func.name
         if func_name == "if":
@@ -2205,7 +2219,13 @@ def codegen_call(node: Call, cx: Scope):
                         return func_str + args_str[1:-1]
                 return simple_call_str
 
-            return "CETO_BAN_RAW_DEREFERENCABLE(" + simple_call_str + ")"
+            if isinstance(node.parent, Template) and isinstance(node.parent.func, AttributeAccess) and node.parent.func.lhs.name == "std" and node.parent.func.rhs.name == "function":
+                # TODO class constructor calls and std.function like calls e.g. std.function<int(int)> also interact poorly with ceto classes:
+                # need fix for std.function<Foo()>
+                return simple_call_str
+
+            #return "CETO_BAN_RAW_DEREFERENCABLE(" + simple_call_str + ")"
+            return ban_derefable(simple_call_str)
 
             # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
 
@@ -2235,6 +2255,11 @@ def codegen_call(node: Call, cx: Scope):
         new_func = node.func
 
         if method_name is not None:
+            if method_name.name in ["begin", "cbegin", "end", "cend", "rbegin", "rend", "crbegin", "crend", "data", "c_str", "find", "lower_bound", "upper_bound"]:
+                # TODO ban equal_range for std::map etc
+                # Note that e.g. this effectively bans emplace and insert (with iterator args) for std::vector
+                ban_derefable_start = "CETO_BAN_RAW_DEREFERENCABLE("
+                ban_derefable_end = ")"
 
             def consume_method_name():
                 method_parent = method_name.parent
@@ -2283,7 +2308,8 @@ def codegen_call(node: Call, cx: Scope):
                         else:
                             # we still provide .append as .push_back for all std::vectors even in generic code
                             # (note this function performs an autoderef on new_func):
-                            return "CETO_BAN_RAW_DEREFERENCABLE(ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + "))"
+                            #return "CETO_BAN_RAW_DEREFERENCABLE(ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + "))"
+                            return ban_derefable("ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")")
 
                 new_attr_access = AttributeAccess(".", [new_func, method_name])
                 new_attr_access.parent = node
@@ -2292,8 +2318,12 @@ def codegen_call(node: Call, cx: Scope):
         if func_str is None:
             func_str = codegen_node(new_func, cx)
 
-        return "CETO_BAN_RAW_DEREFERENCABLE(" + func_str + "(" + ", ".join(
-            map(lambda a: codegen_node(a, cx), node.args)) + "))"
+        #return "CETO_BAN_RAW_DEREFERENCABLE(" + func_str + "(" + ", ".join(
+        #    map(lambda a: codegen_node(a, cx), node.args)) + "))"
+        #return ban_derefable(func_str + "(" + ", ".join(
+        #    map(lambda a: codegen_node(a, cx), node.args)) + ")")
+        return ban_derefable_start + func_str + "(" + ", ".join(
+            map(lambda a: codegen_node(a, cx), node.args)) + ")" + ban_derefable_end
 
 
 def _is_const_make(node : Call):

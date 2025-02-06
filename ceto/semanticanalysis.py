@@ -266,9 +266,8 @@ def safety_checks(node):
         ban_derefable.scope = node.scope
         return ban_derefable
 
-    if isinstance(node, Call) and node.func.name == "unsafe":
-        # TODO
-        pass
+    #if isinstance(node, Call) and node.func.name == "unsafe"
+    #    pass
 
     return node
 
