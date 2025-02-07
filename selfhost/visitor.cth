@@ -1,3 +1,5 @@
+unsafe()
+
 class (Node)
 class (UnOp)
 class (LeftAssociativeUnOp)

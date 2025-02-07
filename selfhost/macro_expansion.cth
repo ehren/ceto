@@ -9,6 +9,8 @@ include (ast)
 include (visitor)
 include (range_utility)
 
+unsafe()
+
 if (_MSC_VER:
     include <windows.h>
     cpp'

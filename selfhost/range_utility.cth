@@ -2,6 +2,8 @@ include <ranges>
 include <numeric>
 include <tuple>
 
+unsafe()
+
 namespace (ceto.util)
 
 if (defined(__clang__) and __clang_major__ < 16:

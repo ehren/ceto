@@ -1,5 +1,7 @@
 include <iostream>
 
+unsafe()
+
 cpp'
 #define CETO_UNSAFE_ARRAY_ACCESS(array, index) (array[index])
 '

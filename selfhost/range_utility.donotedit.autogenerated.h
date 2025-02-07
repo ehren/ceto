@@ -30,6 +30,7 @@
 ;
 #include <tuple>
 ;
+// unsafe;
 namespace ceto::util {
     #if defined(__clang__) && (__clang_major__ < 16)
                 inline auto range(const size_t  start, const size_t  stop) -> std::vector<size_t> {

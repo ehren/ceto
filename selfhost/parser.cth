@@ -2,6 +2,7 @@ include <peglib.h>
 include <iostream>
 include (ast)
 
+unsafe()
 
 def (parse_test, grammar_path: std.string, str: std.string:
     grammar_file = std.ifstream(grammar_path)

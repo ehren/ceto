@@ -1,6 +1,8 @@
 include (visitor)
 include (ast)
 
+unsafe()
+
 
 struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
     preserve_source_loc: bool

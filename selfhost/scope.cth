@@ -3,6 +3,8 @@ include <map>
 include (ast)
 include (utility)
 
+unsafe()
+
 class (ClassDefinition:
     name_node : Identifier
     class_def_node : Call
@@ -140,10 +142,11 @@ class (Scope:
 
     indent = 0
     _parent: weak:Scope = {}
-    in_function_body = false
-    in_function_param_list = false  # TODO unused remove
-    in_class_body = false
-    in_decltype = false
+    in_function_body = False
+    in_function_param_list = False  # TODO unused remove
+    in_class_body = False
+    in_decltype = False
+    is_unsafe = False
 
     def (indent_str:
         return std.string(4*self.indent, char' ')
@@ -309,6 +312,7 @@ class (Scope:
         s._parent = self
         s.in_function_body = self.in_function_body
         s.in_decltype = self.in_decltype
+        s.is_unsafe = self.is_unsafe
         s.indent = self.indent + 1
         return s
     ) : Scope

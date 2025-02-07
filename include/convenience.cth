@@ -8,7 +8,9 @@ defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier
         template_header
     )
     new_args: mut:[Node] = [quote(unquote(func_name):unquote(specified_template))]
-    new_args.insert(new_args.end(), args.begin(), args.end())
+    unsafe (:
+        new_args.insert(new_args.end(), args.begin(), args.end())
+    )
     return Call(quote(def), new_args)
 )
 

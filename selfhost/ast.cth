@@ -8,6 +8,7 @@ include (visitor)
 include (utility)
 include (range_utility)
 
+unsafe()
 
 class (Source:
     source = ""s

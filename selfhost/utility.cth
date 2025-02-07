@@ -2,6 +2,8 @@ include <numeric>
 include <algorithm>
 include <string_view>
 
+unsafe()
+
 if (_MSC_VER:
     cpp'
     #define CETO_EXPORT __declspec(dllexport)

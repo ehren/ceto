@@ -1,5 +1,7 @@
 include <ranges>
 
+unsafe()
+
 def (maybe_reserve: template<typename:T>,
                vec: mut:[T]:ref,
              sized: mut:auto:ref:ref:

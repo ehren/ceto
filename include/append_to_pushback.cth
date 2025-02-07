@@ -1,3 +1,5 @@
+unsafe()
+
 namespace (ceto)
 
 struct (is_vector<class: T>(std.false_type):
