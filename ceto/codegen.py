@@ -2167,7 +2167,7 @@ def codegen_call(node: Call, cx: Scope):
             return "// unsafe"
         elif func_name == "ceto_private_module_boundary" and len(node.args) == 0:
             cx.is_unsafe = False
-            return "// module boundary\n"
+            return "\n"
         elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
             # calling plain "decltype" in ceto will always strip outer double parenthesese 
             # (they are often accidentally added by codegen's overeager parenthesization)
@@ -2212,7 +2212,7 @@ def codegen_call(node: Call, cx: Scope):
                 # TODO we do want to ban a number of decltype uses - but not yet
                 # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
                 if not cx.is_unsafe and func_str not in ["decltype", "defined"]:
-                    if not node.scope.lookup_function(node.func):
+                    if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                         raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
             else:
                 # TODO handle safety check for namespaced/static calls
