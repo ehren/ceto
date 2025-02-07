@@ -1,3 +1,4 @@
+unsafe()
 
 def (bar, x, y:
     pass
@@ -13,6 +14,12 @@ class (Foo:
     )
 
     def (foo: mut:
+        self.a.begin()  # error
+        unsafe (:
+            self.a.begin()
+        )
+        *unsafe(self.a.begin())  # TODO ban *
+
         for (x in self.a:
             bar(x, x)
             #self.blah()  # error
@@ -28,7 +35,14 @@ class (Foo:
     )
 )
 
+def (create_foo:
+    f: mut = Foo()
+    return f
+)
+
 def (main:
     f: mut = Foo()
     f.foo()
+    c = create_foo()
+    c.foo()
 )

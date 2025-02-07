@@ -682,7 +682,7 @@ def expand_includes(node: Module):
                     index = node.args.index(call)
                     for a in module_ast.args:
                         set_header_paths(a, module_path_cth, module_path_h)
-                    new_args = node.args[0:index] + module_ast.args + node.args[index:]
+                    new_args = node.args[0:index] + module_ast.args + [Call(Identifier("ceto_private_module_boundary"), [])] + node.args[index:]
                     break
 
         if new_args:

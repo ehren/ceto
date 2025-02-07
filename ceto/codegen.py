@@ -2157,6 +2157,17 @@ def codegen_call(node: Call, cx: Scope):
             return "namespace " + name_code + " {\n" + block_code + "\n}"
         elif func_name == "defmacro":
             return "\n"
+        elif func_name == "unsafe":
+            assert len(node.args) == 0  # enfored in sema
+            if not isinstance(node.parent, Block):
+                raise CodeGenError("unsafe() call must be in Block", node)
+            #if node.parent.args[0] is not node:
+            #    raise CodeGenError("unsafe() call must be first statement in Block", node)
+            cx.is_unsafe = True
+            return "// unsafe"
+        elif func_name == "ceto_private_module_boundary" and len(node.args) == 0:
+            cx.is_unsafe = False
+            return "// module boundary\n"
         elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
             # calling plain "decltype" in ceto will always strip outer double parenthesese 
             # (they are often accidentally added by codegen's overeager parenthesization)
@@ -2255,7 +2266,7 @@ def codegen_call(node: Call, cx: Scope):
         new_func = node.func
 
         if method_name is not None:
-            if method_name.name in ["begin", "cbegin", "end", "cend", "rbegin", "rend", "crbegin", "crend", "data", "c_str", "find", "lower_bound", "upper_bound"]:
+            if not cx.is_unsafe and method_name.name in ["begin", "cbegin", "end", "cend", "rbegin", "rend", "crbegin", "crend", "data", "c_str", "find", "lower_bound", "upper_bound"]:
                 # TODO ban equal_range for std::map etc
                 # Note that e.g. this effectively bans emplace and insert (with iterator args) for std::vector
                 ban_derefable_start = "CETO_BAN_RAW_DEREFERENCABLE("

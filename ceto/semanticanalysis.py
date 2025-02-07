@@ -266,8 +266,22 @@ def safety_checks(node):
         ban_derefable.scope = node.scope
         return ban_derefable
 
-    #if isinstance(node, Call) and node.func.name == "unsafe"
-    #    pass
+    if isinstance(node, Call) and node.func.name == "unsafe" and len(node.args) != 0:
+        if isinstance(node.parent, Module):
+            raise SemanticAnalysisError("TODO unsafe blocks at Module scope - use an unsafe() call at the top of file for now", node)
+        if len(node.args) != 1:
+            raise SemanticAnalysisError("unsafe takes 1 arg - an expression or a Block", node)
+        if isinstance(node.args[0], Block):
+            block_args = node.args[0].args
+        else:
+            block_args = [node.args[0]]
+
+        # use the existing behaviour of if-expressions for unsafe blocks
+        # but with an "unsafe()" call at the beginning that automatically marks the rest of the block as unsafe
+        # (we want to avoid the scoping machinery / leave unsafe scopes to codegen for now)
+        block_args = [Call(Identifier("unsafe"), [])] + block_args
+        unsafe_if = Call(Identifier("if"), [IntegerLiteral("1", None), Block(block_args)])
+        return unsafe_if
 
     return node
 
