@@ -77,7 +77,8 @@ class (SimpleVisitor(Visitor):
     def (visit: virtual:mut, node: BinOp:
         self.record += "visiting BinOp\n"
 
-        for (arg in node.args:
+        args: mut:auto:ref:ref = node.args
+        for (arg in args:
             arg.accept(self)
         )
     )
@@ -85,7 +86,8 @@ class (SimpleVisitor(Visitor):
     def (visit: virtual:mut, node: Add:
         self.record += "visiting Add\n"
 
-        for (arg in node.args:
+        args: mut:auto:ref:ref = node.args
+        for (arg in args:
             arg.accept(self)
         )
     )

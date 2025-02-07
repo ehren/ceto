@@ -2173,7 +2173,17 @@ def codegen_call(node: Call, cx: Scope):
             # (they are often accidentally added by codegen's overeager parenthesization)
             return "decltype((" + codegen_node(node.args[0], cx) + "))"
         else:
+            old_unsafe = None
+
+            if func_name == "static_assert":
+                old_unsafe = cx.is_unsafe
+                cx.is_unsafe = False
+
             arg_strs = [codegen_node(a, cx) for a in node.args]
+            
+            if old_unsafe is not None:
+                cx.is_unsafe = old_unsafe
+
             args_inner = ", ".join(arg_strs)
             args_str = "(" + args_inner + ")"
 
@@ -2211,7 +2221,7 @@ def codegen_call(node: Call, cx: Scope):
 
                 # TODO we do want to ban a number of decltype uses - but not yet
                 # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
-                if not cx.is_unsafe and func_str not in ["decltype", "defined"]:
+                if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert"]:
                     if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                         raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
             else:

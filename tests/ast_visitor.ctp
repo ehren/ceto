@@ -73,7 +73,10 @@ class (RecordingVisitor(BaseVisitor):
     def (visit: virtual:mut, list_literal: ListLiteral:
         self.record += "RecordingVisitor visiting ListLiteral\n"
 
-        for (arg in list_literal.args:
+        #args: const:auto:ref = list_literal.args  # this will require an unsafe annotion (no local variables of C++ reference type)
+        # 100% safe code can just make a copy:
+        args = list_literal.args
+        for (arg in args:
             arg.accept(self)
         )
     )

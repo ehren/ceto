@@ -122,9 +122,9 @@ def _ban_references_lambda(node):
 
 def safety_checks(node):
 
-    from ceto.compiler import cmdargs
-    if not cmdargs._norefs:
-        return node
+    #from ceto.compiler import cmdargs
+    #if not cmdargs._norefs:
+    #    return node
 
     if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for" and len(node.parent.args) == 2 and isinstance(node.parent.args[1], Block):
         iterable = node.rhs
