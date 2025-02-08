@@ -2028,6 +2028,7 @@ def codegen_assign(node: Assign, cx: Scope):
     elif isinstance(lhs_def, FieldDefinition) and cx.in_function_body:
         # Shadow the field with a local. Use e.g. self.x = 1 to assign to the data member.
         assign_str = "const auto " + assign_str
+    #elif isinstance(lhs_def, LocalVariableDefinition) and lhs_def.defining_node is node:
     elif isinstance(lhs_def, GlobalVariableDefinition):
         # TODO we should disallow shadowing ceto defined globals in function parameters and fields
         raise CodeGenError(f"{lhs_str} is a global variable defined in ceto code (which is constexpr). No shadowing or reassignment allowed.", node.lhs)
