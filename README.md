@@ -1,6 +1,6 @@
 ## Intro
 
-**ceto** experimental dialect of C++ with a python ish syntax using infix expressions and function calls (that may optionally take indented blocks) and a python ish reference counted class-semantics (except immutable/const by default). We aspire to a simple "copy it, refcount it, or pass but don't store by const ref" approach to safety (with a few extensions like cppfront inspired move from last use of unique) with runsafe checks and unsafe blocks for the rest.
+Experimental dialect of C++ with a python ish syntax using infix expressions and function calls (that may optionally take indented blocks) and a python ish reference counted class-semantics (except immutable/const by default). We aspire to a simple "copy it, refcount it, or pass but don't store by const ref" approach to safety (with a few extensions like cppfront inspired move from last use of unique) with static checks, C++ compile time checks and static_asserts, runtime checks, and unsafe blocks for the rest.
 
 ```python
 # see the tests and selfhost directories for more examples
