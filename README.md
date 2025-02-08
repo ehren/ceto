@@ -178,21 +178,9 @@ $ pip install .
 $ ceto ./tests/example.ctp a b c
 ```
 
-### Continued Intro
+While you can express a great deal of existing C++ constructs in ceto code (you can even write ceto macros that output, and rely on for their compiled to DLL implementation, a mix of C++ template and C/C++ preprocessor metaprogramming - or even other ceto macros!) the emphasis is not on system programming but more so called "Pythonic glue code" (whether it's a good idea to write such code in C++ to begin with). 
 
-While you can express a great deal of existing C++ constructs in ceto code (you can even write ceto macros that output, and rely on for their compiled to DLL implementation, a mix of C++ template and C/C++ preprocessor metaprogramming - or even other ceto macros!) the emphasis is not on system programming but more so called "Pythonic glue code" (whether it's a good idea to write such code in C++ to begin with). One should be able to translate ordinary Python code to pythonic ceto just by adding the necessary parenthesese and viral ```:mut``` annotations but without worrying about additional complicated parameter passing rules, explicit reference/pointer type annotations, nor call site referencing/dereferencing syntax. While e.g. the keywords ```ref```, ```ptr``` and operator ```->``` and unary operators```*``` and ```&``` exist in ceto (for expressing native C++ constructs and interfacing with external C++) they should be regarded as constituents of a disconnected low level subset of the language that will even TODO require explicit ```unsafe``` blocks/contexts in the future. Though, lacking a complete ```unsafe``` blocks implementation, current ceto should be regarded as *unsafe ceto*, runtime safety checks are nevertheless performed for pythonic looking code: ```.``` (when a smart pointer or optional deref) is null checked and ```array[index]``` is runtime bounds checked when array is a contiguous container (the technique of checking if std::size is available for ```array``` using a ceto/C++ ```requires``` clause before inserting a runtime bounds check has been taken from Herb Sutter's cppfront - see include/boundscheck.cth).
-
-### More Features:
-
-- reference to const and value semantics emphasized.
-- Python like class system but immutable by default (more like an immutable by default Java halfway naively implemented with std::shared_ptr and std::enable_shared_from_this).
-- structs passed by reference to const by default, by value if just "mut" (raw pointers or references allowed via ref or ptr keywords but may be relegated to unsafe blocks in the future)
-- Implicit swiftish lambda capture
-- Implicit move from last use of unique (and TODO non-class mut)
-- non-type annotated "Python" == unconstrained C++ function and class templates
-- extra CTAD
-
-## Features Explanation
+## Language Tour
 
 ### Autoderef (use *.* not *->*)
 
