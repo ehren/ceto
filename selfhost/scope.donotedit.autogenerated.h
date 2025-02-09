@@ -92,6 +92,28 @@ struct FunctionDefinition : public ceto::shared_object, public std::enable_share
 
 };
 
+struct NamespaceDefinition : public ceto::shared_object, public std::enable_shared_from_this<NamespaceDefinition> {
+
+    std::shared_ptr<const Call> namespace_node;
+
+    std::shared_ptr<const Node> namespace_name;
+
+         virtual inline auto class_name() const -> std::string {
+            return ceto::util::typeid_name((*this));
+        }
+
+        inline auto repr() const -> auto {
+            return (((((this -> class_name() + "(") + (*ceto::mad(this -> namespace_node)).repr()) + ", ") + (*ceto::mad(this -> namespace_name)).repr()) + ")");
+        }
+
+         virtual ~NamespaceDefinition() = default;
+
+    explicit NamespaceDefinition(std::shared_ptr<const Call> namespace_node, std::shared_ptr<const Node> namespace_name) : namespace_node(std::move(namespace_node)), namespace_name(std::move(namespace_name)) {}
+
+    NamespaceDefinition() = delete;
+
+};
+
 struct VariableDefinition : public ceto::shared_object, public std::enable_shared_from_this<VariableDefinition> {
 
     std::shared_ptr<const Identifier> defined_node;

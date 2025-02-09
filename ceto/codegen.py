@@ -2222,7 +2222,7 @@ def codegen_call(node: Call, cx: Scope):
 
                 # TODO we do want to ban a number of decltype uses - but not yet
                 # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
-                if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert"]:
+                if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include"]:
                     if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                         raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
             else:

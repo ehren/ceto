@@ -277,7 +277,10 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
         inline auto expand(const std::shared_ptr<const Node>&  node) -> auto {
             auto const * scope { (&(this -> current_scope)) -> get() } ;
-            while (scope) {                for(const auto& definition : ceto::util::reversed(scope -> macro_definitions)) {
+            while (scope) {                for(const auto& definition : [&]() -> decltype(auto) {
+                        static_assert(!(std :: is_reference_v<decltype((ceto::util::reversed(scope -> macro_definitions)))>));
+                        return ceto::util::reversed(scope -> macro_definitions);
+                        }()) {
                     auto skip_definition { false } ;
                     auto && skipped_definitions { (this -> skipped_definitions) } ;
                     for(  const auto& [key, defns] : skipped_definitions) {

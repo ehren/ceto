@@ -51,7 +51,7 @@ class (Node:
     def (repr: virtual:
         classname = self.classname()
         csv = ceto.util.join(self.args, lambda(a, a.repr()), ", ")
-        return classname + "(" + self.func.repr() + ")([" + csv + "])"
+        return classname + "(" + if (self.func: self.func.repr() else: ""s) + ")([" + csv + "])"
     ) : std.string
 
     def (name: virtual:

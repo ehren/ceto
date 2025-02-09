@@ -225,6 +225,12 @@ lambda(m : mut:auto:rref:
         "function_name", &FunctionDefinition.function_name).def(
         "__repr__", &FunctionDefinition.repr)
 
+    py.class_<NamespaceDefinition.class, NamespaceDefinition:mut>(m, "NamespaceDefinition").def(
+        py.init<Call, Node>(), py.arg("namespace_node"), py.arg("namespace_name")).def_readwrite(
+        "namespace_node", &NamespaceDefinition.namespace_node).def_readwrite(
+        "namespace_name", &NamespaceDefinition.namespace_name).def(
+        "__repr__", &NamespaceDefinition.repr)
+
     py.class_<Scope.class, Scope:mut>(m, "Scope").def(
         py.init<>()).def_readwrite(
         "indent", &Scope.indent).def_readwrite(

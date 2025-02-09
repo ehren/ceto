@@ -89,7 +89,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     if constexpr (!std::is_void_v<decltype((*ceto::mad(a)).repr())>) { return (*ceto::mad(a)).repr(); } else { static_cast<void>((*ceto::mad(a)).repr()); };
                     }, ", ");
-            return (((((classname + "(") + (*ceto::mad(this -> func)).repr()) + ")([") + csv) + "])");
+            return (((((classname + "(") + [&]() {if (this -> func) {
+                return (*ceto::mad(this -> func)).repr();
+            } else {
+                return std::string {""};
+            }}()
+) + ")([") + csv) + "])");
         }
 
          virtual inline auto name() const -> std::optional<std::string> {
@@ -135,7 +140,10 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
                 return false;
             }
-            for(const auto& i : ceto::util::range((*ceto::mad(this -> args)).size())) {
+            for(const auto& i : [&]() -> decltype(auto) {
+                    static_assert(!(std :: is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))>));
+                    return ceto::util::range((*ceto::mad(this -> args)).size());
+                    }()) {
                 if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
                     return false;
                 }

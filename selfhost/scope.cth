@@ -64,6 +64,23 @@ class (FunctionDefinition:
     )
 )
 
+class (NamespaceDefinition:
+    namespace_node: Call
+    namespace_name: Node
+
+    def (class_name: virtual:
+        return ceto.util.typeid_name(*this)
+    ) : std.string
+
+    def (repr:
+        return self.class_name() + "(" + self.namespace_node.repr() + ", " + self.namespace_name.repr() + ")"
+    )
+
+    def (destruct: virtual:
+        pass
+    )
+)
+
 class (VariableDefinition:
     defined_node: Identifier
     defining_node: Node
@@ -96,7 +113,6 @@ class (FieldDefinition(VariableDefinition):
 class (ParameterDefinition(VariableDefinition):
     pass
 )
-
 
 def (creates_new_variable_scope, e: Node:
     if (isinstance(e, Call):
