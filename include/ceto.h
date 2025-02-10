@@ -73,6 +73,13 @@ static inline void issue_null_deref_message() {
 
 #endif
 
+struct EndLoopMarkerError : public std::runtime_error {
+
+    using std::runtime_error::runtime_error;
+
+};
+
+
 #define CETO_BAN_REFS(expr) [&]() -> decltype(auto) { static_assert(!(std::is_reference_v<decltype((expr))>)); return expr; }()
 
 // mad = maybe allow deref

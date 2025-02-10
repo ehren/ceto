@@ -12,6 +12,7 @@ from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, 
 
 from collections import defaultdict
 import re
+import textwrap
 
 
 mut_by_default = False
@@ -1222,6 +1223,7 @@ def codegen_if(ifcall : Call, cx):
 
 
 def codegen_for(node, cx):
+
     assert isinstance(node, Call)
     if len(node.args) != 2:
         raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
@@ -1231,32 +1233,95 @@ def codegen_for(node, cx):
 
     iter_type : Node = None
 
-    if not isinstance(arg, BinOp) and isinstance(arg, (Identifier, TupleLiteral)) and arg.declared_type is not None:
-        # TODO this should be a post-parse fix - otherwise will cause problems with pattern matching for loops in a macro system
+    instmt = node.args[0]
 
-        # our low precedence choice for ':' - which works well for one liner ifs eg if (x and y: print(5))
-        # - does not work so well for:
-        # for (x: const:int in it:
-        #     pass
-        # )
-        # still, the syntax above even if "parsed wrong" beats the alternatives (odd for loop syntax with type at the end or tightening precedence of : or loosening precedence of 'in'). so we'll just accept that typed-fors are represented oddly in the ast
-        # (though maybe this should be done in an earlier pass like expanded if one-liners)
-        itertypes = type_node_to_list_of_types(arg.declared_type)
-        if not itertypes:
-            raise CodeGenError("unexpected typed for-loop first arg (not enough elements", node)
-        instmt = itertypes.pop()
-        lasttype = instmt.lhs
-        # we should really re-create or mutate here (wrong parent) but it's fine for now
-        itertypes.append(lasttype)
-        if not all(isinstance(i, Identifier) for i in itertypes):
-            raise CodeGenError("unexpected non-Identifier type for for-loop iter var", node)
+    if not isinstance(instmt, BinOp) or instmt.op != "in":
+        raise CodeGenError("unexpected 1st argument to for", node)
 
-        arg.declared_type = list_to_typed_node(itertypes)
-        instmt_args = instmt.args
-        instmt_args[0] = arg
-        instmt.args = instmt_args  # we're not modifying instmt.args directly (pybind11 copying semantics without MAKE_OPAQUE)
+    var = instmt.lhs
+    if not isinstance(var, (Identifier, TupleLiteral)):
+        raise CodeGenError("Unexpected iter var", var)
+
+    iterable = instmt.rhs
+
+    if isinstance(var, TupleLiteral):
+        structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
+        type_str = " "
+        var_str = structured_binding
+    elif var.declared_type is not None:
+        assert isinstance(var, Identifier)
+        type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
     else:
-        instmt = node.args[0]
+        var_str = codegen_node(var, cx)
+        type_str = None
+
+    if type_str is None:
+        type_str = "const auto&"
+
+    iterable_str = codegen_node(iterable, cx)
+    rng = gensym("rng")
+    idx = gensym("idx")
+    initial_list_size = gensym("size")
+
+    indt = cx.indent_str()
+    block_cx = cx.enter_scope()
+
+    has_return = any(isinstance(a, SyntaxTypeOp) and a.lhs.name == "return" for a in block.args)
+
+    block_str = codegen_block(block, block_cx)
+
+    # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2012r0.pdf
+    # use a lambda with a param to extend lifetime 
+    # (apparently fixed for actual range based for in c++23 https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2718r0.html)
+    # Note: exception handling not ideal for return - though avoids issues supporting returning a reference (even if if only allowed in unsafe mode)
+    # - should break apart iter to extend lifetimes without the lambda - but this is fine for now
+    # Also breaks goto (ok) and needs "yield" fixes
+
+    if has_return:
+        return_type = " -> decltype(auto) "
+        throw_stmt = "throw ceto::EndLoopMarkerError();"
+    else:
+        return_type = ""
+        throw_stmt = ""
+
+    forstr = rf"""[&](auto&& {rng}){return_type}{{
+    size_t {initial_list_size} = std::size({rng});
+    for (size_t {idx} = 0; ; {idx}++) {{
+        if (std::size({rng}) != {initial_list_size}) {{
+            std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+            std::terminate();
+        }}
+        if ({idx} >= {initial_list_size}) {{
+            break;
+        }}
+        {type_str} {var_str} = {rng}[{idx}];
+        {block_str}
+    }}
+    {throw_stmt}
+}}({iterable_str});
+    """
+
+    if has_return:
+        forstr = rf"""try {{
+    return {forstr};
+}} catch (const ceto::EndLoopMarkerError&) {{
+    ; // pass (loop end)
+}}"""
+
+    return textwrap.indent(forstr, indt)
+
+
+def codegen_range_based_for(node, cx):
+    assert isinstance(node, Call)
+    if len(node.args) != 2:
+        raise CodeGenError("'for' must have two arguments - the iteration part and the indented block. 'One liner' for loops are not supported.", node)
+    arg, block = node.args
+    if not isinstance(block, Block):
+        raise CodeGenError("expected block as last arg of for", node)
+
+    iter_type : Node = None
+
+    instmt = node.args[0]
 
     if not isinstance(instmt, BinOp) or instmt.op != "in":
         raise CodeGenError("unexpected 1st argument to for", node)
