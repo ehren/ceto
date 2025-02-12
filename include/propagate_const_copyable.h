@@ -1,425 +1,497 @@
+// -*- C++ -*-
+//===----------------------------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef _LIBCPP_EXPERIMENTAL_PROPAGATE_CONST
+#define _LIBCPP_EXPERIMENTAL_PROPAGATE_CONST
+
 /*
+    propagate_const synopsis
 
-Copyright (c) 2014-2018 Jonathan B. Coe
+    namespace std { namespace experimental { inline namespace fundamentals_v2 {
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
+    // [propagate_const]
+    template <class T> class propagate_const;
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+    // [propagate_const.underlying], underlying pointer access
+    constexpr const _Tp& get_underlying(const propagate_const<T>& pt) noexcept;
+    constexpr T& get_underlying(propagate_const<T>& pt) noexcept;
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    // [propagate_const.relational], relational operators
+    template <class T> constexpr bool operator==(const propagate_const<T>& pt, nullptr_t);
+    template <class T> constexpr bool operator==(nullptr_t, const propagate_const<T>& pu);
+    template <class T> constexpr bool operator!=(const propagate_const<T>& pt, nullptr_t);
+    template <class T> constexpr bool operator!=(nullptr_t, const propagate_const<T>& pu);
+    template <class T, class U> constexpr bool operator==(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator!=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator<(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator>(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator<=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator>=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator==(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator!=(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator<(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator>(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator<=(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator>=(const propagate_const<T>& pt, const _Up& u);
+    template <class T, class U> constexpr bool operator==(const _Tp& t, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator!=(const _Tp& t, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator<(const _Tp& t, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator>(const _Tp& t, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator<=(const _Tp& t, const propagate_const<_Up>& pu);
+    template <class T, class U> constexpr bool operator>=(const _Tp& t, const propagate_const<_Up>& pu);
+
+    // [propagate_const.algorithms], specialized algorithms
+    template <class T> constexpr void swap(propagate_const<T>& pt, propagate_const<T>& pu) noexcept(see below);
+
+    template <class T>
+    class propagate_const
+    {
+
+    public:
+      typedef remove_reference_t<decltype(*declval<T&>())> element_type;
+
+      // [propagate_const.ctor], constructors
+      constexpr propagate_const() = default;
+      propagate_const(const propagate_const& p) = delete;
+      constexpr propagate_const(propagate_const&& p) = default;
+      template <class U> EXPLICIT constexpr propagate_const(propagate_const<_Up>&& pu); // see below
+      template <class U> EXPLICIT constexpr propagate_const(U&& u); // see below
+
+      // [propagate_const.assignment], assignment
+      propagate_const& operator=(const propagate_const& p) = delete;
+      constexpr propagate_const& operator=(propagate_const&& p) = default;
+      template <class U> constexpr propagate_const& operator=(propagate_const<_Up>&& pu);
+      template <class U> constexpr propagate_const& operator=(U&& u); // see below
+
+      // [propagate_const.const_observers], const observers
+      explicit constexpr operator bool() const;
+      constexpr const element_type* operator->() const;
+      constexpr operator const element_type*() const; // Not always defined
+      constexpr const element_type& operator*() const;
+      constexpr const element_type* get() const;
+
+      // [propagate_const.non_const_observers], non-const observers
+      constexpr element_type* operator->();
+      constexpr operator element_type*(); // Not always defined
+      constexpr element_type& operator*();
+      constexpr element_type* get();
+
+      // [propagate_const.modifiers], modifiers
+      constexpr void swap(propagate_const& pt) noexcept(see below)
+
+    private:
+      T t_; // exposition only
+    };
+
+  } // namespace fundamentals_v2
+  } // namespace experimental
+
+  // [propagate_const.hash], hash support
+  template <class T> struct hash<experimental::propagate_const<T>>;
+
+  // [propagate_const.comparison_function_objects], comparison function objects
+  template <class T> struct equal_to<experimental::propagate_const<T>>;
+  template <class T> struct not_equal_to<experimental::propagate_const<T>>;
+  template <class T> struct less<experimental::propagate_const<T>>;
+  template <class T> struct greater<experimental::propagate_const<T>>;
+  template <class T> struct less_equal<experimental::propagate_const<T>>;
+  template <class T> struct greater_equal<experimental::propagate_const<T>>;
+
+} // namespace std
 
 */
 
-// Taken from https://github.com/jbcoe/propagate_const but modified to be copyable
-// last commit https://github.com/jbcoe/propagate_const/commit/dd8723deb19e3ac2e34ec1fb91c9bd641872f0f6
+#if __cplusplus < 201103L && defined(_LIBCPP_USE_FROZEN_CXX03_HEADERS)
+#  include <__cxx03/experimental/propagate_const>
+#else
+#  include <__config>
+#  include <__cstddef/nullptr_t.h>
+#  include <__cstddef/size_t.h>
+#  include <__functional/operations.h>
+#  include <__fwd/functional.h>
+#  include <__type_traits/conditional.h>
+#  include <__type_traits/decay.h>
+#  include <__type_traits/enable_if.h>
+#  include <__type_traits/is_array.h>
+#  include <__type_traits/is_constructible.h>
+#  include <__type_traits/is_convertible.h>
+#  include <__type_traits/is_function.h>
+#  include <__type_traits/is_pointer.h>
+#  include <__type_traits/is_reference.h>
+#  include <__type_traits/is_same.h>
+#  include <__type_traits/is_swappable.h>
+#  include <__type_traits/remove_cv.h>
+#  include <__type_traits/remove_pointer.h>
+#  include <__type_traits/remove_reference.h>
+#  include <__utility/declval.h>
+#  include <__utility/forward.h>
+#  include <__utility/move.h>
+#  include <__utility/swap.h>
+#  include <version>
 
-#ifndef CETO_PROPAGATE_CONST_INCLUDED
-#define CETO_PROPAGATE_CONST_INCLUDED
+#  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#    pragma GCC system_header
+#  endif
 
-#include <functional>
-#include <memory>
-#include <type_traits>
-#include <utility>
+_LIBCPP_PUSH_MACROS
+#  include <__undef_macros>
 
-#ifdef _MSC_VER
-#if _MSC_VER <= 1900 // MSVS 2015 and earlier
-#error "Not supported"
-#endif
-#endif
+#  if _LIBCPP_STD_VER >= 14
 
-namespace ceto {
+_LIBCPP_BEGIN_NAMESPACE_LFTS_V2
 
-template <class T>
+template <class _Tp>
+class propagate_const;
+
+template <class _Up>
+inline _LIBCPP_HIDE_FROM_ABI constexpr const _Up& get_underlying(const propagate_const<_Up>& __pu) _NOEXCEPT;
+
+template <class _Up>
+inline _LIBCPP_HIDE_FROM_ABI constexpr _Up& get_underlying(propagate_const<_Up>& __pu) _NOEXCEPT;
+
+template <class _Tp>
 class propagate_const {
- public:
- using element_type = typename std::pointer_traits<T>::element_type;
+public:
+  typedef remove_reference_t<decltype(*std::declval<_Tp&>())> element_type;
 
- private:
-  template <class U>
-  static element_type* get_pointer(U* u) {
-    return u;
+  static_assert(!is_array<_Tp>::value, "Instantiation of propagate_const with an array type is ill-formed.");
+  static_assert(!is_reference<_Tp>::value, "Instantiation of propagate_const with a reference type is ill-formed.");
+  static_assert(!(is_pointer<_Tp>::value && is_function<__remove_pointer_t<_Tp> >::value),
+                "Instantiation of propagate_const with a function-pointer type is ill-formed.");
+  static_assert(!(is_pointer<_Tp>::value && is_same<__remove_cv_t<__remove_pointer_t<_Tp> >, void>::value),
+                "Instantiation of propagate_const with a pointer to (possibly cv-qualified) void is ill-formed.");
+
+private:
+  template <class _Up>
+  static _LIBCPP_HIDE_FROM_ABI constexpr element_type* __get_pointer(_Up* __u) {
+    return __u;
   }
 
-  template <class U>
-  static element_type* get_pointer(U& u) {
-    return get_pointer(u.get());
+  template <class _Up>
+  static _LIBCPP_HIDE_FROM_ABI constexpr element_type* __get_pointer(_Up& __u) {
+    return __get_pointer(__u.get());
   }
 
-  template <class U>
-  static const element_type* get_pointer(const U* u) {
-    return u;
+  template <class _Up>
+  static _LIBCPP_HIDE_FROM_ABI constexpr const element_type* __get_pointer(const _Up* __u) {
+    return __u;
   }
 
-  template <class U>
-  static const element_type* get_pointer(const U& u) {
-    return get_pointer(u.get());
+  template <class _Up>
+  static _LIBCPP_HIDE_FROM_ABI constexpr const element_type* __get_pointer(const _Up& __u) {
+    return __get_pointer(__u.get());
   }
 
-  template <class U>
-  struct is_propagate_const : std::false_type {};
+  template <class _Up>
+  struct __is_propagate_const : false_type {};
 
-  template <class U>
-  struct is_propagate_const<propagate_const<U>> : std::true_type {};
+  template <class _Up>
+  struct __is_propagate_const<propagate_const<_Up>> : true_type {};
 
- public:
-  // [propagate_const.ctor], constructors
-  constexpr propagate_const() = default;
+  _Tp __t_;
 
-  propagate_const(const propagate_const& p) = default;   // ceto modification: changed from 'delete' to 'default'
+public:
+  template <class _Up>
+  friend constexpr const _Up& experimental::fundamentals_v2::get_underlying(const propagate_const<_Up>& __pu) _NOEXCEPT;
+  template <class _Up>
+  friend constexpr _Up& experimental::fundamentals_v2::get_underlying(propagate_const<_Up>& __pu) _NOEXCEPT;
 
-  constexpr propagate_const(propagate_const&& p) = default;
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const() = default;
 
-  //
-  // Use SFINAE to check if converting constructor should be explicit.
-  //
-  template <class U, std::enable_if_t<!std::is_convertible<U&&, T>::value &&
-                                     std::is_constructible<T, U&&>::value,
-                                 bool> = true>
-  explicit constexpr propagate_const(propagate_const<U>&& pu)
-      : t_(std::move(pu.t_)) {}
+  propagate_const(const propagate_const&) = delete;
 
-  template <class U, std::enable_if_t<std::is_convertible<U&&, T>::value &&
-                                     std::is_constructible<T, U&&>::value,
-                                 bool> = false>
-  constexpr propagate_const(propagate_const<U>&& pu) : t_(std::move(pu.t_)) {}
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const(propagate_const&&) = default;
 
-  template <class U, std::enable_if_t<!std::is_convertible<U&&, T>::value &&
-                                     std::is_constructible<T, U&&>::value &&
-                                     !is_propagate_const<std::decay_t<U>>::value,
-                                 bool> = true>
-  explicit constexpr propagate_const(U&& u) : t_(std::forward<U>(u)) {}
+  template <class _Up,
+            enable_if_t<!is_convertible<_Up, _Tp>::value && is_constructible<_Tp, _Up&&>::value, bool> = true>
+  explicit _LIBCPP_HIDE_FROM_ABI constexpr propagate_const(propagate_const<_Up>&& __pu)
+      : __t_(std::move(experimental::get_underlying(__pu))) {}
 
-  template <class U, std::enable_if_t<std::is_convertible<U&&, T>::value &&
-                                     std::is_constructible<T, U&&>::value &&
-                                     !is_propagate_const<std::decay_t<U>>::value,
-                                 bool> = false>
-  constexpr propagate_const(U&& u) : t_(std::forward<U>(u)) {}
+  template <class _Up,
+            enable_if_t<is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value, bool> = false>
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const(propagate_const<_Up>&& __pu)
+      : __t_(std::move(experimental::get_underlying(__pu))) {}
 
-  // [propagate_const.assignment], assignment
-  propagate_const& operator=(const propagate_const& p) = default;  // ceto modification: changed from 'delete' to 'default'
+  template <class _Up,
+            enable_if_t<!is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value &&
+                            !__is_propagate_const<decay_t<_Up>>::value,
+                        bool> = true>
+  explicit _LIBCPP_HIDE_FROM_ABI constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
 
-  constexpr propagate_const& operator=(propagate_const&& p) = default;
+  template <class _Up,
+            enable_if_t<is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value &&
+                            !__is_propagate_const<decay_t<_Up>>::value,
+                        bool> = false>
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
 
-  template <class U>
-  constexpr propagate_const& operator=(propagate_const<U>&& pu) {
-    t_ = std::move(pu.t_);
+  propagate_const& operator=(const propagate_const&) = delete;
+
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const& operator=(propagate_const&&) = default;
+
+  template <class _Up>
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const& operator=(propagate_const<_Up>&& __pu) {
+    __t_ = std::move(experimental::get_underlying(__pu));
     return *this;
   }
 
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  constexpr propagate_const& operator=(U&& u) {
-    t_ = std::move(u);
+  template <class _Up, class _Vp = enable_if_t<!__is_propagate_const<decay_t<_Up>>::value>>
+  _LIBCPP_HIDE_FROM_ABI constexpr propagate_const& operator=(_Up&& __u) {
+    __t_ = std::forward<_Up>(__u);
     return *this;
   }
 
-  // [propagate_const.const_observers], const observers
-  explicit constexpr operator bool() const { return get() != nullptr; }
-  constexpr const element_type* operator->() const { return get(); }
+  _LIBCPP_HIDE_FROM_ABI constexpr const element_type* get() const { return __get_pointer(__t_); }
 
-  template <class T_ = T, class U = std::enable_if_t<std::is_convertible<
-                              const T_, const element_type*>::value>>
-  constexpr operator const element_type*() const  // Not always defined
-  {
+  _LIBCPP_HIDE_FROM_ABI constexpr element_type* get() { return __get_pointer(__t_); }
+
+  _LIBCPP_HIDE_FROM_ABI explicit constexpr operator bool() const { return get() != nullptr; }
+
+  _LIBCPP_HIDE_FROM_ABI constexpr const element_type* operator->() const { return get(); }
+
+  template <class _Dummy = _Tp, class _Up = enable_if_t<is_convertible< const _Dummy, const element_type*>::value>>
+  _LIBCPP_HIDE_FROM_ABI constexpr operator const element_type*() const {
     return get();
   }
 
-  constexpr const element_type& operator*() const { return *get(); }
+  _LIBCPP_HIDE_FROM_ABI constexpr const element_type& operator*() const { return *get(); }
 
-  constexpr const element_type* get() const { return get_pointer(t_); }
+  _LIBCPP_HIDE_FROM_ABI constexpr element_type* operator->() { return get(); }
 
-  // [propagate_const.non_const_observers], non-const observers
-  constexpr element_type* operator->() { return get(); }
-
-  template <class T_ = T,
-            class U = std::enable_if_t<std::is_convertible<T_, element_type*>::value>>
-  constexpr operator element_type*()  // Not always defined
-  {
+  template <class _Dummy = _Tp, class _Up = enable_if_t< is_convertible<_Dummy, element_type*>::value>>
+  _LIBCPP_HIDE_FROM_ABI constexpr operator element_type*() {
     return get();
   }
 
-  constexpr element_type& operator*() { return *get(); }
+  _LIBCPP_HIDE_FROM_ABI constexpr element_type& operator*() { return *get(); }
 
-  constexpr element_type* get() { return get_pointer(t_); }
-  
-  // [propagate_const.modifiers], modifiers
-  constexpr void swap(propagate_const& pt) noexcept(
-      noexcept(swap(std::declval<T&>(), std::declval<T&>()))) {
-    swap(t_, pt.t_);
-  }
-
- private:
-  T t_;
-
-  friend struct std::hash<propagate_const<T>>;
-  friend struct std::equal_to<propagate_const<T>>;
-  friend struct std::not_equal_to<propagate_const<T>>;
-  friend struct std::greater<propagate_const<T>>;
-  friend struct std::less<propagate_const<T>>;
-  friend struct std::greater_equal<propagate_const<T>>;
-  friend struct std::less_equal<propagate_const<T>>;
-
-  // [propagate_const.relational], relational operators
-  friend constexpr bool operator==(const propagate_const& pt, nullptr_t) {
-    return pt.t_ == nullptr;
-  }
-
-  friend constexpr bool operator==(nullptr_t, const propagate_const& pu) {
-    return nullptr == pu.t_;
-  }
-
-  friend constexpr bool operator!=(const propagate_const& pt, nullptr_t) {
-    return pt.t_ != nullptr;
-  }
-
-  friend constexpr bool operator!=(nullptr_t, const propagate_const& pu) {
-    return nullptr != pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator==(const propagate_const& pt,
-                                   const propagate_const<U>& pu) {
-    return pt.t_ == pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator!=(const propagate_const& pt,
-                                   const propagate_const<U>& pu) {
-    return pt.t_ != pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator<(const propagate_const& pt,
-                                  const propagate_const<U>& pu) {
-    return pt.t_ < pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator>(const propagate_const& pt,
-                                  const propagate_const<U>& pu) {
-    return pt.t_ > pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator<=(const propagate_const& pt,
-                                   const propagate_const<U>& pu) {
-    return pt.t_ <= pu.t_;
-  }
-
-  template <class U>
-  friend constexpr bool operator>=(const propagate_const& pt,
-                                   const propagate_const<U>& pu) {
-    return pt.t_ >= pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator==(const propagate_const& pt, const U& u) {
-    return pt.t_ == u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator!=(const propagate_const& pt, const U& u) {
-    return pt.t_ != u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator<(const propagate_const& pt, const U& u) {
-    return pt.t_ < u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator>(const propagate_const& pt, const U& u) {
-    return pt.t_ > u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator<=(const propagate_const& pt, const U& u) {
-    return pt.t_ <= u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator>=(const propagate_const& pt, const U& u) {
-    return pt.t_ >= u;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator==(const U& u, const propagate_const& pu) {
-    return u == pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator!=(const U& u, const propagate_const& pu) {
-    return u != pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator<(const U& u, const propagate_const& pu) {
-    return u < pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator>(const U& u, const propagate_const& pu) {
-    return u > pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator<=(const U& u, const propagate_const& pu) {
-    return u <= pu.t_;
-  }
-
-  template <class U,
-            class = std::enable_if_t<!is_propagate_const<std::decay_t<U>>::value>>
-  friend constexpr bool operator>=(const U& u, const propagate_const& pu) {
-    return u >= pu.t_;
+  _LIBCPP_HIDE_FROM_ABI constexpr void swap(propagate_const& __pt) noexcept(__is_nothrow_swappable_v<_Tp>) {
+    using std::swap;
+    swap(__t_, __pt.__t_);
   }
 };
 
-
-// [propagate_const.algorithms], specialized algorithms
-template <class T>
-constexpr void swap(propagate_const<T>& pt, propagate_const<T>& pu) noexcept(
-    noexcept(swap(std::declval<T&>(), std::declval<T&>())))
-{
-  swap(pt.underlying_ptr(), pu.underlying_ptr());
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator==(const propagate_const<_Tp>& __pt, nullptr_t) {
+  return experimental::get_underlying(__pt) == nullptr;
 }
 
-
-// ceto note - something wacky - underlying_ptr not implemented?
-
-// this taken from 
-// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4388.html
-// and
-// https://reviews.llvm.org/D12486
-
-template <class Tp>
-constexpr const Tp& get_underlying(const propagate_const<Tp>& pt) noexcept
-{
-  return pt._t;
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator==(nullptr_t, const propagate_const<_Tp>& __pt) {
+  return nullptr == experimental::get_underlying(__pt);
 }
 
-template <class Tp>
-Tp& get_underlying(propagate_const<Tp>& pt) noexcept
-{
-  return pt._t;
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator!=(const propagate_const<_Tp>& __pt, nullptr_t) {
+  return experimental::get_underlying(__pt) != nullptr;
 }
 
-}  //  end namespace ceto
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator!=(nullptr_t, const propagate_const<_Tp>& __pt) {
+  return nullptr != experimental::get_underlying(__pt);
+}
 
-namespace std {
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator==(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) == experimental::get_underlying(__pu);
+}
 
-// [propagate_const.hash], hash support
-template <class T>
-struct hash<ceto::propagate_const<T>> {
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator!=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) != experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) < experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) > experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) <= experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
+  return experimental::get_underlying(__pt) >= experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator==(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) == __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator!=(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) != __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) < __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) > __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<=(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) <= __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>=(const propagate_const<_Tp>& __pt, const _Up& __u) {
+  return experimental::get_underlying(__pt) >= __u;
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator==(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t == experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator!=(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t != experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t < experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t > experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator<=(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t <= experimental::get_underlying(__pu);
+}
+
+template <class _Tp, class _Up>
+_LIBCPP_HIDE_FROM_ABI constexpr bool operator>=(const _Tp& __t, const propagate_const<_Up>& __pu) {
+  return __t >= experimental::get_underlying(__pu);
+}
+
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI constexpr void
+swap(propagate_const<_Tp>& __pc1, propagate_const<_Tp>& __pc2) noexcept(__is_nothrow_swappable_v<_Tp>) {
+  __pc1.swap(__pc2);
+}
+
+template <class _Tp>
+constexpr const _Tp& get_underlying(const propagate_const<_Tp>& __pt) _NOEXCEPT {
+  return __pt.__t_;
+}
+
+template <class _Tp>
+constexpr _Tp& get_underlying(propagate_const<_Tp>& __pt) _NOEXCEPT {
+  return __pt.__t_;
+}
+
+_LIBCPP_END_NAMESPACE_LFTS_V2
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+template <class _Tp>
+struct hash<experimental::propagate_const<_Tp>> {
   typedef size_t result_type;
-  typedef ceto::propagate_const<T> argument_type;
+  typedef experimental::propagate_const<_Tp> argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc) const {
-    return std::hash<T>()(pc.t_);
+  _LIBCPP_HIDE_FROM_ABI size_t operator()(const experimental::propagate_const<_Tp>& __pc1) const {
+    return std::hash<_Tp>()(experimental::get_underlying(__pc1));
   }
 };
 
-// [propagate_const.comparison_function_objects], comparison function objects
-template <class T>
-struct equal_to<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct equal_to<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::equal_to<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::equal_to<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-template <class T>
-struct not_equal_to<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct not_equal_to<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::not_equal_to<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::not_equal_to<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-template <class T>
-struct less<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct less<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::less<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::less<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-template <class T>
-struct greater<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct greater<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::greater<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::greater<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-template <class T>
-struct less_equal<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct less_equal<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::less_equal<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::less_equal<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-template <class T>
-struct greater_equal<ceto::propagate_const<T>> {
-  typedef ceto::propagate_const<T> first_argument_type;
-  typedef ceto::propagate_const<T>
-      second_argument_type;
+template <class _Tp>
+struct greater_equal<experimental::propagate_const<_Tp>> {
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  bool operator()(
-      const ceto::propagate_const<T>& pc1,
-      const ceto::propagate_const<T>& pc2) const {
-    return std::greater_equal<T>()(pc1.t_, pc2.t_);
+  _LIBCPP_HIDE_FROM_ABI bool
+  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
+    return std::greater_equal<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
   }
 };
 
-}  // end namespace std
+_LIBCPP_END_NAMESPACE_STD
 
-#endif // CETO_PROPAGATE_CONST_INCLUDED
+#  endif // _LIBCPP_STD_VER >= 14
+
+_LIBCPP_POP_MACROS
+
+#  if !defined(_LIBCPP_REMOVE_TRANSITIVE_INCLUDES) && _LIBCPP_STD_VER <= 20
+#    include <cstddef>
+#    include <type_traits>
+#  endif
+#endif // __cplusplus < 201103L && defined(_LIBCPP_USE_FROZEN_CXX03_HEADERS)
+
+#endif // _LIBCPP_EXPERIMENTAL_PROPAGATE_CONST
