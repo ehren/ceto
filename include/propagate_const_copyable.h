@@ -76,8 +76,7 @@ class propagate_const {
   // [propagate_const.ctor], constructors
   constexpr propagate_const() = default;
 
-  //propagate_const(const propagate_const& p) = delete;
-  propagate_const(const propagate_const& p) = default;   // ceto modification
+  propagate_const(const propagate_const& p) = default;   // ceto modification: changed from 'delete' to 'default'
 
   constexpr propagate_const(propagate_const&& p) = default;
 
@@ -108,7 +107,7 @@ class propagate_const {
   constexpr propagate_const(U&& u) : t_(std::forward<U>(u)) {}
 
   // [propagate_const.assignment], assignment
-  propagate_const& operator=(const propagate_const& p) = delete;
+  propagate_const& operator=(const propagate_const& p) = default;  // ceto modification: changed from 'delete' to 'default'
 
   constexpr propagate_const& operator=(propagate_const&& p) = default;
 
