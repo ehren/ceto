@@ -7,6 +7,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Taken from https://github.com/llvm/llvm-project/blob/main/libcxx/include/experimental/propagate_const
+// Commit b9a2658
+
+// also informed by
+// https://github.com/jbcoe/propagate_const
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4388.html
+// JB Coe pull request: https://reviews.llvm.org/D12486#change-1YEhZEmd0Miu
+//
+// ceto Note: made copyable by defaulting the copy constructor and assignment operator
+// See also https://github.com/jbcoe/deep_ptr and https://github.com/jbcoe/propagate_const/issues/33 (Non-copyable reduces applicability for helping library authors)
+// In our case we need copyable because a non-copyable shared_ptr defeats the purpose of shared_ptr in the first place. Also our aim is not "const implies thread safe" (it most certainly does not in general ceto code!) but we do want "const implies iteration (range based for loop) safe".
+
+// TODO bunch of leading underscores usage from the libcxx implmentation should be changed
+
 #ifndef CETO_PROPAGATE_CONST
 #define CETO_PROPAGATE_CONST
 
@@ -58,13 +72,13 @@
 
       // [propagate_const.ctor], constructors
       constexpr propagate_const() = default;
-      propagate_const(const propagate_const& p) = delete;
+      propagate_const(const propagate_const& p) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
       constexpr propagate_const(propagate_const&& p) = default;
       template <class U> EXPLICIT constexpr propagate_const(propagate_const<_Up>&& pu); // see below
       template <class U> EXPLICIT constexpr propagate_const(U&& u); // see below
 
       // [propagate_const.assignment], assignment
-      propagate_const& operator=(const propagate_const& p) = delete;
+      propagate_const& operator=(const propagate_const& p) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
       constexpr propagate_const& operator=(propagate_const&& p) = default;
       template <class U> constexpr propagate_const& operator=(propagate_const<_Up>&& pu);
       template <class U> constexpr propagate_const& operator=(U&& u); // see below
@@ -173,7 +187,7 @@ public:
 
   constexpr propagate_const() = default;
 
-  propagate_const(const propagate_const&) = delete;
+  propagate_const(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
   constexpr propagate_const(propagate_const&&) = default;
 
@@ -199,7 +213,7 @@ public:
                         bool> = false>
   constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
 
-  propagate_const& operator=(const propagate_const&) = delete;
+  propagate_const& operator=(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
   constexpr propagate_const& operator=(propagate_const&&) = default;
 
