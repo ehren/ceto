@@ -179,6 +179,7 @@ private:
   _Tp __t_;
 
 public:
+
   template <class _Up>
   friend constexpr const _Up& ceto::get_underlying(const propagate_const<_Up>& __pu) noexcept;
   template <class _Up>

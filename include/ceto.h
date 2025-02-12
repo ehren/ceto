@@ -18,7 +18,42 @@
 #define CETO_SOURCE_LOC_ARG
 #endif
 
+#ifdef CETO_USING_GODBOLT
+// godbolt only supports single header library includes via url
+// also remember to manually: #include "https://raw.githubusercontent.com/ehren/ceto/refs/heads/main/include/propagate_const_copyable.h"
 namespace ceto {
+    template <typename T>
+    using local_shared_ptr = std::shared_ptr<T>;
+}
+#else
+#include "propagate_const_copyable.h"
+#include "kit_local_shared_ptr/smart_ptr.hpp"
+#endif
+
+namespace ceto {
+
+template <typename T>
+concept IsBasicSmartPtr = std::same_as<T, std::shared_ptr<typename T::element_type>> || std::same_as<T, std::weak_ptr<typename T::element_type>> || std::same_as<T, std::unique_ptr<typename T::element_type>> || std::same_as<T, ceto::local_shared_ptr<typename T::element_type>>;
+
+template <class T>
+struct is_propagate_const : std::false_type {};
+
+template <class T>
+struct is_propagate_const<ceto::propagate_const<T>> : std::true_type {};
+
+template <typename T>
+concept IsSmartPtr = IsBasicSmartPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicSmartPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
+
+template <typename T>
+concept IsOptional = std::same_as<T, std::optional<typename T::value_type>>;
+
+template<typename T>
+concept IsDereferencable = requires (T t) {
+    *t;
+};
+
+template<typename T>
+concept IsRawDereferencable = IsDereferencable<T> && !IsOptional<T> && !IsSmartPtr<T>;
 
 struct object {
 };
@@ -339,30 +374,10 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
 
-template<class T>
-struct is_safe_dereferencable : std::false_type {};
+} // end namespace ceto
 
-template<class T>
-struct is_safe_dereferencable<std::shared_ptr<T>> : std::true_type {};
-
-template<class T>
-struct is_safe_dereferencable<std::unique_ptr<T>> : std::true_type {};
-
-template<class T>
-struct is_safe_dereferencable<std::optional<T>> : std::true_type {};
-
-template<typename T>
-concept is_dereferencable = requires (T t) {
-    *t;
-};
-
-template<typename T>
-concept is_raw_dereferencable = is_dereferencable<T> && !is_safe_dereferencable<T>::value;
-
-} // namespace ceto
-
-// this works but disable until unsafe blocks implemented
-//#define CETO_BAN_RAW_DEREFERENCABLE(expr) [&]() -> decltype(auto) { static_assert(!ceto::is_raw_dereferencable<std::remove_cvref_t<decltype(expr)>>); return expr; }()
+// this works but disable until unsafe blocks fully implemented
+//#define CETO_BAN_RAW_DEREFERENCABLE(expr) [&]() -> decltype(auto) { static_assert(!ceto::IsRawDereferencable<std::remove_cvref_t<decltype(expr)>>); return expr; }()
 #define CETO_BAN_RAW_DEREFERENCABLE(expr) (expr)
 
 #endif // CETO_H
