@@ -305,6 +305,26 @@ constexpr void swap(propagate_const<T>& pt, propagate_const<T>& pu) noexcept(
   swap(pt.underlying_ptr(), pu.underlying_ptr());
 }
 
+
+// ceto note - something wacky - underlying_ptr not implemented?
+
+// this taken from 
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4388.html
+// and
+// https://reviews.llvm.org/D12486
+
+template <class Tp>
+constexpr const Tp& get_underlying(const propagate_const<Tp>& pt) noexcept
+{
+  return pt._t;
+}
+
+template <class Tp>
+Tp& get_underlying(propagate_const<Tp>& pt) noexcept
+{
+  return pt._t;
+}
+
 }  //  end namespace ceto
 
 namespace std {
