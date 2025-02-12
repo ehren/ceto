@@ -19,7 +19,7 @@
 // See also https://github.com/jbcoe/deep_ptr and https://github.com/jbcoe/propagate_const/issues/33 (Non-copyable reduces applicability for helping library authors)
 // In our case we need copyable because a non-copyable shared_ptr defeats the purpose of shared_ptr in the first place. Also our aim is not "const implies thread safe" (it most certainly does not in general ceto code!) but we do want "const implies iteration (range based for loop) safe".
 
-// TODO bunch of leading underscores usage from the libcxx implmentation should be changed
+// TODO bunch of leading underscore usage from the libcxx implementation should be removed
 
 #ifndef CETO_PROPAGATE_CONST
 #define CETO_PROPAGATE_CONST
@@ -27,7 +27,7 @@
 /*
     propagate_const synopsis
 
-    namespace std { namespace experimental { inline namespace fundamentals_v2 {
+    namespace ceto {
 
     // [propagate_const]
     template <class T> class propagate_const;
@@ -37,10 +37,10 @@
     constexpr T& get_underlying(propagate_const<T>& pt) noexcept;
 
     // [propagate_const.relational], relational operators
-    template <class T> constexpr bool operator==(const propagate_const<T>& pt, nullptr_t);
-    template <class T> constexpr bool operator==(nullptr_t, const propagate_const<T>& pu);
-    template <class T> constexpr bool operator!=(const propagate_const<T>& pt, nullptr_t);
-    template <class T> constexpr bool operator!=(nullptr_t, const propagate_const<T>& pu);
+    template <class T> constexpr bool operator==(const propagate_const<T>& pt, std::nullptr_t);
+    template <class T> constexpr bool operator==(std::nullptr_t, const propagate_const<T>& pu);
+    template <class T> constexpr bool operator!=(const propagate_const<T>& pt, std::nullptr_t);
+    template <class T> constexpr bool operator!=(std::nullptr_t, const propagate_const<T>& pu);
     template <class T, class U> constexpr bool operator==(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
     template <class T, class U> constexpr bool operator!=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
     template <class T, class U> constexpr bool operator<(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
@@ -68,7 +68,7 @@
     {
 
     public:
-      typedef remove_reference_t<decltype(*declval<T&>())> element_type;
+      typedef std::remove_reference_t<decltype(*declval<T&>())> element_type;
 
       // [propagate_const.ctor], constructors
       constexpr propagate_const() = default;
@@ -103,19 +103,18 @@
       T t_; // exposition only
     };
 
-  } // namespace fundamentals_v2
-  } // namespace experimental
+  } // namespace ceto
 
   // [propagate_const.hash], hash support
-  template <class T> struct hash<experimental::propagate_const<T>>;
+  template <class T> struct hash<ceto::propagate_const<T>>;
 
   // [propagate_const.comparison_function_objects], comparison function objects
-  template <class T> struct equal_to<experimental::propagate_const<T>>;
-  template <class T> struct not_equal_to<experimental::propagate_const<T>>;
-  template <class T> struct less<experimental::propagate_const<T>>;
-  template <class T> struct greater<experimental::propagate_const<T>>;
-  template <class T> struct less_equal<experimental::propagate_const<T>>;
-  template <class T> struct greater_equal<experimental::propagate_const<T>>;
+  template <class T> struct equal_to<ceto::propagate_const<T>>;
+  template <class T> struct not_equal_to<ceto::propagate_const<T>>;
+  template <class T> struct less<ceto::propagate_const<T>>;
+  template <class T> struct greater<ceto::propagate_const<T>>;
+  template <class T> struct less_equal<ceto::propagate_const<T>>;
+  template <class T> struct greater_equal<ceto::propagate_const<T>>;
 
 } // namespace std
 
@@ -133,21 +132,21 @@ template <class _Tp>
 class propagate_const;
 
 template <class _Up>
-inline constexpr const _Up& get_underlying(const propagate_const<_Up>& __pu) _NOEXCEPT;
+inline constexpr const _Up& get_underlying(const propagate_const<_Up>& __pu) noexcept;
 
 template <class _Up>
-inline constexpr _Up& get_underlying(propagate_const<_Up>& __pu) _NOEXCEPT;
+inline constexpr _Up& get_underlying(propagate_const<_Up>& __pu) noexcept;
 
 template <class _Tp>
 class propagate_const {
 public:
-  typedef remove_reference_t<decltype(*std::declval<_Tp&>())> element_type;
+  typedef std::remove_reference_t<decltype(*std::declval<_Tp&>())> element_type;
 
-  static_assert(!is_array<_Tp>::value, "Instantiation of propagate_const with an array type is ill-formed.");
-  static_assert(!is_reference<_Tp>::value, "Instantiation of propagate_const with a reference type is ill-formed.");
-  static_assert(!(is_pointer<_Tp>::value && is_function<__remove_pointer_t<_Tp> >::value),
+  static_assert(!std::is_array<_Tp>::value, "Instantiation of propagate_const with an array type is ill-formed.");
+  static_assert(!std::is_reference<_Tp>::value, "Instantiation of propagate_const with a reference type is ill-formed.");
+  static_assert(!(std::is_pointer<_Tp>::value && std::is_function<std::remove_pointer_t<_Tp> >::value),
                 "Instantiation of propagate_const with a function-pointer type is ill-formed.");
-  static_assert(!(is_pointer<_Tp>::value && is_same<__remove_cv_t<__remove_pointer_t<_Tp> >, void>::value),
+  static_assert(!(std::is_pointer<_Tp>::value && std::is_same<std::remove_cv_t<std::remove_pointer_t<_Tp> >, void>::value),
                 "Instantiation of propagate_const with a pointer to (possibly cv-qualified) void is ill-formed.");
 
 private:
@@ -172,18 +171,18 @@ private:
   }
 
   template <class _Up>
-  struct __is_propagate_const : false_type {};
+  struct is_propagate_const : std::false_type {};
 
   template <class _Up>
-  struct __is_propagate_const<propagate_const<_Up>> : true_type {};
+  struct is_propagate_const<propagate_const<_Up>> : std::true_type {};
 
   _Tp __t_;
 
 public:
   template <class _Up>
-  friend constexpr const _Up& experimental::fundamentals_v2::get_underlying(const propagate_const<_Up>& __pu) _NOEXCEPT;
+  friend constexpr const _Up& ceto::get_underlying(const propagate_const<_Up>& __pu) noexcept;
   template <class _Up>
-  friend constexpr _Up& experimental::fundamentals_v2::get_underlying(propagate_const<_Up>& __pu) _NOEXCEPT;
+  friend constexpr _Up& ceto::get_underlying(propagate_const<_Up>& __pu) noexcept;
 
   constexpr propagate_const() = default;
 
@@ -192,24 +191,24 @@ public:
   constexpr propagate_const(propagate_const&&) = default;
 
   template <class _Up,
-            enable_if_t<!is_convertible<_Up, _Tp>::value && is_constructible<_Tp, _Up&&>::value, bool> = true>
+            std::enable_if_t<!std::is_convertible<_Up, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value, bool> = true>
   explicit constexpr propagate_const(propagate_const<_Up>&& __pu)
-      : __t_(std::move(experimental::get_underlying(__pu))) {}
+      : __t_(std::move(ceto::get_underlying(__pu))) {}
 
   template <class _Up,
-            enable_if_t<is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value, bool> = false>
+            std::enable_if_t<std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value, bool> = false>
   constexpr propagate_const(propagate_const<_Up>&& __pu)
-      : __t_(std::move(experimental::get_underlying(__pu))) {}
+      : __t_(std::move(ceto::get_underlying(__pu))) {}
 
   template <class _Up,
-            enable_if_t<!is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value &&
-                            !__is_propagate_const<decay_t<_Up>>::value,
+            std::enable_if_t<!std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
+                            !is_propagate_const<std::decay_t<_Up>>::value,
                         bool> = true>
   explicit constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
 
   template <class _Up,
-            enable_if_t<is_convertible<_Up&&, _Tp>::value && is_constructible<_Tp, _Up&&>::value &&
-                            !__is_propagate_const<decay_t<_Up>>::value,
+            std::enable_if_t<std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
+                            !is_propagate_const<std::decay_t<_Up>>::value,
                         bool> = false>
   constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
 
@@ -219,11 +218,11 @@ public:
 
   template <class _Up>
   constexpr propagate_const& operator=(propagate_const<_Up>&& __pu) {
-    __t_ = std::move(experimental::get_underlying(__pu));
+    __t_ = std::move(ceto::get_underlying(__pu));
     return *this;
   }
 
-  template <class _Up, class _Vp = enable_if_t<!__is_propagate_const<decay_t<_Up>>::value>>
+  template <class _Up, class _Vp = std::enable_if_t<!is_propagate_const<std::decay_t<_Up>>::value>>
   constexpr propagate_const& operator=(_Up&& __u) {
     __t_ = std::forward<_Up>(__u);
     return *this;
@@ -237,7 +236,7 @@ public:
 
   constexpr const element_type* operator->() const { return get(); }
 
-  template <class _Dummy = _Tp, class _Up = enable_if_t<is_convertible< const _Dummy, const element_type*>::value>>
+  template <class _Dummy = _Tp, class _Up = std::enable_if_t<std::is_convertible< const _Dummy, const element_type*>::value>>
   constexpr operator const element_type*() const {
     return get();
   }
@@ -246,142 +245,142 @@ public:
 
   constexpr element_type* operator->() { return get(); }
 
-  template <class _Dummy = _Tp, class _Up = enable_if_t< is_convertible<_Dummy, element_type*>::value>>
+  template <class _Dummy = _Tp, class _Up = std::enable_if_t< std::is_convertible<_Dummy, element_type*>::value>>
   constexpr operator element_type*() {
     return get();
   }
 
   constexpr element_type& operator*() { return *get(); }
 
-  constexpr void swap(propagate_const& __pt) noexcept(__is_nothrow_swappable_v<_Tp>) {
+  constexpr void swap(propagate_const& __pt) noexcept(std::is_nothrow_swappable_v<_Tp>) {
     using std::swap;
     swap(__t_, __pt.__t_);
   }
 };
 
 template <class _Tp>
-constexpr bool operator==(const propagate_const<_Tp>& __pt, nullptr_t) {
-  return experimental::get_underlying(__pt) == nullptr;
+constexpr bool operator==(const propagate_const<_Tp>& __pt, std::nullptr_t) {
+  return ceto::get_underlying(__pt) == nullptr;
 }
 
 template <class _Tp>
-constexpr bool operator==(nullptr_t, const propagate_const<_Tp>& __pt) {
-  return nullptr == experimental::get_underlying(__pt);
+constexpr bool operator==(std::nullptr_t, const propagate_const<_Tp>& __pt) {
+  return nullptr == ceto::get_underlying(__pt);
 }
 
 template <class _Tp>
-constexpr bool operator!=(const propagate_const<_Tp>& __pt, nullptr_t) {
-  return experimental::get_underlying(__pt) != nullptr;
+constexpr bool operator!=(const propagate_const<_Tp>& __pt, std::nullptr_t) {
+  return ceto::get_underlying(__pt) != nullptr;
 }
 
 template <class _Tp>
-constexpr bool operator!=(nullptr_t, const propagate_const<_Tp>& __pt) {
-  return nullptr != experimental::get_underlying(__pt);
+constexpr bool operator!=(std::nullptr_t, const propagate_const<_Tp>& __pt) {
+  return nullptr != ceto::get_underlying(__pt);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator==(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) == experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) == ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator!=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) != experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) != ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) < experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) < ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) > experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) > ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) <= experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) <= ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return experimental::get_underlying(__pt) >= experimental::get_underlying(__pu);
+  return ceto::get_underlying(__pt) >= ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator==(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) == __u;
+  return ceto::get_underlying(__pt) == __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator!=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) != __u;
+  return ceto::get_underlying(__pt) != __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) < __u;
+  return ceto::get_underlying(__pt) < __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) > __u;
+  return ceto::get_underlying(__pt) > __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) <= __u;
+  return ceto::get_underlying(__pt) <= __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return experimental::get_underlying(__pt) >= __u;
+  return ceto::get_underlying(__pt) >= __u;
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator==(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t == experimental::get_underlying(__pu);
+  return __t == ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator!=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t != experimental::get_underlying(__pu);
+  return __t != ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t < experimental::get_underlying(__pu);
+  return __t < ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t > experimental::get_underlying(__pu);
+  return __t > ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator<=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t <= experimental::get_underlying(__pu);
+  return __t <= ceto::get_underlying(__pu);
 }
 
 template <class _Tp, class _Up>
 constexpr bool operator>=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t >= experimental::get_underlying(__pu);
+  return __t >= ceto::get_underlying(__pu);
 }
 
 template <class _Tp>
 constexpr void
-swap(propagate_const<_Tp>& __pc1, propagate_const<_Tp>& __pc2) noexcept(__is_nothrow_swappable_v<_Tp>) {
+swap(propagate_const<_Tp>& __pc1, propagate_const<_Tp>& __pc2) noexcept(std::is_nothrow_swappable_v<_Tp>) {
   __pc1.swap(__pc2);
 }
 
 template <class _Tp>
-constexpr const _Tp& get_underlying(const propagate_const<_Tp>& __pt) _NOEXCEPT {
+constexpr const _Tp& get_underlying(const propagate_const<_Tp>& __pt) noexcept {
   return __pt.__t_;
 }
 
 template <class _Tp>
-constexpr _Tp& get_underlying(propagate_const<_Tp>& __pt) _NOEXCEPT {
+constexpr _Tp& get_underlying(propagate_const<_Tp>& __pt) noexcept {
   return __pt.__t_;
 }
 
@@ -390,78 +389,78 @@ constexpr _Tp& get_underlying(propagate_const<_Tp>& __pt) _NOEXCEPT {
 namespace std {
 
 template <class _Tp>
-struct hash<experimental::propagate_const<_Tp>> {
+struct hash<ceto::propagate_const<_Tp>> {
   typedef size_t result_type;
-  typedef experimental::propagate_const<_Tp> argument_type;
+  typedef ceto::propagate_const<_Tp> argument_type;
 
-  size_t operator()(const experimental::propagate_const<_Tp>& __pc1) const {
-    return std::hash<_Tp>()(experimental::get_underlying(__pc1));
+  size_t operator()(const ceto::propagate_const<_Tp>& __pc1) const {
+    return std::hash<_Tp>()(ceto::get_underlying(__pc1));
   }
 };
 
 template <class _Tp>
-struct equal_to<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct equal_to<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::equal_to<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::equal_to<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct not_equal_to<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct not_equal_to<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::not_equal_to<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::not_equal_to<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct less<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct less<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::less<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::less<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct greater<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct greater<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::greater<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::greater<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct less_equal<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct less_equal<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::less_equal<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::less_equal<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct greater_equal<experimental::propagate_const<_Tp>> {
-  typedef experimental::propagate_const<_Tp> first_argument_type;
-  typedef experimental::propagate_const<_Tp> second_argument_type;
+struct greater_equal<ceto::propagate_const<_Tp>> {
+  typedef ceto::propagate_const<_Tp> first_argument_type;
+  typedef ceto::propagate_const<_Tp> second_argument_type;
 
   bool
-  operator()(const experimental::propagate_const<_Tp>& __pc1, const experimental::propagate_const<_Tp>& __pc2) const {
-    return std::greater_equal<_Tp>()(experimental::get_underlying(__pc1), experimental::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
+    return std::greater_equal<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
   }
 };
 
