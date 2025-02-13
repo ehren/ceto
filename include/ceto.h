@@ -33,7 +33,12 @@ namespace ceto {
 namespace ceto {
 
 template <typename T>
-concept IsBasicSmartPtr = std::same_as<T, std::shared_ptr<typename T::element_type>> || std::same_as<T, std::weak_ptr<typename T::element_type>> || std::same_as<T, std::unique_ptr<typename T::element_type>> || std::same_as<T, ceto::local_shared_ptr<typename T::element_type>>;
+concept IsBasicStrongPtr = std::same_as<T, std::shared_ptr<typename T::element_type>> ||
+                           std::same_as<T, std::unique_ptr<typename T::element_type>> ||
+                           std::same_as<T, ceto::local_shared_ptr<typename T::element_type>>;
+
+template <typename T>
+concept IsBasicWeakPtr = std::same_as<T, std::weak_ptr<typename T::element_type>>;
 
 template <class T>
 struct is_propagate_const : std::false_type {};
@@ -42,10 +47,13 @@ template <class T>
 struct is_propagate_const<ceto::propagate_const<T>> : std::true_type {};
 
 template <typename T>
-concept IsSmartPtr = IsBasicSmartPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicSmartPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
+concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
 
 template <typename T>
-concept IsOptional = std::same_as<T, std::optional<typename T::value_type>>;
+concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
+
+template <typename T>
+concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename std::remove_cvref_t<T>::value_type>>;
 
 template<typename T>
 concept IsDereferencable = requires (T t) {
@@ -53,7 +61,7 @@ concept IsDereferencable = requires (T t) {
 };
 
 template<typename T>
-concept IsRawDereferencable = IsDereferencable<T> && !IsOptional<T> && !IsSmartPtr<T>;
+concept IsRawDereferencable = IsDereferencable<T> && !IsOptional<T> && !IsStrongPtr<T> && !IsWeakPtr<T>;
 
 struct object {
 };
@@ -109,138 +117,60 @@ static inline void issue_null_deref_message() {
 #endif
 
 struct EndLoopMarkerError : public std::runtime_error {
-
     using std::runtime_error::runtime_error;
-
 };
-
 
 #define CETO_BAN_REFS(expr) [&]() -> decltype(auto) { static_assert(!(std::is_reference_v<decltype((expr))>)); return expr; }()
 
 // mad = maybe allow deref
 
-// Based on answer of user Nawaz at https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or?noredirect=1&lq=1
-// but with raw pointer autoderef removed and smart pointer (to ceto created classes) autoderef added.
+// Based on answer of Nawaz at https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or?noredirect=1&lq=1
+// but using concepts and with raw pointer autoderef removed and smart pointer autoderef added.
+
+// autoderef
+template<typename T>
+auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsStrongPtr<T> {
+    if (!std::forward<T>(obj)) {
+        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        std::terminate();
+    }
+    return std::forward<T>(obj);
+}
 
 // no autoderef
 template<typename T>
-auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) {
-    return std::addressof(obj);
+auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsStrongPtr<T>) {
+    return std::addressof(std::forward<T>(obj));
 }
 
-// autoderef
+// autoderef optional or smart ptr:
+// In contrast to the mad_smartptr case, these are not used when calling a possible method of std::optional
+// e.g. my_optional.value() calls std::optional::value() whereas my_object.get() calls the underlying get()
+// method of my_object (or produces an error) rather than calling e.g. std::shared_ptr::get())
+
 template<typename T>
-std::shared_ptr<T>&
-mad_smartptr(std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
+auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsOptional<T> {
+    if (!std::forward<T>(obj)) {
         issue_null_deref_message(CETO_SOURCE_LOC_ARG);
         std::terminate();
     }
-    return obj;
-}
 
-
-// autoderef of temporary
-template<typename T>
-std::shared_ptr<T>&
-mad_smartptr(std::shared_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return obj;  // could change instead return std::move(obj) 
-}
-
-// autoderef
-template<typename T>
-const std::shared_ptr<T>&
-mad_smartptr(const std::shared_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return obj;
-}
-
-// autoderef
-template<typename T>
-std::unique_ptr<T>&
-mad_smartptr(std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return obj;  // could also change the return type to std::shared_ptr (not by reference) but return std::move(obj) 
-
-}
-
-// autoderef
-template<typename T>
-const std::unique_ptr<T>&
-mad_smartptr(const std::unique_ptr<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return obj;
-}
-
-// autoderef of temporary
-template<typename T>
-std::unique_ptr<T>&
-mad_smartptr(std::unique_ptr<T>&& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return obj;  // could also change the return type to std::unique_ptr (not by reference) but return std::move(obj) 
-}
-
-
-// general autoderef including std::optional (and maybe a double autoderef if it's an optional of a class (should be discouraged))
-template<typename T>
-decltype(auto)
-mad(std::optional<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return mad_smartptr(obj.value());
-}
-
-// autoderef optional
-template<typename T>
-decltype(auto)
-mad(const std::optional<T>& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return mad_smartptr(obj.value());
-}
-
-// autoderef optional
-template<typename T>
-decltype(auto)
-mad(std::optional<T>&& obj CETO_SOURCE_LOC_PARAM) {
-    if (!obj) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
-        std::terminate();
-    }
-    return mad_smartptr(obj.value());
+    // maybe a double autoderef (though optional of nullable smart ptr should be discouraged)
+#ifdef CETO_HAS_SOURCE_LOCATION
+    return mad_smartptr(std::forward<T>(obj).value(), CETO_SOURCE_LOC_ARG);
+#else
+    return mad_smartptr(std::forward<T>(obj).value());
+#endif
 }
 
 // no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
-decltype(auto)
-mad(T&& obj CETO_SOURCE_LOC_PARAM) {
+auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<T>) {
 #ifdef CETO_HAS_SOURCE_LOCATION
-    return mad_smartptr(obj, CETO_SOURCE_LOC_ARG);
+    return mad_smartptr(std::forward<T>(obj), CETO_SOURCE_LOC_ARG);
 #else
-    return mad_smartptr(obj);
+    return mad_smartptr(std::forward<T>(obj));
 #endif
-}
-
 
 // Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
