@@ -16,9 +16,9 @@
 
 #include <memory>
 
-#include <ceto/detail/checked_delete.hpp>
-#include <ceto/detail/shared_count.hpp>
-#include <ceto/detail/sp_convertible.hpp>
+#include <kit_local_shared_ptr/detail/checked_delete.hpp>
+#include <kit_local_shared_ptr/detail/shared_count.hpp>
+#include <kit_local_shared_ptr/detail/sp_convertible.hpp>
 #include <cassert>
 
 #include <algorithm> // for std::swap

@@ -179,7 +179,9 @@ def main():
         CXXFLAGS = os.environ["CXXFLAGS"]
 
     include_opts = f" -I{os.path.join(os.path.dirname(__file__))}/../include/"
+    include_opts = f" -I{os.path.join(os.path.dirname(__file__))}/../include/kit_local_shared_ptr"
     include_opts += f" -I{os.path.dirname(__file__)}"
+    include_opts += f" -I{os.path.dirname(__file__)}/kit_local_shared_ptr"
     for inc in cmdargs.include:
         include_opts += f" -I{inc}"
 

@@ -13,8 +13,8 @@
 //  See http://www.boost.org/libs/smart_ptr/weak_ptr.htm for documentation.
 //
 
-#include <ceto/detail/shared_count.hpp>
-#include <ceto/local_shared_ptr.hpp>
+#include <kit_local_shared_ptr/detail/shared_count.hpp>
+#include <kit_local_shared_ptr/local_shared_ptr.hpp>
 #include <memory> // boost.TR1 include order fix
 
 namespace ceto {

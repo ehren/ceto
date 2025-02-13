@@ -13,8 +13,8 @@
 //  http://www.boost.org/libs/smart_ptr/enable_shared_from_this.html
 //
 
-#include <ceto/local_shared_ptr.hpp>
-#include <ceto/local_weak_ptr.hpp>
+#include <kit_local_shared_ptr/local_shared_ptr.hpp>
+#include <kit_local_shared_ptr/local_weak_ptr.hpp>
 #include <cassert>
 
 namespace ceto {

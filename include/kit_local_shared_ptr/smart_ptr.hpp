@@ -11,9 +11,9 @@
 //  See http://www.boost.org/libs/smart_ptr/weak_ptr.htm for documentation.
 //
 
-#include <ceto/local_shared_ptr.hpp>
-#include <ceto/local_weak_ptr.hpp>
-#include <ceto/make_local_shared.hpp>
-#include <ceto/enable_shared_from_this.hpp>
+#include <kit_local_shared_ptr/local_shared_ptr.hpp>
+#include <kit_local_shared_ptr/local_weak_ptr.hpp>
+#include <kit_local_shared_ptr/make_local_shared.hpp>
+#include <kit_local_shared_ptr/enable_shared_from_this.hpp>
 
 #endif // CETO_SMART_PTR_HPP_INCLUDED

@@ -12,8 +12,8 @@
 //  See http://www.boost.org/libs/smart_ptr/make_shared.html
 //  for documentation.
 
-#include <ceto/detail/sp_forward.hpp>
-#include <ceto/local_shared_ptr.hpp>
+#include <kit_local_shared_ptr/detail/sp_forward.hpp>
+#include <kit_local_shared_ptr/local_shared_ptr.hpp>
 #include <cstddef>
 #include <new>
 

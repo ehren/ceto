@@ -12,10 +12,10 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <ceto/detail/checked_delete.hpp>
-#include <ceto/bad_local_weak_ptr.hpp>
-#include <ceto/detail/sp_counted_base_nt.hpp>
-#include <ceto/detail/sp_counted_impl.hpp>
+#include <kit_local_shared_ptr/detail/checked_delete.hpp>
+#include <kit_local_shared_ptr/bad_local_weak_ptr.hpp>
+#include <kit_local_shared_ptr/detail/sp_counted_base_nt.hpp>
+#include <kit_local_shared_ptr/detail/sp_counted_impl.hpp>
 #include <functional> // std::less
 #include <memory>
 

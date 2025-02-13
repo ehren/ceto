@@ -1348,7 +1348,7 @@ def prepare_macro_ready_callback(module):
 
         project_dir = os.path.join(os.path.dirname(__file__), os.pardir)
 
-        include_opts = f"-I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'selfhost')} -I{os.path.dirname(__file__)}"
+        include_opts = f"-I{os.path.join(project_dir, 'include')} -I{os.path.join(project_dir, 'include', 'kit_local_shared_ptr')} -I{os.path.join(project_dir, 'selfhost')} -I{os.path.dirname(__file__)} -I{os.path.join(os.path.dirname(__file__), 'kit_local_shared_ptr')}"
 
         if sys.platform == "win32":
             include_opts = include_opts.replace('-I', '/I')

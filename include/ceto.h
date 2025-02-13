@@ -140,7 +140,10 @@ auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsSt
 // no autoderef
 template<typename T>
 auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsStrongPtr<T>) {
-    return std::addressof(std::forward<T>(obj));
+    // no std::forward here:
+    // https://en.cppreference.com/w/cpp/memory/addressof says:
+    // Rvalue overload is deleted to prevent taking the address of const rvalues.
+    return std::addressof(obj);
 }
 
 // autoderef optional or smart ptr:
@@ -171,6 +174,7 @@ auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<
 #else
     return mad_smartptr(std::forward<T>(obj));
 #endif
+}
 
 // Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
