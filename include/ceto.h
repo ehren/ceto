@@ -176,6 +176,20 @@ auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<
 #endif
 }
 
+// construction wrappers
+
+template<typename T, typename... A>
+auto make_shared_propagate_const(A&&... args) -> auto {
+    ceto::propagate_const<std::shared_ptr<T>> p = std::make_shared<T>(std::forward<A>(args)...);
+    return p;
+}
+
+template<typename T, typename... A>
+auto make_unique_propagate_const(A&&... args) -> auto {
+    ceto::propagate_const<std::unique_ptr<T>> p = std::make_unique<T>(std::forward<A>(args)...);
+    return p;
+}
+
 // Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
 // TODO consider re-enabling in certain contexts: would allow decltype(x)(1, 2) to result in a make_shared when x is a shared_ptr<shared_object> (this will fail in most cases now but may succeed undesirably in a few others e.g. decltype(x)() is an empty shared_ptr under naive class lookup when some might expect make_shared<decltype(*x)>()  (default constructor call)
