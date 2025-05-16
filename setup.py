@@ -6,6 +6,7 @@ from setuptools.command.install_lib import install_lib
 from glob import glob
 import os
 import sys
+import site
 import shutil
 import subprocess
 import atexit
@@ -18,10 +19,31 @@ from setuptools.command.install import install
 import subprocess
 
 
+def binaries_directory():
+    """Return the installation directory, or None"""
+    if '--user' in sys.argv:
+        paths = (site.getusersitepackages(),)
+    else:
+        py_version = '%s.%s' % (sys.version_info[0], sys.version_info[1])
+        paths = (s % (py_version) for s in (
+            sys.prefix + '/lib/python%s/dist-packages/',
+            sys.prefix + '/lib/python%s/site-packages/',
+            sys.prefix + '/local/lib/python%s/dist-packages/',
+            sys.prefix + '/local/lib/python%s/site-packages/',
+            '/Library/Python/%s/site-packages/',
+        ))
+
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    print('no installation path found', file=sys.stderr)
+    return None
+
 
 # https://stackoverflow.com/questions/20288711/post-install-script-with-python-setuptools/38422349#38422349
 def _post_install():
-    return
+    print ("binaries_directory", binaries_directory())
+    #return
     print('POST INSTALL')
 
 #class FinishInstallCommand(install):
@@ -60,7 +82,6 @@ def _post_install():
     finally:
         os.chdir(cwd)
         
-
 
 class new_install(install):
     def __init__(self, *args, **kwargs):

@@ -126,10 +126,24 @@ def safety_checks(node):
     #if not cmdargs._norefs:
     #    return node
 
-    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for" and len(node.parent.args) == 2 and isinstance(node.parent.args[1], Block):
-        iterable = node.rhs
-        iter_var = node.lhs
-        for_body = node.parent.args[1]
+    if isinstance(node, Call) and node.func.name == "for":
+
+        # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2012r0.pdf
+
+        if len(node.args) != 2:
+            raise SemanticAnalysisError("unexpected number of for args", node)
+        if not isinstance(node.args[1], Block):
+            raise SemanticAnalysisError("2nd for arg must be a Block", node)
+        #new_for = Call(Identifier("for"), node.args)
+        #return new_for
+
+        in_expr = node.args[0]
+        if not (isinstance(in_expr, BinOp) and in_expr.op == "in"):
+            raise SemanticAnalysisError("expected 'in' expression as first arg to 'for'", node)
+
+        iterable = in_expr.rhs
+        iter_var = in_expr.lhs
+        for_body = node.args[1]
 
         if isinstance(iterable, Identifier) and any(find_all(for_body, lambda n: n.name == iterable.name)):
             raise SemanticAnalysisError("you may not refer to the iterable in the body of a for loop!", iterable)
@@ -184,7 +198,16 @@ def safety_checks(node):
                 if not isinstance(n, Identifier):
                     return False
                 if iter_var.name == n.name:
-                    return False
+                    # TODO allow more uses of the iter var (as well as non-fundamental iter var types) in combination w/ range_for
+                    # but only
+                    # 1) vec.append/push_back(x) with vec = [] a local
+                    # 2) map[x] = x etc (map with local var defn)
+                    # 3) x.foo() if an interprocedural analysis proves no use of "mut" in all possible foo methods callable on x
+                    #   - current state of propagate_const (copyable) means one can make a mut copy and mutate (so just because x is const 
+                    #      (doesn't mean there isn't a non-const access of the iterable as a result of a const method call - though it will be
+                    #       marked with a mut annotation)
+                    # 4) same for foo(x)
+                    return False  
                 if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
                     if is_over_self and is_acceptable_use_of_self_this(n):
                         return False
@@ -228,16 +251,16 @@ def safety_checks(node):
                 return False
 
             if not any(find_all(for_body, node_may_alias_iterable)):
-                # no need to ban iterating over this maybe reference
+
                 return node
 
         elif isinstance(iterable, Identifier):
             # marked as ref elsewhere
             return node
 
-        iterable = _ban_references_lambda(iterable)
-        if iterable:
-            node.args = [iter_var, iterable]
+        #iterable = _ban_references_lambda(iterable)
+        #if iterable:
+        #    node.args = [iter_var, iterable]
         return node
 
     new_args = []
@@ -664,11 +687,9 @@ def one_liner_expander(parsed):
             return op
 
         if isinstance(op, Call) and op.func.name == "defmacro":
-            # This is a defmacro that will just be ignored by codegen, transformations are fine but we don't want to
-            # validate the use of "if" appearing in a pattern.
-            # note that for the e.g. if one liners that really do need expanding in a macro body, they will be handled
-            # during separate compilation of the macro_impl module.
-            return op
+            # we don't want to validate anything in a defmacro body 
+            # (it will be validated as the body of a macro_impl during macro compilation)
+            return Call(Identifier("static_assert"), [Identifier("true")])
 
         if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
             op = SyntaxTypeOp(op.op, op.args, op.source)

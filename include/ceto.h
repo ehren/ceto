@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <optional>
 #include <iostream>
+#include <experimental/propagate_const>
 
 #ifndef __clang__
 #include <source_location>
@@ -41,16 +42,23 @@ template <typename T>
 concept IsBasicWeakPtr = std::same_as<T, std::weak_ptr<typename T::element_type>>;
 
 template <class T>
-struct is_propagate_const : std::false_type {};
+struct is_propagate_const_copyable : std::false_type {};
 
 template <class T>
-struct is_propagate_const<ceto::propagate_const<T>> : std::true_type {};
+struct is_propagate_const_copyable<ceto::propagate_const<T>> : std::true_type {};
+
+template <class T>
+struct is_propagate_const_noncopyable : std::false_type {};
+
+template <class T>
+struct is_propagate_const_noncopyable<std::experimental::propagate_const<T>> : std::true_type {};
 
 template <typename T>
-concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
+concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>> || is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>> || is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>;
 
 template <typename T>
-concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> || is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>;
+concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> || is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>> || is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>;
+;
 
 template <typename T>
 concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename std::remove_cvref_t<T>::value_type>>;
@@ -116,7 +124,7 @@ static inline void issue_null_deref_message() {
 
 #endif
 
-struct EndLoopMarkerError : public std::runtime_error {
+struct EndLoopMarker : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
