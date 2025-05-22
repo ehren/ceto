@@ -1742,17 +1742,17 @@ def _codegen_compound_class_type(types, cx):
     if indices := _sublist_indices(["weak", "mut", class_name], typenames):
         if class_def.is_unique:
             raise CodeGenError("no weak specifier for type", types[0])
-        return _propagate_const_str("std::weak_ptr<" + class_name + ">"), indices
+        return "std::weak_ptr<" + class_name + ">", indices
     if indices := _sublist_indices(["weak", "const", class_name], typenames):
         if class_def.is_unique:
             raise CodeGenError("no weak specifier for type", types[0])
-        return _propagate_const_str("std::weak_ptr<const " + class_name + ">"), indices
+        return "std::weak_ptr<const " + class_name + ">", indices
     if indices := _sublist_indices(["weak", class_name], typenames):
         if class_def.is_unique:
             raise CodeGenError("no weak specifier for type", types[0])
         if mut_by_default:
-            return _propagate_const_str("std::weak_ptr<" + class_name + ">"), indices
-        return _propagate_const_str("std::weak_ptr<const " + class_name + ">"), indices
+            return "std::weak_ptr<" + class_name + ">", indices
+        return "std::weak_ptr<const " + class_name + ">", indices
     if class_def.is_struct:
         # let the defaults of codegen_type handle this
         return None
@@ -1974,6 +1974,9 @@ def codegen_assign(node: Assign, cx: Scope):
             adjacent_type_names = zip(type_names, type_names[1:])
             if ("const", "weak") in adjacent_type_names:
                 pass
+
+            if "weak" in type_names:
+                rhs_str = "ceto::get_underlying(" + rhs_str + ")"
 
             # add const if not mut
 

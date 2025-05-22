@@ -107,10 +107,10 @@ class (Node:
 
     def (parent:
         return self._parent.lock()
-    )
+    ) : Node
 
     def (set_parent: mut, p: Node:
-        self._parent = p
+        self._parent = ceto.get_underlying(p)
     )
 
     def (destruct: virtual:
