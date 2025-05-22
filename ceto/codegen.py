@@ -95,7 +95,7 @@ def codegen_block_item(b : Node, cx):
             return "; // pass\n"
 
     if isinstance(b, Call):
-        if b.func.name == "for":
+        if b.func.name in ["for", "unsafe_for"]:
             return codegen_for(b, cx)
         elif b.func.name in ["class", "struct"]:
             return codegen_class(b, cx)
@@ -1261,7 +1261,7 @@ def codegen_for(node, cx):
     block_cx = cx.enter_scope()
     block_str = codegen_block(block, block_cx)
 
-    if node.func.name == "range_for":
+    if node.func.name == "unsafe_for":
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
         forstr += block_str
         forstr += indt + "}\n"
@@ -2677,7 +2677,7 @@ def _decltype_str(node, cx):
         if vds := vector_decltype_str(last_context, cx):
             return False, "std::vector<" + vds + ">"
 
-    elif isinstance(last_context, Call) and last_context.func.name == "for":
+    elif isinstance(last_context, Call) and last_context.func.name in ["for", "unsafe_for"]:
         instmt = last_context.args[0]
         if not isinstance(instmt, BinOp) and instmt.op == "in":
             raise CodeGenError("for loop should have in-statement as first argument ", last_context)
