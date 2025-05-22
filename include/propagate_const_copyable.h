@@ -217,6 +217,13 @@ public:
 
   constexpr propagate_const& operator=(propagate_const&&) = default;
 
+  // ceto modification: added this
+  template <class _Up,
+            std::enable_if_t< is_propagate_const<std::decay_t<_Up>>::value,
+                        bool> = false>
+  constexpr propagate_const(_Up&& __u) : __t_(std::move(ceto::get_underlying(__u))) {}
+
+
   /* ceto modification: disabled these 
   template <class _Up>
   constexpr propagate_const& operator=(propagate_const<_Up>&& __pu) {
