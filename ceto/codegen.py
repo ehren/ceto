@@ -1672,10 +1672,10 @@ def _shared_ptr_str_for_type(type_node, cx):
         return None
 
     if classdef := cx.lookup_class(type_node):
-        shared_ptr_str_begin = "ceto::propagate_const<std::shared_ptr<<"
+        shared_ptr_str_begin = "ceto::propagate_const<std::shared_ptr<"
         shared_ptr_str_end = ">>"
         # unique_ptr could use std::experimental::propagate_const but needs autoderef handling in ceto.h:
-        unique_ptr_str_begin = "ceto::propagate_const<std::unique_ptr<<"
+        unique_ptr_str_begin = "ceto::propagate_const<std::unique_ptr<"
         unique_ptr_str_end = ">>"
 
         if isinstance(classdef, InterfaceDefinition):
@@ -2174,7 +2174,7 @@ def codegen_call(node: Call, cx: Scope):
                 if classdef.is_concrete:
                     raise CodeGenError("is/asinstance arg can't be a template", classdef)
                 raise CodeGenError("is/asinstance arg must be a class", node)
-            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
+            cast_string = "ceto::propagate_const<std::shared_ptr<" + const_specifier + class_name.name + ">>(std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(ceto::get_underlying(" + codegen_node(node.args[0], cx) + ")))"
             if func_name == "isinstance":
                 cast_string = "(" + cast_string + " != nullptr)"
             return cast_string

@@ -278,8 +278,8 @@ call_or_construct(TArgs&&... args) {
 
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
-std::enable_if_t<std::is_base_of_v<object, T>, const std::shared_ptr<T>>  // We now autoderef all shared/unique_ptrs not just to ceto class instances. doing the same for lambda capture might go a bit too far - don't want to encourange writing shared_ptr<vector<int>> instead of creating a wrapper class instance that's automatically placed in the capture list
-constexpr default_capture(std::shared_ptr<T> t) {
+std::enable_if_t<std::is_base_of_v<object, T>, const ceto::propagate_const<std::shared_ptr<T>>>  // We now autoderef all shared/unique_ptrs not just to ceto class instances. doing the same for lambda capture might go a bit too far - don't want to encourange writing shared_ptr<vector<int>> instead of creating a wrapper class instance that's automatically placed in the capture list
+constexpr default_capture(ceto::propagate_const<std::shared_ptr<T>> t) {
     return t;
 }
 
