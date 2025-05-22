@@ -1975,7 +1975,8 @@ def codegen_assign(node: Assign, cx: Scope):
             if ("const", "weak") in adjacent_type_names:
                 pass
 
-            if "weak" in type_names:
+            if "weak" in type_names and not isinstance(node.rhs, BracedLiteral):
+		# debatable if we should be auto-inserting this (conversion of propagate_const<shared_ptr> to shared_ptr)
                 rhs_str = "ceto::get_underlying(" + rhs_str + ")"
 
             # add const if not mut
