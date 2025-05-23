@@ -1470,16 +1470,29 @@ def _class_def_from_typed_param(param, cx):
 
 def _should_add_const_ref_to_typed_param(param, cx):
     assert param.declared_type is not None
-    type_node = strip_mut_or_const(param.declared_type)
-    # note that mut:Foo (or Foo:mut), that is shared_ptr<Foo>, should still be passed by const ref
-    if class_def := cx.lookup_class(type_node):
-        return not class_def.is_unique
+
+    if r := extract_mut_or_const(param.declared_type):
+        mc, class_node = r
+        has_mut = mc.name == "mut"
+    else:
+        has_mut = False
+        class_node = param.declared_type
+
+    # mut:Foo (or Foo:mut) must be passed by non-const value due to propagate_const
+
+    if class_def := cx.lookup_class(class_node):
+        return not (has_mut or class_def.is_unique)
+
     if isinstance(param.declared_type, (ListLiteral, TupleLiteral)):
         return True
-    if isinstance(param.declared_type, AttributeAccess) and param.declared_type.rhs.name == "class" and cx.lookup_class(param.declared_type.lhs):
-        return True
+
     if param.declared_type.name == "string" or isinstance(param.declared_type, (AttributeAccess, ScopeResolution)) and param.declared_type.lhs.name == "std" and param.declared_type.rhs.name == "string":
         return True
+
+    # Foo.class syntax (should still be passed by ref to const - like struct)
+    if isinstance(param.declared_type, AttributeAccess) and param.declared_type.rhs.name == "class" and cx.lookup_class(param.declared_type.lhs):
+        return True
+
     return False
 
 
@@ -1553,6 +1566,11 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
             elif any(t.name == "const" for t in type_node_to_list_of_types(arg.declared_type)):
                 should_add_outer_const = False
                 stripped_mut = True
+            elif r := extract_mut_or_const(arg.declared_type):
+                mc, class_type = r
+                if mc.name == "mut" and cx.lookup_class(class_type):
+                    # Foo:mut must be passed by value due to propagate_const
+                    should_add_outer_const = False
 
             automatic_const_part = " "  # TODO add const here (if not already const)
             if should_add_outer_const:
@@ -1594,6 +1612,11 @@ def _codegen_typed_def_param_as_tuple(arg, cx):
                 should_add_outer_const = False
             elif any(t.name == "const" for t in type_node_to_list_of_types(arg.lhs.declared_type)):
                 should_add_outer_const = False
+            elif r := extract_mut_or_const(arg.lhs.declared_type):
+                mc, class_type = r
+                if mc.name == "mut" and cx.lookup_class(class_type):
+                    # Foo:mut must be passed by value due to propagate_const
+                    should_add_outer_const = False
 
             automatic_const_part = " "
             automatic_ref_part = ""
