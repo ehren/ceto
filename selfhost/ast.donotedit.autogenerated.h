@@ -101,24 +101,10 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
         inline auto cloned_args() const -> std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> {
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
-                        [&](auto&& ceto__private__rng1){
-                static_assert(requires { std::begin(ceto__private__rng1) + 2; }, "not a contiguous container");
-                size_t ceto__private__size3 = std::size(ceto__private__rng1);
-                for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                    if (std::size(ceto__private__rng1) != ceto__private__size3) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx2 >= ceto__private__size3) {
-                        break;
-                    }
-                    const auto& a = ceto__private__rng1[ceto__private__idx2];
-                                    (new_args).push_back((*ceto::mad(a)).clone());
-
-                }
-    
-            }((this -> args));
-                return new_args;
+            for(const auto& a : (this -> args)) {
+                (new_args).push_back((*ceto::mad(a)).clone());
+            }
+            return new_args;
         }
 
          virtual inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> {
@@ -147,26 +133,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
                 return false;
             }
-                        [&](auto&& ceto__private__rng4){
-                static_assert(requires { std::begin(ceto__private__rng4) + 2; }, "not a contiguous container");
-                size_t ceto__private__size6 = std::size(ceto__private__rng4);
-                for (size_t ceto__private__idx5 = 0; ; ceto__private__idx5++) {
-                    if (std::size(ceto__private__rng4) != ceto__private__size6) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx5 >= ceto__private__size6) {
-                        break;
-                    }
-                    const auto& i = ceto__private__rng4[ceto__private__idx5];
-                                    if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
-                                return false;
-                            }
-
+            for(const auto& i : ceto::util::range((*ceto::mad(this -> args)).size())) {
+                if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
+                    return false;
                 }
-    
-            }(ceto::util::range((*ceto::mad(this -> args)).size()));
-                return true;
+            }
+            return true;
         }
 
         inline auto parent() const -> ceto::propagate_const<std::shared_ptr<const Node>> {

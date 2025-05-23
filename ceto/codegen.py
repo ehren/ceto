@@ -1261,7 +1261,7 @@ def codegen_for(node, cx):
     block_cx = cx.enter_scope()
     block_str = codegen_block(block, block_cx)
 
-    if node.func.name == "unsafe_for":
+    if node.func.name == "unsafe_for" or True:
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
         forstr += block_str
         forstr += indt + "}\n"
