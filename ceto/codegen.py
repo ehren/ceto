@@ -1289,6 +1289,7 @@ def codegen_for(node, cx):
         throw_stmt = ""
 
     forstr = rf"""[&](auto&& {rng}){return_type}{{
+    static_assert(requires {{ std::begin({rng}) + 2; }}, "not a contiguous container");
     size_t {initial_list_size} = std::size({rng});
     for (size_t {idx} = 0; ; {idx}++) {{
         if (std::size({rng}) != {initial_list_size}) {{
