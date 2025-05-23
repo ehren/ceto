@@ -9,7 +9,7 @@
 #include <iostream>
 #include <experimental/propagate_const>
 
-#ifndef __clang__
+#if !defined(__clang__) || __clang_major__ < 16
 #include <source_location>
 #define CETO_HAS_SOURCE_LOCATION
 #define CETO_SOURCE_LOC_PARAM , const std::source_location& location = std::source_location::current()
@@ -102,9 +102,9 @@ shared_from_base(std::enable_shared_from_this<Base> const* base) {
 }
 
 template <typename That>
-inline std::shared_ptr<That>
+inline ceto::propagate_const<std::shared_ptr<That>>
 shared_from(That* that) {
-    return std::static_pointer_cast<That>(shared_from_base(that));
+    return ceto::propagate_const<std::shared_ptr<That>>(std::static_pointer_cast<That>(shared_from_base(that)));
 }
 
 #ifdef CETO_HAS_SOURCE_LOCATION
