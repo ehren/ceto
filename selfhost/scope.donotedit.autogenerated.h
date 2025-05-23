@@ -408,7 +408,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         inline auto enter_scope() const -> ceto::propagate_const<std::shared_ptr<const Scope>> {
             const auto self = ceto::shared_from(this);
             auto s { ceto::make_shared_propagate_const<Scope>() } ;
-            (*ceto::mad(s))._parent = self;
+            (*ceto::mad(s))._parent = ceto::get_underlying(self);
             (*ceto::mad(s)).in_function_body = (this -> in_function_body);
             (*ceto::mad(s)).in_decltype = (this -> in_decltype);
             (*ceto::mad(s)).is_unsafe = (this -> is_unsafe);

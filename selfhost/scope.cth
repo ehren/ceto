@@ -325,7 +325,7 @@ class (Scope:
 
     def (enter_scope:
         s: mut = Scope()
-        s._parent = self
+        s._parent = ceto.get_underlying(self)
         s.in_function_body = self.in_function_body
         s.in_decltype = self.in_decltype
         s.is_unsafe = self.is_unsafe
