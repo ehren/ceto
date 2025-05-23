@@ -221,7 +221,8 @@ public:
   template <class _Up,
             std::enable_if_t< is_propagate_const<std::decay_t<_Up>>::value,
                         bool> = false>
-  constexpr propagate_const(_Up&& __u) : __t_(std::move(ceto::get_underlying(__u))) {}
+  //constexpr propagate_const(_Up&& __u) : __t_(std::move(ceto::get_underlying(__u))) {}
+  constexpr propagate_const(_Up&& __u) : __t_(ceto::get_underlying(__u)) {}
 
 
   /* ceto modification: disabled these 
@@ -240,7 +241,8 @@ public:
   // ceto modification:: added this:
   template <class _Up, class _Vp = std::enable_if_t<is_propagate_const<std::decay_t<_Up>>::value>>
   constexpr propagate_const& operator=(_Up&& __u) {
-    __t_ = std::move(ceto::get_underlying(__u));
+    //__t_ = std::move(ceto::get_underlying(__u));
+    __t_ = ceto::get_underlying(__u);
     return *this;
   }
 
