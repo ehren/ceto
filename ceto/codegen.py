@@ -1230,19 +1230,29 @@ class SubexpressionsToAssignments:
         self.assignments = []
 
     def transform(self, node):
-        if isinstance(node, (Identifier, StringLiteral, IntegerLiteral, FloatLiteral, ScopeResolution)):
+        if isinstance(node, (Identifier, StringLiteral, IntegerLiteral, FloatLiteral)):
             return node
-        if False and isinstance(node, AttributeAccess):
-            if isinstance(node.lhs, Identifier) and (node.lhs not in self.itermediate_vars): # or not node.lhs.scope.find_def(node.lhs)):
-                # implicit scope resolution
+
+        if isinstance(node, ScopeResolution):
+            return node
+
+        if isinstance(node, AttributeAccess):
+            lhs_code = codegen_attribute_access(node, node.scope)
+            if "::" in lhs_code and not "ceto::mad" in lhs_code:
+                # Implicit scope resolution
                 return node
 
         transformed_args = [self.transform(arg) for arg in node.args]
 
         transformed_func = None
         if node.func is not None:
-            if False and isinstance(node.func, AttributeAccess) and isinstance(node.func.lhs, Identifier) and (node.func.lhs in self.itermediate_vars or node.func.lhs.scope.find_def(node.func.lhs)):
-                pass
+            if isinstance(node.func, (ScopeResolution, AttributeAccess)):
+                # don't transform (implicit) scope resolution
+                func_code = codegen_attribute_access(node.func, node.func.scope)
+                if "::" in func_code and not "ceto::mad" in func_code:
+                    transformed_func = node.func
+                else:
+                    transformed_func = self.transform(node.func)
             else:
                 transformed_func = self.transform(node.func)
 
@@ -1257,30 +1267,29 @@ class SubexpressionsToAssignments:
                 new_node = node.__class__(transformed_args)
 
         intermediate_name = gensym("intermediate")
+        self.intermediate_counter += 1
         intermediate_var = Identifier(intermediate_name)
 
         intermediate_var.scope = node.scope
         new_node.scope = node.scope
 
-        self.intermediate_vars.append(intermediate_var)
-
-        # intermediate_var.declared_type = TypeOp(":", [Identifier("mut"), TypeOp(":", [Identifier("auto"), Identifier("rref")])])
-
         assignment = Assign("=", [intermediate_var, new_node])
+        # assign = "auto &&" + intermediate_var.name + " = " + codegen_node(new_node, node.scope)
         assignment.scope = node.scope
-        node.scope.add_variable_definition(intermediate_var, assignment)
+
+        self.intermediate_vars.append(intermediate_var)
         self.assignments.append(assignment)
 
         return intermediate_var
 
     def flatten_expression(self, node):
         self.intermediate_counter = 0
+        self.intermediate_vars = []
         self.assignments = []
-        self.itermediate_vars = []
 
         result_var = self.transform(node)
-
         return self.assignments, result_var
+
 
 def codegen_for(node, cx):
 
@@ -1337,22 +1346,16 @@ def codegen_for(node, cx):
     iterable_anf_assigns, iterable_final = transformer.flatten_expression(iterable)
 
     iterable_str = ""
-    fixups = []  # fix some issues with implicit scope resolution in our ANF form post codegen
     for assign in iterable_anf_assigns:
         assert isinstance(assign, Assign)
         assert isinstance(assign.lhs, Identifier)
-        if isinstance(assign.rhs, Identifier):
-            rhs = assign.rhs.name
+        if isinstance(assign.rhs, AttributeAccess) and assign.lhs in transformer.intermediate_vars:
+            # scope hasn't been rebuilt with the intermediate vars so codegen_attribute_access
+            # will print it as a scope resolution. Print directly as an autoderef:
+            rhs = codegen_autoderef_attribute_access(assign.rhs, cx)
         else:
             rhs = codegen_node(assign.rhs, cx)
-        if "::" in rhs and not "ceto::mad" in rhs and False:
-            # subexpression was actually a scope resolved name. fix this below.
-            fixups.append((assign.lhs.name, rhs))
-        else:
-            iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
-
-    for name, str in fixups:
-        iterable_str.replace(name, str)
+        iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
 
     rng = iterable_final.name
     assert(len(rng) > 0)
@@ -1362,7 +1365,7 @@ def codegen_for(node, cx):
 
     # has_return = any(find_all(block, test=is_return, stop=creates_new_variable_scope))
 
-    forstr = rf"""\
+    forstr = rf"""
     {iterable_str}
     static_assert(requires {{ std::begin({rng}) + 2; }}, "not a contiguous container");
     size_t {initial_list_size} = std::size({rng});
@@ -1502,6 +1505,12 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
 
     # maybe autoderef
     # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
+
+    return codegen_autoderef_attribute_access(node, cx)
+
+
+def codegen_autoderef_attribute_access(node: AttributeAccess, cx):
+    assert isinstance(node, AttributeAccess)
 
     if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
         # don't autoderef an optional if we're calling a method of std::optional on it (maybe this is dubious for the mutable methods swap/reset/emplace?)
