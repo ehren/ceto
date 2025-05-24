@@ -1221,6 +1221,57 @@ def codegen_if(ifcall : Call, cx):
     return cpp + "\n"
 
 
+class SubexpressionsToAssignments:
+    # https://en.wikipedia.org/wiki/A-normal_form
+
+    def __init__(self):
+        self.intermediate_counter = 0
+        self.assignments = []
+
+    def transform(self, node):
+        if isinstance(node, (Identifier, StringLiteral, IntegerLiteral, FloatLiteral, ScopeResolution)):
+            return node
+        if isinstance(node, AttributeAccess) and isinstance(node.lhs, Identifier) and not node.lhs.scope.find_def(node.lhs):
+            # implicit scope resolution
+            return node
+
+        transformed_args = [self.transform(arg) for arg in node.args]
+
+        transformed_func = None
+        if hasattr(node, 'func') and node.func is not None:
+            transformed_func = self.transform(node.func)
+
+        if transformed_func is not None:
+            new_node = node.__class__(transformed_func, transformed_args)
+        else:
+            if isinstance(node, BinOp):
+                new_node = node.__class__(node.op, transformed_args)
+            elif isinstance(node, UnOp):
+                new_node = node.__class__(node.op, transformed_args)
+            else:
+                new_node = node.__class__(transformed_args)
+
+        intermediate_name = gensym("intermediate")
+        intermediate_var = Identifier(intermediate_name)
+
+        intermediate_var.scope = node.scope
+        new_node.scope = node.scope
+
+        # intermediate_var.declared_type = TypeOp(":", [Identifier("mut"), TypeOp(":", [Identifier("auto"), Identifier("rref")])])
+
+        assignment = Assign("=", [intermediate_var, new_node])
+        self.assignments.append(assignment)
+
+        return intermediate_var
+
+    def flatten_expression(self, node):
+        self.intermediate_counter = 0
+        self.assignments = []
+
+        result_var = self.transform(node)
+
+        return self.assignments, result_var
+
 def codegen_for(node, cx):
 
     assert isinstance(node, Call)
@@ -1241,8 +1292,6 @@ def codegen_for(node, cx):
     if not isinstance(var, (Identifier, TupleLiteral)):
         raise CodeGenError("Unexpected iter var", var)
 
-    iterable = instmt.rhs
-
     if isinstance(var, TupleLiteral):
         structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
         type_str = " "
@@ -1261,34 +1310,42 @@ def codegen_for(node, cx):
     block_cx = cx.enter_scope()
     block_str = codegen_block(block, block_cx)
 
-    if node.func.name == "unsafe_for" or True:
+    iterable = instmt.rhs
+
+    if node.func.name == "unsafe_for":
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
         forstr += block_str
         forstr += indt + "}\n"
         return forstr
 
-    iterable_str = codegen_node(iterable, cx)
-    rng = gensym("rng")
+    # if our for-loop preamble just contains auto&& iterable = foo.bar().baz() we end up with the
+    # infamous dangling ref problem fixed for range based for in c++23. We address it in our custom
+    # for loop by breaking up the iterable into
+    # auto&& x1 = foo.bar()
+    # auto&& iterable_final = x2.baz()
+    transformer = SubexpressionsToAssignments()
+    iterable_anf_assigns, iterable_final = transformer.flatten_expression(iterable)
+
+    iterable_str = ""
+    for assign in iterable_anf_assigns:
+        assert isinstance(assign, Assign)
+        assert isinstance(assign.lhs, Identifier)
+        if isinstance(assign.rhs, Identifier):
+            rhs = assign.rhs.name
+        else:
+            rhs = codegen_node(assign.rhs, cx)
+        iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
+
+    rng = iterable_final.name
+    assert(len(rng) > 0)
+
     idx = gensym("idx")
     initial_list_size = gensym("size")
 
-    has_return = any(isinstance(a, SyntaxTypeOp) and a.lhs.name == "return" for a in block.args)
+    # has_return = any(find_all(block, test=is_return, stop=creates_new_variable_scope))
 
-    # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2012r0.pdf
-    # use a lambda with a param to extend lifetime 
-    # (apparently fixed for actual range based for in c++23 https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2718r0.html)
-    # Note: exception handling not ideal for return - though avoids issues supporting returning a reference (even if if only allowed in unsafe mode)
-    # - should break apart iter to extend lifetimes without the lambda - but this is fine for now
-    # Also breaks goto (ok) and needs "yield" fixes
-
-    if has_return:
-        return_type = " -> decltype(auto) "
-        throw_stmt = "throw ceto::EndLoopMarker();"
-    else:
-        return_type = ""
-        throw_stmt = ""
-
-    forstr = rf"""[&](auto&& {rng}){return_type}{{
+    forstr = rf"""\
+    {iterable_str}
     static_assert(requires {{ std::begin({rng}) + 2; }}, "not a contiguous container");
     size_t {initial_list_size} = std::size({rng});
     for (size_t {idx} = 0; ; {idx}++) {{
@@ -1302,14 +1359,7 @@ def codegen_for(node, cx):
         {type_str} {var_str} = {rng}[{idx}];
         {block_str}
     }}
-    {throw_stmt}
-}}({iterable_str});
     """
-
-    if has_return:
-        forstr = rf"""try {{
-    return {forstr};
-}} catch (const ceto::EndLoopMarker&) {{ }}"""
 
     return textwrap.indent(forstr, indt)
 
