@@ -50,7 +50,7 @@ namespace ceto::util {
     #else
                  template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
             if constexpr (sizeof...(Args) == 1) {
-                const typename std::tuple_element<0,std::tuple<Args...>> :: type zero { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(zero)>);
+                const std::remove_cvref_t<typename std::tuple_element<0,std::tuple<Args...>> :: type> zero { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(zero)>);
                 return std::ranges::iota_view(zero, std::forward<Args>(args)...);
             } else {
                 return std::ranges::iota_view(std::forward<Args>(args)...);

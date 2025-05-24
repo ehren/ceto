@@ -28,7 +28,7 @@ else:
 
     def (range: template<typename:...:Args>, args: mut:Args:rref:...:
         if ((sizeof...)(Args) == 1:
-            zero : typename:std.tuple_element<0, std.tuple<Args...>>::type = 0
+            zero : std.remove_cvref_t<typename:std.tuple_element<0, std.tuple<Args...>>::type> = 0
             return std.ranges.iota_view(zero, std.forward<Args>(args)...)
         else:
             return std.ranges.iota_view(std.forward<Args>(args)...)
