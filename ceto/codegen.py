@@ -1346,6 +1346,7 @@ def codegen_for(node, cx):
     iterable_anf_assigns, iterable_final = transformer.flatten_expression(iterable)
 
     iterable_str = ""
+    code_for_intermediate = dict()
     for assign in iterable_anf_assigns:
         assert isinstance(assign, Assign)
         assert isinstance(assign.lhs, Identifier)
@@ -1353,8 +1354,15 @@ def codegen_for(node, cx):
             # scope hasn't been rebuilt with the intermediate vars so codegen_attribute_access
             # will print it as a scope resolution. Print directly as an autoderef:
             rhs = codegen_autoderef_attribute_access(assign.rhs, cx)
+        elif isinstance(assign.rhs, Call) and assign.rhs.func in transformer.intermediate_vars:
+            # remove the last entry taking address of method (hack!)
+            second_last_newline = iterable_str.rfind('\n', 0, iterable_str.rfind('\n'))
+            iterable_str = iterable_str[:second_last_newline + 1]
+            # generate the method call directly
+            rhs = code_for_intermediate[assign.rhs.func] + "(" + ", ".join(codegen_node(a, cx) for a in assign.rhs.args) + ")"
         else:
             rhs = codegen_node(assign.rhs, cx)
+        code_for_intermediate[assign.lhs] = rhs
         iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
 
     rng = iterable_final.name

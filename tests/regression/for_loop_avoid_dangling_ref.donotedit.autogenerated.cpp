@@ -18,6 +18,10 @@ struct Foo : public ceto::object {
 
     decltype(std::vector {{std::vector {{std::vector {{1, 2, 3}}, std::vector {1}}}, std::vector {{std::vector {2}}}, std::vector {{std::vector {{3, 4}}, std::vector {5}}}}}) a = std::vector {{std::vector {{std::vector {{1, 2, 3}}, std::vector {1}}}, std::vector {{std::vector {2}}}, std::vector {{std::vector {{3, 4}}, std::vector {5}}}}};
 
+        inline auto foo_method() const -> auto {
+            return (this -> a);
+        }
+
 };
 
 struct Bar : public ceto::object {
@@ -46,6 +50,26 @@ struct Bar : public ceto::object {
                     break;
                 }
                 const auto& i = ceto__private__intermediate5[ceto__private__idx6];
+                            std::cout << i;
+
+            }
+            
+            auto&& ceto__private__intermediate8 = (*ceto::mad(b)).foo;
+        auto&& ceto__private__intermediate10 = (*ceto::mad(ceto__private__intermediate8)).foo_method();
+        auto&& ceto__private__intermediate11 = ceto::bounds_check(ceto__private__intermediate10,0);
+        auto&& ceto__private__intermediate12 = ceto::bounds_check(ceto__private__intermediate11,0);
+
+            static_assert(requires { std::begin(ceto__private__intermediate12) + 2; }, "not a contiguous container");
+            size_t ceto__private__size14 = std::size(ceto__private__intermediate12);
+            for (size_t ceto__private__idx13 = 0; ; ceto__private__idx13++) {
+                if (std::size(ceto__private__intermediate12) != ceto__private__size14) {
+                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                    std::terminate();
+                }
+                if (ceto__private__idx13 >= ceto__private__size14) {
+                    break;
+                }
+                const auto& i = ceto__private__intermediate12[ceto__private__idx13];
                             std::cout << i;
 
             }
