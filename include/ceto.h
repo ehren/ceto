@@ -188,14 +188,12 @@ auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<
 
 template<typename T, typename... A>
 auto make_shared_propagate_const(A&&... args) -> auto {
-    ceto::propagate_const<std::shared_ptr<T>> p = std::make_shared<T>(std::forward<A>(args)...);
-    return p;
+    return ceto::propagate_const<std::shared_ptr<T>>(std::make_shared<T>(std::forward<A>(args)...));
 }
 
 template<typename T, typename... A>
 auto make_unique_propagate_const(A&&... args) -> auto {
-    ceto::propagate_const<std::unique_ptr<T>> p = std::make_unique<T>(std::forward<A>(args)...);
-    return p;
+    return ceto::propagate_const<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
 }
 
 // Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
