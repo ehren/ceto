@@ -1226,20 +1226,25 @@ class SubexpressionsToAssignments:
 
     def __init__(self):
         self.intermediate_counter = 0
+        self.intermediate_vars = []
         self.assignments = []
 
     def transform(self, node):
         if isinstance(node, (Identifier, StringLiteral, IntegerLiteral, FloatLiteral, ScopeResolution)):
             return node
-        if isinstance(node, AttributeAccess) and isinstance(node.lhs, Identifier) and not node.lhs.scope.find_def(node.lhs):
-            # implicit scope resolution
-            return node
+        if False and isinstance(node, AttributeAccess):
+            if isinstance(node.lhs, Identifier) and (node.lhs not in self.itermediate_vars): # or not node.lhs.scope.find_def(node.lhs)):
+                # implicit scope resolution
+                return node
 
         transformed_args = [self.transform(arg) for arg in node.args]
 
         transformed_func = None
-        if hasattr(node, 'func') and node.func is not None:
-            transformed_func = self.transform(node.func)
+        if node.func is not None:
+            if False and isinstance(node.func, AttributeAccess) and isinstance(node.func.lhs, Identifier) and (node.func.lhs in self.itermediate_vars or node.func.lhs.scope.find_def(node.func.lhs)):
+                pass
+            else:
+                transformed_func = self.transform(node.func)
 
         if transformed_func is not None:
             new_node = node.__class__(transformed_func, transformed_args)
@@ -1257,9 +1262,13 @@ class SubexpressionsToAssignments:
         intermediate_var.scope = node.scope
         new_node.scope = node.scope
 
+        self.intermediate_vars.append(intermediate_var)
+
         # intermediate_var.declared_type = TypeOp(":", [Identifier("mut"), TypeOp(":", [Identifier("auto"), Identifier("rref")])])
 
         assignment = Assign("=", [intermediate_var, new_node])
+        assignment.scope = node.scope
+        node.scope.add_variable_definition(intermediate_var, assignment)
         self.assignments.append(assignment)
 
         return intermediate_var
@@ -1267,6 +1276,7 @@ class SubexpressionsToAssignments:
     def flatten_expression(self, node):
         self.intermediate_counter = 0
         self.assignments = []
+        self.itermediate_vars = []
 
         result_var = self.transform(node)
 
@@ -1327,6 +1337,7 @@ def codegen_for(node, cx):
     iterable_anf_assigns, iterable_final = transformer.flatten_expression(iterable)
 
     iterable_str = ""
+    fixups = []  # fix some issues with implicit scope resolution in our ANF form post codegen
     for assign in iterable_anf_assigns:
         assert isinstance(assign, Assign)
         assert isinstance(assign.lhs, Identifier)
@@ -1334,7 +1345,14 @@ def codegen_for(node, cx):
             rhs = assign.rhs.name
         else:
             rhs = codegen_node(assign.rhs, cx)
-        iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
+        if "::" in rhs and not "ceto::mad" in rhs and False:
+            # subexpression was actually a scope resolved name. fix this below.
+            fixups.append((assign.lhs.name, rhs))
+        else:
+            iterable_str += "auto&& " + assign.lhs.name + " = " + rhs + ";\n"
+
+    for name, str in fixups:
+        iterable_str.replace(name, str)
 
     rng = iterable_final.name
     assert(len(rng) > 0)
