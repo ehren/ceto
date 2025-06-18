@@ -2306,6 +2306,10 @@ def codegen_call(node: Call, cx: Scope):
             block_code = codegen_block(block, cx.enter_scope())
             return "namespace " + name_code + " {\n" + block_code + "\n}"
         elif func_name == "defmacro":
+            assert False, "unreachable"
+        elif func_name == "ceto_private_elided_defmacro":
+            if not isinstance(node.parent, Module):
+                raise CodeGenError("defmacros must be placed at file scope", node)
             return "\n"
         elif func_name == "unsafe":
             assert len(node.args) == 0  # enfored in sema

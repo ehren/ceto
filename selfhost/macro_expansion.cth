@@ -361,6 +361,16 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
             return
         )
 
+        if (not isinstance(node.parent(), Module):
+            # leave defmacros in child scopes uninterpreted:
+            #  - compilation of the macro dll would usually fail in such a circumstance (with the current logic) anyway
+            #  - avoiding any validation of the defmacro args at this stage allows us to write macros that transform other macros e.g.
+            #  defmacro(defmacro(args), args: [Node]:
+            #      throw (std.logic_error("further usage of defmacro in this codebase is banned"))
+            #  )
+            return
+        )
+
         if (node.args.size() < 2:
             throw (SemanticAnalysisError("bad defmacro args"))
         )

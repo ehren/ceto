@@ -423,6 +423,9 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                 if ((*ceto::mad((*ceto::mad(node)).func)).name() != "defmacro") {
                 return;
             }
+            if (!(ceto::propagate_const<std::shared_ptr<const Module>>(std::dynamic_pointer_cast<const Module>(ceto::get_underlying((*ceto::mad(node)).parent()))) != nullptr)) {
+                return;
+            }
             if ((*ceto::mad((*ceto::mad(node)).args)).size() < 2) {
                 throw SemanticAnalysisError{"bad defmacro args"};
             }

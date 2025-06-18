@@ -688,8 +688,7 @@ def one_liner_expander(parsed):
 
         if isinstance(op, Call) and op.func.name == "defmacro":
             # we don't want to validate anything in a defmacro body 
-            # (it will be validated as the body of a macro_impl during macro compilation)
-            return Call(Identifier("static_assert"), [Identifier("true")])
+            return Call(Identifier("ceto_private_elided_defmacro"), [])
 
         if isinstance(op, TypeOp) and not isinstance(op, SyntaxTypeOp) and isinstance(op.args[0], Identifier) and op.args[0].name in ["except", "return", "else", "elif"]:
             op = SyntaxTypeOp(op.op, op.args, op.source)
