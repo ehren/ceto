@@ -2696,9 +2696,9 @@ def _decltype_str(node, cx):
             if class_def.is_struct:
                 func_str = class_name
             elif class_def.is_unique:
-                func_str = "std::unique_ptr<" + const + class_name + ">"
+                func_str = _propagate_const_str("std::unique_ptr<" + const + class_name + ">")
             else:
-                func_str = "std::shared_ptr<" + const + class_name + ">"
+                func_str = _propagate_const_str("std::shared_ptr<" + const + class_name + ">")
 
             return False, func_str
 
