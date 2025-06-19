@@ -27,7 +27,7 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
         reserve
     )
 
-    return quote(lambda[ref] (:
+    return quote(lambda (:
 
         unquote(result): mut = []
         unquote(zz): mut:auto:ref:ref = unquote(z)

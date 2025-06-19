@@ -588,7 +588,7 @@ def _add_standard_lib_macro_imports(module: Module):
     if not cmdargs:
         return
 
-    if cmdargs._nostandardlibmacros:
+    if cmdargs._noslm:
         return
 
 #    destination_dir = os.path.dirname(os.path.realpath(cmdargs.filename))

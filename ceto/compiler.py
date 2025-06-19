@@ -110,7 +110,7 @@ def main():
     ap.add_argument("-o", "--exename", help="Executable program name (including suffix if any)")
     ap.add_argument("-m", "--compileonly", action='store_true', help="Compile ceto code only. Do not compile C++. Do not run program.")
     ap.add_argument("--donotexecute", action='store_true', help="If compiling C++, do not attempt to run an executable")
-    ap.add_argument("--_nostandardlibmacros", action='store_true', help="Do not include standard lib macros during compilation (not recommended unless compiling the standard lib macros themselves)")
+    ap.add_argument("--_noslm", action='store_true', help="Do not include standard lib macros during compilation (not recommended unless compiling the standard lib macros themselves)")
     ap.add_argument("--_norefs", action='store_true', help="Enable experimental mode to ban unsafe use of C++ references (without unsafe annotation). Currently implemented: ban all C++ references from subexpressions: An expression returning a reference must either be discarded or must be on the lhs of an Assignment (requiring a 'ref' type annotion if the reference is to be preserved instead of a copy). TODO: additional unsafe annotation for const:ref / mut:ref locals/members and mut:ref params")
     ap.add_argument("-I", "--include", type=str, nargs="*", help="Additional search directory for ceto headers (.cth files). Directory of transpiled file (first positional arg) takes priority in search.")
     ap.add_argument("filename")

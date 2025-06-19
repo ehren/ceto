@@ -1175,7 +1175,6 @@ def quote_expander(node):
             replacements, quote_arg = unquote_remover(quote.args[0])
             repr = quote_arg.ast_repr(preserve_source_loc=False, ceto_evalable=True)
             for r in replacements:
-                # should be improved to work with non-Identifier unquote args
                 repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), r.name)
             expanded = parse(repr).args[0]
 

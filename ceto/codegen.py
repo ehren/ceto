@@ -1236,6 +1236,9 @@ class SubexpressionsToAssignments:
         if isinstance(node, ScopeResolution):
             return node
 
+        if isinstance(node, Call) and is_call_lambda(node):
+            return node
+
         if isinstance(node, AttributeAccess):
             lhs_code = codegen_attribute_access(node, node.scope)
             if "::" in lhs_code and not "ceto::mad" in lhs_code:
@@ -1259,6 +1262,7 @@ class SubexpressionsToAssignments:
         if transformed_func is not None:
             new_node = node.__class__(transformed_func, transformed_args)
         else:
+            # TODO this will be less ugly when BinOp takes a func arg (make the op strings Identifiers)
             if isinstance(node, BinOp):
                 new_node = node.__class__(node.op, transformed_args)
             elif isinstance(node, UnOp):
@@ -1276,6 +1280,8 @@ class SubexpressionsToAssignments:
         assignment = Assign("=", [intermediate_var, new_node])
         # assign = "auto &&" + intermediate_var.name + " = " + codegen_node(new_node, node.scope)
         assignment.scope = node.scope
+
+        #node.scope.add_variable_definition(defined_node=intermediate_var, defining_node=assignment)
 
         self.intermediate_vars.append(intermediate_var)
         self.assignments.append(assignment)
@@ -2284,9 +2290,11 @@ def codegen_call(node: Call, cx: Scope):
                 if classdef.is_concrete:
                     raise CodeGenError("is/asinstance arg can't be a template", classdef)
                 raise CodeGenError("is/asinstance arg must be a class", node)
-            cast_string = "ceto::propagate_const<std::shared_ptr<" + const_specifier + class_name.name + ">>(std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(ceto::get_underlying(" + codegen_node(node.args[0], cx) + ")))"
+            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(ceto::get_underlying(" + codegen_node(node.args[0], cx) + "))"
             if func_name == "isinstance":
                 cast_string = "(" + cast_string + " != nullptr)"
+            else:
+                cast_string = "ceto::propagate_const<std::shared_ptr<" + const_specifier + class_name.name + ">>(" + cast_string + ")"
             return cast_string
         elif func_name == "namespace":
             if len(node.args) == 0:
