@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <optional>
 #include <iostream>
-#include <experimental/propagate_const>
 
 #if !defined(__clang__) || __clang_major__ < 16
 #include <source_location>
@@ -17,6 +16,14 @@
 #else
 #define CETO_SOURCE_LOC_PARAM
 #define CETO_SOURCE_LOC_ARG
+#endif
+
+#if !_MSC_VER
+// although we currently use ceto::propagate_const for shared and unique
+// classes we could potentially use std::experimental::propagate_const
+// for :unique in the future (unsuported with MSVC)
+#include <experimental/propagate_const>
+#define CETO_HAS_PROP_CONST_STD_EXP
 #endif
 
 #ifdef CETO_USING_GODBOLT
@@ -44,21 +51,28 @@ concept IsBasicWeakPtr = std::same_as<T, std::weak_ptr<typename T::element_type>
 template <class T>
 struct is_propagate_const_copyable : std::false_type {};
 
-template <class T>
-struct is_propagate_const_copyable<ceto::propagate_const<T>> : std::true_type {};
-
+#if defined(CETO_HAS_PROP_CONST_STD_EXP)
 template <class T>
 struct is_propagate_const_noncopyable : std::false_type {};
 
 template <class T>
 struct is_propagate_const_noncopyable<std::experimental::propagate_const<T>> : std::true_type {};
+#endif
+
+template <class T>
+struct is_propagate_const_copyable<ceto::propagate_const<T>> : std::true_type {};
 
 template <typename T>
-concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>> || is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>> || is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>;
+concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>>
+                      || (is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>)
+#if defined(CETO_HAS_PROP_CONST_STD_EXP)
+                      || (is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>)
+#endif
+                      ;
 
 template <typename T>
-concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> || is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>> || is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>;
-;
+concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> ||
+                    (is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
 
 template <typename T>
 concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename std::remove_cvref_t<T>::value_type>>;

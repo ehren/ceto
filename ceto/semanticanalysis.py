@@ -1379,12 +1379,16 @@ def prepare_macro_ready_callback(module):
             build_command = f"c++ -Wall -Wextra -std=c++20 -O2 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
 
         print(build_command)
-        try:
-            output = subprocess.check_output(build_command, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as e:
-            print(e.output.decode())
-            print(e)
-            raise
+        result = subprocess.run(
+            build_command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        if result.returncode != 0:
+            raise SemanticAnalysisError(f"macro compilation failed:\n{result.stdout}\n{macro_impl_code}", defmacro_node)
 
     return on_macro_def
 

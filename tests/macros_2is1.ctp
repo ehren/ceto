@@ -42,8 +42,9 @@ defmacro(5:
 )
 
 defmacro(defmacro(args), args: [Node]:
-    pass  # purposely evade our "disable macros disabling macros" macro
-    throw (std.logic_error("further macro definitions are banned (for real this time)"))
+    # our "disable macros disabling macros" macro fails to account for this case:
+    std.cerr << "further macro definitions are banned (for real this time)\n"
+    std.terminate()
 )
 
 # error: further macro definitions are banned (for real this time)
