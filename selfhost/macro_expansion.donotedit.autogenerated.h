@@ -289,7 +289,8 @@ struct MacroScope : public ceto::object {
         return submatches;
     }
 
-    inline auto call_macro_impl(const ceto::propagate_const<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  match) -> std::variant<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::macros::Skip> {
+using MacroImplResult = std::variant<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::macros::Skip>;
+    inline auto call_macro_impl(const ceto::propagate_const<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  match) -> MacroImplResult {
         const auto handle = CETO_DLOPEN((*ceto::mad((*ceto::mad(definition)).dll_path)).c_str());
         if (!handle) {
             throw std::runtime_error("Failed to open macro dll: " + (*ceto::mad(definition)).dll_path);
@@ -298,11 +299,32 @@ struct MacroScope : public ceto::object {
         if (!fptr) {
             throw std::runtime_error((("Failed to find symbol " + (*ceto::mad(definition)).impl_function_name) + " in dll ") + (*ceto::mad(definition)).dll_path);
         }
-        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  m) -> ceto::propagate_const<std::shared_ptr<const Node>> {
-                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<ceto::propagate_const<std::shared_ptr<const Node>>>) { return nullptr; } else { static_cast<void>(nullptr); };
+        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  m) -> MacroImplResult {
+                if constexpr (!std::is_void_v<decltype(nullptr)>&& !std::is_void_v<MacroImplResult>) { return nullptr; } else { static_cast<void>(nullptr); };
                 })>(fptr);
         return (*f)(match);
     }
+
+struct ExpandResult : public ceto::object {
+
+    bool skip;
+
+    ceto::propagate_const<std::shared_ptr<const Node>> _node;
+
+    std::map<ceto::propagate_const<std::shared_ptr<const Node>>,std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions;
+
+        ~ExpandResult() {
+            const auto it = (*ceto::mad(this -> _skipped_definitions)).find(this -> _node);
+            if (it != (*ceto::mad(this -> _skipped_definitions)).end()) {
+                (*ceto::mad(it -> second)).clear();
+            }
+        }
+
+    explicit ExpandResult(bool skip, ceto::propagate_const<std::shared_ptr<const Node>> _node, std::map<ceto::propagate_const<std::shared_ptr<const Node>>,std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions) : skip(skip), _node(std::move(_node)), _skipped_definitions(_skipped_definitions) {}
+
+    ExpandResult() = delete;
+
+};
 
 struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
@@ -351,7 +373,8 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                                             if (replacement && (replacement != node)) {
                                                 ceto::bounds_check(this -> replacements, node) = replacement;
                                                 (*ceto::mad(replacement)).accept((*this));
-                                                return true;
+                                                const auto skip = true;
+                                                return ExpandResult{skip, node, this -> skipped_definitions};
                                             }
                                         }
                                     }
@@ -359,19 +382,14 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                     }
                     scope = (scope -> parent);
             }
-            return false;
-        }
-
-        inline auto _cleanup_skipped(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
-            const auto it = (*ceto::mad(this -> skipped_definitions)).find(node);
-            if (it != (*ceto::mad(this -> skipped_definitions)).end()) {
-                (*ceto::mad(it -> second)).clear();
-            }
+            const auto skip = false;
+            return ExpandResult{skip, node, this -> skipped_definitions};
         }
 
         inline auto visit(const Node&  n) -> void override {
             const auto node = ceto::shared_from((&n));
-            if (this -> expand(node)) {
+            const auto expand_result = this -> expand(node);
+            if ((*ceto::mad(expand_result)).skip) {
                 return;
             }
             if ((*ceto::mad(node)).func) {
@@ -394,12 +412,12 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                                     (*ceto::mad(arg)).accept((*this));
 
                 }
-                this -> _cleanup_skipped(node);
-        }
+            }
 
         inline auto visit(const Call&  call_node) -> void override {
             const auto node = ceto::shared_from((&call_node));
-            if (this -> expand(node)) {
+            const auto expand_result = this -> expand(node);
+            if ((*ceto::mad(expand_result)).skip) {
                 return;
             }
             (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
@@ -473,7 +491,6 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                 const auto defn = ceto::make_shared_propagate_const<const MacroDefinition>(node, pattern, parameters);
             (*ceto::mad(this -> current_scope)).add_definition(defn);
             this -> on_visit_definition(defn, this -> replacements);
-            this -> _cleanup_skipped(node);
         }
 
         inline auto visit(const Module&  node) -> void override {
@@ -502,7 +519,8 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             ceto::propagate_const<std::unique_ptr<MacroScope>> outer = std::move(this -> current_scope); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move(this -> current_scope)), std::remove_cvref_t<decltype(outer)>>);
             (this -> current_scope) = (*ceto::mad(outer)).enter_scope();
             const auto node = ceto::shared_from((&block_node));
-            if (this -> expand(node)) {
+            const auto expand_result = this -> expand(node);
+            if ((*ceto::mad(expand_result)).skip) {
                 return;
             }
             
@@ -523,7 +541,6 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
                 }
                 (this -> current_scope) = std::move(outer);
-            this -> _cleanup_skipped(node);
         }
 
     explicit MacroDefinitionVisitor(std::function<void(ceto::propagate_const<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> &)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
