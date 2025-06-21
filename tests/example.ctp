@@ -3,8 +3,6 @@ include <ranges>
 include <iostream>
 include <future>
 
-include (macros_list_comprehension)
-
 class (Foo:
     data_member
 

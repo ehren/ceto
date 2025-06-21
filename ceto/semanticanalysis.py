@@ -1299,7 +1299,19 @@ def prepare_macro_ready_callback(module):
             impl_str += indt + param_name + " = " + init_param + "\n"
         impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip>"
 
-        macro_impl = parse(impl_str).args[0]
+        # avoid error C2526: 'macro_impl0': C linkage function cannot return C++ class
+        # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
+        # another alternative on msvc would be to drop the extern "C" and use GetProcAddress(handle, MAKEINTRESOURCEA(1)) # might even get away without making a .def file to specify ordinal 1 since only 1 func in dll: https://stackoverflow.com/questions/57968865/exporting-a-c-function-from-a-dll-without-extern-c#comment102348942_57968998
+        impl_str = """
+if (_MSC_VER:
+    def (force_instantiate_template_msvc_hack:
+        vrnt:std.variant<Node, ceto.macros.Skip> = {}
+        static_cast<void>(vrnt)
+    )
+): preprocessor
+""" + impl_str
+
+        msvc_hack, macro_impl = parse(impl_str).args
         assert isinstance(macro_impl, TypeOp)
         impl_def = macro_impl.args[0]
         assert isinstance(impl_def, Call)
@@ -1315,7 +1327,7 @@ def prepare_macro_ready_callback(module):
 
         impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
-        macro_impl_module.args = macro_impl_module_args
+        macro_impl_module.args = [msvc_hack] + macro_impl_module_args
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")
