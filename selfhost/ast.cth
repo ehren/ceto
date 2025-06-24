@@ -82,7 +82,7 @@ class (Node:
             return False
         )
 
-        if (typeid(*this) != typeid(*other):
+        if (self.classname() != other.classname():
             return False
         )
 
@@ -104,6 +104,31 @@ class (Node:
 
         return True
     ) : bool
+
+    def (replace: mut, pattern: Node, replacement: Node:
+        if (self.equals(pattern):
+            return replacement.clone()
+        )
+
+        for (i in ceto.util.range(self.args.size()):
+            self.args.at(i) = self.args.at(i).replace(pattern, replacement)
+        )
+
+        self.func = if (self.func:
+            self.func.replace(pattern, replacement)
+        else:
+            none: Node = None
+            none
+        )
+
+        return self
+    ) : Node:mut
+
+    def (replace, pattern: Node, replacement: Node:
+        c: mut = self.clone()
+        c = c.replace(pattern, replacement)
+        return c
+    ) : Node
 
     def (parent:
         return self._parent.lock()

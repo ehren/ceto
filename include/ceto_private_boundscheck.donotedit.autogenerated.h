@@ -25,30 +25,46 @@
 ;
 
 ;
+
+;
 namespace ceto {
+    namespace util {
+                inline auto maybe_signed_size( auto &&  arg) -> auto {
+            if constexpr (std::is_signed_v<std::remove_cvref_t<decltype(arg)>>) {
+                return std::ssize(arg);
+            } else {
+                return std::size(arg);
+            }
+        }
+
+
+};
     #if defined(CETO_HAS_SOURCE_LOCATION)
-                inline auto bounds_check( auto &&  arr, const size_t  index,  const std::source_location & loc = std::source_location::current()) -> decltype(auto) requires (((requires () {        std::size(arr);
-} && requires () {        CETO_UNSAFE_ARRAY_ACCESS(arr, index);
-}) && requires () {        std::begin(arr) + 2;
-})) {
-            if (index >= std::size(arr)) {
-                ((std::cerr << "terminating on out of bounds access: ") << (*ceto::mad(loc)).file_name()) << ":";
-                (((((std::cerr << (*ceto::mad(loc)).function_name()) << ":") << (*ceto::mad(loc)).line()) << ":") << (*ceto::mad(loc)).column()) << "\n";
+                inline auto bounds_check( auto &&  arr,  auto &&  index,  const std::source_location & loc = std::source_location::current()) -> auto {
+            if (!((0 <= index) && (index < util::maybe_signed_size(arr)))) {
+                ((((std::cerr << "terminating on out of bounds access. index: ") << index) << " size: ") << util::maybe_signed_size(arr)) << ". ";
+                (((((((std::cerr << (*ceto::mad(loc)).file_name()) << ":") << (*ceto::mad(loc)).function_name()) << ":") << (*ceto::mad(loc)).line()) << ":") << (*ceto::mad(loc)).column()) << "\n";
                 std::terminate();
             }
-            return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
+            if constexpr (std::is_integral_v<std::remove_cvref_t<decltype(arr)>>) {
+                return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
+            } else {
+                return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), static_cast<std::size_t>(std::forward<decltype(index)>(index)));
+            }
         }
 
     #else
-                inline auto bounds_check( auto &&  arr, const size_t  index) -> decltype(auto) requires (((requires () {        std::size(arr);
-} && requires () {        CETO_UNSAFE_ARRAY_ACCESS(arr, index);
-}) && requires () {        std::begin(arr) + 2;
-})) {
-            if (index >= std::size(arr)) {
-                std::cerr << "terminating on out of bounds access\n";
+                inline auto bounds_check( auto &&  arr,  auto &&  index) -> auto {
+            if (!((0 <= index) && (index < util::maybe_signed_size(arr)))) {
+                ((((std::cerr << "terminating on out of bounds access. index: ") << index) << " size: ") << util::maybe_signed_size(arr)) << ". ";
+                (((((((std::cerr << std::string {"(file_name() unavailable - no std.source_location)"}) << ":") << std::string {"(function_name() unavailable)"}) << ":") << 0) << ":") << 0) << "\n";
                 std::terminate();
             }
-            return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
+            if constexpr (std::is_integral_v<std::remove_cvref_t<decltype(arr)>>) {
+                return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), std::forward<decltype(index)>(index));
+            } else {
+                return CETO_UNSAFE_ARRAY_ACCESS(std::forward<decltype(arr)>(arr), static_cast<std::size_t>(std::forward<decltype(index)>(index)));
+            }
         }
 
     #endif

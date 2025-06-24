@@ -56,16 +56,16 @@ auto generate_loc(const T1& node) -> void {
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size19 = std::size(args);
-                for (size_t ceto__private__idx18 = 0; ; ceto__private__idx18++) {
-                    if (std::size(args) != ceto__private__size19) {
+                size_t ceto__private__size25 = std::size(args);
+                for (size_t ceto__private__idx24 = 0; ; ceto__private__idx24++) {
+                    if (std::size(args) != ceto__private__size25) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx18 >= ceto__private__size19) {
+                    if (ceto__private__idx24 >= ceto__private__size25) {
                         break;
                     }
-                    const auto& arg = args[ceto__private__idx18];
+                    const auto& arg = args[ceto__private__idx24];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 
@@ -112,16 +112,16 @@ auto generate_loc(const T1& node) -> void {
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size21 = std::size(args);
-                for (size_t ceto__private__idx20 = 0; ; ceto__private__idx20++) {
-                    if (std::size(args) != ceto__private__size21) {
+                size_t ceto__private__size27 = std::size(args);
+                for (size_t ceto__private__idx26 = 0; ; ceto__private__idx26++) {
+                    if (std::size(args) != ceto__private__size27) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx20 >= ceto__private__size21) {
+                    if (ceto__private__idx26 >= ceto__private__size27) {
                         break;
                     }
-                    const auto& arg = args[ceto__private__idx20];
+                    const auto& arg = args[ceto__private__idx26];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 

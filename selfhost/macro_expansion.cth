@@ -132,7 +132,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
         )
     )
 
-    if (typeid(*node) != typeid(*pattern):
+    if (node.classname() != pattern.classname():
         return {}
     )
 
@@ -141,7 +141,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
     )
 
     if (node.args.size() == 0 and node.func == None and pattern.func == None:
-        if (node.repr() == pattern.repr():
+        if (node.equals(pattern):
             # leaf match
             return std.map<std.string, Node>{}
         )

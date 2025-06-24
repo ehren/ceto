@@ -8,14 +8,15 @@
 #include <optional>
 #include <iostream>
 
-#if !defined(__clang__) || __clang_major__ < 16
+#if defined(__cpp_lib_source_location)
 #include <source_location>
+// note "def (foo, x, y, loc = std.source_location.current():" is a macro (see boundscheck.cth)
 #define CETO_HAS_SOURCE_LOCATION
-#define CETO_SOURCE_LOC_PARAM , const std::source_location& location = std::source_location::current()
-#define CETO_SOURCE_LOC_ARG location
+#define CETO_PRIVATE_SOURCE_LOC_PARAM , const std::source_location& location = std::source_location::current()
+#define CETO_PRIVATE_SOURCE_LOC_ARG location
 #else
-#define CETO_SOURCE_LOC_PARAM
-#define CETO_SOURCE_LOC_ARG
+#define CETO_PRIVATE_SOURCE_LOC_PARAM
+#define CETO_PRIVATE_SOURCE_LOC_ARG
 #endif
 
 #if !_MSC_VER
@@ -151,9 +152,9 @@ struct EndLoopMarker : public std::runtime_error {
 
 // autoderef
 template<typename T>
-auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsStrongPtr<T> {
+auto mad_smartptr(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires IsStrongPtr<T> {
     if (!std::forward<T>(obj)) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        issue_null_deref_message(CETO_PRIVATE_SOURCE_LOC_ARG);
         std::terminate();
     }
     return std::forward<T>(obj);
@@ -161,7 +162,7 @@ auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsSt
 
 // no autoderef
 template<typename T>
-auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsStrongPtr<T>) {
+auto mad_smartptr(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsStrongPtr<T>) {
     // no std::forward here:
     // https://en.cppreference.com/w/cpp/memory/addressof says:
     // Rvalue overload is deleted to prevent taking the address of const rvalues.
@@ -174,15 +175,15 @@ auto mad_smartptr(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!Is
 // method of my_object (or produces an error) rather than calling e.g. std::shared_ptr::get())
 
 template<typename T>
-auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsOptional<T> {
+auto mad(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires IsOptional<T> {
     if (!std::forward<T>(obj)) {
-        issue_null_deref_message(CETO_SOURCE_LOC_ARG);
+        issue_null_deref_message(CETO_PRIVATE_SOURCE_LOC_ARG);
         std::terminate();
     }
 
     // maybe a double autoderef (though optional of nullable smart ptr should be discouraged)
 #ifdef CETO_HAS_SOURCE_LOCATION
-    return mad_smartptr(std::forward<T>(obj).value(), CETO_SOURCE_LOC_ARG);
+    return mad_smartptr(std::forward<T>(obj).value(), CETO_PRIVATE_SOURCE_LOC_ARG);
 #else
     return mad_smartptr(std::forward<T>(obj).value());
 #endif
@@ -190,9 +191,9 @@ auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires IsOptional<T>
 
 // no autoderef of optional - maybe still autoderef smart pointer
 template<typename T>
-auto mad(T&& obj CETO_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<T>) {
+auto mad(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsOptional<T>) {
 #ifdef CETO_HAS_SOURCE_LOCATION
-    return mad_smartptr(std::forward<T>(obj), CETO_SOURCE_LOC_ARG);
+    return mad_smartptr(std::forward<T>(obj), CETO_PRIVATE_SOURCE_LOC_ARG);
 #else
     return mad_smartptr(std::forward<T>(obj));
 #endif
