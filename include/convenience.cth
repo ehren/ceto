@@ -41,6 +41,65 @@ defmacro(scope (:
     stmts
 ), stmts: [Node]:
     block = Block(stmts)
-    # debatable if if constexpr is necessary
+    # Note that codegen currently doesn't allow constexpr-if to be an
+    # if-expression. We should consider changing this (and TODO make
+    # if (...) : noexpression for the "I don't want an expression-if case")
     return quote(if (1, unquote(block)): constexpr)
+)
+
+defmacro (None:type, type:
+    return quote((lambda(:
+        return None
+    ): unquote(type)) ())
+)
+
+# works around some limitations of CTAD with map e.g.
+# https://stackoverflow.com/questions/56104324/does-class-template-argument-deduction-works-with-stdmap
+defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp],
+         m: Identifier, map: Identifier, west_specifier: Node|None, east_specifier: Node|None:
+
+    if (map.name() != "map" and map.name() != "unordered_map":
+        return None
+    )
+
+    args: mut:[Node] = []
+    keys: mut:[Node] = []
+
+    vacuous: Node = quote(True)
+    assertion: mut = vacuous
+    map_type: mut = None:Node
+    # ^ Note that we can't write mut:Node/Node:mut on the left (assertion and
+    # map_type must be mut vars holding instances of Node aka Node:const aka const:Node)
+
+    for (kv in keyvals:
+        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])), decltype(unquote(kv.args[1]))>)
+        if (not map_type:
+            map_type = type
+        else:
+            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type), unquote(map_type)>)
+        )
+        args.append(quote({unquote(kv.args[0]), unquote(kv.args[1])}))
+        keys.append(kv.args[0])
+    )
+
+    duplicate_iter = std.adjacent_find(keys.cbegin(), keys.cend(), lambda(a, b, a.equals(b)));
+    if (duplicate_iter != keys.cend():
+        # note there are cases where duplicate keys slip past e.g. { 1 - 1: "zero", 0: "zero"}
+        throw (std.runtime_error("duplicate keys in map literal"))
+    )
+
+    map_call = BracedCall(map_type, args)
+
+    if (west_specifier:
+        map_type = quote(unquote(west_specifier): unquote(map_type))
+    )
+
+    if (east_specifier:
+        map_type = quote(unquote(map_type): unquote(east_specifier))
+    )
+
+    return quote(unquote(m): unquote(map_type) = lambda(:
+        static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
+        unquote(map_call)
+    ) ())
 )
