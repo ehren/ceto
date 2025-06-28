@@ -8,7 +8,7 @@ import shutil
 
 from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
-from .scope import ClassDefinition, InterfaceDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, FunctionDefinition, creates_new_variable_scope, Scope, comes_before
+from .scope import ClassDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, FunctionDefinition, creates_new_variable_scope, Scope, comes_before
 
 # from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
 # from ._abstractsyntaxtree import macro_matches, macro_trampoline

@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
-    Scope, ClassDefinition, InterfaceDefinition, creates_new_variable_scope, VariableDefinition, \
+    Scope, ClassDefinition, creates_new_variable_scope, VariableDefinition, \
     LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
     nested_same_binop_to_list, gensym, FieldDefinition
@@ -184,27 +184,19 @@ def codegen_def(defnode: Call, cx):
     specifier_node = name_node.declared_type
     specifier_types = type_node_to_list_of_types(specifier_node)
 
-    interface_calls = [t for t in specifier_types if isinstance(t, Call) and t.func.name == "interface"]
-    if len(interface_calls) > 1:
-        raise CodeGenError("too many 'interface' specifiers", defnode)
-    elif len(interface_calls) == 1:
-        interface = interface_calls[0]
-        specifier_types.remove(interface)
-    else:
-        interface = None
-
-    if interface and return_type_node is None:
-        raise CodeGenError("must specify return type of interface method")
-    assert is_method or not interface
+    # TODO reincorporate this error when an ordinary virtual method detected ('interface' builtin feature removed)
+    #if interface and return_type_node is None:
+    #    raise CodeGenError("must specify return type of interface method")
 
     for i, arg in enumerate(args):
-        if interface:
-            if arg.declared_type is None:
-                raise CodeGenError(
-                    "parameter types must be specified for interface methods")
-            if not isinstance(arg, Identifier):
-                raise CodeGenError(
-                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
+        # TODO reincorporate these errors when an ordinary virtual method detected ('interface' builtin feature removed)
+#        if interface:
+#            if arg.declared_type is None:
+#                raise CodeGenError(
+#                    "parameter types must be specified for interface methods")
+#            if not isinstance(arg, Identifier):
+#                raise CodeGenError(
+#                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
         if typed_param := codegen_typed_def_param(arg, cx):
             params.append(typed_param)
         else:
@@ -240,7 +232,7 @@ def codegen_def(defnode: Call, cx):
                 raise CodeGenError("Don't specify 'override' for a non-method", defnode)
             specifier_types.remove(overrides[0])
 
-        if overrides or interface:
+        if overrides:
             override = " override"
 
         finals = [t for t in specifier_types if t.name == "final"]
@@ -284,11 +276,6 @@ def codegen_def(defnode: Call, cx):
             # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
             # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
-    if interface:
-        assert len(typenames) == 0
-        template = ""
-        inline = ""
-
     if is_declaration:
         inline = ""
 
@@ -331,7 +318,6 @@ def codegen_def(defnode: Call, cx):
             return_type = "void"
 
     if is_destructor:
-        # not marked virtual because inheritance not implemented yet (note that interface abcs have a virtual destructor)
         funcdef = specifier + "~" + class_name + "()" + override + final
     else:
         const = " const" if is_const else ""
@@ -678,8 +664,6 @@ def codegen_class(node : Call, cx):
 
     cx.add_class_definition(classdef)
 
-    defined_interfaces = defaultdict(list)
-    local_interfaces = set()
     typenames = []
 
     indt = cx.indent_str()
@@ -703,19 +687,6 @@ def codegen_class(node : Call, cx):
     for block_index, b in enumerate(block.args):
         if isinstance(b, Call) and b.func.name == "def":
             methodname = b.args[0]
-
-            if (method_type := b.args[0].declared_type) is not None:
-                if isinstance(method_type, Call) and method_type.func.name == "interface" and len(method_type.args) == 1:
-                    interface_type = method_type.args[0]
-                    if methodname.name in ["init", "destruct"]:
-                        raise CodeGenError("init or destruct can't defined as interface methods", b)
-
-                    #if interface_type.name in defined_interfaces or not any(t == interface_type.name for t in cx.interfaces):
-                    if interface_type.name in defined_interfaces or not isinstance(cx.lookup_class(interface_type), InterfaceDefinition):
-                        defined_interfaces[interface_type.name].append(b)
-
-                    cx.add_interface_method(interface_type.name, b)
-                    local_interfaces.add(interface_type.name)
 
             if methodname.name == "init":
                 if constructor_node is not None:
@@ -965,18 +936,9 @@ def codegen_class(node : Call, cx):
         # this matches python behavior (though we allow a default constructor for a class with no uninitialized attributes and no user defined constructor)
         cpp += inner_indt + name.name + "() = delete;\n\n"
 
-    interface_def_str = ""
-    for interface_type in defined_interfaces:
-        interface_def_str += "struct " + interface_type + " : ceto::object {\n"  # no longer necessary to inherit from object to participate in autoderef but we're keeping it for now (would be required if we re-enabled call_or_construct)
-        for method in defined_interfaces[interface_type]:
-            print("method",method)
-            interface_def_str += inner_indt + interface_method_declaration_str(method, cx)
-        interface_def_str += inner_indt + "virtual ~" + interface_type + "() = default;\n\n"
-        interface_def_str +=  "};\n\n"
-
     cpp += indt + "};\n\n"
 
-    default_inherits = ["public " + i for i in local_interfaces]
+    default_inherits = []
     if base_class_type is not None:
         default_inherits.append("public " + base_class_type)
 
@@ -1021,61 +983,7 @@ def codegen_class(node : Call, cx):
     else:
         template_header = ""
 
-    return interface_def_str + template_header + class_header + cpp
-
-
-def interface_method_declaration_str(defnode: Call, cx):
-    assert defnode.func.name == "def"
-    name_node = defnode.args[0]
-    name = name_node.name
-    args = defnode.args[1:]
-    block = args.pop()
-    assert isinstance(block, Block)
-
-    params = []
-    return_type_node = defnode.declared_type
-
-    if return_type_node is None:
-        raise CodeGenError("must specify return type of interface method")
-    return_type = codegen_type(defnode, return_type_node, cx)
-
-    is_const = not mut_by_default
-
-    specifier_node = name_node.declared_type
-
-    type_nodes = type_node_to_list_of_types(specifier_node)
-
-    const_or_mut = [t for t in type_nodes if t.name in ["const", "mut"]]
-    if len(const_or_mut) > 1:
-        raise CodeGenError("too many 'mut' and 'const' specified", defnode)
-
-    if const_or_mut:
-        if const_or_mut[0].name == "const":
-            is_const = True
-        elif const_or_mut[0].name == "mut":
-            is_const = False
-
-        type_nodes.remove(const_or_mut[0])
-
-    const = " const" if is_const else ""
-    specifier = ""
-
-    type_nodes = [t for t in type_nodes if not (isinstance(t, Call) and t.func.name == "interface")]
-
-    if type_nodes:
-        specifier_node = list_to_typed_node(type_nodes)
-        specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
-
-    for i, arg in enumerate(args):
-        if arg.declared_type is None:
-            raise CodeGenError("parameter types must be specified for interface methods")
-        if not isinstance(arg, Identifier):
-            raise CodeGenError("Only simple args allowed for interface method (you don't want c++ virtual functions with default arguments)")
-        param = codegen_typed_def_param(arg, cx)
-        assert len(param) > 0
-        params.append(param)
-
-    return "{}virtual {} {}({}){} = 0;\n\n".format(specifier, return_type, name, ", ".join(params), const)
+    return template_header + class_header + cpp
 
 
 def codegen_while(whilecall, cx):
@@ -1793,10 +1701,6 @@ def _shared_ptr_str_for_type(type_node, cx):
         # unique_ptr could use std::experimental::propagate_const but needs autoderef handling in ceto.h:
         unique_ptr_str_begin = "ceto::propagate_const<std::unique_ptr<"
         unique_ptr_str_end = ">>"
-
-        if isinstance(classdef, InterfaceDefinition):
-            # TODO this clearly needs a revisit (or just scrap current 'interface' handling)
-            return shared_ptr_str_begin, shared_ptr_str_end
 
         if classdef.is_struct:
             return None
@@ -2932,16 +2836,8 @@ def codegen_node(node: Node, cx: Scope):
                         assert lambdanode
                         if lambdanode.declared_type is not None:
                             if lambdanode.declared_type.name == "void":
-                                # the below code works but let's avoid needless "is_void_v<void>" checks
                                 return ret_body
-
-                            declared_type_constexpr = "&& !std::is_void_v<" + codegen_type(lambdanode, lambdanode.declared_type, cx) + ">"
-                        else:
-                            declared_type_constexpr = ""
-                        # return if not void (void cast to suppress unused value warning - [[maybe_unused]] doesn't apply to (void) expressions)
-                        return "if constexpr (!std::is_void_v<decltype(" + ret_body + ")>" + declared_type_constexpr + ") { return " + ret_body + "; } else { static_cast<void>(" + ret_body + "); }"
-                    else:
-                        return "return " + ret_body
+                    return "return " + ret_body
                 else:
                     assert False
             else:
