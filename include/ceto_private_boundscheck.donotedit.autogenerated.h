@@ -40,7 +40,11 @@ namespace ceto {
 
 };
     #if defined(CETO_HAS_SOURCE_LOCATION)
-                inline auto bounds_check( auto &&  arr,  auto &&  index,  const std::source_location & loc = std::source_location::current()) -> auto {
+                inline auto bounds_check( auto &&  arr,  auto &&  index,  const std::source_location & loc = std::source_location::current()) -> decltype(auto) requires ((std::is_integral_v<std::remove_cvref_t<decltype(index)>> && requires () {        std::size(arr);
+        std::ssize(arr);
+        CETO_UNSAFE_ARRAY_ACCESS(arr, index);
+        std::begin(arr) + 2;
+})) {
             if (!((0 <= index) && (index < util::maybe_signed_size(arr)))) {
                 ((((std::cerr << "terminating on out of bounds access. index: ") << index) << " size: ") << util::maybe_signed_size(arr)) << ". ";
                 (((((((std::cerr << (*ceto::mad(loc)).file_name()) << ":") << (*ceto::mad(loc)).function_name()) << ":") << (*ceto::mad(loc)).line()) << ":") << (*ceto::mad(loc)).column()) << "\n";
@@ -54,7 +58,11 @@ namespace ceto {
         }
 
     #else
-                inline auto bounds_check( auto &&  arr,  auto &&  index) -> auto {
+                inline auto bounds_check( auto &&  arr,  auto &&  index) -> decltype(auto) requires ((std::is_integral_v<std::remove_cvref_t<decltype(index)>> && requires () {        std::size(arr);
+        std::ssize(arr);
+        CETO_UNSAFE_ARRAY_ACCESS(arr, index);
+        std::begin(arr) + 2;
+})) {
             if (!((0 <= index) && (index < util::maybe_signed_size(arr)))) {
                 ((((std::cerr << "terminating on out of bounds access. index: ") << index) << " size: ") << util::maybe_signed_size(arr)) << ". ";
                 (((((((std::cerr << std::string {"(file_name() unavailable - no std.source_location)"}) << ":") << std::string {"(function_name() unavailable)"}) << ":") << 0) << ":") << 0) << "\n";
