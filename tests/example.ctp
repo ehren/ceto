@@ -43,8 +43,10 @@ def (string_join, vec: [std.string], sep = ", "s:
         return ""
     )
 
-    return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
-        lambda[&sep] (a, b, a + sep + b))
+    unsafe (:
+        return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
+            lambda[&sep] (a, b, a + sep + b))
+    )
 ): std.string  # as a return type (or a class member) it's by value
 
 defmacro (s.join(v), s: StringLiteral, v:

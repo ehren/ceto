@@ -16,6 +16,9 @@ import textwrap
 
 
 mut_by_default = False
+# TODO remove this (mut_by_default mode definitely broken)
+
+mangle_prefix = ""  # "ceto_private_mangle_"  # TODO still needs work
 
 
 class CodeGenError(Exception):
@@ -212,6 +215,7 @@ def codegen_def(defnode: Call, cx):
     final = ""
     specifier = ""
     is_const = is_method and not mut_by_default
+    mangle_name = not is_method
 
     if specifier_types:
         const_or_mut = [t for t in specifier_types if t.name in ["const", "mut"]]
@@ -276,6 +280,9 @@ def codegen_def(defnode: Call, cx):
             # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
             # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
+            if any(a.name == "extern" and b.name == "C" for a, b in zip(specifier_types, specifier_types[1:])):
+                mangle_name = False
+
     if is_declaration:
         inline = ""
 
@@ -291,6 +298,7 @@ def codegen_def(defnode: Call, cx):
         if not isinstance(defnode.parent, Module):
             raise CodeGenError("unexpected nested main function", defnode)
         defnode.parent.has_main_function = True
+        mangle_name = False
 
     if return_type_node:
         # return_type = codegen_type(name_node, name_node.declared_type)
@@ -307,21 +315,19 @@ def codegen_def(defnode: Call, cx):
                 for ret in find_all(b, test=is_return, stop=creates_new_variable_scope):
                     found_return = True
                     if is_void_return(ret):
-                        # like python treat 'return' as 'return None' (we change the return type of the defined func to allow deduction of type of '{}' by c++ compiler)
-                        # return_type = 'std::shared_ptr<object>'
-                        # ^ this is buggy or at least confusing for all sorts of reasons e.g. classes managed by unique_ptr (we're now embracing void)
                         return_type = "void"
                         break
 
         if not found_return:
-            # return_type = 'std::shared_ptr<object>'
             return_type = "void"
+
+    if mangle_name:
+        name = mangle_prefix + name
 
     if is_destructor:
         funcdef = specifier + "~" + class_name + "()" + override + final
     else:
         const = " const" if is_const else ""
-
         funcdef = "{}{}{}auto {}({}){} -> {}{}{}".format(template, specifier, inline, name, ", ".join(params), const, return_type, override, final)
 
     indt = cx.indent_str()
@@ -1237,7 +1243,8 @@ def codegen_for(node, cx):
         type_str = None
 
     if type_str is None:
-        type_str = "const auto&"
+        #type_str = "const auto&"  # not safe in general
+        type_str = "const auto"
 
     indt = cx.indent_str()
     block_cx = cx.enter_scope()
@@ -2124,6 +2131,16 @@ def _has_outer_double_parentheses(s: str):
     return count == 0
 
 
+def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
+    if cx.is_unsafe:
+        return code
+    if isinstance(node.parent, Block):
+        return code
+    if node in node.parent.args and not isinstance(node.parent, (BinOp, UnOp)) and len(node.parent.args) > 1 and node.parent.func and node.parent.func.name not in ["isinstance", "asinstance"]:
+        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")>); return " + code + "; } ()"
+    return code
+
+
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
 
@@ -2145,6 +2162,8 @@ def codegen_call(node: Call, cx: Scope):
 
     ban_derefable_start = ""
     ban_derefable_end = ""
+
+    mangle_free_func = False
 
     if isinstance(node.func, Identifier):
         func_name = node.func.name
@@ -2244,6 +2263,9 @@ def codegen_call(node: Call, cx: Scope):
             if func_name == "static_assert":
                 old_unsafe = cx.is_unsafe
                 cx.is_unsafe = False
+            elif func_name not in ["decltype", "defined"]:
+                # TODO check that 'defined' is in an if (...) : preprocessor
+                mangle_free_func = True
 
             arg_strs = [codegen_node(a, cx) for a in node.args]
             
@@ -2254,6 +2276,7 @@ def codegen_call(node: Call, cx: Scope):
             args_str = "(" + args_inner + ")"
 
             if class_def := cx.lookup_class(node.func):
+                mangle_free_func = False
                 class_name = node.func.name
                 curly_args = "{" + args_inner + "}"
 
@@ -2282,23 +2305,16 @@ def codegen_call(node: Call, cx: Scope):
 
                 return func_str + args_str
 
-            if isinstance(node.func, Identifier):
-                func_str = node.func.name
+            func_str = node.func.name
 
-                # TODO we do want to ban a number of decltype uses - but not yet
-                # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
-                if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include"]:
-                    if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
-                        raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
-            else:
-                # TODO handle safety check for namespaced/static calls
+            if mangle_free_func and not isinstance(node.scope.find_def(node.func), VariableDefinition):
+                func_str = mangle_prefix + func_str
 
-                func_str = codegen_node(node.func, cx)
-
-            if cx.in_function_body:
-                capture = "&"
-            else:
-                capture = ""
+            # TODO we do want to ban a number of decltype uses - but not yet
+            # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
+            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include"]:
+                if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
+                    raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
 
             simple_call_str = func_str + args_str
 
@@ -2320,9 +2336,18 @@ def codegen_call(node: Call, cx: Scope):
                 return simple_call_str
 
             #return "CETO_BAN_RAW_DEREFERENCABLE(" + simple_call_str + ")"
-            return ban_derefable(simple_call_str)
+
+            if len(node.args) == 1:
+                return ban_derefable(simple_call_str)
+
+            return ban_reference_in_subexpression(ban_derefable(simple_call_str), node, cx)
 
             # the below works in many cases but not with c++20 style vector CTAD. We'd have to go back to our py14 style diy vector CTAD to allow call_or_construct code in a vector e.g. ceto code of form l = [Foo(), Foo(), Foo()]
+
+            if cx.in_function_body:
+                capture = "&"
+            else:
+                capture = ""
 
             dt_str = "decltype(" + simple_call_str + ")"
 
@@ -2334,7 +2359,7 @@ def codegen_call(node: Call, cx: Scope):
 
             return call_str
     else:
-        # probably a method:
+        # method or namespaced call
 
         # not auto-flattening args is becoming annoying!
         # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
@@ -2371,7 +2396,7 @@ def codegen_call(node: Call, cx: Scope):
             if method_name.name == "operator" and len(
                     node.args) == 1 and isinstance(operator_name_node := node.args[0], StringLiteral):
                 new_func = consume_method_name()
-                return "(*ceto::mad(" + codegen_node(new_func, cx) + ")).operator" + operator_name_node.str
+                return ban_reference_in_subexpression("(*ceto::mad(" + codegen_node(new_func, cx) + ")).operator" + operator_name_node.str, node, cx)
 
             elif method_name.parent and not isinstance(method_name.parent,
                                                        (ScopeResolution, ArrowOp)):
@@ -2404,7 +2429,7 @@ def codegen_call(node: Call, cx: Scope):
                             # we still provide .append as .push_back for all std::vectors even in generic code
                             # (note this function performs an autoderef on new_func):
                             #return "CETO_BAN_RAW_DEREFERENCABLE(ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + "))"
-                            return ban_derefable("ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")")
+                            return ban_reference_in_subexpression(ban_derefable("ceto::append_or_push_back(" + codegen_node(new_func, cx) + ", " + codegen_node(node.args[0], cx) + ")"), node, cx)
 
                 new_attr_access = AttributeAccess(".", [new_func, method_name])
                 new_attr_access.parent = node
@@ -2413,13 +2438,26 @@ def codegen_call(node: Call, cx: Scope):
         if func_str is None:
             func_str = codegen_node(new_func, cx)
 
+        is_method_call = True
+
+        if "ceto::mad" not in func_str and "::" in func_str:
+            # mangle namespaced free function call
+            parts = func_str.rsplit("::", 1)
+            func_str = f"{parts[0]}::{mangle_prefix}{parts[1]}"
+            is_method_call = False
+
         #return "CETO_BAN_RAW_DEREFERENCABLE(" + func_str + "(" + ", ".join(
         #    map(lambda a: codegen_node(a, cx), node.args)) + "))"
         #return ban_derefable(func_str + "(" + ", ".join(
         #    map(lambda a: codegen_node(a, cx), node.args)) + ")")
-        return ban_derefable_start + func_str + "(" + ", ".join(
+
+        result = ban_derefable_start + func_str + "(" + ", ".join(
             map(lambda a: codegen_node(a, cx), node.args)) + ")" + ban_derefable_end
 
+        if is_method_call or len(node.args) > 1:
+            return ban_reference_in_subexpression(result, node, cx)
+        else:
+            return result
 
 def _is_const_make(node : Call):
     assert isinstance(node, Call)
@@ -2820,6 +2858,10 @@ def codegen_node(node: Node, cx: Scope):
         if is_last_use and _is_unique_var(node, cx):
             return "std::move(" + name + ")"
 
+        var_def = node.scope.find_def(node)
+        if isinstance(var_def, VariableDefinition) and isinstance(var_def.defining_node, Call) and var_def.defining_node.func.name in ["for", "unsafe_for"]:
+            return ban_reference_in_subexpression(name, node, cx)
+
         return name
 
     elif isinstance(node, BinOp):
@@ -2922,7 +2964,7 @@ def codegen_node(node: Node, cx: Scope):
             raise CodeGenError("advanced slicing not supported yet")
         func_str = codegen_node(node.func, cx)
         idx_str = codegen_node(node.args[0], cx)
-        return "ceto::bounds_check(" + func_str + "," + idx_str + ")"
+        return ban_reference_in_subexpression("ceto::bounds_check(" + func_str + "," + idx_str + ")", node, cx)
         #raise CodeGenError("Array accesses should have been lowered in a macro pass! You've probably written your own array[access] defmacro (it's buggy)", node)
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):

@@ -181,16 +181,16 @@ using VariableDefinition::VariableDefinition;
         
     
             static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-            size_t ceto__private__size17 = std::size(args);
-            for (size_t ceto__private__idx16 = 0; ; ceto__private__idx16++) {
-                if (std::size(args) != ceto__private__size17) {
+            size_t ceto__private__size226 = std::size(args);
+            for (size_t ceto__private__idx225 = 0; ; ceto__private__idx225++) {
+                if (std::size(args) != ceto__private__size226) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx16 >= ceto__private__size17) {
+                if (ceto__private__idx225 >= ceto__private__size226) {
                     break;
                 }
-                const auto& arg = args[ceto__private__idx16];
+                const auto arg = args[ceto__private__idx225];
                             const auto cb = comes_before(arg, before, after);
                     if ((*ceto::mad_smartptr(cb)).has_value()) {
                         return cb;
@@ -287,16 +287,16 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             
     
                 static_assert(requires { std::begin(class_definitions) + 2; }, "not a contiguous container");
-                size_t ceto__private__size19 = std::size(class_definitions);
-                for (size_t ceto__private__idx18 = 0; ; ceto__private__idx18++) {
-                    if (std::size(class_definitions) != ceto__private__size19) {
+                size_t ceto__private__size228 = std::size(class_definitions);
+                for (size_t ceto__private__idx227 = 0; ; ceto__private__idx227++) {
+                    if (std::size(class_definitions) != ceto__private__size228) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx18 >= ceto__private__size19) {
+                    if (ceto__private__idx227 >= ceto__private__size228) {
                         break;
                     }
-                    const auto& c = class_definitions[ceto__private__idx18];
+                    const auto c = class_definitions[ceto__private__idx227];
                                     if ((*ceto::mad((*ceto::mad(c)).name_node)).name() == (*ceto::mad(class_node)).name()) {
                                 return c;
                             }
@@ -319,16 +319,16 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             
     
                 static_assert(requires { std::begin(function_definitions) + 2; }, "not a contiguous container");
-                size_t ceto__private__size21 = std::size(function_definitions);
-                for (size_t ceto__private__idx20 = 0; ; ceto__private__idx20++) {
-                    if (std::size(function_definitions) != ceto__private__size21) {
+                size_t ceto__private__size230 = std::size(function_definitions);
+                for (size_t ceto__private__idx229 = 0; ; ceto__private__idx229++) {
+                    if (std::size(function_definitions) != ceto__private__size230) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx20 >= ceto__private__size21) {
+                    if (ceto__private__idx229 >= ceto__private__size230) {
                         break;
                     }
-                    const auto& f = function_definitions[ceto__private__idx20];
+                    const auto f = function_definitions[ceto__private__idx229];
                                     if ((*ceto::mad((*ceto::mad(f)).function_name)).name() == (*ceto::mad(function_name_node)).name()) {
                                 return f;
                             }
@@ -349,16 +349,16 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             
     
                 static_assert(requires { std::begin(variable_definitions) + 2; }, "not a contiguous container");
-                size_t ceto__private__size23 = std::size(variable_definitions);
-                for (size_t ceto__private__idx22 = 0; ; ceto__private__idx22++) {
-                    if (std::size(variable_definitions) != ceto__private__size23) {
+                size_t ceto__private__size232 = std::size(variable_definitions);
+                for (size_t ceto__private__idx231 = 0; ; ceto__private__idx231++) {
+                    if (std::size(variable_definitions) != ceto__private__size232) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx22 >= ceto__private__size23) {
+                    if (ceto__private__idx231 >= ceto__private__size232) {
                         break;
                     }
-                    const auto& d = variable_definitions[ceto__private__idx22];
+                    const auto d = variable_definitions[ceto__private__idx231];
                                     if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
                                 auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
                                 while (true) {                        if ((std::dynamic_pointer_cast<const Module>(ceto::get_underlying(parent_block)) != nullptr)) {

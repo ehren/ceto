@@ -49,7 +49,7 @@ auto join(const T1& v, const T2& to_string, const decltype(std::string {""})&  s
             return std::string {""};
         }
         return std::accumulate((*ceto::mad(v)).cbegin() + 1, (*ceto::mad(v)).cend(), to_string((*ceto::mad(v)).at(0)), [&to_string, &sep](const auto &a, const auto &el) {
-                if constexpr (!std::is_void_v<decltype(((a + sep) + to_string(el)))>) { return ((a + sep) + to_string(el)); } else { static_cast<void>(((a + sep) + to_string(el))); };
+                return ((a + sep) + to_string(el));
                 });
     }
 
