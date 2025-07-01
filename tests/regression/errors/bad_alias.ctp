@@ -1,4 +1,6 @@
-#unsafe()  # unsafe mode bypasses 8 static_assert failures (currently)
+#unsafe()  # unsafe mode bypasses 13 static_assert failures (currently)
+
+include <functional>
 
 class (Foo:
     vec
@@ -145,6 +147,22 @@ def (ok9, f, f2: mut:auto:
     std.cout << "\ndone ok9\n"
 )
 
+def (ok10, f:mut:auto, f2:mut:auto:
+    for (x in f.vec:
+        f2.vec.append(1)
+        std.cout << x
+        break  # comment out for std.terminate at runtime (only safe because of std.size checked indexing instead of range-based-for)
+    )
+)
+
+def (mutates, f: mut:auto:
+    f.vec.push_back(42)
+)
+
+class (HoldsFunc:
+    func: std.function<void(const:int:ref)>
+)
+
 def (main:
     vec: mut = [1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337]
     f: mut = Foo(vec)
@@ -155,15 +173,59 @@ def (main:
     bad3(f.vec.operator("[]")(65), s) # dito
     std.cout << std.endl
     ok4(f.vec, s)
-    bad5(f.vec[65], f.vec)  # static_assert in safe mode results in exception in unsafe mode but ub still
-    bad5(f.vec.operator("[]")(65), f.vec)  # static_assert in safe mode
+    bad5(f.vec[0], f.vec)  # static_assert in safe mode results in exception in unsafe mode but ub still
+    bad5(f.vec.operator("[]")(0), f.vec)  # static_assert in safe mode
     bad6(f.vec, f.vec)   # banned because bad5 banned
-    f.bad_method(f.vec.operator("[]")(65))
+    f.bad_method(f.vec.operator("[]")(0))
 
     bad7(f, f.vec)        # allowed (currently) but violates simple param rules (no mixing mut ref with const ref) and no locals (for loop iter vars) of ref type
     bad8(f, f)            # violates no for loop iter vars of ref type (TODO error)
     ok9(f, f)  
-    
+    ok10(f, f)
+
+    bad_lambda = lambda (x:
+        f_m: mut = f
+        f_m.vec.push_back(42)
+        std.cout << x
+        return
+    )
+
+    bad_lambda(f.vec[0])
+
+    bad_lambda2 = lambda (x:
+        mutates(f)
+        std.cout << x
+        return
+    )
+
+    bad_lambda2(f.vec[0])
+
+    bad_lambda3 = lambda (x, f:
+        mutates(f)
+        std.cout << x
+        return
+    )
+
+    bad_lambda3(f.vec[0], f)
+
+    has_bad_lambda_member1 = HoldsFunc(lambda(x:
+        mutates(f)
+        std.cout << x
+        return
+    ))
+
+    ok_lambda5 = lambda (x:mut:auto, f: mut:auto:
+        mutates(f)
+        std.cout << x
+        return
+    )
+
+    val = f.vec[0]
+    has_bad_lambda_member1.func(val)  # ok
+    has_bad_lambda_member1.func(f.vec[0])  # static_assert
+
+    ok_lambda5(val, f)
+    ok_lambda5(f.vec[0], f)  # still a static_assert (fine)
 
    # std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0))())>  # 0
     #std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0)):decltype(auto)())>  # 1

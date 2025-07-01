@@ -2139,7 +2139,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         return code
 
     parent = node.parent
-    if node in parent.args and parent.func and parent.func.name not in ["isinstance", "asinstance"] :    #and not isinstance(parent, (BinOp, UnOp))  :
+    if node in parent.args and parent.func and parent.func.name not in ["if", "isinstance", "asinstance"] :    #and not isinstance(parent, (BinOp, UnOp))  :
 
         others = [codegen_node(a, cx) for a in node.parent.args if a != node]
 
@@ -2153,6 +2153,21 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         if isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["ceto", "bounds_check"]:
             return code
 
+        is_stateless = "true"
+
+        if isinstance(node.parent.func, Identifier):
+
+            if len(node.parent.args) == 1:
+                # detect simple one arg calls
+                if node.parent.func.scope.lookup_function(node.parent.func):
+                    # has a real function definition - not a stateful lambda so ok
+                    return code
+
+            # detect non-stateful lambdas
+            parent_func_defs = node.parent.func.scope.find_defs(node.parent.func)
+            if len(parent_func_defs) == 1 and isinstance(parent_func_defs[0], VariableDefinition):
+                is_stateless = "ceto::IsStateless<std::remove_cvref_t<decltype(" + node.parent.func.name + ")>>"
+
         # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
         while not isinstance(parent.parent, Block):
             parent = parent.parent
@@ -2161,7 +2176,8 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
             is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
-        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")> " + is_passed_to_container_method + others_simple + " ); return " + code + "; } ()"
+        return "[&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(" + code +  ")> " + others_simple + ") && " + is_stateless + ") " + is_passed_to_container_method + " ); return " + code + "; } ()"
+
     return code
 
 

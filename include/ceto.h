@@ -352,6 +352,12 @@ concept IsContainer = requires(T t)
     std::cend(t);
 };
 
+template <typename T>
+concept IsStateless = requires(T t)
+{
+    +t;
+};
+
 } // end namespace ceto
 
 // this works but disable until unsafe blocks fully implemented
