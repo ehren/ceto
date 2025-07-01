@@ -126,7 +126,7 @@ def safety_checks(node):
     #if not cmdargs._norefs:
     #    return node
 
-    if isinstance(node, Call) and node.func.name == "for":
+    if 0 and isinstance(node, Call) and node.func.name == "for":
 
         # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2012r0.pdf
 

@@ -2139,17 +2139,29 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         return code
 
     parent = node.parent
-    if node in parent.args and not isinstance(parent, (BinOp, UnOp)) and parent.func and parent.func.name not in ["isinstance", "asinstance"]:
-        is_container = ""
+    if node in parent.args and parent.func and parent.func.name not in ["isinstance", "asinstance"] :    #and not isinstance(parent, (BinOp, UnOp))  :
+
+        others = [codegen_node(a, cx) for a in node.parent.args if a != node]
+
+        others_simple = " && ".join("!std::is_reference_v<decltype(" + c + ")> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
+        if others_simple:
+            others_simple = " || (" + others_simple + ")"
+
+        # the above is enough to allow a multidimensional array access a[0][0] rewritten by the macro system to ceto.bounds_check(ceto.bounds_check(a, 0), 0)
+        # the inner ceto.bounds_check returns a reference but the index is a non-reference fundamental type so it's fine.
+        # however multi std.maps (with non-simple keys) won't work properly, nor reference indices. so let's just allow ceto.bounds_check (it's safe - the container param is not mutated (references not invalidated))
+        if isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["ceto", "bounds_check"]:
+            return code
 
         # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
         while not isinstance(parent.parent, Block):
             parent = parent.parent
 
+        is_passed_to_container_method = ""
         if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
-            is_container = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
+            is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
-        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")> " + is_container + " ); return " + code + "; } ()"
+        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")> " + is_passed_to_container_method + others_simple + " ); return " + code + "; } ()"
     return code
 
 

@@ -1,3 +1,5 @@
+# Test Output: 000000000000000000000000000000000000000000
+
 def (f, a : [[int]]:
     std.cout << a[0][0]
     static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
@@ -6,6 +8,9 @@ def (f, a : [[int]]:
 
 def (f2, a: [[int]] = [[0, 1]]:
     std.cout << a[0][0]
+    std.cout << a.at(0).at(0)
+    x = a[0]
+    std.cout << x[0]
     static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)
     static_assert(std.is_reference_v<decltype(a)>)
 )
