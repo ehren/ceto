@@ -343,10 +343,20 @@ inline constexpr bool is_non_aggregate_init_and_if_convertible_then_non_narrowin
     (!std::is_convertible_v<From, To> ||
      is_convertible_without_narrowing_v<From, To>);
 
+template <typename T>
+concept IsContainer = requires(T t)
+{
+    std::begin(t);
+    std::cbegin(t);
+    std::end(t);
+    std::cend(t);
+};
+
 } // end namespace ceto
 
 // this works but disable until unsafe blocks fully implemented
 //#define CETO_BAN_RAW_DEREFERENCABLE(expr) [&]() -> decltype(auto) { static_assert(!ceto::IsRawDereferencable<std::remove_cvref_t<decltype(expr)>>); return expr; }()
 #define CETO_BAN_RAW_DEREFERENCABLE(expr) (expr)
+
 
 #endif // CETO_H

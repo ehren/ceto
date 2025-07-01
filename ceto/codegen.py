@@ -2134,10 +2134,22 @@ def _has_outer_double_parentheses(s: str):
 def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
     if cx.is_unsafe:
         return code
+    
     if isinstance(node.parent, Block):
         return code
-    if node in node.parent.args and not isinstance(node.parent, (BinOp, UnOp)) and len(node.parent.args) > 1 and node.parent.func and node.parent.func.name not in ["isinstance", "asinstance"]:
-        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")>); return " + code + "; } ()"
+
+    parent = node.parent
+    if node in parent.args and not isinstance(parent, (BinOp, UnOp)) and parent.func and parent.func.name not in ["isinstance", "asinstance"]:
+        is_container = ""
+
+        # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
+        while not isinstance(parent.parent, Block):
+            parent = parent.parent
+
+        if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
+            is_container = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
+
+        return "[&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(" + code +  ")> " + is_container + " ); return " + code + "; } ()"
     return code
 
 

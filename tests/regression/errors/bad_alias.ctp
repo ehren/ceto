@@ -1,7 +1,19 @@
-#unsafe()  # 5 static_asserts (currently) upon uncomment
+#unsafe()  # unsafe mode bypasses 8 static_assert failures (currently)
 
 class (Foo:
     vec
+
+    def (bad_method: mut, x:
+        self.vec.clear()
+        self.vec.push_back(42)
+        self.vec.push_back(42)
+        self.vec.push_back(42)
+        self.vec.push_back(42)
+        self.vec.push_back(42)
+        self.vec.push_back(42)
+        std.cout << x
+        std.cout << "\ndone bad_method\n"
+    )
 )
 
 struct (FooStruct:
@@ -138,17 +150,20 @@ def (main:
     f: mut = Foo(vec)
     s: mut = FooStruct(f)
     bad(f.vec.operator("[]")(65), f)  # static_assert in safe mode
-    #bad2(f.vec.at(65), f) # dito
+    bad2(f.vec.at(65), f) # dito
     bad2(f.vec.operator("[]")(65), f) # dito
     bad3(f.vec.operator("[]")(65), s) # dito
     std.cout << std.endl
     ok4(f.vec, s)
-    #bad5(f.vec[65], f.vec)  # static_assert in safe mode results in exception in unsafe mode but ub still
+    bad5(f.vec[65], f.vec)  # static_assert in safe mode results in exception in unsafe mode but ub still
     bad5(f.vec.operator("[]")(65), f.vec)  # static_assert in safe mode
     bad6(f.vec, f.vec)   # banned because bad5 banned
+    f.bad_method(f.vec.operator("[]")(65))
+
     bad7(f, f.vec)        # allowed (currently) but violates simple param rules (no mixing mut ref with const ref) and no locals (for loop iter vars) of ref type
     bad8(f, f)            # violates no for loop iter vars of ref type (TODO error)
     ok9(f, f)  
+    
 
    # std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0))())>  # 0
     #std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0)):decltype(auto)())>  # 1

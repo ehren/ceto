@@ -48,6 +48,19 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
 
     ceto__private__C1 vec;
 
+        template <typename T1>
+auto bad_method(const T1& x) -> void {
+            (*ceto::mad(this -> vec)).clear();
+            (*ceto::mad(this -> vec)).push_back(42);
+            (*ceto::mad(this -> vec)).push_back(42);
+            (*ceto::mad(this -> vec)).push_back(42);
+            (*ceto::mad(this -> vec)).push_back(42);
+            (*ceto::mad(this -> vec)).push_back(42);
+            (*ceto::mad(this -> vec)).push_back(42);
+            std::cout << x;
+            std::cout << "\ndone bad_method\n";
+        }
+
     explicit Foo(ceto__private__C1 vec) : vec(std::move(vec)) {}
 
     Foo() = delete;
@@ -158,7 +171,7 @@ auto bad6(const T1& v,  auto &  v2) -> void {
                     break;
                 }
                  auto &  x = v[ceto__private__idx3];
-                            bad5([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(x)>); return x; } (), v2);
+                            bad5([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(x)>  ); return x; } (), v2);
                     break;
 
             }
@@ -256,13 +269,16 @@ auto ok9(const T1& f,  auto  f2) -> void {
         auto vec { std::vector {{1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337, 1337}} } ;
         auto f { ceto::make_shared_propagate_const<decltype(Foo{vec})>(vec) } ;
         auto s { FooStruct{f} } ;
-        bad([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), f);
-        bad2([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), f);
-        bad3([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), s);
+        bad([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>  ); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), f);
+        bad2([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).at(65))>  ); return (*ceto::mad((*ceto::mad(f)).vec)).at(65); } (), f);
+        bad2([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>  ); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), f);
+        bad3([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>  ); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), s);
         std::cout << std::endl;
         ok4((*ceto::mad(f)).vec, s);
-        bad5([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), (*ceto::mad(f)).vec);
+        bad5([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(ceto::bounds_check((*ceto::mad(f)).vec, 65))>  ); return ceto::bounds_check((*ceto::mad(f)).vec, 65); } (), (*ceto::mad(f)).vec);
+        bad5([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>  ); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } (), (*ceto::mad(f)).vec);
         bad6((*ceto::mad(f)).vec, (*ceto::mad(f)).vec);
+        (*ceto::mad(f)).bad_method([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad((*ceto::mad(f)).vec)).operator[](65))>  || ceto::IsContainer<std::remove_cvref_t<decltype(f)>> ); return (*ceto::mad((*ceto::mad(f)).vec)).operator[](65); } ());
         bad7(f, (*ceto::mad(f)).vec);
         bad8(f, f);
         ok9(f, f);
