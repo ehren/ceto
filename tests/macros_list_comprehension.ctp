@@ -2,7 +2,7 @@
 
 include <ranges>
 
-#include (macros_list_comprehension)
+include (macros_list_comprehension)
 
 def (main:
     l = [x, for (x in std.ranges.iota_view(0, 10)), if (x % 2 == 0)]

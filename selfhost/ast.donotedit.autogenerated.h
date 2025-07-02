@@ -108,19 +108,19 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
             
-                auto&& ceto__private__intermediate210 = this -> args;
+                auto&& ceto__private__intermediate1 = this -> args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate210) + 2; }, "not a contiguous container");
-                size_t ceto__private__size212 = std::size(ceto__private__intermediate210);
-                for (size_t ceto__private__idx211 = 0; ; ceto__private__idx211++) {
-                    if (std::size(ceto__private__intermediate210) != ceto__private__size212) {
+                static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
+                size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
+                for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
+                    if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx211 >= ceto__private__size212) {
+                    if (ceto__private__idx2 >= ceto__private__size3) {
                         break;
                     }
-                    const auto a = ceto__private__intermediate210[ceto__private__idx211];
+                    const auto a = ceto__private__intermediate1[ceto__private__idx2];
                                     (new_args).push_back((*ceto::mad(a)).clone());
 
                 }
@@ -154,21 +154,21 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return false;
             }
             
-                auto&& ceto__private__intermediate213 = this -> args;
-            auto&& ceto__private__intermediate215 = (*ceto::mad(ceto__private__intermediate213)).size();
-            auto&& ceto__private__intermediate216 = ceto::util::range(ceto__private__intermediate215);
+                auto&& ceto__private__intermediate4 = this -> args;
+            auto&& ceto__private__intermediate6 = (*ceto::mad(ceto__private__intermediate4)).size();
+            auto&& ceto__private__intermediate7 = ceto::util::range(ceto__private__intermediate6);
 
-                static_assert(requires { std::begin(ceto__private__intermediate216) + 2; }, "not a contiguous container");
-                size_t ceto__private__size218 = std::size(ceto__private__intermediate216);
-                for (size_t ceto__private__idx217 = 0; ; ceto__private__idx217++) {
-                    if (std::size(ceto__private__intermediate216) != ceto__private__size218) {
+                static_assert(requires { std::begin(ceto__private__intermediate7) + 2; }, "not a contiguous container");
+                size_t ceto__private__size9 = std::size(ceto__private__intermediate7);
+                for (size_t ceto__private__idx8 = 0; ; ceto__private__idx8++) {
+                    if (std::size(ceto__private__intermediate7) != ceto__private__size9) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx217 >= ceto__private__size218) {
+                    if (ceto__private__idx8 >= ceto__private__size9) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate216[ceto__private__idx217];
+                    const auto i = ceto__private__intermediate7[ceto__private__idx8];
                                     if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
                                 return false;
                             }
@@ -183,21 +183,21 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return (*ceto::mad(replacement)).clone();
             }
             
-                auto&& ceto__private__intermediate219 = this -> args;
-            auto&& ceto__private__intermediate221 = (*ceto::mad(ceto__private__intermediate219)).size();
-            auto&& ceto__private__intermediate222 = ceto::util::range(ceto__private__intermediate221);
+                auto&& ceto__private__intermediate10 = this -> args;
+            auto&& ceto__private__intermediate12 = (*ceto::mad(ceto__private__intermediate10)).size();
+            auto&& ceto__private__intermediate13 = ceto::util::range(ceto__private__intermediate12);
 
-                static_assert(requires { std::begin(ceto__private__intermediate222) + 2; }, "not a contiguous container");
-                size_t ceto__private__size224 = std::size(ceto__private__intermediate222);
-                for (size_t ceto__private__idx223 = 0; ; ceto__private__idx223++) {
-                    if (std::size(ceto__private__intermediate222) != ceto__private__size224) {
+                static_assert(requires { std::begin(ceto__private__intermediate13) + 2; }, "not a contiguous container");
+                size_t ceto__private__size15 = std::size(ceto__private__intermediate13);
+                for (size_t ceto__private__idx14 = 0; ; ceto__private__idx14++) {
+                    if (std::size(ceto__private__intermediate13) != ceto__private__size15) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx223 >= ceto__private__size224) {
+                    if (ceto__private__idx14 >= ceto__private__size15) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate222[ceto__private__idx223];
+                    const auto i = ceto__private__intermediate13[ceto__private__idx14];
                                     (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(pattern, replacement);
 
                 }

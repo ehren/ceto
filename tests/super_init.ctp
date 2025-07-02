@@ -1,4 +1,4 @@
-# Test Output: 5555.0one
+# Test Output: 556two42
 
 include <map>
 include <string>
@@ -30,7 +30,7 @@ def (main:
     f = Generic("5")
     f2 = Concrete(5)
     #f2e = Concrete("5")  # error
-    f3 = Generic2([5, 6], std.map<int, std.string> { {1, "one"} })
+    f3 = Generic2([5, 6], std.map<int, std.string> { {2, "two"} })
     f4 = Concrete2(42)
-    std.cout << f.x << f2.x << f3.x[0] << f3.y.at(1) << f4.x
+    std.cout << f.x << f2.x << f3.x[1] << f3.y.at(2) << f4.x
 )

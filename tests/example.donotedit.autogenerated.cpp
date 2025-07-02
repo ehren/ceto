@@ -52,9 +52,9 @@
 ;
 #include <future>
 ;
-template <typename ceto__private__C19>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    ceto__private__C19 data_member;
+    ceto__private__C1 data_member;
 
         template <typename T1>
 auto method(const T1& param) const -> auto {
@@ -67,7 +67,7 @@ auto method(const T1& param) const -> auto {
             return (*ceto::mad(this -> data_member)).size();
         }
 
-    explicit Foo(ceto__private__C19 data_member) : data_member(std::move(data_member)) {}
+    explicit Foo(ceto__private__C1 data_member) : data_member(std::move(data_member)) {}
 
     Foo() = delete;
 
@@ -96,7 +96,7 @@ struct UniqueFoo : public ceto::object {
     inline auto string_join(const std::vector<std::string>&  vec, const decltype(std::string {", "})&  sep = std::string {", "}) -> std::string {
         static_assert(std::is_same_v<decltype(vec),const std::vector<std::string> &>);
         static_assert(std::is_same_v<decltype(sep),const std::string &>);
-        if ([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype((*ceto::mad(vec)).empty())>); return (*ceto::mad(vec)).empty(); } ()) {
+        if ((*ceto::mad(vec)).empty()) {
             return "";
         }
         if (1) {
@@ -117,17 +117,17 @@ struct UniqueFoo : public ceto::object {
                 
     
                     static_assert(requires { std::begin(ceto__private__ident__1) + 2; }, "not a contiguous container");
-                    size_t ceto__private__size21 = std::size(ceto__private__ident__1);
-                    for (size_t ceto__private__idx20 = 0; ; ceto__private__idx20++) {
-                        if (std::size(ceto__private__ident__1) != ceto__private__size21) {
+                    size_t ceto__private__size3 = std::size(ceto__private__ident__1);
+                    for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
+                        if (std::size(ceto__private__ident__1) != ceto__private__size3) {
                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                             std::terminate();
                         }
-                        if (ceto__private__idx20 >= ceto__private__size21) {
+                        if (ceto__private__idx2 >= ceto__private__size3) {
                             break;
                         }
-                        const auto a = ceto__private__ident__1[ceto__private__idx20];
-                                            (ceto__private__ident__0).push_back(std::string(a));
+                        const auto a = ceto__private__ident__1[ceto__private__idx2];
+                                            (ceto__private__ident__0).push_back(std::string([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(a)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__0)>>)); return a; }()));
 
                     }
                     return ceto__private__ident__0;

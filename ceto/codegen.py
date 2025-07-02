@@ -1,6 +1,9 @@
 import typing
 from typing import Union, Any
 from collections import defaultdict
+import re
+import textwrap
+import threading
 
 from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     find_use, find_uses, find_all, is_return, is_void_return, \
@@ -9,10 +12,6 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
     nested_same_binop_to_list, gensym, FieldDefinition
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
-
-from collections import defaultdict
-import re
-import textwrap
 
 
 mut_by_default = False
@@ -2131,53 +2130,70 @@ def _has_outer_double_parentheses(s: str):
     return count == 0
 
 
+_ban_check_cache = threading.local()
+
 def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
     if cx.is_unsafe:
         return code
-    
+
     if isinstance(node.parent, Block):
         return code
 
-    parent = node.parent
-    if node in parent.args and parent.func and parent.func.name not in ["if", "decltype", "isinstance", "asinstance"] :    #and not isinstance(parent, (BinOp, UnOp))  :
-        #breakpoint()
+    if not node.parent:
+        return code
 
-        # the below 'others_simple' check is enough to allow a multidimensional array access a[0][0] rewritten by the macro system to ceto.bounds_check(ceto.bounds_check(a, 0), 0)
-        # The inner ceto.bounds_check returns a reference but the index is a non-reference fundamental type so it's fine.
-        # However multi std.maps (with non-simple keys) won't work properly, nor reference indices. so let's just allow ceto.bounds_check (it's safe - the container param is not mutated (references not invalidated))
-        if isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["ceto", "bounds_check"]:
-            return code
+    # the below 'others_simple' check is enough to allow a multidimensional array access a[0][0] rewritten by the macro system to ceto.bounds_check(ceto.bounds_check(a, 0), 0)
+    # The inner ceto.bounds_check returns a reference but the index is a non-reference fundamental type so it's fine.
+    # However multi std.maps (with non-simple keys) won't work properly, nor reference indices. so let's just allow ceto.bounds_check (it's safe - the container param is not mutated (references not invalidated))
+    if isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["ceto", "bounds_check"]:
+        return code
 
-        others = [codegen_node(a, cx) for a in node.parent.args if a != node]
+    if not hasattr(_ban_check_cache, 'processing_nodes'):
+        _ban_check_cache.processing_nodes = set()
 
-        others_simple = " && ".join("!std::is_reference_v<decltype(" + c + ")> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
-        if others_simple:
-            others_simple = " || (" + others_simple + ")"
+    node_id = id(node)
 
-        is_stateless = "true"
+    if node_id in _ban_check_cache.processing_nodes:
+        return code
 
-        if isinstance(node.parent.func, Identifier):
+    try:
+        _ban_check_cache.processing_nodes.add(node_id)
 
-            if len(node.parent.args) == 1:
-                # detect simple one arg calls
-                if node.parent.func.scope.lookup_function(node.parent.func):
-                    # has a real function definition - not a stateful lambda so ok
-                    return code
+        parent = node.parent
+        if node in parent.args and parent.func and parent.func.name not in ["if", "decltype", "isinstance", "asinstance"]:
+            others = [codegen_node(a, cx) for a in node.parent.args if a != node]
 
-            # detect non-stateful lambdas
-            parent_func_defs = node.parent.func.scope.find_defs(node.parent.func)
-            if len(parent_func_defs) == 1 and isinstance(parent_func_defs[0], VariableDefinition):
-                is_stateless = "ceto::IsStateless<std::remove_cvref_t<decltype(" + node.parent.func.name + ")>>"
+            others_simple = " && ".join("!std::is_reference_v<decltype(" + c + ")> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
+            if others_simple:
+                others_simple = " || (" + others_simple + ")"
 
-        # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
-        while not isinstance(parent.parent, Block):
-            parent = parent.parent
+            is_stateless = "true"
 
-        is_passed_to_container_method = ""
-        if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
-            is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
+            if isinstance(node.parent.func, Identifier):
+                if len(node.parent.args) == 1:
+                    # detect simple one arg calls
+                    if node.parent.func.scope.lookup_function(node.parent.func):
+                        # has a real function definition - not a stateful lambda so ok
+                        return code
 
-        return "[&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(" + code +  ")> " + others_simple + ") && " + is_stateless + ") " + is_passed_to_container_method + " ); return " + code + "; } ()"
+                # detect non-stateful lambdas
+                parent_func_defs = node.parent.func.scope.find_defs(node.parent.func)
+                if len(parent_func_defs) == 1 and isinstance(parent_func_defs[0], VariableDefinition):
+                    is_stateless = "ceto::IsStateless<std::remove_cvref_t<decltype(" + node.parent.func.name + ")>>"
+
+            # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
+            while not isinstance(parent.parent, Block):
+                parent = parent.parent
+
+            is_passed_to_container_method = ""
+            if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
+                is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
+
+            condition = f"((!std::is_reference_v<decltype({code})> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
+            return f"[&]() -> decltype(auto) {{ static_assert({condition}); return {code}; }}()"
+
+    finally:
+        _ban_check_cache.processing_nodes.discard(node_id)
 
     return code
 

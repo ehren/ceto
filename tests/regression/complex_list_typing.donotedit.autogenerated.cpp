@@ -125,8 +125,8 @@
                                 break;
                             }
                             const auto lk = li[ceto__private__idx1];
-                                            f([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(lk)>  ); return lk; } ());
-                                    f2([&]() -> decltype(auto) { static_assert(!std::is_reference_v<decltype(lk)>  ); return lk; } ());
+                                            f(lk);
+                                    f2(lk);
 
                         }
     

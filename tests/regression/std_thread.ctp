@@ -14,18 +14,20 @@ def (main:
     f : mut = Foo()
 
     t : mut = std.thread(lambda(:
-        while (f.a < 100000:
-            std.cout << f.a << "\n"
+        f_mut : mut = f
+        while (f_mut.a < 100000:
+            std.cout << f_mut.a << "\n"
         )
-        f.go = false
+        f_mut.go = false
     ))
 
     t2 : mut = std.thread(lambda(:
-        while (f.go:
-            f.a = f.a + 1   # took us a while to implement += etc
-            f.a.operator("++")()  # alternative
-            f.a.operator("++")(1) 
-            f.a += 1  # += now implemented
+        f_mut : mut = f
+        while (f_mut.go:
+            f_mut.a = f_mut.a + 1   # took us a while to implement += etc
+            f_mut.a.operator("++")()  # alternative
+            f_mut.a.operator("++")(1) 
+            f_mut.a += 1  # += now implemented
         )
     ))
 
