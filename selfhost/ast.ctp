@@ -248,6 +248,8 @@ lambda(m : mut:auto:rref:
         "add_class_definition", &Scope.add_class_definition).def(
         "add_namespace_definition", &Scope.add_namespace_definition).def(
         "add_function_definition", &Scope.add_function_definition).def(
+        "is_node_unsafe", &Scope.is_node_unsafe).def(
+        "mark_node_unsafe", &Scope.mark_node_unsafe).def(
         "lookup_class", &Scope.lookup_class).def(
         "lookup_function", &Scope.lookup_function).def(
         "find_defs", &Scope.find_defs, py.arg("var_node"), py.arg("find_all") = true).def(

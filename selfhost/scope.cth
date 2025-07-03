@@ -1,4 +1,5 @@
 include <map>
+include <set>
 
 include (ast)
 include (utility)
@@ -148,6 +149,12 @@ def (comes_before, root: Node, before: Node, after: Node:
     return {}
 ) : std.optional<bool>
 
+def (node_equals_comparator, a: Node, b: Node:
+    return a.equals(b)
+): bool
+
+# https://stackoverflow.com/questions/2620862/using-custom-stdset-comparator/46128321#46128321
+NodeEqualsComparator: using = std.integral_constant<decltype(&node_equals_comparator), &node_equals_comparator>
 
 class (Scope:
     interfaces = std.map<std.string, std.vector<Node>>()
@@ -155,6 +162,9 @@ class (Scope:
     variable_definitions: [VariableDefinition] = []
     function_definitions: [FunctionDefinition] = []
     namespace_definitions: [NamespaceDefinition] = []
+    #unsafe_nodes: std.set<Node, comparator_lambda> = {}  # pybind11 doesn't like this?
+    #unsafe_nodes: std.set<Node, decltype(&node_equals_comparator)> = {}  # or this
+    unsafe_nodes: std.set<Node, NodeEqualsComparator> = {}
 
     indent = 0
     _parent: weak:Scope = {}
@@ -270,6 +280,20 @@ class (Scope:
         )
         return None
     ) : NamespaceDefinition
+
+    def (is_node_unsafe, node: Node:
+        if (self.unsafe_nodes.contains(node):
+            return True
+        )
+        if ((s = self._parent.lock()):
+            return s.is_node_unsafe(node)
+        )
+        return False
+    )
+
+    def (mark_node_unsafe: mut, node: Node:
+        self.unsafe_nodes.insert(node)
+    )
 
     def (find_defs, var_node: Node, find_all=true:
 
