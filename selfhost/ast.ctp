@@ -246,6 +246,7 @@ lambda(m : mut:auto:rref:
         "add_variable_definition", &Scope.add_variable_definition, "defined_node"_a, "defining_node"_a).def(
         "add_interface_method", &Scope.add_interface_method).def(
         "add_class_definition", &Scope.add_class_definition).def(
+        "add_namespace_definition", &Scope.add_namespace_definition).def(
         "add_function_definition", &Scope.add_function_definition).def(
         "lookup_class", &Scope.lookup_class).def(
         "lookup_function", &Scope.lookup_function).def(

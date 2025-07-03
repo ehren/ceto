@@ -106,3 +106,29 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
         unquote(map_call)
     ) ())
 )
+
+
+# just for testing out performance consequences of safe for loops in selfhost (not too significant)
+#defmacro (for(x:T in iterable, block), x, T: Node|None, iterable, block: Block:
+#    t = if (T:
+#        T
+#    else:
+#        full: Node = quote(const:auto:ref)
+#        full
+#    )
+#
+#    in_expr = quote(unquote(x): unquote(t) in unquote(iterable))
+#
+#    args: [Node] = [in_expr, block]
+#
+#    return Call(quote(unsafe_for), args)
+#)
+#
+#defmacro (vec[index], vec, index:
+#    if (vec.name() == "lambda":
+#        return None
+#    )
+#
+#    return quote(unquote(vec).unsafe[unquote(index)])
+#)
+

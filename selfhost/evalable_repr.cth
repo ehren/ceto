@@ -30,10 +30,7 @@ struct (EvalableAstReprVisitor(BaseVisitor<EvalableAstReprVisitor>):
         )
 
         self.repr += "["
-        args: mut:auto:ref:ref = node.args
-        # TODO norefs note: if it weren't for the "arg.accept(*this)" which could indeed mutate node.args, this for-loop would be safe 
-        # (think we need more logic to recognize that the simple attribute access (not method call!) "self.repr" is fine here)
-        for (arg in args:
+        for (arg in node.args:
             arg.accept(*this)
             self.repr += ", "
         )

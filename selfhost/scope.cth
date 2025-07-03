@@ -133,8 +133,7 @@ def (comes_before, root: Node, before: Node, after: Node:
     elif root == after:
         return false
     )
-    args: mut:auto:ref:ref = root.args
-    for (arg in args:
+    for (arg in root.args:
         cb = comes_before(arg, before, after)
         if (cb.has_value():
             return cb
@@ -155,6 +154,7 @@ class (Scope:
     class_definitions: [ClassDefinition] = []
     variable_definitions: [VariableDefinition] = []
     function_definitions: [FunctionDefinition] = []
+    namespace_definitions: [NamespaceDefinition] = []
 
     indent = 0
     _parent: weak:Scope = {}
@@ -216,18 +216,16 @@ class (Scope:
         self.function_definitions.push_back(function_definition)
     )
 
+    def (add_namespace_definition: mut, namespace_definition: NamespaceDefinition:
+        self.namespace_definitions.push_back(namespace_definition)
+    )
+
     def (lookup_class, class_node: Node:
         if (not isinstance(class_node, Identifier):
             return None
         )
 
-        # TODO even if we recognize class_node as const (and shared_ptr to const)
-        # (and we spam std::experimental::propagate_const in data members to prevent some mutation through const)
-        # can we still statically determine that the 'class_node.name()' call below does not modify self.class_definitions?
-        # This is problematic assumption in e.g. presence of classes with lambda data members 
-        # - hence need to iterate over an explicitly marked reference:
-        class_definitions: mut:auto:ref:ref = self.class_definitions
-        for (c in class_definitions:
+        for (c in self.class_definitions:
             if (c.name_node.name() == class_node.name():
                 return c
             )
@@ -246,8 +244,7 @@ class (Scope:
             return None
         )
 
-        function_definitions: mut:auto:ref:ref = self.function_definitions
-        for (f in function_definitions:
+        for (f in self.function_definitions:
             if (f.function_name.name() == function_name_node.name():
                 return f
             )
@@ -258,6 +255,22 @@ class (Scope:
         return None
     ) : FunctionDefinition
 
+    def (lookup_namespace, namespace_name_node: Node:
+        if (not isinstance(namespace_name_node, Identifier):
+            return None
+        )
+
+        for (n in self.namespace_definitions:
+            if (n.namespace_name.name() == namespace_name_node.name():
+                return n
+            )
+        )
+        if ((s = self._parent.lock()):
+            return s.lookup_namespace(namespace_name_node)
+        )
+        return None
+    ) : NamespaceDefinition
+
     def (find_defs, var_node: Node, find_all=true:
 
         if (not isinstance(var_node, Identifier):
@@ -267,11 +280,7 @@ class (Scope:
         # results: mut = []  # untyped lists (implemented using range_value_t) not supported in clang 14/15
         results: mut:[VariableDefinition] = []
 
-        # we can't tell that e.g. var_node.name() [a method call on a parameter or indeed any use of a parameter]
-        # won't modify self.variable_definitions. Hence we must iterate over an explicitly marked reference:
-        variable_definitions: mut:auto:ref:ref = self.variable_definitions
-
-        for (d in variable_definitions:
+        for (d in self.variable_definitions:
             if (d.defined_node.name() == var_node.name() and d.defined_node != var_node:
                 # macro expansion (as currently implemented) breaks this:
                 #defined_loc = std.get<1>(d.defined_node.source.source)
