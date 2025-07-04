@@ -89,7 +89,10 @@ struct Foo : public ceto::object {
                 if (1) {
                     // unsafe;
                     (std::cout << blah) << (*ceto::mad(this -> foo)).x;
+                    static_assert(std::is_reference_v<decltype(blah)>);
                 }
+                static_assert(std::is_reference_v<decltype(blah)>);
+                static_assert(std::is_reference_v<decltype(/* unsafe: */ blah)>);
             }
 
         explicit HoldsFooMutRef_class(Foo & foo) : foo(foo) {}
@@ -107,7 +110,10 @@ struct Foo : public ceto::object {
                 if (1) {
                     // unsafe;
                     (std::cout << blah) << (*ceto::mad(this -> foo)).x;
+                    static_assert(std::is_reference_v<decltype(blah)>);
                 }
+                static_assert(std::is_reference_v<decltype(blah)>);
+                static_assert(std::is_reference_v<decltype(/* unsafe: */ blah)>);
             }
 
         explicit HoldsFooMutRef_struct(Foo & foo) : foo(foo) {}

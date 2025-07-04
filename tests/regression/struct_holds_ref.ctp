@@ -41,7 +41,10 @@ struct_and_class (HoldsFooMutRef:
         unsafe (:
             # both locals and fields of ref type (even if const) require an unsafe block
             std.cout << blah << self.foo.x
+            static_assert(std.is_reference_v<decltype(blah)>)
         )
+        static_assert(std.is_reference_v<decltype(blah)>)  # no 'unsafe' required in a static_assert
+        static_assert(std.is_reference_v<decltype(unsafe(blah))>)  # make sure unsafe(...) preserves the reference
     )
 )
 

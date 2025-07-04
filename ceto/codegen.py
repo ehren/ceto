@@ -1134,6 +1134,7 @@ def codegen_if(ifcall : Call, cx):
             capture = "&"
         else:
             capture = ""
+        # note that decltype(auto) is not acceptable here (we don't want e.g. differing constness of then and else branch to interfere with using expression-if)
         cpp = "[" + capture + "]() {" + cpp + "}()"
 
     return cpp + "\n"
@@ -2312,13 +2313,22 @@ def codegen_call(node: Call, cx: Scope):
                 raise CodeGenError("defmacros must be placed at file scope", node)
             return "\n"
         elif func_name == "unsafe":
-            assert len(node.args) == 0  # enfored in sema
-            if not isinstance(node.parent, Block):
-                raise CodeGenError("unsafe() call must be in Block", node)
+            if len(node.args) == 0:
+                if not isinstance(node.parent, Block):
+                    raise CodeGenError("unsafe() call must be in Block", node)
+                cx.is_unsafe = True
+                return "// unsafe"
+            elif len(node.args) == 1:
             #if node.parent.args[0] is not node:
             #    raise CodeGenError("unsafe() call must be first statement in Block", node)
-            cx.is_unsafe = True
-            return "// unsafe"
+                old_unsafe = cx.is_unsafe
+                cx.is_unsafe = True
+                code = codegen_node(node.args[0], cx)
+                cx.is_unsafe = old_unsafe
+                return "/* unsafe: */ " + code
+            else:
+                static_assert(False, "unexpected number of unsafe args")
+
         elif func_name == "ceto_private_module_boundary" and len(node.args) == 0:
             cx.is_unsafe = False
             return "\n"
@@ -2331,7 +2341,7 @@ def codegen_call(node: Call, cx: Scope):
 
             if func_name == "static_assert":
                 old_unsafe = cx.is_unsafe
-                cx.is_unsafe = False
+                cx.is_unsafe = True  # unsafe code in a static_assert doesn't require an unsafe block
             elif func_name not in ["decltype", "defined"]:
                 # TODO check that 'defined' is in an if (...) : preprocessor
                 mangle_free_func = True

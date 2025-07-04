@@ -303,8 +303,14 @@ def safety_checks(node):
         # but with an "unsafe()" call at the beginning that automatically marks the rest of the block as unsafe
         # (we want to avoid the scoping machinery / leave unsafe scopes to codegen for now)
         block_args = [Call(Identifier("unsafe"), [])] + block_args
-        unsafe_if = Call(Identifier("if"), [IntegerLiteral("1", None), Block(block_args)])
-        return unsafe_if
+
+        if isinstance(node.parent, Block):
+            unsafe_if = Call(Identifier("if"), [IntegerLiteral("1", None), Block(block_args)])
+            return unsafe_if
+        else:
+            # leave "expression unsafe" as-is (handled in codegen)
+            return node
+
 
     return node
 
