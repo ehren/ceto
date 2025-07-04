@@ -53,19 +53,19 @@ auto generate_loc(const T1& node) -> void {
             }
             (this -> repr) += "[";
             
-                auto&& ceto__private__intermediate31 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate34 = (*ceto::mad(node)).args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate31) + 2; }, "not a contiguous container");
-                size_t ceto__private__size33 = std::size(ceto__private__intermediate31);
-                for (size_t ceto__private__idx32 = 0; ; ceto__private__idx32++) {
-                    if (std::size(ceto__private__intermediate31) != ceto__private__size33) {
+                static_assert(requires { std::begin(ceto__private__intermediate34) + 2; }, "not a contiguous container");
+                size_t ceto__private__size36 = std::size(ceto__private__intermediate34);
+                for (size_t ceto__private__idx35 = 0; ; ceto__private__idx35++) {
+                    if (std::size(ceto__private__intermediate34) != ceto__private__size36) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx32 >= ceto__private__size33) {
+                    if (ceto__private__idx35 >= ceto__private__size36) {
                         break;
                     }
-                    const auto arg = ceto__private__intermediate31[ceto__private__idx32];
+                    const auto arg = ceto__private__intermediate34[ceto__private__idx35];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 
@@ -112,16 +112,16 @@ auto generate_loc(const T1& node) -> void {
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size35 = std::size(args);
-                for (size_t ceto__private__idx34 = 0; ; ceto__private__idx34++) {
-                    if (std::size(args) != ceto__private__size35) {
+                size_t ceto__private__size38 = std::size(args);
+                for (size_t ceto__private__idx37 = 0; ; ceto__private__idx37++) {
+                    if (std::size(args) != ceto__private__size38) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx34 >= ceto__private__size35) {
+                    if (ceto__private__idx37 >= ceto__private__size38) {
                         break;
                     }
-                    const auto arg = args[ceto__private__idx34];
+                    const auto arg = args[ceto__private__idx37];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 

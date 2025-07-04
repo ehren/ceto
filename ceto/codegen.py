@@ -724,8 +724,7 @@ def codegen_class(node : Call, cx):
 
                 type_list = type_node_to_list_of_types(b.declared_type)
                 if any(t.name == "ref" for t in type_list):
-                    #b.scope.mark_node_unsafe(AttributeAccess(".", [Identifier("self"), b]))
-                    b.scope.mark_node_unsafe(b)
+                    b.scope.mark_node_unsafe(AttributeAccess(".", [Identifier("self"), b]))
 
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
@@ -1242,6 +1241,9 @@ def codegen_for(node, cx):
         var_str = structured_binding
     elif var.declared_type is not None:
         assert isinstance(var, Identifier)
+        type_list = type_node_to_list_of_types(var.declared_type)
+        if any(t.name == "ref" for t in type_list):
+            var.scope.mark_node_unsafe(var)
         type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
     else:
         var_str = codegen_node(var, cx)
@@ -2003,7 +2005,7 @@ def codegen_assign(node: Assign, cx: Scope):
 
             if not cx.is_unsafe and any(t for t in types if t.name == "ref"):
                 if cx.in_function_body:
-                    node.scope.mark_node_unsafe(node)
+                    node.scope.mark_node_unsafe(node.lhs)
 
             _ensure_auto_or_ref_specifies_mut_const(types)
 
@@ -2196,7 +2198,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
                 parent = parent.parent
 
             is_passed_to_container_method = ""
-            if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, AttributeAccess) and parent.func.lhs.lhs.name == "self")):
+            if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, (AttributeAccess, ScopeResolution)) and parent.func.lhs.lhs.name in ["self", "this"])):
                 is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
             condition = f"((!std::is_reference_v<decltype({code})> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
@@ -2915,9 +2917,9 @@ def codegen_node(node: Node, cx: Scope):
             is_attribute_access = isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)) and node is node.parent.rhs
             if not is_attribute_access:
                 raise CodeGenError(f"no direct access to fields - use self.{node.name} instead of just {node.name}", node)
-            #is_self_attribute_access = is_attribute_access and node.parent.lhs.name == "self"
-            #if is_self_attribute_access and not cx.is_unsafe and node.scope.is_node_unsafe(node.parent):
-            #    raise CodeGenError("access to field requires an unsafe block", node.parent)
+            is_self_attribute_access = is_attribute_access and node.parent.lhs.name in ["self", "this"]
+            if is_self_attribute_access and not cx.is_unsafe and node.scope.is_node_unsafe(AttributeAccess(".", [Identifier("self"), node])):
+                raise CodeGenError("access to field requires an unsafe block", node.parent)
 
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
                 node is node.parent.lhs) and (
@@ -2932,13 +2934,15 @@ def codegen_node(node: Node, cx: Scope):
 
         var_def = node.scope.find_def(node)
         if isinstance(var_def, VariableDefinition):
+            is_iter_var = isinstance(var_def.defining_node, Call) and var_def.defining_node.func.name in ["for", "unsafe_for"]
+
             if not cx.is_unsafe and node.scope.is_node_unsafe(node):
-                if isinstance(var_def, FieldDefinition):
-                    raise CodeGenError("field can only be used in an unsafe block", node)
+                if is_iter_var:
+                    raise CodeGenError("for loop iter var can only be used in an unsafe block", node)
                 else:
                     raise CodeGenError("variable can only be used in an unsafe block", node)
 
-            if isinstance(var_def.defining_node, Call) and var_def.defining_node.func.name in ["for", "unsafe_for"]:
+            if is_iter_var:
                 return ban_reference_in_subexpression(name, node, cx)
 
         return name

@@ -1,4 +1,4 @@
-#unsafe()  # unsafe mode bypasses 13 static_assert failures (currently)
+#unsafe()  # unsafe mode bypasses 14 static_assert failures (currently)
 
 include <functional>
 
@@ -98,8 +98,9 @@ def (bad5, x, v:mut:auto:ref:
 )
 
 def (bad6, v, v2: mut:auto:ref:
-    for (x:mut:auto:ref in v:  # should require unsafe
-        bad5(x, v2)
+    for (x:mut:auto:ref in v:
+        bad5(unsafe(x), v2)  # v2 should also require an unsafe block (func with a mut:ref and const:ref param should require an unsafe block to use the mut:ref (if not both)
+                             # note that in the current codebase if this were allowed (without unsafe) an additional !is_reference_v assert would fire (we can probably remove this in the for loop iter var case since iter vars of ref type now require an unsafe block)
         break
     )
     std.cout << "\ndone bad6\n"
@@ -113,21 +114,23 @@ def (bad7, f, v2: mut:auto:ref:
         v2.push_back(1)
         v2.push_back(1)
         v2.push_back(1)
-        std.cout << x
+        unsafe(std.cout << x)  # using a local var of ref type (including an iter var) requires unsafe
         break
     )
     std.cout << "\ndone bad7\n"
 )
 
 def (bad8, f, f2: mut:auto:
-    for (x:const:auto:ref in f.vec:  # should require unsafe
+    for (x:const:auto:ref in f.vec:
         f2.vec.push_back(1)
         f2.vec.push_back(1)
         f2.vec.push_back(1)
         f2.vec.push_back(1)
         f2.vec.push_back(1)
         f2.vec.push_back(1)
-        std.cout << x
+        unsafe(:
+            std.cout << x
+        )
         break
     )
     std.cout << "\ndone bad8\n"
@@ -226,6 +229,45 @@ def (main:
 
     ok_lambda5(val, f)
     ok_lambda5(f.vec[0], f)  # still a static_assert (fine)
+
+    bad_func_member_copy = has_bad_lambda_member1.func
+    bad_func_member_copy(f.vec[0])
+
+    bad_lambda_like_bad5 = lambda(x, v: mut:auto:ref:
+        v.clear()
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        v.push_back(1)
+        std.cout << x
+        std.cout << "\ndone bad_lambda_like_bad5\n"
+        return
+    )
+    bad_lambda_like_bad5(f.vec[0], f.vec)  # static_assert
+
+    bad_lambda_like_bad8 = lambda (f, f2: mut:auto:
+        for (x:const:auto:ref in f.vec:
+            f2.vec.push_back(1)
+            f2.vec.push_back(1)
+            f2.vec.push_back(1)
+            f2.vec.push_back(1)
+            f2.vec.push_back(1)
+            f2.vec.push_back(1)
+            std.cout << unsafe(x)
+            break
+        )
+        std.cout << "\ndone bad_lambda_like_bad8\n"
+        return
+    )
+
+    bad_lambda_like_bad8(f, f)  # violates no for loop iter vars of ref type (TODO error)
 
    # std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0))())>  # 0
     #std.cout << std.is_reference_v<overparenthesized_decltype(lambda[ref](vec.at(0)):decltype(auto)())>  # 1

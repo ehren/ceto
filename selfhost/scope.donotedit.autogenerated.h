@@ -208,11 +208,6 @@ using VariableDefinition::VariableDefinition;
         return {};
     }
 
-    inline auto node_equals_comparator(const ceto::propagate_const<std::shared_ptr<const Node>>&  a, const ceto::propagate_const<std::shared_ptr<const Node>>&  b) -> bool {
-        return (*ceto::mad(a)).equals(b);
-    }
-
-using NodeEqualsComparator = std::integral_constant<decltype(&node_equals_comparator),(&node_equals_comparator)>;
 struct Scope : public ceto::shared_object, public std::enable_shared_from_this<Scope> {
 
     decltype(std::map<std::string,std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>>()) interfaces = std::map<std::string,std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>>();
@@ -225,7 +220,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
 
     std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>> namespace_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}), std::remove_cvref_t<decltype(namespace_definitions)>>);
 
-    std::set<ceto::propagate_const<std::shared_ptr<const Node>>,NodeEqualsComparator> unsafe_nodes = {};
+    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> unsafe_nodes = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(unsafe_nodes)>>);
 
     decltype(0) indent = 0;
 
@@ -385,26 +380,8 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
         }
 
         inline auto is_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) const -> auto {
-            if ((*ceto::mad(this -> unsafe_nodes)).contains(node)) {
-                return true;
-            }
-            if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
-                return (*ceto::mad(s)).is_node_unsafe(node);
-            }
-            return false;
-        }
-
-        inline auto mark_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
-            (*ceto::mad(this -> unsafe_nodes)).insert(node);
-        }
-
-        inline auto find_defs(const ceto::propagate_const<std::shared_ptr<const Node>>&  var_node, const decltype(true) find_all = true) const -> std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> {
-            if (!(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(var_node)) != nullptr)) {
-                return {};
-            }
-            std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> results = std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(results)>>);
             
-                auto&& ceto__private__intermediate28 = this -> variable_definitions;
+                auto&& ceto__private__intermediate28 = this -> unsafe_nodes;
 
                 static_assert(requires { std::begin(ceto__private__intermediate28) + 2; }, "not a contiguous container");
                 size_t ceto__private__size30 = std::size(ceto__private__intermediate28);
@@ -416,7 +393,39 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                     if (ceto__private__idx29 >= ceto__private__size30) {
                         break;
                     }
-                    const auto d = ceto__private__intermediate28[ceto__private__idx29];
+                    const auto x = ceto__private__intermediate28[ceto__private__idx29];
+                                    if ((*ceto::mad(x)).equals(node)) {
+                                return true;
+                            }
+
+                }
+                const auto parent = (*ceto::mad(this -> _parent)).lock();
+            return (parent && (*ceto::mad(parent)).is_node_unsafe(node));
+        }
+
+        inline auto mark_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
+            (*ceto::mad(this -> unsafe_nodes)).push_back(node);
+        }
+
+        inline auto find_defs(const ceto::propagate_const<std::shared_ptr<const Node>>&  var_node, const decltype(true) find_all = true) const -> std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> {
+            if (!(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(var_node)) != nullptr)) {
+                return {};
+            }
+            std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> results = std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(results)>>);
+            
+                auto&& ceto__private__intermediate31 = this -> variable_definitions;
+
+                static_assert(requires { std::begin(ceto__private__intermediate31) + 2; }, "not a contiguous container");
+                size_t ceto__private__size33 = std::size(ceto__private__intermediate31);
+                for (size_t ceto__private__idx32 = 0; ; ceto__private__idx32++) {
+                    if (std::size(ceto__private__intermediate31) != ceto__private__size33) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx32 >= ceto__private__size33) {
+                        break;
+                    }
+                    const auto d = ceto__private__intermediate31[ceto__private__idx32];
                                     if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
                                 auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
                                 while (true) {                        if ((std::dynamic_pointer_cast<const Module>(ceto::get_underlying(parent_block)) != nullptr)) {
