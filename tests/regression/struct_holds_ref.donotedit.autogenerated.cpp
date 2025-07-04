@@ -84,6 +84,14 @@ struct Foo : public ceto::object {
 
             Foo & foo;
 
+            inline auto uses_field() const -> void {
+                const auto & blah { 5 } ;
+                if (1) {
+                    // unsafe;
+                    (std::cout << blah) << (*ceto::mad(this -> foo)).x;
+                }
+            }
+
         explicit HoldsFooMutRef_class(Foo & foo) : foo(foo) {}
 
         HoldsFooMutRef_class() = delete;
@@ -93,6 +101,14 @@ struct Foo : public ceto::object {
     struct HoldsFooMutRef_struct : public ceto::object {
 
             Foo & foo;
+
+            inline auto uses_field() const -> void {
+                const auto & blah { 5 } ;
+                if (1) {
+                    // unsafe;
+                    (std::cout << blah) << (*ceto::mad(this -> foo)).x;
+                }
+            }
 
         explicit HoldsFooMutRef_struct(Foo & foo) : foo(foo) {}
 

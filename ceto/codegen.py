@@ -721,6 +721,12 @@ def codegen_class(node : Call, cx):
                 is_template = True
             else:
                 field_type = b.declared_type
+
+                type_list = type_node_to_list_of_types(b.declared_type)
+                if any(t.name == "ref" for t in type_list):
+                    #b.scope.mark_node_unsafe(AttributeAccess(".", [Identifier("self"), b]))
+                    b.scope.mark_node_unsafe(b)
+
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
                 cpp += inner_indt + decl + ";\n\n"
@@ -1433,13 +1439,13 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
                 return scope_resolution_code + "::" + codegen_node(remaining, cx)
 
     # maybe autoderef
-    # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
-
     return codegen_autoderef_attribute_access(node, cx)
 
 
 def codegen_autoderef_attribute_access(node: AttributeAccess, cx):
     assert isinstance(node, AttributeAccess)
+
+    # we're preferring *(...). instead of -> due to overloading concerns. -> might be fine so long as we're only autoderefing shared/unique/optional
 
     if node.rhs.name in ["value", "has_value", "value_or", "and_then", "transform", "or_else", "swap", "reset", "emplace"]:
         # don't autoderef an optional if we're calling a method of std::optional on it (maybe this is dubious for the mutable methods swap/reset/emplace?)
@@ -1995,6 +2001,10 @@ def codegen_assign(node: Assign, cx: Scope):
                 # variable template - TODO should we auto add constexpr?
                 return codegen_type(node.lhs, node.lhs.declared_type, cx) + " " + lhs_str + " = " + rhs_str
 
+            if not cx.is_unsafe and any(t for t in types if t.name == "ref"):
+                if cx.in_function_body:
+                    node.scope.mark_node_unsafe(node)
+
             _ensure_auto_or_ref_specifies_mut_const(types)
 
             adjacent_type_names = zip(type_names, type_names[1:])
@@ -2002,7 +2012,7 @@ def codegen_assign(node: Assign, cx: Scope):
                 pass
 
             if "weak" in type_names and not isinstance(node.rhs, BracedLiteral):
-		# debatable if we should be auto-inserting this (conversion of propagate_const<shared_ptr> to shared_ptr)
+                # debatable if we should be auto-inserting this (conversion of propagate_const<shared_ptr> to shared_ptr)
                 rhs_str = "ceto::get_underlying(" + rhs_str + ")"
 
             # add const if not mut
@@ -2144,7 +2154,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
 
     # the below 'others_simple' check is enough to allow a multidimensional array access a[0][0] rewritten by the macro system to ceto.bounds_check(ceto.bounds_check(a, 0), 0)
     # The inner ceto.bounds_check returns a reference but the index is a non-reference fundamental type so it's fine.
-    # However multi std.maps (with non-simple keys) won't work properly, nor reference indices. so let's just allow ceto.bounds_check (it's safe - the container param is not mutated (references not invalidated))
+    # However multi std.maps (with non-simple keys) won't work properly, nor reference indices. But we can special case references args _passed_ to bounds_check safely (we still check that the outer ceto.bounds_check is not a reference when passed to another function alongside other non-simple etc params)    
     if isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["ceto", "bounds_check"]:
         return code
 
@@ -2901,8 +2911,13 @@ def codegen_node(node: Node, cx: Scope):
         # elif name == "object":
         #     return "std::shared_ptr<object>"
 
-        if cx.in_function_body and not (isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)) and node is node.parent.rhs) and isinstance(node.scope.find_def(node), FieldDefinition):
-            raise CodeGenError(f"no direct access to fields - use self.{node.name} instead of just {node.name}", node)
+        if cx.in_function_body and isinstance(node.scope.find_def(node), FieldDefinition):
+            is_attribute_access = isinstance(node.parent, (AttributeAccess, ScopeResolution, ArrowOp)) and node is node.parent.rhs
+            if not is_attribute_access:
+                raise CodeGenError(f"no direct access to fields - use self.{node.name} instead of just {node.name}", node)
+            #is_self_attribute_access = is_attribute_access and node.parent.lhs.name == "self"
+            #if is_self_attribute_access and not cx.is_unsafe and node.scope.is_node_unsafe(node.parent):
+            #    raise CodeGenError("access to field requires an unsafe block", node.parent)
 
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
                 node is node.parent.lhs) and (
@@ -2916,8 +2931,15 @@ def codegen_node(node: Node, cx: Scope):
             return "std::move(" + name + ")"
 
         var_def = node.scope.find_def(node)
-        if isinstance(var_def, VariableDefinition) and isinstance(var_def.defining_node, Call) and var_def.defining_node.func.name in ["for", "unsafe_for"]:
-            return ban_reference_in_subexpression(name, node, cx)
+        if isinstance(var_def, VariableDefinition):
+            if not cx.is_unsafe and node.scope.is_node_unsafe(node):
+                if isinstance(var_def, FieldDefinition):
+                    raise CodeGenError("field can only be used in an unsafe block", node)
+                else:
+                    raise CodeGenError("variable can only be used in an unsafe block", node)
+
+            if isinstance(var_def.defining_node, Call) and var_def.defining_node.func.name in ["for", "unsafe_for"]:
+                return ban_reference_in_subexpression(name, node, cx)
 
         return name
 

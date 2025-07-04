@@ -34,6 +34,15 @@ struct_and_class (HoldsFooConstRef:
 
 struct_and_class (HoldsFooMutRef:
     foo: Foo:ref
+
+    def (uses_field:
+
+        blah: const:auto:ref = 5
+        unsafe (:
+            # both locals and fields of ref type (even if const) require an unsafe block
+            std.cout << blah << self.foo.x
+        )
+    )
 )
 
 def (main:

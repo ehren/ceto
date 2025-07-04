@@ -239,7 +239,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
 
     decltype(false) in_decltype = false;
 
-    decltype(false) is_unsafe = false;
+    decltype(false) _is_unsafe = false;
 
         inline auto indent_str() const -> auto {
             return std::string(4 * (this -> indent), ' ');
@@ -465,13 +465,21 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             (*ceto::mad(s))._parent = ceto::get_underlying(self);
             (*ceto::mad(s)).in_function_body = (this -> in_function_body);
             (*ceto::mad(s)).in_decltype = (this -> in_decltype);
-            (*ceto::mad(s)).is_unsafe = (this -> is_unsafe);
+            (*ceto::mad(s))._is_unsafe = (this -> _is_unsafe);
             (*ceto::mad(s)).indent = ((this -> indent) + 1);
             return s;
         }
 
         inline auto parent() const -> auto {
             return (*ceto::mad(this -> _parent)).lock();
+        }
+
+        inline auto is_unsafe() const -> bool {
+            return ((this -> _is_unsafe) || (this -> parent() && (*ceto::mad(this -> parent())).is_unsafe()));
+        }
+
+        inline auto set_is_unsafe(const bool  u) -> void {
+            (this -> _is_unsafe) = u;
         }
 
 };

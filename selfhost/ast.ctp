@@ -239,8 +239,8 @@ lambda(m : mut:auto:rref:
         "indent", &Scope.indent).def_readwrite(
         "in_function_body", &Scope.in_function_body).def_readwrite(
         "in_function_param_list", &Scope.in_function_param_list).def_readwrite(
-        "in_class_body", &Scope.in_class_body).def_readwrite(
-        "is_unsafe", &Scope.is_unsafe).def_readwrite(
+        "in_class_body", &Scope.in_class_body).def_property(
+        "is_unsafe", &Scope.is_unsafe, &Scope.set_is_unsafe).def_readwrite(
         "in_decltype", &Scope.in_decltype).def(
         "indent_str", &Scope.indent_str).def(
         "add_variable_definition", &Scope.add_variable_definition, "defined_node"_a, "defining_node"_a).def(

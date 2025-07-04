@@ -172,7 +172,7 @@ class (Scope:
     in_function_param_list = False  # TODO unused remove
     in_class_body = False
     in_decltype = False
-    is_unsafe = False
+    _is_unsafe = False
 
     def (indent_str:
         return std.string(4*self.indent, char' ')
@@ -361,12 +361,20 @@ class (Scope:
         s._parent = ceto.get_underlying(self)
         s.in_function_body = self.in_function_body
         s.in_decltype = self.in_decltype
-        s.is_unsafe = self.is_unsafe
+        s._is_unsafe = self._is_unsafe
         s.indent = self.indent + 1
         return s
     ) : Scope
 
     def (parent:
         return self._parent.lock()
+    )
+
+    def (is_unsafe:
+        return self._is_unsafe or (self.parent() and self.parent().is_unsafe())
+    ) : bool
+
+    def (set_is_unsafe: mut, u: bool:
+        self._is_unsafe = u
     )
 )
