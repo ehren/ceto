@@ -58,20 +58,21 @@
         const auto l = [&]() {
                 auto ceto__private__ident__6 { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>() } ;
                 auto && ceto__private__ident__7 { std::ranges::iota_view(0, 10) } ;
-                maybe_reserve(ceto__private__ident__6, ceto__private__ident__7);
+                maybe_reserve(ceto__private__ident__6, /* unsafe: */ ceto__private__ident__7);
                 
-    
-                    static_assert(requires { std::begin(ceto__private__ident__7) + 2; }, "not a contiguous container");
-                    size_t ceto__private__size2 = std::size(ceto__private__ident__7);
-                    for (size_t ceto__private__idx1 = 0; ; ceto__private__idx1++) {
-                        if (std::size(ceto__private__ident__7) != ceto__private__size2) {
+                    auto&& ceto__private__intermediate1 = /* unsafe: */ ceto__private__ident__7;
+
+                    static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
+                    size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
+                    for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
+                        if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                             std::terminate();
                         }
-                        if (ceto__private__idx1 >= ceto__private__size2) {
+                        if (ceto__private__idx2 >= ceto__private__size3) {
                             break;
                         }
-                        const auto x = ceto__private__ident__7[ceto__private__idx1];
+                        const auto x = ceto__private__intermediate1[ceto__private__idx2];
                                             if ((x % 2) == 0) {
                                         (ceto__private__ident__6).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(x)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__6)>>)); return x; }());
                                     }
@@ -82,16 +83,16 @@
         
     
             static_assert(requires { std::begin(l) + 2; }, "not a contiguous container");
-            size_t ceto__private__size4 = std::size(l);
-            for (size_t ceto__private__idx3 = 0; ; ceto__private__idx3++) {
-                if (std::size(l) != ceto__private__size4) {
+            size_t ceto__private__size5 = std::size(l);
+            for (size_t ceto__private__idx4 = 0; ; ceto__private__idx4++) {
+                if (std::size(l) != ceto__private__size5) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx3 >= ceto__private__size4) {
+                if (ceto__private__idx4 >= ceto__private__size5) {
                     break;
                 }
-                const auto x = l[ceto__private__idx3];
+                const auto x = l[ceto__private__idx4];
                             std::cout << x;
 
             }
@@ -99,20 +100,21 @@
                 auto ceto__private__ident__4 { std::vector<decltype(std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype([&]() {
                         auto ceto__private__ident__6 { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>() } ;
                         auto && ceto__private__ident__7 { std::ranges::iota_view(0, 10) } ;
-                        maybe_reserve(ceto__private__ident__6, ceto__private__ident__7);
+                        maybe_reserve(ceto__private__ident__6, /* unsafe: */ ceto__private__ident__7);
                         
-    
-                            static_assert(requires { std::begin(ceto__private__ident__7) + 2; }, "not a contiguous container");
-                            size_t ceto__private__size6 = std::size(ceto__private__ident__7);
-                            for (size_t ceto__private__idx5 = 0; ; ceto__private__idx5++) {
-                                if (std::size(ceto__private__ident__7) != ceto__private__size6) {
+                            auto&& ceto__private__intermediate6 = /* unsafe: */ ceto__private__ident__7;
+
+                            static_assert(requires { std::begin(ceto__private__intermediate6) + 2; }, "not a contiguous container");
+                            size_t ceto__private__size8 = std::size(ceto__private__intermediate6);
+                            for (size_t ceto__private__idx7 = 0; ; ceto__private__idx7++) {
+                                if (std::size(ceto__private__intermediate6) != ceto__private__size8) {
                                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                     std::terminate();
                                 }
-                                if (ceto__private__idx5 >= ceto__private__size6) {
+                                if (ceto__private__idx7 >= ceto__private__size8) {
                                     break;
                                 }
-                                const auto x = ceto__private__ident__7[ceto__private__idx5];
+                                const auto x = ceto__private__intermediate6[ceto__private__idx7];
                                                             if ((x % 2) == 0) {
                                                         (ceto__private__ident__6).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(x)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__6)>>)); return x; }());
                                                     }
@@ -121,45 +123,47 @@
                             return ceto__private__ident__6;
                         }())>>>()+1)>() } ;
                 auto && ceto__private__ident__5 { l } ;
-                maybe_reserve(ceto__private__ident__4, ceto__private__ident__5);
+                maybe_reserve(ceto__private__ident__4, /* unsafe: */ ceto__private__ident__5);
                 
-    
-                    static_assert(requires { std::begin(ceto__private__ident__5) + 2; }, "not a contiguous container");
-                    size_t ceto__private__size8 = std::size(ceto__private__ident__5);
-                    for (size_t ceto__private__idx7 = 0; ; ceto__private__idx7++) {
-                        if (std::size(ceto__private__ident__5) != ceto__private__size8) {
+                    auto&& ceto__private__intermediate9 = /* unsafe: */ ceto__private__ident__5;
+
+                    static_assert(requires { std::begin(ceto__private__intermediate9) + 2; }, "not a contiguous container");
+                    size_t ceto__private__size11 = std::size(ceto__private__intermediate9);
+                    for (size_t ceto__private__idx10 = 0; ; ceto__private__idx10++) {
+                        if (std::size(ceto__private__intermediate9) != ceto__private__size11) {
                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                             std::terminate();
                         }
-                        if (ceto__private__idx7 >= ceto__private__size8) {
+                        if (ceto__private__idx10 >= ceto__private__size11) {
                             break;
                         }
-                        const auto x = ceto__private__ident__5[ceto__private__idx7];
+                        const auto x = ceto__private__intermediate9[ceto__private__idx10];
                                             (ceto__private__ident__4).push_back(x + 1);
 
                     }
                     return ceto__private__ident__4;
                 }();
         
-            auto&& ceto__private__intermediate9 = [&]() {
+            auto&& ceto__private__intermediate12 = [&]() {
                         auto ceto__private__ident__8 { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype([&]() {
                                 auto ceto__private__ident__4 { std::vector<decltype(std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype([&]() {
                                         auto ceto__private__ident__6 { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>() } ;
                                         auto && ceto__private__ident__7 { std::ranges::iota_view(0, 10) } ;
-                                        maybe_reserve(ceto__private__ident__6, ceto__private__ident__7);
+                                        maybe_reserve(ceto__private__ident__6, /* unsafe: */ ceto__private__ident__7);
                                 
-    
-                                            static_assert(requires { std::begin(ceto__private__ident__7) + 2; }, "not a contiguous container");
-                                            size_t ceto__private__size11 = std::size(ceto__private__ident__7);
-                                            for (size_t ceto__private__idx10 = 0; ; ceto__private__idx10++) {
-                                                if (std::size(ceto__private__ident__7) != ceto__private__size11) {
+                                            auto&& ceto__private__intermediate13 = /* unsafe: */ ceto__private__ident__7;
+
+                                            static_assert(requires { std::begin(ceto__private__intermediate13) + 2; }, "not a contiguous container");
+                                            size_t ceto__private__size15 = std::size(ceto__private__intermediate13);
+                                            for (size_t ceto__private__idx14 = 0; ; ceto__private__idx14++) {
+                                                if (std::size(ceto__private__intermediate13) != ceto__private__size15) {
                                                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                                     std::terminate();
                                                 }
-                                                if (ceto__private__idx10 >= ceto__private__size11) {
+                                                if (ceto__private__idx14 >= ceto__private__size15) {
                                                     break;
                                                 }
-                                                const auto x = ceto__private__ident__7[ceto__private__idx10];
+                                                const auto x = ceto__private__intermediate13[ceto__private__idx14];
                                                                                     if ((x % 2) == 0) {
                                                                                 (ceto__private__ident__6).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(x)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__6)>>)); return x; }());
                                                                             }
@@ -168,40 +172,42 @@
                                             return ceto__private__ident__6;
                                         }())>>>()+1)>() } ;
                                 auto && ceto__private__ident__5 { l } ;
-                                maybe_reserve(ceto__private__ident__4, ceto__private__ident__5);
+                                maybe_reserve(ceto__private__ident__4, /* unsafe: */ ceto__private__ident__5);
                         
-    
-                                    static_assert(requires { std::begin(ceto__private__ident__5) + 2; }, "not a contiguous container");
-                                    size_t ceto__private__size13 = std::size(ceto__private__ident__5);
-                                    for (size_t ceto__private__idx12 = 0; ; ceto__private__idx12++) {
-                                        if (std::size(ceto__private__ident__5) != ceto__private__size13) {
+                                    auto&& ceto__private__intermediate16 = /* unsafe: */ ceto__private__ident__5;
+
+                                    static_assert(requires { std::begin(ceto__private__intermediate16) + 2; }, "not a contiguous container");
+                                    size_t ceto__private__size18 = std::size(ceto__private__intermediate16);
+                                    for (size_t ceto__private__idx17 = 0; ; ceto__private__idx17++) {
+                                        if (std::size(ceto__private__intermediate16) != ceto__private__size18) {
                                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                             std::terminate();
                                         }
-                                        if (ceto__private__idx12 >= ceto__private__size13) {
+                                        if (ceto__private__idx17 >= ceto__private__size18) {
                                             break;
                                         }
-                                        const auto x = ceto__private__ident__5[ceto__private__idx12];
+                                        const auto x = ceto__private__intermediate16[ceto__private__idx17];
                                                                     (ceto__private__ident__4).push_back(x + 1);
 
                                     }
                                     return ceto__private__ident__4;
                                 }())>>>() } ;
                         auto && ceto__private__ident__9 { l2 } ;
-                        maybe_reserve(ceto__private__ident__8, ceto__private__ident__9);
+                        maybe_reserve(ceto__private__ident__8, /* unsafe: */ ceto__private__ident__9);
                 
-    
-                            static_assert(requires { std::begin(ceto__private__ident__9) + 2; }, "not a contiguous container");
-                            size_t ceto__private__size15 = std::size(ceto__private__ident__9);
-                            for (size_t ceto__private__idx14 = 0; ; ceto__private__idx14++) {
-                                if (std::size(ceto__private__ident__9) != ceto__private__size15) {
+                            auto&& ceto__private__intermediate19 = /* unsafe: */ ceto__private__ident__9;
+
+                            static_assert(requires { std::begin(ceto__private__intermediate19) + 2; }, "not a contiguous container");
+                            size_t ceto__private__size21 = std::size(ceto__private__intermediate19);
+                            for (size_t ceto__private__idx20 = 0; ; ceto__private__idx20++) {
+                                if (std::size(ceto__private__intermediate19) != ceto__private__size21) {
                                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                     std::terminate();
                                 }
-                                if (ceto__private__idx14 >= ceto__private__size15) {
+                                if (ceto__private__idx20 >= ceto__private__size21) {
                                     break;
                                 }
-                                const auto x = ceto__private__ident__9[ceto__private__idx14];
+                                const auto x = ceto__private__intermediate19[ceto__private__idx20];
                                                     if (x > 5) {
                                                 (ceto__private__ident__8).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(x)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__8)>>)); return x; }());
                                             }
@@ -210,39 +216,40 @@
                             return ceto__private__ident__8;
                         }();
 
-            static_assert(requires { std::begin(ceto__private__intermediate9) + 2; }, "not a contiguous container");
-            size_t ceto__private__size17 = std::size(ceto__private__intermediate9);
-            for (size_t ceto__private__idx16 = 0; ; ceto__private__idx16++) {
-                if (std::size(ceto__private__intermediate9) != ceto__private__size17) {
+            static_assert(requires { std::begin(ceto__private__intermediate12) + 2; }, "not a contiguous container");
+            size_t ceto__private__size23 = std::size(ceto__private__intermediate12);
+            for (size_t ceto__private__idx22 = 0; ; ceto__private__idx22++) {
+                if (std::size(ceto__private__intermediate12) != ceto__private__size23) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx16 >= ceto__private__size17) {
+                if (ceto__private__idx22 >= ceto__private__size23) {
                     break;
                 }
-                const auto i = ceto__private__intermediate9[ceto__private__idx16];
+                const auto i = ceto__private__intermediate12[ceto__private__idx22];
                             std::cout << i;
 
             }
             
-            auto&& ceto__private__intermediate18 = [&]() {
+            auto&& ceto__private__intermediate24 = [&]() {
                         auto ceto__private__ident__4 { std::vector<decltype(std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype([&]() {
                                 auto ceto__private__ident__6 { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>() } ;
                                 auto && ceto__private__ident__7 { std::ranges::iota_view(0, 10) } ;
-                                maybe_reserve(ceto__private__ident__6, ceto__private__ident__7);
+                                maybe_reserve(ceto__private__ident__6, /* unsafe: */ ceto__private__ident__7);
                         
-    
-                                    static_assert(requires { std::begin(ceto__private__ident__7) + 2; }, "not a contiguous container");
-                                    size_t ceto__private__size20 = std::size(ceto__private__ident__7);
-                                    for (size_t ceto__private__idx19 = 0; ; ceto__private__idx19++) {
-                                        if (std::size(ceto__private__ident__7) != ceto__private__size20) {
+                                    auto&& ceto__private__intermediate25 = /* unsafe: */ ceto__private__ident__7;
+
+                                    static_assert(requires { std::begin(ceto__private__intermediate25) + 2; }, "not a contiguous container");
+                                    size_t ceto__private__size27 = std::size(ceto__private__intermediate25);
+                                    for (size_t ceto__private__idx26 = 0; ; ceto__private__idx26++) {
+                                        if (std::size(ceto__private__intermediate25) != ceto__private__size27) {
                                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                             std::terminate();
                                         }
-                                        if (ceto__private__idx19 >= ceto__private__size20) {
+                                        if (ceto__private__idx26 >= ceto__private__size27) {
                                             break;
                                         }
-                                        const auto x = ceto__private__ident__7[ceto__private__idx19];
+                                        const auto x = ceto__private__intermediate25[ceto__private__idx26];
                                                                     if ((x % 2) == 0) {
                                                                 (ceto__private__ident__6).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(x)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__6)>>)); return x; }());
                                                             }
@@ -251,37 +258,38 @@
                                     return ceto__private__ident__6;
                                 }())>>>()*100)>() } ;
                         auto && ceto__private__ident__5 { l } ;
-                        maybe_reserve(ceto__private__ident__4, ceto__private__ident__5);
+                        maybe_reserve(ceto__private__ident__4, /* unsafe: */ ceto__private__ident__5);
                 
-    
-                            static_assert(requires { std::begin(ceto__private__ident__5) + 2; }, "not a contiguous container");
-                            size_t ceto__private__size22 = std::size(ceto__private__ident__5);
-                            for (size_t ceto__private__idx21 = 0; ; ceto__private__idx21++) {
-                                if (std::size(ceto__private__ident__5) != ceto__private__size22) {
+                            auto&& ceto__private__intermediate28 = /* unsafe: */ ceto__private__ident__5;
+
+                            static_assert(requires { std::begin(ceto__private__intermediate28) + 2; }, "not a contiguous container");
+                            size_t ceto__private__size30 = std::size(ceto__private__intermediate28);
+                            for (size_t ceto__private__idx29 = 0; ; ceto__private__idx29++) {
+                                if (std::size(ceto__private__intermediate28) != ceto__private__size30) {
                                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                     std::terminate();
                                 }
-                                if (ceto__private__idx21 >= ceto__private__size22) {
+                                if (ceto__private__idx29 >= ceto__private__size30) {
                                     break;
                                 }
-                                const auto x = ceto__private__ident__5[ceto__private__idx21];
+                                const auto x = ceto__private__intermediate28[ceto__private__idx29];
                                                     (ceto__private__ident__4).push_back(x * 100);
 
                             }
                             return ceto__private__ident__4;
                         }();
 
-            static_assert(requires { std::begin(ceto__private__intermediate18) + 2; }, "not a contiguous container");
-            size_t ceto__private__size24 = std::size(ceto__private__intermediate18);
-            for (size_t ceto__private__idx23 = 0; ; ceto__private__idx23++) {
-                if (std::size(ceto__private__intermediate18) != ceto__private__size24) {
+            static_assert(requires { std::begin(ceto__private__intermediate24) + 2; }, "not a contiguous container");
+            size_t ceto__private__size32 = std::size(ceto__private__intermediate24);
+            for (size_t ceto__private__idx31 = 0; ; ceto__private__idx31++) {
+                if (std::size(ceto__private__intermediate24) != ceto__private__size32) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx23 >= ceto__private__size24) {
+                if (ceto__private__idx31 >= ceto__private__size32) {
                     break;
                 }
-                const auto i = ceto__private__intermediate18[ceto__private__idx23];
+                const auto i = ceto__private__intermediate24[ceto__private__idx31];
                             std::cout << i;
 
             }
