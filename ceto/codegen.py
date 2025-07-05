@@ -1295,7 +1295,7 @@ def codegen_for(node, cx):
         assign_strs.append("auto&& " + assign.lhs.name + " = " + rhs + ";\n")
 
     iterable_str = "".join(assign_strs)
-    rng = iterable_final.name
+    rng = codegen_node(iterable_final, cx)
     assert(len(rng) > 0)
 
     idx = gensym("idx")
@@ -2706,8 +2706,11 @@ def _decltype_str(node, cx):
             # this isn't going to work if the lambda captures variables (at least variables defined after the empty list whose type we're creating).
             # lambdas with a capture list are easier to handle - TODO move the implicit capture to an earlier pass than codegen.
             return True, codegen_lambda(node, cx)
+        elif node.func.name == "unsafe":
+            return _decltype_str(node.args[0], cx)
 
         call = node
+
 
         if class_def := cx.lookup_class(node.func):
             class_name = node.func.name

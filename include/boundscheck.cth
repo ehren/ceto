@@ -345,7 +345,8 @@ defmacro (def (args): return_type, args: [Node], return_type:Node|None:  # this 
 
 namespace (ceto)
 
-# This code is very similar to the cppfront implementation but lacks the fixes described in https://github.com/hsutter/cppfront/issues/799 Signed to unsigned conversion warnings in bounds checking.
+# The next two boundscheck functions are almost verbatim taken from cppfront (or at least an earlier version)
+# but TODO lack the fixes described in https://github.com/hsutter/cppfront/issues/799 Signed to unsigned conversion warnings in bounds checking.
 
 namespace (util:
     def (maybe_signed_size, arg: mut:auto:ref:ref:

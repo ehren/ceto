@@ -113,20 +113,21 @@ struct UniqueFoo : public ceto::object {
         const auto args = [&]() {
                 auto ceto__private__ident__0 { std::vector<std::remove_cvref_t<decltype(std::string(std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::span(argv, std::declval<int>()))>>>()))>>() } ;
                 auto && ceto__private__ident__1 { std::span(argv, argc) } ;
-                ceto::util::maybe_reserve(ceto__private__ident__0, ceto__private__ident__1);
+                ceto::util::maybe_reserve(ceto__private__ident__0, /* unsafe: */ ceto__private__ident__1);
                 
-    
-                    static_assert(requires { std::begin(ceto__private__ident__1) + 2; }, "not a contiguous container");
-                    size_t ceto__private__size3 = std::size(ceto__private__ident__1);
-                    for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                        if (std::size(ceto__private__ident__1) != ceto__private__size3) {
+                    auto&& ceto__private__intermediate2 = /* unsafe: */ ceto__private__ident__1;
+
+                    static_assert(requires { std::begin(ceto__private__intermediate2) + 2; }, "not a contiguous container");
+                    size_t ceto__private__size4 = std::size(ceto__private__intermediate2);
+                    for (size_t ceto__private__idx3 = 0; ; ceto__private__idx3++) {
+                        if (std::size(ceto__private__intermediate2) != ceto__private__size4) {
                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                             std::terminate();
                         }
-                        if (ceto__private__idx2 >= ceto__private__size3) {
+                        if (ceto__private__idx3 >= ceto__private__size4) {
                             break;
                         }
-                        const auto a = ceto__private__ident__1[ceto__private__idx2];
+                        const auto a = ceto__private__intermediate2[ceto__private__idx3];
                                             (ceto__private__ident__0).push_back(std::string([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(a)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(ceto__private__ident__0)>>)); return a; }()));
 
                     }

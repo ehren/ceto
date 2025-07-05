@@ -163,7 +163,6 @@ def _build_grammar():
         [
             (pp.Literal("&&"), 2, pp.opAssoc.LEFT, andanderror),  # avoid interpreting a&&b as a&(&b)
             (not_op | star_op | amp_op, 1, pp.opAssoc.RIGHT, _parse_right_unop),
-            # (expop, 2, pp.opAssoc.RIGHT, _parse_right_associative_bin_op),
             (signop, 1, pp.opAssoc.RIGHT, _parse_right_unop),
             (multop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
             (plusop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),

@@ -17,7 +17,9 @@
 //
 // ceto Note: made copyable by defaulting the copy constructor and assignment operator
 // See also https://github.com/jbcoe/deep_ptr and https://github.com/jbcoe/propagate_const/issues/33 (Non-copyable reduces applicability for helping library authors)
-// In our case we need copyable because a non-copyable shared_ptr defeats the purpose of shared_ptr in the first place. Also our aim is not "const implies thread safe" (it most certainly does not in general ceto code!) but we do want "const implies iteration (range based for loop) safe".
+// In our case we need copyable because a non-copyable shared_ptr defeats the purpose of shared_ptr in the first place. 
+// Also our aim is not "const implies thread safe" (it most certainly does not in general ceto code!) but at the least "the
+// interprocedural transitive absence of 'mut' (and 'unsafe') implies C++ range-based-for safe".
 
 // TODO bunch of leading underscore usage from the libcxx implementation should be removed
 
