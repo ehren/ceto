@@ -263,6 +263,11 @@ def (main:
 ```
 
 ## Language Tour
+- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
+- [Less typing (at least as in your input device\*)](#less-typing-at-least-as-in-your-input-device)
+- [Classes, Inheritance, init](#autoderef-use--not--)
+- [Macros](#macros)
+    - [Alternational Arguments](#alternational-arguments)
 
 ### Autoderef (use *.* not *->*)
 
