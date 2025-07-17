@@ -189,7 +189,7 @@ On the topic of ```:```, how do we support ```map[key]``` when key is ```std.is_
 is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
 ```
 
-Note that our bounds checking logic has been stolen crudely from cppfront; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth)) 
+Note that our bounds checking logic has been stolen crudely from cppfront; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) 
 
 ## Usage
 
