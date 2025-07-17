@@ -1,6 +1,6 @@
 ## Intro
 
-Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended usecase is more pythonish glue-C++. Named after the primordial sea++ goddess.
+Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended usecase is more pythonish glue-C++. Named after the mythological sea++ goddess.
 
 ## Example
 
@@ -179,13 +179,17 @@ def (main:
 )
 ```
 
-In the above example ```for ((key, vec) in map:``` a C++ range-based-for is emitted because the local var ```map``` is a value (same if it were a by-value function parameter). Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
+In the above example a C++ range-based-for is emitted because the local var ```map``` is a value and a reference to it doesn't escape between it's definition and the iteration. Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. There are additional cases yet to be implemented where we can detect that a range based for is safe based on the loop body or iterable. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for (or copy to a val!). 
 
-Note that our bounds checking logic has been stolen crudely from cppfront; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) 
+This for-loop fallback to indexing logic uses a similar ```requires(std.begin(map + 2))``` check as employed by the ```container[access]``` bounds checking logic in [cppfront](https://github.com/hsutter/cppfront/). In fact, our bounds checking logic for containers has been stolen crudely from Herb Sutter's project; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) and the licence/disclaimer for that file. 
 
-In addition, the for loop fallback to indexing logic uses the same ```requires(std.begin(map + 2))``` trick as cppfront to ban non-contiguously indexable containers.
+On the subject of bounds checking, ```map[5]``` is allowed by special casing map like types using a concept:
 
-Note that ```:``` appears in other places where C++ syntax has a space separated list e.g. we allow map[5] by special casing map like types using a concept (any other container not boundscheckable is banned)
+```
+IsMapLike: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
+```
+
+any other ```container[index]``` must be std.size/std.ssize based bounds checkable if ```std.is_integral_v<std.remove_cvref_t<decltype(index)>>```.
 
 ## Usage
 
