@@ -163,14 +163,12 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 Note that ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). See [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth) for a built-in macro making creative use of ```TypeOp``` for a Python/JSON like std.map initialization syntax:
 
 ```python
-include <map>
-
 class (Foo:
     x
 )
 
 def (main:
-    # map: std.map = { "1": 1, "2": 2.0}  # error (all key-val types must match; see macro implementation)
+    # map: std.map = { "1": 1, "2": 2.0}  # error (key-val types must match)
     map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)]}
     for ((key, vec) in map:
         # A range-based C++ for loop is emitted here because map is a value.
@@ -186,7 +184,7 @@ def (main:
 )
 ```
 
-On the topic of ```:```, how do we support ```map[key]``` when key is an ```int``` without running afoul of our bounds checked container access? (main bounds checking logic has been stolen crudely from cppfront; see the macros at [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth)) We have a ```concept``` to special case map specifically:
+On the topic of ```:```, how do we support ```map[key]``` when key is an ```int``` without running afoul of our bounds checked container access? (main bounds checking logic has been stolen crudely from cppfront; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth)) We have a ```concept``` to special case map specifically:
 
 ```python
 is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
