@@ -160,15 +160,65 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-Note that ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). See [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth) for a built-in macro making creative use of ```TypeOp``` for a Python/JSON like std.map initialization syntax:
+Note that ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
 
 ```python
+defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp],
+         m: Identifier, map: Identifier, west_specifier: Node|None, east_specifier: Node|None:
+
+    if (map.name() != "map" and map.name() != "unordered_map":
+        return None
+    )
+
+    args: mut:[Node] = []
+    keys: mut:[Node] = []
+
+    vacuous: Node = quote(True)
+    assertion: mut = vacuous
+    map_type: mut = None:Node
+    
+    for (kv in keyvals:
+        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])), decltype(unquote(kv.args[1]))>)
+        if (not map_type:
+            map_type = type
+        else:
+            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type), unquote(map_type)>)
+        )
+        args.append(quote({ unquote(kv.args[0], unquote(kv.args[1]) }))
+        keys.append(kv.args[0])
+    )
+
+    comparator = lambda(a, b, a.equals(b))
+    unsafe (:
+        duplicate_iter = std.adjacent_find(keys.cbegin(), keys.cend(), comparator)
+        if (duplicate_iter != keys.cend():
+            # note there are cases where duplicate keys slip past e.g. { 1 - 1: "zero", 0: "zero"}
+            throw (std.runtime_error("duplicate keys in map literal"))
+        )
+    )
+
+    map_call = BracedCall(map_type, args)
+
+    if (west_specifier:
+        map_type = quote(unquote(west_specifier): unquote(map_type))
+    )
+
+    if (east_specifier:
+        map_type = quote(unquote(map_type): unquote(east_specifier))
+    )
+
+    return quote(unquote(m): unquote(map_type) = lambda(:
+        static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
+        unquote(map_call)
+    ) ())
+)
+
 class (Foo:
     x
 )
 
 def (main:
-    # map: std.map = { "1": 1, "2": 2.0}  # error (key-val types must match)
+    # map: std.map:mut = { "1": 1, "2": 2.0}  # error: all key-value pairs must be of the same type in map literal 
     map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
     for ((key, vec) in map:
         std.cout << key << std.endl
@@ -179,7 +229,51 @@ def (main:
 )
 ```
 
-In the above example a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. 
+This is also available as a built-in in the standard library macros, see [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth).
+
+Note that, in the above for-loop in ```main```, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. 
+
+Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
+
+```python
+defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
+    iter_var_type = if (type:
+        type
+    else:
+        # 'unsafe' context to use local of ref type still left to user
+        # (this macro despite being dangerous still practices good safety hygene
+        #  i.e. it wouldn't run afoul of potential macro_metavars_in_unsafe like checks)
+        default_type: Node = quote(const:auto:ref)
+        default_type
+    )
+
+    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
+    args: [Node] = [in_expr, block]
+    return Call(quote(unsafe_for), args)
+)
+
+def (main:
+    vec: mut = [1, 2, 3]
+
+    for (i:int in vec:
+        vec.append(i)  # ordinarily std.terminate() on next iteration
+        std.cout << i  # (but C++ UB with unsafe_for by default)
+    )
+)
+```
+
+Is this too much power? There's a macro for that:
+
+```python
+defmacro(defmacro(args), args: [Node]:
+    throw (std.logic_error("further macro definitions are banned"))
+)
+
+# error: further macro definitions are banned
+# defmacro(2:
+#     return quote(1)
+# )
+```
 
 ## Usage
 
@@ -920,47 +1014,7 @@ def (main:
 
 #### Safety Evasion
 
-Find some of the runtime checks too onerous? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
-
-```python
-defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
-    iter_var_type = if (type:
-        type
-    else:
-        # 'unsafe' context to use local of ref type still left to user
-        # (this macro despite being dangerous still practices good safety hygene
-        #  i.e. it wouldn't run afoul of potential macro_metavars_in_unsafe like checks)
-        default_type: Node = quote(const:auto:ref)
-        default_type
-    )
-
-    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
-    args: [Node] = [in_expr, block]
-    return Call(quote(unsafe_for), args)
-)
-
-def (main:
-    vec: mut = [1, 2, 3]
-
-    for (i:int in vec:
-        vec.append(i)  # ordinarily std.terminate() on next iteration
-        std.cout << i  # (but C++ UB with unsafe_for by default)
-    )
-)
-```
-
-Is the macro system too powerful? There's a macro for that:
-
-```python
-defmacro(defmacro(args), args: [Node]:
-    throw (std.logic_error("further macro definitions are banned"))
-)
-
-# error: further macro definitions are banned
-# defmacro(2:
-#     return quote(1)
-# )
-```
+Find some of the runtime checks too onerous? 
 
 ### std.optional / autoderef details
 
