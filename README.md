@@ -173,8 +173,7 @@ def (main:
     for ((key, vec) in map:
         # A range-based C++ for loop is emitted here because map is a value.
         # Were it a reference (or if a reference to it escapes) a static_assert
-        # that std.size checked indexing iteration is not available would fire (similar
-        # logic to our cppfront derived container bounds checking).
+        # that std.size checked indexing iteration is not available would fire.
         # Use unsafe_for to unconditionally emit a C++ range-based-for.
         std.cout << key << std.endl
         for (foo in vec:
