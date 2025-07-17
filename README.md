@@ -1,6 +1,6 @@
 ## Intro
 
-Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended language usecase is more pythonish glue-C++ than low level systems programming.
+Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended language usecase is more pythonish glue-C++ than low level systems programming. Sea++ goddess bearing many monstrous children - [Wikipedia](https://en.wikipedia.org/wiki/Ceto).
 
 ## Example
 
@@ -171,10 +171,6 @@ def (main:
     # map: std.map = { "1": 1, "2": 2.0}  # error (key-val types must match)
     map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
     for ((key, vec) in map:
-        # A range-based C++ for loop is emitted here because map is a value.
-        # Were it a reference (or if a reference to it escapes) a static_assert
-        # that std.size checked indexing iteration is not available would fire.
-        # Use unsafe_for to unconditionally emit a C++ range-based-for.
         std.cout << key << std.endl
         for (foo in vec:
             std.cout << foo.x
@@ -183,13 +179,13 @@ def (main:
 )
 ```
 
-On the topic of ```:```, how do we support ```map[key]``` when key is ```std.is_integral_v``` without running afoul of our bounds checked container access? We have a ```concept``` to special case map specifically:
-
-```python
-is_map_type: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
-```
+In the above example ```for ((key, vec) in map:``` a C++ range-based-for is emitted because the local var ```map``` is a value (same if it were a by-value function parameter). Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
 
 Note that our bounds checking logic has been stolen crudely from cppfront; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) 
+
+In addition, the for loop fallback to indexing logic uses the same ```requires(std.begin(map + 2))``` trick as cppfront to ban non-contiguously indexable containers.
+
+Note that ```:``` appears in other places where C++ syntax has a space separated list e.g. we allow map[5] by special casing map like types using a concept (any other container not boundscheckable is banned)
 
 ## Usage
 
