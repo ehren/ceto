@@ -169,7 +169,7 @@ class (Foo:
 
 def (main:
     # map: std.map = { "1": 1, "2": 2.0}  # error (key-val types must match)
-    map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)]}
+    map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
     for ((key, vec) in map:
         # A range-based C++ for loop is emitted here because map is a value.
         # Were it a reference (or if a reference to it escapes) a static_assert
