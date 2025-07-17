@@ -944,7 +944,7 @@ def (main:
 
     if (optional_str:
         std.cout << optional_str.size()   # autoderef
-        std.cout << optional_str  # error: no autoderef without operator(".")
+        # std.cout << optional_str  # error: no autoderef without "."
         std.cout << optional_str.value()
     )
 
