@@ -952,7 +952,7 @@ def (main:
 
     # we have the billion dollar mistake like Python just no null-derefence UB
     # - better than a billion?.question?.marks??
-    # optional_str.length()  # std.terminate()
+    # optional_str.size()  # std.terminate()
 )
 ```
 
