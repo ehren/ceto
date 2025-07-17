@@ -968,12 +968,12 @@ In addition, while we don't support deref without ```.``` one can add it implici
 class (Foo:
 
     def (operator("+"), foo:Foo:
-        std.cout << "adding foo and foo (in the member function)\n"
+        std.cout << "adding Foo and Foo\n"
         return self
     )
 
     def (operator("+"), other:
-        std.cout << "adding foo and other (in the member function)\n"
+        std.cout << "adding Foo and other\n"
         return self
     )
 )
