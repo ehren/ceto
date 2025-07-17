@@ -160,7 +160,18 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-Note that ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
+## Usage
+
+```bash
+$ git clone https://github.com/ehren/ceto.git
+$ cd ceto
+$ pip install .
+$ ceto ./tests/example.ctp
+```
+
+## Syntax Note
+
+```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
 
 ```python
 defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp],
@@ -231,7 +242,9 @@ def (main:
 
 This is also available as a built-in in the standard library macros, see [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth).
 
-Note that, in the above for-loop in ```main```, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. 
+## Runtime Checks / Evasion
+
+In the above for-loop in ```main```, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. 
 
 Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
 
@@ -273,15 +286,6 @@ defmacro(defmacro(args), args: [Node]:
 # defmacro(2:
 #     return quote(1)
 # )
-```
-
-## Usage
-
-```bash
-$ git clone https://github.com/ehren/ceto.git
-$ cd ceto
-$ pip install .
-$ ceto ./tests/example.ctp
 ```
 
 ## Safety Note
