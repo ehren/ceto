@@ -336,7 +336,7 @@ Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forwar
 
 (*tempered with the dubiously attainable goal of less typing in the language implementation)
 
-### Classes, Inheritance
+### Classes, Inheritance, init
 
 Class definitions are intended to resemble Python dataclasses
 
