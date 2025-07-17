@@ -254,46 +254,6 @@ def (main:
 )
 ```
 
-Find these checks too onerous? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
-
-```python
-defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
-    iter_var_type = if (type:
-        type
-    else:
-        # 'unsafe' context to use local of ref type still left to user
-        default_type: Node = quote(const:auto:ref)
-        default_type
-    )
-
-    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
-    args: [Node] = [in_expr, block]
-    return Call(quote(unsafe_for), args)
-)
-
-def (main:
-    vec: mut = [1, 2, 3]
-
-    for (i:int in vec:
-        vec.append(i)  # ordinarily std.terminate() on next iteration
-        std.cout << i  # (but C++ UB with unsafe_for by default)
-    )
-)
-```
-
-Is the macro system too powerful? There's a macro for that:
-
-```python
-defmacro(defmacro(args), args: [Node]:
-    throw (std.logic_error("further macro definitions are banned"))
-)
-
-# error: further macro definitions are banned
-# defmacro(2:
-#     return quote(1)
-# )
-```
-
 ## Language Tour
 - [Autoderef (use *.* not *->*)](#autoderef-use--not--)
 - [Less typing (at least as in your input device\*)](#less-typing-at-least-as-in-your-input-device)
@@ -956,6 +916,50 @@ def (main:
     Foo2.func(1)
     func<std.string>("1")
 )
+```
+
+#### Safety Evasion
+
+Find some of the runtime checks too onerous? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
+
+```python
+defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
+    iter_var_type = if (type:
+        type
+    else:
+        # 'unsafe' context to use local of ref type still left to user
+        # (this macro despite being dangerous still practices good safety hygene
+        #  i.e. it wouldn't run afoul of potential macro_metavars_in_unsafe like checks)
+        default_type: Node = quote(const:auto:ref)
+        default_type
+    )
+
+    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
+    args: [Node] = [in_expr, block]
+    return Call(quote(unsafe_for), args)
+)
+
+def (main:
+    vec: mut = [1, 2, 3]
+
+    for (i:int in vec:
+        vec.append(i)  # ordinarily std.terminate() on next iteration
+        std.cout << i  # (but C++ UB with unsafe_for by default)
+    )
+)
+```
+
+Is the macro system too powerful? There's a macro for that:
+
+```python
+defmacro(defmacro(args), args: [Node]:
+    throw (std.logic_error("further macro definitions are banned"))
+)
+
+# error: further macro definitions are banned
+# defmacro(2:
+#     return quote(1)
+# )
 ```
 
 ### std.optional / autoderef details
