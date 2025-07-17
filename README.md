@@ -179,17 +179,7 @@ def (main:
 )
 ```
 
-In the above example a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. There are additional cases yet to be implemented where we can detect that a range based for is safe based on the loop body or iterable. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for (or copy to a val!). 
-
-This for-loop fallback to indexing logic uses a similar ```requires(std.begin(map + 2))``` check as employed by the ```container[access]``` bounds checking logic in [cppfront](https://github.com/hsutter/cppfront/). In fact, our bounds checking logic for containers has been stolen crudely from Herb Sutter's project; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) and the licence/disclaimer for that file. 
-
-On the subject of bounds checking, ```map[5]``` is allowed by special casing map like types using a concept:
-
-```
-IsMapLike: template<class:T>:concept = std.same_as<typename:T.value_type, std.pair<const:typename:T.key_type, typename:T.mapped_type>>
-```
-
-any other ```container[index]``` must be std.size/std.ssize based bounds checkable if ```std.is_integral_v<std.remove_cvref_t<decltype(index)>>```.
+In the above example a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```). 
 
 ## Usage
 
@@ -260,8 +250,48 @@ struct (Foo:
 def (main:
     f: mut = Foo([1, 2, 3, 4])
     f.good()  # prints 1
-    f.bad()   # UB (and reliably prints garbage x2)
+    f.bad()   # UB (and reliable use after free / garbage x2)
 )
+```
+
+Find these checks too onerous? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
+
+```python
+defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
+    iter_var_type = if (type:
+        type
+    else:
+        # 'unsafe' context to use local of ref type still left to user
+        default_type: Node = quote(const:auto:ref)
+        default_type
+    )
+
+    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
+    args: [Node] = [in_expr, block]
+    return Call(quote(unsafe_for), args)
+)
+
+def (main:
+    vec: mut = [1, 2, 3]
+
+    for (i:int in vec:
+        vec.append(i)  # ordinarily std.terminate() on next iteration
+        std.cout << i  # (but C++ UB with unsafe_for by default)
+    )
+)
+```
+
+Is the macro system too powerful? There's a macro for that:
+
+```python
+defmacro(defmacro(args), args: [Node]:
+    throw (std.logic_error("further macro definitions are banned"))
+)
+
+# error: further macro definitions are banned
+# defmacro(2:
+#     return quote(1)
+# )
 ```
 
 ## Language Tour
@@ -715,9 +745,6 @@ def (main:
     by_ptr(unsafe(&f))
 )
 ```
-
-
-
 
 ### Macros
 
