@@ -179,7 +179,7 @@ def (main:
 )
 ```
 
-In the above example a C++ range-based-for is emitted because the local var ```map``` is a value and a reference to it doesn't escape between it's definition and the iteration. Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. There are additional cases yet to be implemented where we can detect that a range based for is safe based on the loop body or iterable. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for (or copy to a val!). 
+In the above example a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. Were it a reference (or if a reference to it escapes) a static_assert that size checked indexing iteration is not available would fire. There are additional cases yet to be implemented where we can detect that a range based for is safe based on the loop body or iterable. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for (or copy to a val!). 
 
 This for-loop fallback to indexing logic uses a similar ```requires(std.begin(map + 2))``` check as employed by the ```container[access]``` bounds checking logic in [cppfront](https://github.com/hsutter/cppfront/). In fact, our bounds checking logic for containers has been stolen crudely from Herb Sutter's project; see the macros at [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth) and the licence/disclaimer for that file. 
 
