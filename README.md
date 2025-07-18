@@ -210,15 +210,15 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
 
     map_call = BracedCall(map_type, args)
 
-    if (west_specifier:
-        map_type = quote(unquote(west_specifier): unquote(map_type))
+    if (west:
+        map_type = quote(unquote(west): unquote(map_type))
     )
 
-    if (east_specifier:
-        map_type = quote(unquote(map_type): unquote(east_specifier))
+    if (east:
+        map_type = quote(unquote(map_type): unquote(east))
     )
 
-    return quote(unquote(m): unquote(map_type) = lambda(:
+    return quote(unquote(map_var): unquote(map_type) = lambda(:
         static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
         unquote(map_call)
     ) ())
