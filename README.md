@@ -189,7 +189,8 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
     map_type: mut = None:Node
     
     for (kv in keyvals:
-        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])), decltype(unquote(kv.args[1]))>)
+        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])),
+                                        decltype(unquote(kv.args[1]))>)
         if (not map_type:
             map_type = type
         else:
@@ -203,7 +204,7 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
     unsafe (:
         duplicate_iter = std.adjacent_find(keys.cbegin(), keys.cend(), comparator)
         if (duplicate_iter != keys.cend():
-            # note there are cases where duplicate keys slip past e.g. { 1 - 1: "zero", 0: "zero"}
+            # this won't catch all duplicate keys e.g. { 1 - 1: "zero", 0: "zero"}
             throw (std.runtime_error("duplicate keys in map literal"))
         )
     )
