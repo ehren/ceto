@@ -194,7 +194,8 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
         if (not map_type:
             map_type = type
         else:
-            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type), unquote(map_type)>)
+            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type),
+                                                                   unquote(map_type)>)
         )
         args.append(quote({ unquote(kv.args[0], unquote(kv.args[1]) }))
         keys.append(kv.args[0])
