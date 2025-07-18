@@ -174,8 +174,8 @@ $ ceto ./tests/example.ctp
 ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
 
 ```python
-defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp],
-         m: Identifier, map: Identifier, west_specifier: Node|None, east_specifier: Node|None:
+defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
+         map_var: Identifier, map: Identifier, west: Node|None, east: Node|None:
 
     if (map.name() != "map" and map.name() != "unordered_map":
         return None
@@ -229,7 +229,6 @@ class (Foo:
 )
 
 def (main:
-    # map: std.map:mut = { "1": 1, "2": 2.0}  # error: all key-value pairs must be of the same type in map literal 
     map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
     for ((key, vec) in map:
         std.cout << key << std.endl
@@ -244,7 +243,7 @@ This is also available as a built-in in the standard library macros, see [includ
 
 ## Disabling Safety Checks
 
-In the above for-loop in ```main```, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
+In the previous example, iterating over a map, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
 
 Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
 
