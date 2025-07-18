@@ -242,14 +242,14 @@ def (main:
 
 This is also available as a built-in in the standard library macros, see [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth).
 
-## Runtime Checks / Evasion
+## Disabling Safety Checks
 
 In the above for-loop in ```main```, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
 
 Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
 
 ```python
-defmacro (for(i:type in iterable, block), i, type: Node|None, iterable, block: Block:
+defmacro (for (i:type in iterable, block), i, type: Node|None, iterable, block: Block:
     iter_var_type = if (type:
         type
     else:
@@ -275,7 +275,7 @@ def (main:
 )
 ```
 
-Is this too much power? There's a macro for that:
+Too powerful? There's a macro for that:
 
 ```python
 defmacro(defmacro(args), args: [Node]:
@@ -288,7 +288,7 @@ defmacro(defmacro(args), args: [Node]:
 # )
 ```
 
-## Safety Note
+## Safety Status
 
 We're working on an additional construct: ```unsafe(external_cpp=[std.async, std.span, std.accumulate, printf])``` (together with simple name mangling to avoid unexpected function overloading of external C++). Until that is implemented, one must be very careful with including external C++ header files. 
 
@@ -411,7 +411,7 @@ def (foo_generic, x:
 )
 
 def (main:
-    l = [1, 2, 3, 4]  # definition simply via CTAD (unavailable to py14)
+    l = [1, 2, 3, 4]
     map(map(l, lambda (x:
         std.cout << x
         x*2
@@ -421,9 +421,9 @@ def (main:
     ))
     map(l, foo)
     # map(l, foo_generic)  # error
-    map(l, lambda (x:int, foo_generic(x)))  # when lambda arg is typed, clang 14 -O3 produces same code as passing foo_generic<int>)
-    map(l, lambda (x, foo_generic(x)))  # Although we can trick c++ into deducing the correct type for x here clang 14 -O3 produces seemingly worse code than passing foo_generic<int> directly. 
-    map(l, foo_generic<int>)  # explicit template syntax
+    map(l, foo_generic<int>)
+    map(l, lambda (x:int, foo_generic(x)))
+    map(l, lambda (x, foo_generic(x)))  # acceptable though clang 14 -O3 produces worse code than passing foo_generic<int> directly. 
 )
 ```
 
