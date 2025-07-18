@@ -269,7 +269,7 @@ def (main:
     vec: mut = [1, 2, 3]
 
     for (i:int in vec:
-        vec.append(i)  # ordinarily std.terminate() on next iteration
+        vec.append(i)  # ordinarily std.terminate() before the next iteration
         std.cout << i  # (but C++ UB with unsafe_for by default)
     )
 )
