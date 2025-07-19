@@ -21,7 +21,7 @@ defmacro (print(args), args: [Node]:
     stream = if (args.size() == 1:
         quote(std.cout)
     elif last.equals(quote(file = std.cerr)):
-        output = quote("🙀 "s << unquote(output))
+        output = quote("🙀:"s << unquote(output))
         quote(std.cerr)
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         last.args[1]
