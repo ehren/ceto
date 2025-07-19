@@ -7,7 +7,7 @@ Ceto is an experimental language where calls may take indented blocks as argumen
 ```python
 defmacro (print(args), args: [Node]:
     if (args.size() == 0:
-        return None
+        return quote(std.cout << std.endl)
     )
 
     output: mut = args[0]
@@ -21,7 +21,7 @@ defmacro (print(args), args: [Node]:
         quote(std.cout)
     elif last.equals(quote(file = std.cerr)):
         quote(std.cerr)
-    elif isinstance(last, Assign) and assign.args[0].equals(quote(file)):
+    elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         throw (std.invalid_argument("Unhandled file argument"s + last.repr()))
     else:
         output = quote(unquote(output) << unquote(last))
