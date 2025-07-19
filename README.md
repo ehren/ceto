@@ -26,7 +26,7 @@ defmacro (print(args), args: [Node]:
             output = quote("🙀"s << unquote(output))
         elif isinstance(rhs, StringLiteral):
             throw (std.invalid_argument(
-                   "the parameter"s + last.repr() + " is invalid: use a std.ofstream to write to a file"))
+                   last.repr() + " is invalid: create a std.ofstream to print to a file"))
         )
         rhs
     else:
