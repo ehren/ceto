@@ -26,7 +26,7 @@ defmacro (print(args), args: [Node]:
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument(last.repr() + " is invalid: pass a std.ofstream instead"))
+            throw (std.invalid_argument("invalid string arg s" + last.repr())
         )
         rhs
     else:
@@ -40,7 +40,7 @@ defmacro (print(args), args: [Node]:
 def (main:
     x: mut = []
     x.append(5)
-    print(x[0], file=std.cerr)
+    print(x[0], file=std.ofstream("example.txt"))
 )
 ```
 
