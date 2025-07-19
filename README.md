@@ -34,7 +34,7 @@ defmacro (print(args), args: [Node]:
 def (main:
     x: mut = []
     x.append(5)
-    print(x[0])
+    print(x[0], file=std.cerr)
 )
 ```
 
