@@ -188,7 +188,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     calls_method(f)   # autoderef in the body of calls_method (and method)
 
     # copy capture (no capture list specified) for shared/weak instances,
-      arithmetic types, and enums only:
+    # arithmetic types, and enums only:
     fut: mut = std.async(std.launch.async, lambda(f.method(f)))
     fut.get().method(f)
 
