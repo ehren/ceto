@@ -26,8 +26,7 @@ defmacro (print(args), args: [Node]:
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument(
-                   "the parameter"s + last.repr() + " is invalid: use a std.ofstream to write to a file"))
+            throw (std.invalid_argument(last.repr() + " is invalid: pass a std.ofstream instead"))
         )
         rhs
     else:
