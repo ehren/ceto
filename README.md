@@ -20,16 +20,15 @@ defmacro (print(args), args: [Node]:
 
     stream = if (args.size() == 1:
         quote(std.cout)
-    elif last.equals(quote(file = std.cerr)):
-        output = quote("🙀:"s << unquote(output))
-        quote(std.cerr)
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
-        rhs = last.args[1]
-        if (isinstance(rhs, StringLiteral):
+        file = last.args[1]
+        if (file.equals(quote(std.cerr)):
+            output = quote("🙀"s << unquote(output))
+        elif isinstance(file, StringLiteral):
             throw (std.invalid_argument(
-                   "the parameter"s + last.repr() + " is invalid: use a std.ofstream to write to a file"))
+                   last.repr() + " is invalid: create a std.ofstream to print to a file"))
         )
-        rhs
+        file
     else:
         output = quote(unquote(output) << unquote(last))
         quote(std.cout)
