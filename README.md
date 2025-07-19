@@ -31,6 +31,8 @@ $ ceto ./tests/example.ctp
 
 ## Language Tour
 
+### Kitchen Sink
+
 ```python
 include <ranges>
 
