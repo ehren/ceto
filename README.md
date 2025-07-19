@@ -1,8 +1,35 @@
 ## Intro
 
-Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended usecase is more pythonish glue-C++. Named after the mythological sea++ goddess.
+Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. "Print should be a function" taken to its logical extreme; expression-if comes free. Classes have immutable safe reference semantics by default (const propagate_const shared_ptr to const by default) with ```.``` performing a safe maybe dereference even in generic code. Structs have value semantics but are passed by const ref by default. Performance compromises are acceptable to achieve memory safety with bounds checking by default, raw C++ references heavily restricted, and for loops reverting to checked indexing when a C++ range-based-for is not provably safe. Performance/safety escape hatches are available via unsafe blocks and external C++ though the intended usecase is more pythonish glue-C++.
 
 ## Example
+
+```python
+defmacro(print(args), args: [Node]:
+    cout: mut = quote(std.cout)
+    for (arg in args:
+        cout = quote(unquote(cout) << arg)
+    )
+    return quote(unquote(cout) << std.endl)
+)
+
+def (main:
+    x: mut = []
+    x.append(5)
+    print(x[0])
+)
+```
+
+## Usage
+
+```bash
+$ git clone https://github.com/ehren/ceto.git
+$ cd ceto
+$ pip install .
+$ ceto ./tests/example.ctp
+```
+
+## Language Tour
 
 ```python
 include <ranges>
@@ -160,16 +187,14 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-## Usage
+## Language Tour
+- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
+- [Less typing (at least as in your input device\*)](#less-typing-at-least-as-in-your-input-device)
+- [Classes, Inheritance, init](#autoderef-use--not--)
+- [Macros](#macros)
+    - [Alternational Arguments](#alternational-arguments)
 
-```bash
-$ git clone https://github.com/ehren/ceto.git
-$ cd ceto
-$ pip install .
-$ ceto ./tests/example.ctp
-```
-
-## Syntax Note
+### Syntax Note
 
 ```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
 
@@ -289,7 +314,7 @@ defmacro(defmacro(args), args: [Node]:
 # )
 ```
 
-## Safety Status
+### Safety Status
 
 We're working on an additional construct: ```unsafe(external_cpp=[std.async, std.span, std.accumulate, printf])``` (together with simple name mangling to avoid unexpected function overloading of external C++). Until that is implemented, one must be very careful with including external C++ header files. 
 
@@ -352,13 +377,6 @@ def (main:
     f.bad()   # UB (and reliable use after free / garbage x2)
 )
 ```
-
-## Language Tour
-- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
-- [Less typing (at least as in your input device\*)](#less-typing-at-least-as-in-your-input-device)
-- [Classes, Inheritance, init](#autoderef-use--not--)
-- [Macros](#macros)
-    - [Alternational Arguments](#alternational-arguments)
 
 ### Autoderef (use *.* not *->*)
 
