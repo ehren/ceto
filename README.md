@@ -187,15 +187,10 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of calls_method (and method)
 
-    fut: mut = std.async(std.launch.async, lambda(:
-
-        # Implicit copy capture (no capture list specified) for shared/weak
-        # ceto-class instances, arithmetic types, and enums only.
-
-        f.method(f).data_member
-    ))
-
-    std.cout << fut.get()
+    # copy capture (no capture list specified) for shared/weak instances,
+      arithmetic types, and enums only:
+    fut: mut = std.async(std.launch.async, lambda(f.method(f)))
+    fut.get().method(f)
 
     u: mut = UniqueFoo()    # u is a "non-const" ceto::propagate_const<std::unique_ptr<"non-const" UniqueFoo>> in C++
     u2 = UniqueFoo()        # u2 is a non-const ceto::propagate_const<std::unique_ptr<const UniqueFoo>> in C++
