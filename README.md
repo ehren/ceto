@@ -28,7 +28,7 @@ defmacro (print(args), args: [Node]:
         quote(std.cout)
     )
 
-    quote(unquote(stream) << unquote(output) << std.endl)
+    return quote(unquote(stream) << unquote(output) << std.endl)
 )
 
 def (main:
