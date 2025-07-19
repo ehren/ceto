@@ -26,7 +26,7 @@ defmacro (print(args), args: [Node]:
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument("invalid string arg s" + last.repr())
+            throw (std.invalid_argument("invalid string arg "s + last.repr())
         )
         rhs
     else:
