@@ -12,7 +12,7 @@ defmacro (print(args), args: [Node]:
 
     output: mut = args[0]
 
-    for (arg in args | std.views.drop(1) | std.views.take(args.size() - 2):
+    for (arg in args | std.views.drop(1) | std.views.take(args.ssize() - 2):
         output = quote(unquote(output) << unquote(arg))
     )
 
