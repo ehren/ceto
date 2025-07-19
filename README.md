@@ -231,8 +231,7 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
     args: mut:[Node] = []
     keys: mut:[Node] = []
 
-    vacuous: Node = quote(True)
-    assertion: mut = vacuous
+    assertion: mut = quote(True)
     map_type: mut = None:Node
     
     for (kv in keyvals:
