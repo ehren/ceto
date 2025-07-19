@@ -5,7 +5,7 @@ Ceto is an experimental language where calls may take indented blocks as argumen
 ## Example
 
 ```python
-defmacro(print(args), args: [Node]:
+defmacro (print(args), args: [Node]:
     cout: mut = quote(std.cout)
     for (arg in args:
         cout = quote(unquote(cout) << arg)
