@@ -14,9 +14,6 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 
-mut_by_default = False
-# TODO remove this (mut_by_default mode definitely broken)
-
 mangle_prefix = ""  # "ceto_private_mangle_"  # TODO still needs work
 
 
@@ -213,7 +210,7 @@ def codegen_def(defnode: Call, cx):
     override = ""
     final = ""
     specifier = ""
-    is_const = is_method and not mut_by_default
+    is_const = is_method
     mangle_name = not is_method
 
     if specifier_types:
@@ -1564,7 +1561,7 @@ def _ensure_auto_or_ref_specifies_mut_const(type_nodes):
 
 def _codegen_typed_def_param_as_tuple(arg, cx):
 
-    should_add_outer_const = not mut_by_default
+    should_add_outer_const = True
     stripped_mut = False
 
     # TODO should handle plain 'mut'/'const' param (generic case)
@@ -1785,8 +1782,6 @@ def _codegen_compound_class_type(types, cx):
     if indices := _sublist_indices(["weak", class_name], typenames):
         if class_def.is_unique:
             raise CodeGenError("no weak specifier for type", types[0])
-        if mut_by_default:
-            return "std::weak_ptr<" + class_name + ">", indices
         return "std::weak_ptr<const " + class_name + ">", indices
     if class_def.is_struct:
         # let the defaults of codegen_type handle this
@@ -1799,14 +1794,9 @@ def _codegen_compound_class_type(types, cx):
         if class_def.is_unique:
             return _propagate_const_str("std::unique_ptr<const " + class_name + ">"), indices
         return _propagate_const_str("std::shared_ptr<const " + class_name + ">"), indices
-    if mut_by_default:
-        if class_def.is_unique:
-            return _propagate_const_str("std::unique_ptr<" + class_name + ">"), [types.index(class_type)]
-        return _propagate_const_str("std::shared_ptr<" + class_name + ">"), [types.index(class_type)]
-    else:
-        if class_def.is_unique:
-            return _propagate_const_str("std::unique_ptr<const " + class_name + ">"), [types.index(class_type)]
-        return _propagate_const_str("std::shared_ptr<const " + class_name + ">"), [types.index(class_type)]
+    if class_def.is_unique:
+        return _propagate_const_str("std::unique_ptr<const " + class_name + ">"), [types.index(class_type)]
+    return _propagate_const_str("std::shared_ptr<const " + class_name + ">"), [types.index(class_type)]
 
 
 def codegen_type(expr_node, type_node, cx):
@@ -2489,7 +2479,7 @@ def codegen_call(node: Call, cx: Scope):
                     while isinstance(append_target_lhs, BinOp):
                         append_target_lhs = append_target_lhs.lhs
 
-                    if append_target_lhs.name in ["this", "self"] or isinstance(node.scope.find_def(append_target_lhs), VariableDefinition):
+                    if not isinstance(append_target_lhs, Identifier) or (append_target_lhs.name in ["this", "self"] or isinstance(node.scope.find_def(append_target_lhs), VariableDefinition)):
                         # perhaps controversial rewriting of append to push_back
                         # this would also be the place to e.g. disable all unsafe std::vector methods (require a construct like (&my_vec)->data() to workaround while signaling unsafety)
                         is_list = False
@@ -2541,7 +2531,7 @@ def codegen_call(node: Call, cx: Scope):
 def _is_const_make(node : Call):
     assert isinstance(node, Call)
 
-    is_const = not mut_by_default
+    is_const = True
 
     if node.declared_type is not None:
         lhs_type = node.declared_type
@@ -2642,8 +2632,7 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
 
     if lhs_type_str is None:
         lhs_type_str = codegen_type(node, node.declared_type, cx)
-        needs_const = not mut_by_default
-        if needs_const and not const_specifier and not (classdef and classdef.is_unique):
+        if not const_specifier and not (classdef and classdef.is_unique):
             const_specifier = "const "
 
     return const_specifier, lhs_type_str
@@ -2938,7 +2927,7 @@ def codegen_node(node: Node, cx: Scope):
                 node is node.parent.lhs) and (
            ptr_name := _shared_ptr_str_for_type(node, cx)):
             ptr_begin, ptr_end = ptr_name
-            return ptr_begin + ("const " if not mut_by_default else "") + name + ptr_end
+            return ptr_begin + "const " + name + ptr_end
 
         is_last_use = is_last_use_of_identifier(node)
 
@@ -3012,10 +3001,9 @@ def codegen_node(node: Node, cx: Scope):
 
             binop_str = " ".join([codegen_node(node.lhs, cx), opstr, codegen_node(node.rhs, cx)])
 
-            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)):
-                # guard against precedence mismatch (e.g. extra parenthesese
-                # not strictly preserved in the ast)
-                # untested / maybe-buggy
+            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) \
+               and node.op != node.parent.op: # TODO there should be a higher/lower precedence check here
+                # guard against precedence mismatch, extra parenthesese not strictly preserved in the ast)
                 binop_str = "(" + binop_str + ")"
 
             return binop_str
@@ -3131,7 +3119,7 @@ def codegen_node(node: Node, cx: Scope):
         template_args = "<" + ",".join([codegen_node(a, cx) for a in node.args]) + ">"
         if ptr_name := _shared_ptr_str_for_type(node.func, cx):
             ptr_begin, ptr_end = ptr_name
-            return ptr_begin + ("const " if not mut_by_default else "") + node.func.name + template_args + ptr_end
+            return ptr_begin + "const " + node.func.name + template_args + ptr_end
         else:
             return codegen_node(node.func, cx) + template_args
 
