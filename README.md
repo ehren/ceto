@@ -55,7 +55,7 @@ $ ceto ./tests/example.ctp
 
 ## Language Tour
 
-### Kitchen Sink
+### Listcomp example
 
 ```python
 include <ranges>
@@ -97,12 +97,12 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
     ) ())
 )
 
-namespace (util)
-
 defmacro ([x, for (y in z)], x, y, z:
     # Use the existing 3-arg definition
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
+
+namespace (util)
 
 def (maybe_reserve<T>, vec: mut:[T]:ref, sized: mut:auto:ref:ref:
     # two mut:ref parameters requires unsafe to use
@@ -114,12 +114,36 @@ def (maybe_reserve<T>, vec: mut:[T]:ref, unsized: mut:auto:ref:ref:
 ) : void:requires:not requires(std.size(unsized))
 ```
 
+These macros are provided by default as standard library built-ins, see [include/listcomp.cth](https://github.com/ehren/ceto/blob/main/include/listcomp.cth) 
+
+```python
+def (main:
+    l = [x, for (x in std.ranges.iota_view(0, 10)), if (x % 2 == 0)]
+
+    for (x in l:
+        std.cout << x
+    )
+
+    l2 = [x + 1, for (x in l)]
+
+    for (i in [x, for (x in l2), if (x > 5)]:
+        std.cout << i
+    )
+
+    for (i in [x * 100, for (x in l)]:
+        std.cout << i
+    )
+)
+```
+
+### Parameter passing, ```class``` basics
+
+You can get somewhat far with python 2 like non-type annotated code as shorthand for unconstrained C++ template metaprogramming and duck typing.
+
 ```python
 include <numeric>
 include <future>
 include <span>
-
-include (macros_list_comprehension)
 
 class (Foo:
     data_member
@@ -134,8 +158,8 @@ class (Foo:
     )
 )
 
-def (calls_method, arg:
-    return arg.method(arg)
+def (calls_method, obj, arg:
+    return obj.method(arg)
 )
 
 class (UniqueFoo:
@@ -190,7 +214,7 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 
     f.method(args)    # autoderef of f
     f.method(f)       # autoderef also in the body of 'method'
-    calls_method(f)   # autoderef in the body of calls_method (and method)
+    calls_method(f, f)   # autoderef in the body of calls_method (and method)
 
     # copy capture (no capture list specified) for shared/weak instances,
     # arithmetic types, and enums only:
@@ -208,12 +232,55 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-## Language Tour
-- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
-- [Less typing (at least as in your input device\*)](#less-typing-at-least-as-in-your-input-device)
-- [Classes, Inheritance, init](#autoderef-use--not--)
-- [Macros](#macros)
-    - [Alternational Arguments](#alternational-arguments)
+Duck typed functions are even slighlty more generic than unconstrained C++ templates because `.` is a maybe autoderef when not an implicit scope resolution.
+
+### More generic functions, python-like list/vector notation
+
+This project was originally based on the py14 codebase of Lukas Martinelli.
+
+Among other things the code generation of Python like lists as ```std.vector``` derives from that project.
+
+Here's a similar example to [the py14 README](https://github.com/lukasmartinelli/py14?tab=readme-ov-file#how-it-works):
+
+```python
+# Test Output: 123424681234123412341234
+
+def (map, values, fun:
+    results: mut = []
+    for (v in values:
+        results.append(fun(v))
+    )
+    return results
+)
+
+def (foo, x:int:
+    std.cout << x
+    return x
+)
+
+def (foo_generic, x:
+    std.cout << x
+    return x
+)
+
+def (main:
+    l = [1, 2, 3, 4]
+    map(map(l, lambda (x:
+        std.cout << x
+        x*2
+    )), lambda (x:
+        std.cout << x
+        x
+    ))
+    map(l, foo)
+    # map(l, foo_generic)  # error
+    map(l, foo_generic<int>)
+    map(l, lambda (x:int, foo_generic(x)))
+    map(l, lambda (x, foo_generic(x)))  # acceptable though clang 14 -O3 produces worse code than passing foo_generic<int> directly. 
+)
+```
+
+Though, we require a `mut` annotation and rely on `std.ranges`, the wacky forward inference via `decltype` to codegen the type of results above as ```std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>``` derives from the py14 implementation.
 
 ### Syntax Note
 
@@ -255,6 +322,7 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
         )
     )
 
+    # TODO with 'splice' (gh-2) this would be map_call = quote(unquote(map_type) { splice(args) }) 
     map_call = BracedCall(map_type, args)
 
     if (west:
@@ -276,12 +344,19 @@ class (Foo:
 )
 
 def (main:
+    # with macro:
     map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
     for ((key, vec) in map:
         std.cout << key << std.endl
         for (foo in vec:
             std.cout << foo.x
         )
+    )
+
+    # without macro:
+    map2 = std.optional<std.map<int,int>> {}
+    if (map2:
+        std.cout << map2.at(42)  # std.optional autoderef  
     )
 )
 ```
@@ -398,6 +473,13 @@ def (main:
 )
 ```
 
+## Further Reading / Lang Reference
+
+- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
+- [Classes, Inheritance, init](#autoderef-use--not--)
+- [Macros](#macros)
+    - [Alternational Arguments](#alternational-arguments)
+
 ### Autoderef (use *.* not *->*)
 
 This works by compiling a generic / non-type-annotated function like
@@ -419,56 +501,6 @@ auto calls_foo(const auto& f) -> auto {
 ```
 
 where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a terminating nullptr check (use `->` for an unchecked access in ```unsafe``` contexts).
-
-### Less typing (at least as in your input device\*)
-
-This project uses many of the ideas from the https://github.com/lukasmartinelli/py14 project such as the implicit insertion of *auto* (though in ceto it's implict *const auto* for untyped locals and *const auto&* for untyped params). The very notion of generic python functions as C++ template functions is also largely the same.
-
-We've also derived our code generation of Python like lists as ```std.vector``` from the project.
-
-For example, from [their README](https://github.com/lukasmartinelli/py14?tab=readme-ov-file#how-it-works):
-
-```python
-# Test Output: 123424681234123412341234
-
-def (map, values, fun:
-    results: mut = []
-    for (v in values:  # implicit const auto&
-        results.append(fun(v))
-    )
-    return results
-)
-
-def (foo, x:int:
-    std.cout << x
-    return x
-)
-
-def (foo_generic, x:
-    std.cout << x
-    return x
-)
-
-def (main:
-    l = [1, 2, 3, 4]
-    map(map(l, lambda (x:
-        std.cout << x
-        x*2
-    )), lambda (x:
-        std.cout << x
-        x
-    ))
-    map(l, foo)
-    # map(l, foo_generic)  # error
-    map(l, foo_generic<int>)
-    map(l, lambda (x:int, foo_generic(x)))
-    map(l, lambda (x, foo_generic(x)))  # acceptable though clang 14 -O3 produces worse code than passing foo_generic<int> directly. 
-)
-```
-
-Though, we require a *mut* annotation and rely on *std.ranges*, the wacky forward inference via *decltype* to codegen the type of results above as ```std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>``` derives from the py14 implementation.
-
-(*tempered with the dubiously attainable goal of less typing in the language implementation)
 
 ### Classes, Inheritance, init
 
@@ -1056,79 +1088,6 @@ def (main:
 )
 ```
 
-#### Safety Evasion
-
-Find some of the runtime checks too onerous? 
-
-### std.optional / autoderef details
-
-```python
-def (main:
-    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
-        {"zero", 0}, {"one", 1}}
-
-    optional_str: std.optional<std.string> = std.nullopt
-
-    if (optional_map:
-        std.cout << optional_map.at("zero")  # autoderef
-    )
-
-    if (optional_str:
-        std.cout << optional_str.size()   # autoderef
-        # std.cout << optional_str  # error: no autoderef without "."
-        std.cout << optional_str.value()
-    )
-
-    # we have the billion dollar mistake like Python just no null-derefence UB
-    # - better than a billion?.question?.marks??
-    # optional_str.size()  # std.terminate()
-)
-```
-
-As shown above no deref takes place when calling a method of ```std.optional```. That is, to call a method `value()` on the underlying value rather than the optional call `.value().value()`.
-
-(this example also illustrates that for ceto classes and structs round parenthesese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is a 50 element vector of 50)
-
-Note that to call the smart ptr `get` method (rather than a `get` method on the autoderefed instance) use ```unsafe((&obj)->get())``` or ```unsafe(std.addressof(obj)->get())```.
-
-In addition, while we don't support deref without ```.``` one can add it implicitly in certain situations (note ```override``` caveats mentioned below when over-relying on smart pointers):
-
-```python
-class (Foo:
-
-    def (operator("+"), foo:Foo:
-        std.cout << "adding Foo and Foo\n"
-        return self
-    )
-
-    def (operator("+"), other:
-        std.cout << "adding Foo and other\n"
-        return self
-    )
-)
-
-# autoderef occurs because f.operator("+") uses '.'
-
-def (operator("+"), f:Foo, x:
-    return f.operator("+")(x)
-)
-
-def (operator("+"), x, f:Foo:
-    return f.operator("+")(x)
-)
-
-def (operator("+"), x:Foo, f:Foo:
-    return f.operator("+")(x)
-)
-
-def (main:
-    Foo() + 1
-    1 + Foo()
-    two_foo = Foo() + Foo()
-    (1 + two_foo + 1) + Foo()
-)
-```
-
 ### Visitor Caveats / Class instances not "Smart References" / DLL Macro Implementation
 
 Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown earlier, the selfhost sources use a lower level version making use of C++ CRTP as well as the ```Foo.class``` syntax to access the underlying ```Foo``` in C++ (rather than ```shared_ptr<const Foo>```). This sidesteps the gotcha that ceto class instances aren't real "shared smart references" so **overriding** e.g. ```def (visit:override, node: BinOp)``` with ```def(visit: override, node: Add)``` is not possible because an **Add** (```std::shared_ptr<const Node>``` in C++) is not strictly speaking a derived class of ```std::shared_ptr<const BinOp>``` in C++. There are additional non-niceties using a shared_ptr managed ast hierarchy (including heavy handed implicit cloning) though it makes the defmacro side a little more pythonic. ```macro_matches``` below could be improved by taking a Node.class to lessen the shared_from_this-ing in the visitor callbacks (at the expense of more unary * in the body)
@@ -1250,7 +1209,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
     pattern_iterator: mut = pattern.args.cbegin()
     arg_iterator: mut = node.args.cbegin()
 
-    while (true:
+    while (True:
         if (pattern_iterator == pattern.args.end():
             if (arg_iterator != node.args.end():
                 # no match - no pattern for args
@@ -1478,4 +1437,73 @@ def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition, c
     node.accept(visitor)
     return visitor.replacements
 ) : std.unordered_map<Node, Node>
+```
+
+### std.optional / autoderef details
+
+```python
+def (main:
+    optional_map: std.optional<std.map<std.string, int>> = std.map<std.string, int> {
+        {"zero", 0}, {"one", 1}}
+
+    optional_str: std.optional<std.string> = std.nullopt
+
+    if (optional_map:
+        std.cout << optional_map.at("zero")  # autoderef
+    )
+
+    if (optional_str:
+        std.cout << optional_str.size()   # autoderef
+        # std.cout << optional_str  # error: no autoderef without "."
+        std.cout << optional_str.value()
+    )
+
+    # we have the billion dollar mistake like Python just no null-derefence UB
+    # - better than a billion?.question?.marks??
+    # optional_str.size()  # std.terminate()
+)
+```
+
+As shown above no deref takes place when calling a method of ```std.optional```. That is, to call a method `value()` on the underlying value rather than the optional call `.value().value()`.
+
+(this example also illustrates that for ceto classes and structs round parenthesese must be used e.g.  ```Foo(x, y)``` even though the generated code makes use of curlies e.g. ```Foo{x, y}``` (to avoid narrowing conversions). For external C++ round means round - curly means curly (```std.vector<int>(50, 50)``` is a 50 element vector of 50)
+
+Note that to call the smart ptr `get` method (rather than a `get` method on the autoderefed instance) use ```unsafe((&obj)->get())``` or ```unsafe(std.addressof(obj)->get())```.
+
+In addition, while we don't support deref without ```.``` one can add it implicitly in certain situations (note ```override``` caveats mentioned below when over-relying on smart pointers):
+
+```python
+class (Foo:
+
+    def (operator("+"), foo:Foo:
+        std.cout << "adding Foo and Foo\n"
+        return self
+    )
+
+    def (operator("+"), other:
+        std.cout << "adding Foo and other\n"
+        return self
+    )
+)
+
+# autoderef occurs because f.operator("+") uses '.'
+
+def (operator("+"), f:Foo, x:
+    return f.operator("+")(x)
+)
+
+def (operator("+"), x, f:Foo:
+    return f.operator("+")(x)
+)
+
+def (operator("+"), x:Foo, f:Foo:
+    return f.operator("+")(x)
+)
+
+def (main:
+    Foo() + 1
+    1 + Foo()
+    two_foo = Foo() + Foo()
+    (1 + two_foo + 1) + Foo()
+)
 ```

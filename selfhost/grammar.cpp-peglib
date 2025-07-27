@@ -1,8 +1,8 @@
 # In Progress! See parser.py for production grammar
 
-DotDotDotExpression <- (Expression) "..."*
+Expression <- (SimpleExpression) "..."*
 
-Expression <- ReturnLikeExpression / BinaryExpression
+SimpleExpression <- ReturnLikeExpression / BinaryExpression
 
 ReturnLikeExpression <- ("yield"/"return") BinaryExpression { no_ast_opt }
 
@@ -24,7 +24,7 @@ UnaryExpression <- (PlusOp / MinusOp / NotOp / StarOp / AmpOp)* Atom
 
 Atom <- Template / Ident / Number / '(' Expression ')'
 
-Template <- Ident "<" (DotDotDotExpression ("," DotDotDotExpression)*)? "@"
+Template <- Ident "<" (Expression ("," Expression)*)? "@"
 
 Operator <-  <"==" / AndOp / OrOp / "in" / "not in" / "is" / "is not" / "<" / ">" / AmpOp / "^" / "|" / "<==>" / "=" / "<=" / "<<=" / ">=" / "+=" / "-=" / "*=" / "/=" / "%=" / "&=" / "|=" / "^=" / "=" / ":" / PlusOp / MinusOp / StarOp >
 
