@@ -18,17 +18,18 @@ defmacro (print(args), args: [Node]:
 
     last = args[args.size() - 1]
 
-    stream = if (args.size() == 1:
-        quote(std.cout)
-    elif last.equals(quote(file = std.cerr)):
-        output = quote("🙀:"s << unquote(output))
+    stream = if (last.equals(quote(file = std.cerr)):
+        output = quote("🙀" << unquote(output))
         quote(std.cerr)
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument("invalid string arg "s + last.repr()))
+            throw (std.invalid_argument("Invalid string arg "s + last.repr() + (
+                                        ". Use std.ofstream instead.")))
         )
         rhs
+    elif args.size() == 1:
+        quote(std.cout)
     else:
         output = quote(unquote(output) << unquote(last))
         quote(std.cout)
@@ -62,7 +63,7 @@ include <ranges>
 
 defmacro ([x, for (y in z), if (c)], x, y, z, c:
     result = gensym()
-    zz = gensym()
+    z_ref = gensym()
 
     pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
                            c.args, lambda(a, a.equals(x) or a.equals(y))):
@@ -71,7 +72,7 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
         dont_reserve: Node = quote(pass)
         dont_reserve
     else:
-        reserve: Node = quote(util.maybe_reserve(unquote(result), unquote(zz)))
+        reserve: Node = quote(util.maybe_reserve(unquote(result), unsafe(unquote(z_ref)))
         reserve
     )
 
@@ -79,10 +80,10 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
 
         unquote(result): mut = []
 
-        unquote(zz): mut:auto:ref:ref = unquote(z)
+        unquote(z_ref): mut:auto:ref:ref = unquote(z)
         unquote(pre_reserve_stmt)
 
-        for (unquote(y) in unsafe(unquote(zz)):  # unsafe to use local var of ref type
+        for (unquote(y) in unsafe(unquote(z_ref)):  # unsafe to use local var of ref type
             unquote(if (c.name() == "True":
                 # Omit literal if (True) check (reduce clutter for 2-arg case below)
                 quote(unquote(result).append(unquote(x)))
@@ -105,8 +106,7 @@ defmacro ([x, for (y in z)], x, y, z:
 namespace (util)
 
 def (maybe_reserve<T>, vec: mut:[T]:ref, sized: mut:auto:ref:ref:
-    # two mut:ref parameters requires unsafe to use
-    unsafe(vec.reserve(std.size(std.forward<decltype(sized)>(sized))))
+    vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
 ) : void:requires:requires(std.size(sized))
 
 def (maybe_reserve<T>, vec: mut:[T]:ref, unsized: mut:auto:ref:ref:
@@ -188,11 +188,11 @@ def (string_join, vec: [std.string], sep = ", "s:
     unsafe (:
         # 3 things require unsafe below:
         #   1) Direct use of C++ iterators.
-        #   2) vec[0] is a reference - safe code must copy to a value before passing or 
-        #      an elided static_assert that no aliasing related badness occurs though the 
-        #      other parameters would fail. Note: vec[0] is still bounds checked (use 
+        #   2) vec[0] is a reference - safe code must copy to a value before passing or
+        #      an elided static_assert that no aliasing related badness occurs though the
+        #      other parameters would fail. Note: vec[0] is still bounds checked (use
         #      vec.unsafe[0] to avoid).
-        #   3) lambda with ref capture is always unsafe - there is a safe (at least in 
+        #   3) lambda with ref capture is always unsafe - there is a safe (at least in
         #      single threaded code) implicit capture mechanism shown below.
         return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
             lambda[&sep] (a, b, a + sep + b))
@@ -1095,8 +1095,6 @@ Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown earli
 This code also demonstrates working with external C++ and more general/unsafe constructs like C++ iterators, raw pointers in combination with :unique classes, the C/C++ preprocessor, function pointers, and reinterpret_cast (and passing C++ types across dll boundaries, note: the C++ compiler used automatically by ceto during macro DLL compilation must match the one used during ```pip install``` to compile the [pybind11 bindings (selfhost/ast.ctp)](https://github.com/ehren/ceto/blob/main/selfhost/ast.ctp). Debug settings must match on Windows. This is an earlier version prior to alternational and optional matching ([selfhost/macro_expansion.cth](https://github.com/ehren/ceto/blob/main/selfhost/macro_expansion.cth)). We also need improvements like more fine grained patterns e.g. ```defmacro(foo(x), x: pattern(bar(y)), y:``` and better handling of greediness (implementation of 'splice' should only require python code changes...) plus general matching algorithm improvements though the slowest thing is the back and forth to Python with some unnecessary traversals on top which will be lessened by refactor/improvement of Scope handling allowing it to be available from macros (especially to distingush ```.``` attribute access from ```.``` implicit scope resolution (```::```) in a defmacro).
 
 ```python
-unsafe()
-
 include <map>
 include <unordered_map>
 include <ranges>
@@ -1106,6 +1104,8 @@ include <span>
 include (ast)
 include (visitor)
 include (range_utility)
+
+unsafe()
 
 if (_MSC_VER:
     include <windows.h>
