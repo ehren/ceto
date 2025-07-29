@@ -187,6 +187,13 @@ def codegen_def(defnode: Call, cx):
     #if interface and return_type_node is None:
     #    raise CodeGenError("must specify return type of interface method")
 
+    # Perform some checks that mut:ref params are used only in unsafe blocks if there are other 
+    # reference or reference-like params (e.g. structs holding smart pointers)
+    # This prevents many of the classic 'oops UB when my mut ref and const ref alias' cases 
+    # (callsite checks - see ban_reference_in_subexpression take care of other potentially dangerous aliasing apart from the raw mut:ref in param case)
+    maybe_bad_mut_ref_param_name_nodes = []
+    maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes = []
+
     for i, arg in enumerate(args):
         # TODO reincorporate these errors when an ordinary virtual method detected ('interface' builtin feature removed)
 #        if interface:
@@ -198,12 +205,44 @@ def codegen_def(defnode: Call, cx):
 #                    "Only simple args allowed for interface method (c++ virtual functions with default arguments are best avoided)")
         if typed_param := codegen_typed_def_param(arg, cx):
             params.append(typed_param)
+
+            if block and not cx.is_unsafe and not defnode.scope.is_unsafe and (arg.declared_type or isinstance(arg, Assign) and arg.lhs.declared_type):
+                if arg.declared_type:
+                    arg_declared_type = arg.declared_type
+                    arg_name_node = arg
+                else:
+                    arg_declared_type = arg.lhs.declared_type
+                    arg_name_node = arg.lhs
+                assert isinstance(arg_name_node, Identifier)
+                param_type_nodes = type_node_to_list_of_types(arg_declared_type)
+                if any(p.name == "ref" for p in param_type_nodes) and any(p.name == "mut" for p in param_type_nodes):
+                    # We'll allow you to hide ref/& using the C++ preprocessor for now (safish because when mangling is fully 
+                    # implemented you'll need an external C++ opt-in declaration to use the C++ preproccessor macro)
+                    # TODO we could add an additional "no hiding" static_assert that all params are non mut:ref when no "mut" and "ref" detected
+                    if any(find_all(block, test=lambda n: (n.name == arg_name_node.name and not n.scope.is_unsafe))):
+                        maybe_bad_mut_ref_param_name_nodes.append(arg_name_node)
+                elif any(find_all(block, test=lambda n: n.name == arg_name_node.name)):
+                    # a non mut:ref but still ref-like param can allow bad aliasing UB (but not if unused in the body)
+                    maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes.append(arg_name_node)
         else:
-            t = "T" + str(i + 1)
-            # params.append(t + "&& " + arg.name)
-            # params.append(t + " " + arg.name)
+            # TODO py14 leftover we should just replace with const:auto:ref
+            # (TODO remove logic from codegen - defmacro to add const:auto:ref to any non-type annotated Identifier def param)
+            t = gensym("T" + str(i + 1))
             params.append("const " + t + "& " + arg.name)
             typenames.append("typename " + t)
+            if block and any(find_all(block, test=lambda n: n.name == arg.name)):
+                maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes.append(arg)
+
+    assert_ref_safety = ""
+    if maybe_bad_mut_ref_param_name_nodes:
+        if is_method:
+            # the hidden self/this is the other ref param allowing bad aliasing related UB
+            raise CodeGenError(f"mut:ref params in methods can't be used outside of unsafe blocks", maybe_bad_mut_ref_param_name_nodes[0])
+
+        if maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes:
+            # like the is_fundamental_v checks at the callsite (see ban_reference_in_subexpression) we can allow more if we start tagging structs that don't transitively hold smart pointers.
+            # banning raw references and non-owning/unsafe external C++ (e.g. views) as members of a struct passed in combination with a mut:ref param can be done here (with the tagging) or simply at the struct/class definition site (TODO still need class/struct/def unsafe coloring not just unsafe blocks)
+            assert_ref_safety = "static_assert(" + " && ".join("std::is_fundamental_v<decltype(" + a.name + ")>" for a in maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes) + ', "you cannot use the mut:ref param ' + maybe_bad_mut_ref_param_name_nodes[0].name + ' (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");'
 
     template = ""
     inline = "inline "
@@ -251,12 +290,6 @@ def codegen_def(defnode: Call, cx):
             specifier_types.remove(noinlines[0])
             inline = ""
 
-        # maybe it's ok to put the requires clause with the return type
-        #adjacent_specifier_types = zip(specifier_types, specifier_types[1:])
-        #for t, y in adjacent_specifier_types:
-        #    if t.name == "requires":
-        #        pass
-
         if specifier_types:
             specifier_node = list_to_typed_node(specifier_types)
             specifier = " " + codegen_type(name_node, specifier_node, cx) + " "
@@ -273,8 +306,6 @@ def codegen_def(defnode: Call, cx):
                 if len(typenames) > 0:
                     raise CodeGenError("Explicit template function with generic params", specifier_node)
                 template = ""
-            # inline = ""  # debatable whether a non-trailing return should inmply no "inline":
-            # no: tvped func above a certain complexity threshold automatically placed in synthesized implementation file
 
             if any(a.name == "extern" and b.name == "C" for a, b in zip(specifier_types, specifier_types[1:])):
                 mangle_name = False
@@ -297,7 +328,6 @@ def codegen_def(defnode: Call, cx):
         mangle_name = False
 
     if return_type_node:
-        # return_type = codegen_type(name_node, name_node.declared_type)
         return_type = codegen_type(defnode, return_type_node, cx)
         if is_destructor:
             raise CodeGenError("destruct methods can't specifiy a return type")
@@ -357,7 +387,7 @@ def codegen_def(defnode: Call, cx):
             return indt + funcdef + ";\n\n"
 
     block_str = codegen_function_body(defnode, block, cx)
-    return indt + funcdef + " {\n" + block_str + indt + "}\n\n"
+    return indt + funcdef + " {\n" + assert_ref_safety + block_str + indt + "}\n\n"
 
 
 # Replace self.x = y in a method (but not an inner lambda unless by-ref this-capturing) with this->x = y
@@ -806,7 +836,7 @@ def codegen_class(node : Call, cx):
             if not isinstance(arg, Assign):
                 should_disable_default_constructor = True
 
-            if typed_arg_tuple := _codegen_typed_def_param_as_tuple(arg, initcx):
+            if typed_arg_tuple := _type_and_name_initializer_from_typed_def_param(arg, initcx):
                 typed_arg_str_lhs, typed_arg_str_rhs = typed_arg_tuple
                 init_params.append(typed_arg_str_lhs + " " + typed_arg_str_rhs)
                 if isinstance(arg, (Assign, NamedParameter)):
@@ -828,7 +858,7 @@ def codegen_class(node : Call, cx):
                             # mutate the ast so that we print arg with proper "lists/strings/objects const ref in func params" behavior
                             # TODO this is not the worst thing (which would be byval + a copy) but we should be std::move-ing if self.a = a is the last use of param a (at least in the same circumstances as we do for uninitialized variables constructor synthesis)
                             arg.declared_type = field_type
-                            typed_arg_str_lhs, typed_arg_str_rhs = _codegen_typed_def_param_as_tuple(arg, initcx)  # this might add const& etc
+                            typed_arg_str_lhs, typed_arg_str_rhs = _type_and_name_initializer_from_typed_def_param(arg, initcx)  # this might add const& etc
                             init_params.append(typed_arg_str_lhs + " " + typed_arg_str_rhs)
                             init_param_type_from_name[arg.name] = typed_arg_str_lhs
                         else:
@@ -1242,7 +1272,7 @@ def codegen_for(node, cx):
         type_list = type_node_to_list_of_types(var.declared_type)
         if any(t.name == "ref" for t in type_list):
             var.scope.mark_node_unsafe(var)
-        type_str, var_str = _codegen_typed_def_param_as_tuple(var, cx)
+        type_str, var_str = _type_and_name_initializer_from_typed_def_param(var, cx)
     else:
         var_str = codegen_node(var, cx)
         type_str = None
@@ -1509,7 +1539,7 @@ def _should_add_const_ref_to_typed_param(param, cx):
 
 
 def codegen_typed_def_param(arg, cx):  # or default argument e.g. x=1
-    t = _codegen_typed_def_param_as_tuple(arg, cx)
+    t = _type_and_name_initializer_from_typed_def_param(arg, cx)
     if t:
         return " ".join(t)
     return None
@@ -1559,7 +1589,7 @@ def _ensure_auto_or_ref_specifies_mut_const(type_nodes):
         raise CodeGenError("you must specify const/mut", type_nodes[0])
 
 
-def _codegen_typed_def_param_as_tuple(arg, cx):
+def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
 
     should_add_outer_const = True
     stripped_mut = False
@@ -2136,7 +2166,7 @@ def _has_outer_double_parentheses(s: str):
 _ban_check_cache = threading.local()
 
 def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
-    if cx.is_unsafe:
+    if cx.is_unsafe or node.scope.is_unsafe:
         return code
 
     if isinstance(node.parent, Block):
@@ -2307,20 +2337,24 @@ def codegen_call(node: Call, cx: Scope):
                 if not isinstance(node.parent, Block):
                     raise CodeGenError("unsafe() call must be in Block", node)
                 cx.is_unsafe = True
+                node.scope.is_unsafe = True
                 return "// unsafe"
             elif len(node.args) == 1:
             #if node.parent.args[0] is not node:
             #    raise CodeGenError("unsafe() call must be first statement in Block", node)
                 old_unsafe = cx.is_unsafe
                 cx.is_unsafe = True
+                node.scope.is_unsafe = True
                 code = codegen_node(node.args[0], cx)
                 cx.is_unsafe = old_unsafe
+                node.scope.is_unsafe = old_unsafe
                 return "/* unsafe: */ " + code
             else:
                 static_assert(False, "unexpected number of unsafe args")
 
         elif func_name == "ceto_private_module_boundary" and len(node.args) == 0:
             cx.is_unsafe = False
+            node.scope.is_unsafe = False
             return "\n"
         elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
             # calling plain "decltype" in ceto will always strip outer double parenthesese 
@@ -2332,6 +2366,7 @@ def codegen_call(node: Call, cx: Scope):
             if func_name == "static_assert":
                 old_unsafe = cx.is_unsafe
                 cx.is_unsafe = True  # unsafe code in a static_assert doesn't require an unsafe block
+                node.scope.is_unsafe = True
             elif func_name not in ["decltype", "defined"]:
                 # TODO check that 'defined' is in an if (...) : preprocessor
                 mangle_free_func = True
@@ -2340,6 +2375,7 @@ def codegen_call(node: Call, cx: Scope):
             
             if old_unsafe is not None:
                 cx.is_unsafe = old_unsafe
+                node.scope.is_unsafe = old_unsafe
 
             args_inner = ", ".join(arg_strs)
             args_str = "(" + args_inner + ")"
@@ -2383,7 +2419,8 @@ def codegen_call(node: Call, cx: Scope):
             # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
             if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include"]:
                 if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
-                    raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
+                    #raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
+                    pass
 
             simple_call_str = func_str + args_str
 
