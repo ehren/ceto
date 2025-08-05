@@ -25,7 +25,7 @@ defmacro (print(args), args: [Node]:
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
             throw (std.invalid_argument("Invalid string arg "s + last.repr() + (
-                                        ". Use a std.ofstream for file io.")))
+                                        ". Use std.ofstream instead.")))
         )
         rhs
     elif args.size() == 1:
