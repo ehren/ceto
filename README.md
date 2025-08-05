@@ -1095,8 +1095,6 @@ Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown earli
 This code also demonstrates working with external C++ and more general/unsafe constructs like C++ iterators, raw pointers in combination with :unique classes, the C/C++ preprocessor, function pointers, and reinterpret_cast (and passing C++ types across dll boundaries, note: the C++ compiler used automatically by ceto during macro DLL compilation must match the one used during ```pip install``` to compile the [pybind11 bindings (selfhost/ast.ctp)](https://github.com/ehren/ceto/blob/main/selfhost/ast.ctp). Debug settings must match on Windows. This is an earlier version prior to alternational and optional matching ([selfhost/macro_expansion.cth](https://github.com/ehren/ceto/blob/main/selfhost/macro_expansion.cth)). We also need improvements like more fine grained patterns e.g. ```defmacro(foo(x), x: pattern(bar(y)), y:``` and better handling of greediness (implementation of 'splice' should only require python code changes...) plus general matching algorithm improvements though the slowest thing is the back and forth to Python with some unnecessary traversals on top which will be lessened by refactor/improvement of Scope handling allowing it to be available from macros (especially to distingush ```.``` attribute access from ```.``` implicit scope resolution (```::```) in a defmacro).
 
 ```python
-unsafe()
-
 include <map>
 include <unordered_map>
 include <ranges>
@@ -1106,6 +1104,8 @@ include <span>
 include (ast)
 include (visitor)
 include (range_utility)
+
+unsafe()
 
 if (_MSC_VER:
     include <windows.h>
