@@ -19,12 +19,13 @@ defmacro (print(args), args: [Node]:
     last = args[args.size() - 1]
 
     stream = if (last.equals(quote(file = std.cerr)):
-        output = quote("🙀:"s << unquote(output))
+        output = quote("🙀" << unquote(output))
         quote(std.cerr)
     elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
         rhs = last.args[1]
         if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument("invalid string arg "s + last.repr()))
+            throw (std.invalid_argument("Invalid string arg "s + last.repr() + (
+                                        ". Use a std.ofstream for file io.")))
         )
         rhs
     elif args.size() == 1:
