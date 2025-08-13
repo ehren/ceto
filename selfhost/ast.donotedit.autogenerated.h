@@ -88,12 +88,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return (((((classname + "(") + [&]() {if (this -> func) {
+            return (classname + "(" + [&]() {if (this -> func) {
                 return (*ceto::mad(this -> func)).repr();
             } else {
                 return std::string {""};
             }}()
-) + ")([") + csv) + "])");
+ + ")([" + csv + "])");
         }
 
          virtual inline auto name() const -> std::optional<std::string> {
@@ -108,19 +108,19 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
             
-                auto&& ceto__private__intermediate1 = this -> args;
+                auto&& ceto__private__intermediate5 = this -> args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
-                size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
-                for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                    if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
+                static_assert(requires { std::begin(ceto__private__intermediate5) + 2; }, "not a contiguous container");
+                size_t ceto__private__size7 = std::size(ceto__private__intermediate5);
+                for (size_t ceto__private__idx6 = 0; ; ceto__private__idx6++) {
+                    if (std::size(ceto__private__intermediate5) != ceto__private__size7) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx2 >= ceto__private__size3) {
+                    if (ceto__private__idx6 >= ceto__private__size7) {
                         break;
                     }
-                    const auto a = ceto__private__intermediate1[ceto__private__idx2];
+                    const auto a = ceto__private__intermediate5[ceto__private__idx6];
                                     (new_args).push_back((*ceto::mad(a)).clone());
 
                 }
@@ -154,21 +154,21 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return false;
             }
             
-                auto&& ceto__private__intermediate4 = this -> args;
-            auto&& ceto__private__intermediate6 = (*ceto::mad(ceto__private__intermediate4)).size();
-            auto&& ceto__private__intermediate7 = ceto::util::range(ceto__private__intermediate6);
+                auto&& ceto__private__intermediate8 = this -> args;
+            auto&& ceto__private__intermediate10 = (*ceto::mad(ceto__private__intermediate8)).size();
+            auto&& ceto__private__intermediate11 = ceto::util::range(ceto__private__intermediate10);
 
-                static_assert(requires { std::begin(ceto__private__intermediate7) + 2; }, "not a contiguous container");
-                size_t ceto__private__size9 = std::size(ceto__private__intermediate7);
-                for (size_t ceto__private__idx8 = 0; ; ceto__private__idx8++) {
-                    if (std::size(ceto__private__intermediate7) != ceto__private__size9) {
+                static_assert(requires { std::begin(ceto__private__intermediate11) + 2; }, "not a contiguous container");
+                size_t ceto__private__size13 = std::size(ceto__private__intermediate11);
+                for (size_t ceto__private__idx12 = 0; ; ceto__private__idx12++) {
+                    if (std::size(ceto__private__intermediate11) != ceto__private__size13) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx8 >= ceto__private__size9) {
+                    if (ceto__private__idx12 >= ceto__private__size13) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate7[ceto__private__idx8];
+                    const auto i = ceto__private__intermediate11[ceto__private__idx12];
                                     if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
                                 return false;
                             }
@@ -183,21 +183,21 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return (*ceto::mad(replacement)).clone();
             }
             
-                auto&& ceto__private__intermediate10 = this -> args;
-            auto&& ceto__private__intermediate12 = (*ceto::mad(ceto__private__intermediate10)).size();
-            auto&& ceto__private__intermediate13 = ceto::util::range(ceto__private__intermediate12);
+                auto&& ceto__private__intermediate14 = this -> args;
+            auto&& ceto__private__intermediate16 = (*ceto::mad(ceto__private__intermediate14)).size();
+            auto&& ceto__private__intermediate17 = ceto::util::range(ceto__private__intermediate16);
 
-                static_assert(requires { std::begin(ceto__private__intermediate13) + 2; }, "not a contiguous container");
-                size_t ceto__private__size15 = std::size(ceto__private__intermediate13);
-                for (size_t ceto__private__idx14 = 0; ; ceto__private__idx14++) {
-                    if (std::size(ceto__private__intermediate13) != ceto__private__size15) {
+                static_assert(requires { std::begin(ceto__private__intermediate17) + 2; }, "not a contiguous container");
+                size_t ceto__private__size19 = std::size(ceto__private__intermediate17);
+                for (size_t ceto__private__idx18 = 0; ; ceto__private__idx18++) {
+                    if (std::size(ceto__private__intermediate17) != ceto__private__size19) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx14 >= ceto__private__size15) {
+                    if (ceto__private__idx18 >= ceto__private__size19) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate13[ceto__private__idx14];
+                    const auto i = ceto__private__intermediate17[ceto__private__idx18];
                                     (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(pattern, replacement);
 
                 }
@@ -239,7 +239,7 @@ struct UnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return ((((std::string {"("} + (this -> op)) + " ") + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr()) + ")");
+            return (std::string {"("} + (this -> op) + " " + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -263,7 +263,7 @@ struct LeftAssociativeUnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return (((("(" + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr()) + " ") + (this -> op)) + ")");
+            return ("(" + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + " " + (this -> op) + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -295,7 +295,7 @@ struct BinOp : public Node {
         }
 
         inline auto repr() const -> std::string override {
-            return (((((("(" + (*ceto::mad(this -> lhs())).repr()) + " ") + (this -> op)) + " ") + (*ceto::mad(this -> rhs())).repr()) + ")");
+            return ("(" + (*ceto::mad(this -> lhs())).repr() + " " + (this -> op) + " " + (*ceto::mad(this -> rhs())).repr() + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -362,7 +362,7 @@ struct AttributeAccess : public BinOp {
 using BinOp::BinOp;
 
         inline auto repr() const -> std::string override {
-            return (((*ceto::mad(this -> lhs())).repr() + ".") + (*ceto::mad(this -> rhs())).repr());
+            return ((*ceto::mad(this -> lhs())).repr() + "." + (*ceto::mad(this -> rhs())).repr());
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -426,9 +426,9 @@ struct NamedParameter : public Assign {
 using Assign::Assign;
 
         inline auto repr() const -> std::string override {
-            return ((std::string {"NamedParameter("} + ceto::util::join(this -> args, [](const auto &a) {
+            return (std::string {"NamedParameter("} + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ")) + ")");
+                    }, ", ") + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -518,7 +518,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((((*ceto::mad(this -> func)).repr() + "(") + csv) + ")");
+            return ((*ceto::mad(this -> func)).repr() + "(" + csv + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -540,7 +540,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((((*ceto::mad(this -> func)).repr() + "[") + csv) + "]");
+            return ((*ceto::mad(this -> func)).repr() + "[" + csv + "]");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -562,7 +562,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((((*ceto::mad(this -> func)).repr() + "{") + csv) + "}");
+            return ((*ceto::mad(this -> func)).repr() + "{" + csv + "}");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -584,7 +584,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((((*ceto::mad(this -> func)).repr() + "<") + csv) + ">");
+            return ((*ceto::mad(this -> func)).repr() + "<" + csv + ">");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -610,17 +610,17 @@ struct StringLiteral : public Node {
             auto s { ceto::util::string_replace(this -> str, "\\", "\\\\") } ;
             s = ceto::util::string_replace(s, "\n", "\\n");
             s = ceto::util::string_replace(s, "\"", "\\\"");
-            s = ((std::string {"\""} + s) + "\"");
+            s = (std::string {"\""} + s + "\"");
             return s;
         }
 
         inline auto repr() const -> std::string override {
-            return (([&]() {if (this -> prefix) {
+            return ([&]() {if (this -> prefix) {
                 return (*ceto::mad_smartptr((*ceto::mad(this -> prefix)).name())).value();
             } else {
                 return std::string {""};
             }}()
- + this -> escaped()) + [&]() {if (this -> suffix) {
+ + this -> escaped() + [&]() {if (this -> suffix) {
                 return (*ceto::mad_smartptr((*ceto::mad(this -> suffix)).name())).value();
             } else {
                 return std::string {""};
@@ -783,9 +783,9 @@ struct ListLike_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
+            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ")) + ")");
+                    }, ", ") + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -885,9 +885,9 @@ struct RedundantParens : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
+            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ")) + ")");
+                    }, ", ") + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -910,9 +910,9 @@ struct InfixWrapper_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (((classname + "(") + ceto::util::join(this -> args, [](const auto &a) {
+            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ")) + ")");
+                    }, ", ") + ")");
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {

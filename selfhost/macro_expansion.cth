@@ -202,14 +202,24 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                         wildcard_list_params: std.map<std.string, Node> = { {wildcard_list_name.name().value(), wildcard_type_op} }
                         wildcard_list_matches: mut:[Node] = []
 
+                        # how many patterns remain after this one?
+                        remaining_patterns = std.distance(pattern_iterator + 1, pattern.args.end())
+
                         while (arg_iterator != node.args.end():
+                            remaining_args = std.distance(arg_iterator, node.args.end())
+
+                            # leave enough args for the remaining patterns (don't be too greedy)
+                            if (remaining_args <= remaining_patterns:
+                                break
+                            )
+
                             arg = *arg_iterator
                             if (macro_matches(arg, wildcard_list_name, wildcard_list_params):
                                 wildcard_list_matches.append(arg)
+                                arg_iterator += 1
                             else:
                                 break
                             )
-                            arg_iterator += 1
                         )
 
                         submatches[param_name] = ListLiteral(wildcard_list_matches)
@@ -224,10 +234,10 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                         )
                         subpattern = *pattern_iterator
                 
+                    # TODO just remove this commented code - I don't think we need to consider optionals when processing variadics?
+                    # "don't be too greedy" logic plus existing optional handling suffices?
                     #elif (or_param: mut = asinstance(type_match.rhs(), BitwiseOrOp)):
-                        
                     #arg_iterator == node.args.end():
-                        # this is not right - 
 #                        or_param: mut = asinstance(type_match.rhs(), BitwiseOrOp)
 #                        while (or_param:
 #                            if (or_param.lhs().name() == "None" or or_param.rhs().name() == "None":
@@ -284,6 +294,10 @@ struct (ExpandResult:
     _skipped_definitions: std.map<Node, std.vector<MacroDefinition>>:ref  # TODO :unsafe
 
     def (destruct:
+        if (self.did_expand:
+            return
+        )
+
         it = self._skipped_definitions.find(self._node)
         if (it != self._skipped_definitions.end():
             it->second.clear()
@@ -431,7 +445,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     )
 
     def (visit: override:mut, block_node: Block.class:
-        outer: mut:MacroScope = std.move(self.current_scope)
+        outer: mut:MacroScope = std.move(self.current_scope)  # TODO insert this std.move automatically given reassignment on next line?
         self.current_scope = outer.enter_scope()
         node = ceto.shared_from(&block_node)
         expand_result = self.expand(node)
@@ -445,7 +459,6 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         # TODO: if outer is just 'mut' above we should still automatically std::move it? OTOH maybe not - keep need for an explicit type for something that is to be auto moved? Also, if you just write "outer2 = outer": Currently outer2 is a const auto definition created from std::moveing outer (creating a unique_ptr<non-const MacroScope>). I'm not so keen on making outer2 implicitly mut without a type annotation
     )
 )
-
 
 def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>:
     visitor: mut = MacroDefinitionVisitor(on_visit)

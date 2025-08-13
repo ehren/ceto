@@ -1088,6 +1088,66 @@ def (main:
 )
 ```
 
+#### Optionals + Variadics (another take at print)
+
+The first example in this README uses variadics with pattern matching in the macro body to handle a python-like named parameter. We could instead treat the named parameter as an optional argument: 
+
+```python
+defmacro (print(args), args: [Node]:
+    if (args.size():
+        call = asinstance(args[0].parent().parent(), Call)
+        if (call and call.func.name() == "defmacro":
+            # ignore print(...) as a pattern arg in a defmacro (TODO should we handle this for the user automatically?)
+            return None
+        )
+    )
+
+    # TODO with splice:
+    # return quote(print(splice(args), file=std.cout))
+
+    # without splice:
+    new_args: mut = args
+    new_args.append(quote(file=std.cout))
+    return Call(quote(print), new_args)
+)
+
+defmacro (print(args, file=optional_stream), args: [Node], file: Identifier, optional_stream: Node|None:
+    stream = if (optional_stream:
+        optional_stream
+    else:
+        quote(std.cout)
+    )
+
+    result: mut = stream
+
+    if (optional_stream and optional_stream.equals(quote(std.cerr)):
+        result = quote(unquote(result) << "🙀")
+    )
+
+    for (arg in args:
+        result = quote(unquote(result) << unquote(arg))
+    )
+
+    if (not optional_stream:
+        # 'file' is an Identifier in the source to be printed (not a stream arg)
+        result = quote(unquote(result) << unquote(file))
+    )
+
+    return quote(unquote(result) << std.endl)
+)
+
+def (main:
+    a = "a"
+    print(a)
+    print(a, a)
+    print(a, a, file=std.cerr)
+    print("b", file=std.cerr)
+    print("b")
+    print(file=std.cerr)
+    print()
+)
+```
+
 ### Visitor Caveats / Class instances not "Smart References" / DLL Macro Implementation
 
 Contrasting with the "Java style" / shared_ptr heavy visitor pattern shown earlier, the selfhost sources use a lower level version making use of C++ CRTP as well as the ```Foo.class``` syntax to access the underlying ```Foo``` in C++ (rather than ```shared_ptr<const Foo>```). This sidesteps the gotcha that ceto class instances aren't real "shared smart references" so **overriding** e.g. ```def (visit:override, node: BinOp)``` with ```def(visit: override, node: Add)``` is not possible because an **Add** (```std::shared_ptr<const Node>``` in C++) is not strictly speaking a derived class of ```std::shared_ptr<const BinOp>``` in C++. There are additional non-niceties using a shared_ptr managed ast hierarchy (including heavy handed implicit cloning) though it makes the defmacro side a little more pythonic. ```macro_matches``` below could be improved by taking a Node.class to lessen the shared_from_this-ing in the visitor callbacks (at the expense of more unary * in the body)

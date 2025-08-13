@@ -36,13 +36,13 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     decltype(std::string {""}) repr = std::string {""};
 
-        template <typename T1>
-auto generate_loc(const T1& node) -> void {
+        template <typename ceto__private__T138>
+auto generate_loc(const ceto__private__T138& node) -> void {
             if (!(this -> preserve_source_loc)) {
                 return;
             }
             const auto loc = (*ceto::mad((*ceto::mad(node)).source)).loc;
-            (this -> repr) += (("SourceLoc(None, " + std::to_string(loc)) + ")");
+            (this -> repr) += ("SourceLoc(None, " + std::to_string(loc) + ")");
         }
 
         inline auto visit(const Node&  node) -> void override {
@@ -53,98 +53,98 @@ auto generate_loc(const T1& node) -> void {
             }
             (this -> repr) += "[";
             
-                auto&& ceto__private__intermediate34 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate39 = (*ceto::mad(node)).args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate34) + 2; }, "not a contiguous container");
-                size_t ceto__private__size36 = std::size(ceto__private__intermediate34);
-                for (size_t ceto__private__idx35 = 0; ; ceto__private__idx35++) {
-                    if (std::size(ceto__private__intermediate34) != ceto__private__size36) {
+                static_assert(requires { std::begin(ceto__private__intermediate39) + 2; }, "not a contiguous container");
+                size_t ceto__private__size41 = std::size(ceto__private__intermediate39);
+                for (size_t ceto__private__idx40 = 0; ; ceto__private__idx40++) {
+                    if (std::size(ceto__private__intermediate39) != ceto__private__size41) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx35 >= ceto__private__size36) {
+                    if (ceto__private__idx40 >= ceto__private__size41) {
                         break;
                     }
-                    const auto arg = ceto__private__intermediate34[ceto__private__idx35];
+                    const auto arg = ceto__private__intermediate39[ceto__private__idx40];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 
                 }
-                (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+                (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
             }}()
-) + ", ");
+ + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const UnOp&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             (*ceto::mad(ceto::bounds_check((*ceto::mad(node)).args, 0))).accept((*this));
-            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
             }}()
-) + ", ");
+ + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             (*ceto::mad(ceto::bounds_check((*ceto::mad(node)).args, 0))).accept((*this));
-            (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
             }}()
-) + ", ");
+ + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const BinOp&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).op) + "\", [");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             auto && args { (*ceto::mad(node)).args } ;
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size38 = std::size(args);
-                for (size_t ceto__private__idx37 = 0; ; ceto__private__idx37++) {
-                    if (std::size(args) != ceto__private__size38) {
+                size_t ceto__private__size43 = std::size(args);
+                for (size_t ceto__private__idx42 = 0; ; ceto__private__idx42++) {
+                    if (std::size(args) != ceto__private__size43) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx37 >= ceto__private__size38) {
+                    if (ceto__private__idx42 >= ceto__private__size43) {
                         break;
                     }
-                    const auto arg = args[ceto__private__idx37];
+                    const auto arg = args[ceto__private__idx42];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 
                 }
-                (this -> repr) += ((std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+                (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
             }}()
-) + ", ");
+ + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const Identifier&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).repr()) + "\"");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).repr() + "\"");
             (this -> repr) += ", ";
             this -> generate_loc(node);
             (this -> repr) += ")";
         }
 
         inline auto visit(const StringLiteral&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(") + (*ceto::mad(node)).escaped()) + ", ");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(" + (*ceto::mad(node)).escaped() + ", ");
             if ((*ceto::mad(node)).prefix) {
                 (*ceto::mad((*ceto::mad(node)).prefix)).accept((*this));
             } else {
@@ -162,7 +162,7 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const IntegerLiteral&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).integer_string) + "\", ");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).integer_string + "\", ");
             if ((*ceto::mad(node)).suffix) {
                 (*ceto::mad((*ceto::mad(node)).suffix)).accept((*this));
             } else {
@@ -174,7 +174,7 @@ auto generate_loc(const T1& node) -> void {
         }
 
         inline auto visit(const FloatLiteral&  node) -> void override {
-            (this -> repr) += ((((*ceto::mad(node)).classname() + "(\"") + (*ceto::mad(node)).float_string) + "\", ");
+            (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).float_string + "\", ");
             if ((*ceto::mad(node)).suffix) {
                 (*ceto::mad((*ceto::mad(node)).suffix)).accept((*this));
             } else {
