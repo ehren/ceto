@@ -177,44 +177,65 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return true;
         }
 
-        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) -> ceto::propagate_const<std::shared_ptr<Node>> {
+        template <typename ceto__private__T114>
+auto replace(const ceto__private__T114& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             const auto self = ceto::shared_from(this);
-            if (this -> equals(pattern)) {
-                return (*ceto::mad(replacement)).clone();
-            }
             
-                auto&& ceto__private__intermediate14 = this -> args;
-            auto&& ceto__private__intermediate16 = (*ceto::mad(ceto__private__intermediate14)).size();
-            auto&& ceto__private__intermediate17 = ceto::util::range(ceto__private__intermediate16);
+                auto&& ceto__private__intermediate15 = this -> args;
+            auto&& ceto__private__intermediate17 = (*ceto::mad(ceto__private__intermediate15)).size();
+            auto&& ceto__private__intermediate18 = ceto::util::range(ceto__private__intermediate17);
 
-                static_assert(requires { std::begin(ceto__private__intermediate17) + 2; }, "not a contiguous container");
-                size_t ceto__private__size19 = std::size(ceto__private__intermediate17);
-                for (size_t ceto__private__idx18 = 0; ; ceto__private__idx18++) {
-                    if (std::size(ceto__private__intermediate17) != ceto__private__size19) {
+                static_assert(requires { std::begin(ceto__private__intermediate18) + 2; }, "not a contiguous container");
+                size_t ceto__private__size20 = std::size(ceto__private__intermediate18);
+                for (size_t ceto__private__idx19 = 0; ; ceto__private__idx19++) {
+                    if (std::size(ceto__private__intermediate18) != ceto__private__size20) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx18 >= ceto__private__size19) {
+                    if (ceto__private__idx19 >= ceto__private__size20) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate17[ceto__private__idx18];
-                                    (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(pattern, replacement);
+                    const auto i = ceto__private__intermediate18[ceto__private__idx19];
+                                    (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
 
                 }
-                (this -> func) = [&]() {if (this -> func) {
-                return (*ceto::mad(this -> func)).replace(pattern, replacement);
-            } else {
-                const ceto::propagate_const<std::shared_ptr<const Node>> none = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none)>>);
-                return none;
-            }}()
-;
+                if (this -> func) {
+                (this -> func) = (*ceto::mad(this -> func)).replace(replacer);
+            }
+            const auto replacement = replacer(self);
+            if (replacement) {
+                return (*ceto::mad(replacement)).clone();
+            }
             return self;
         }
 
-        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) const -> ceto::propagate_const<std::shared_ptr<const Node>> {
-            auto c { this -> clone() } ;
-            c = (*ceto::mad(c)).replace(pattern, replacement);
-            return c;
+        template <typename ceto__private__T121>
+auto replace(const ceto__private__T121& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+            return (*ceto::mad(this -> clone())).replace(replacer);
+        }
+
+        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) -> ceto::propagate_const<std::shared_ptr<Node>> {
+            return this -> replace([pattern = ceto::default_capture(pattern), replacement = ceto::default_capture(replacement)](const auto &orig) {
+                    return [&]() {if ((*ceto::mad(pattern)).equals(orig)) {
+                        return replacement;
+                    } else {
+                        const ceto::propagate_const<std::shared_ptr<const Node>> none = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none)>>);
+                        return none;
+                    }}()
+;
+                    });
+        }
+
+        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) const -> ceto::propagate_const<std::shared_ptr<Node>> {
+            return this -> replace([pattern = ceto::default_capture(pattern), replacement = ceto::default_capture(replacement)](const auto &orig) {
+                    return [&]() {if ((*ceto::mad(pattern)).equals(orig)) {
+                        return replacement;
+                    } else {
+                        const ceto::propagate_const<std::shared_ptr<const Node>> none = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(none)>>);
+                        return none;
+                    }}()
+;
+                    });
         }
 
         inline auto parent() const -> ceto::propagate_const<std::shared_ptr<const Node>> {
@@ -497,7 +518,7 @@ struct Identifier : public Node {
         }
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { std::make_shared<Identifier>((*this)) } ;
+            auto c { ceto::make_shared_propagate_const<Identifier>(this -> _name, this -> source) } ;
             return c;
         }
 

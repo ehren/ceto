@@ -2136,8 +2136,8 @@ def codegen_assign(node: Assign, cx: Scope):
     return const_specifier + assign_str
 
 
-def _has_outer_double_parentheses(s: str):
-    """ helper to avoid acidentally emitting e.g. decltype((x + y)) which means something very different than decltype(x + y)"""
+def _strip_outer_double_parentheses(s: str):
+    """ helper to avoid acidentally emitting e.g. decltype((x + y)) when decltype(x + y) intended."""
 
     count = 0
     ended = False
@@ -2151,16 +2151,20 @@ def _has_outer_double_parentheses(s: str):
         elif char == ')':
             count -= 1
             if count < 0:
-                return False
+                return s
             elif count == 1:
                 ended = True
         if char != "(" and not began and count < 2:
             # string does not begin with at least two "("
-            return False
+            return s
         if ended and char != ")":
-            return False
+            return s
 
-    return count == 0
+    if count == 0:
+        # strip it:
+        return s[1:-1]
+    else:
+        return s
 
 
 _ban_check_cache = threading.local()
@@ -2196,7 +2200,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         if node in parent.args and parent.func and parent.func.name not in ["if", "decltype", "isinstance", "asinstance"]:
             others = [codegen_node(a, cx) for a in node.parent.args if a != node]
 
-            others_simple = " && ".join("!std::is_reference_v<decltype(" + c + ")> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
+            others_simple = " && ".join("!std::is_reference_v<decltype" + _strip_outer_double_parentheses("(" + c + ")") + "> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
             if others_simple:
                 others_simple = " || (" + others_simple + ")"
 
@@ -2222,7 +2226,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
             if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, (AttributeAccess, ScopeResolution)) and parent.func.lhs.lhs.name in ["self", "this"])):
                 is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
-            condition = f"((!std::is_reference_v<decltype({code})> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
+            condition = f"((!std::is_reference_v<decltype{_strip_outer_double_parentheses('('+ code+ ')')}> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
             return f"[&]() -> decltype(auto) {{ static_assert({condition}); return {code}; }}()"
 
     finally:
@@ -2430,10 +2434,7 @@ def codegen_call(node: Call, cx: Scope):
                     node.parent.lhs is not node):
                 if func_str == "decltype":
                     cx.in_decltype = True
-                    if _has_outer_double_parentheses(args_str):
-                        # likely accidental overparenthesized decltype due to overenthusiastic parenthization in codegen
-                        # strip the outside ones (fine for now)
-                        return func_str + args_str[1:-1]
+                    return func_str + _strip_outer_double_parentheses(args_str)
                 return simple_call_str
 
             if isinstance(node.parent, Template) and isinstance(node.parent.func, AttributeAccess) and node.parent.func.lhs.name == "std" and node.parent.func.rhs.name == "function":

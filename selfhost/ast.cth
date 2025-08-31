@@ -105,30 +105,118 @@ class (Node:
         return True
     ) : bool
 
-    def (replace: mut, pattern: Node, replacement: Node:
-        if (self.equals(pattern):
+    def (replace: mut, replacer:
+        for (i in ceto.util.range(self.args.size()):
+            self.args.at(i) = self.args.at(i).replace(replacer)
+        )
+
+        if (self.func:
+            self.func = self.func.replace(replacer)
+        )
+
+        replacement = replacer(self)
+
+        if (replacement:  # and not replacement.equals(self):
             return replacement.clone()
         )
 
-        for (i in ceto.util.range(self.args.size()):
-            self.args.at(i) = self.args.at(i).replace(pattern, replacement)
-        )
-
-        self.func = if (self.func:
-            self.func.replace(pattern, replacement)
-        else:
-            none: Node = None
-            none
-        )
-
         return self
+    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node>
+
+    def (replace, replacer:
+        return self.clone().replace(replacer)
+        #shallow_copy: mut = *this #std.make_shared<Node.class>(*this)
+        #return shallow_copy.replace(replacer)
+    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node>
+
+#    def (replace: mut, pattern: Node, replacement: Node:
+#        if (self.equals(pattern):
+#            return replacement.clone()
+#        )
+#
+#        for (i in ceto.util.range(self.args.size()):
+#            self.args.at(i) = self.args.at(i).replace(pattern, replacement)
+#        )
+#
+#        self.func = if (self.func:
+#            self.func.replace(pattern, replacement)
+#        else:
+#            none: Node = None
+#            none
+#        )
+#
+#        return self
+#    ) : Node:mut
+
+    def (replace: mut, pattern: Node, replacement: Node:
+        return self.replace(lambda(orig:
+            if (pattern.equals(orig): 
+                replacement
+            else:
+                none: Node = None
+                none
+                #same: Node = orig
+                #same
+            )
+        ))
     ) : Node:mut
 
     def (replace, pattern: Node, replacement: Node:
-        c: mut = self.clone()
-        c = c.replace(pattern, replacement)
-        return c
-    ) : Node
+        return self.replace(lambda(orig:
+            if (pattern.equals(orig): 
+                replacement
+            else:
+                none: Node = None
+                none
+                #orig
+            )
+        ))
+        #shallow_copy: mut = *this# ceto.make_shared_propagate_const<Node.class>(*this)
+        #return shallow_copy.replace(pattern, replacement)
+    ) : Node:mut
+
+
+# bad - object slicing badness
+#    def (replace, replacer:
+#
+#        replacement = replacer(self)
+#
+#        if (replacement:  # and not replacement.equals(self):
+#            return replacement.clone()
+#        )
+#
+#        shallow: mut = *this
+#        maybe_replaced: mut = False
+#        for (i in ceto.util.range(self.args.size()):
+#            shallow.args.at(i) = self.args.at(i).replace(replacer)
+#            maybe_replaced = True
+#        )
+#
+#        if (self.func:
+#            shallow.func = self.func.replace(replacer)
+#            maybe_replaced = True
+#        )
+#
+#        if (maybe_replaced:
+#            return ceto.make_shared_propagate_const<const:Node.class>(shallow)
+#            return ceto.shared_from(&shallow)
+#        )
+#
+#        return self
+#    ) : Node:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node>
+#
+#    def (replace, pattern: Node, replacement: Node:
+#        return self.replace(lambda(orig:
+#            if (pattern.equals(orig): 
+#                replacement
+#            else:
+#                none: Node = None
+#                none
+#                #same: Node = orig
+#                #same
+#            )
+#        ))
+#    ) : Node
 
     def (parent:
         return self._parent.lock()
@@ -371,7 +459,7 @@ class (Identifier(Node):
     ) : bool
 
     def (clone: override:
-        c: mut = std.make_shared<Identifier.class>(*this)
+        c: mut = Identifier(self._name, self.source)
         return c
     ) : Node:mut
 )

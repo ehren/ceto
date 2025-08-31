@@ -5,37 +5,50 @@ Ceto is an experimental language where calls may take indented blocks as argumen
 ## Example
 
 ```python
-defmacro (print(args), args: [Node]:
-    if (args.size() == 0:
-        return quote(std.cout << std.endl)
-    )
+defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 
-    output: mut = args[0]
+    decorate_error: mut = False
 
-    for (arg in args | std.views.drop(1) | std.views.take(std.ssize(args) - 2):
-        output = quote(unquote(output) << unquote(arg))
-    )
-
-    last = args[args.size() - 1]
-
-    stream = if (last.equals(quote(file = std.cerr)):
-        output = quote("🙀" << unquote(output))
-        quote(std.cerr)
-    elif isinstance(last, Assign) and last.args[0].equals(quote(file)):
-        rhs = last.args[1]
-        if (isinstance(rhs, StringLiteral):
-            throw (std.invalid_argument("Invalid string arg "s + last.repr() + (
-                                        ". Use std.ofstream instead.")))
+    stream = if (stream_arg:
+        if (stream_arg.equals(quote(file = std.cerr)):
+            decorate_error = True
+            quote(std.cerr)
+        elif stream_arg.args[0].equals(quote(file)):
+            rhs = stream_arg.args[1]
+            if (isinstance(rhs, StringLiteral):
+                # we'll be nice and open a file in append mode for you
+                quote(std.ofstream(unquote(rhs), std.ios.app))
+            else:
+                rhs
+            )
+        else:
+            throw (std.invalid_argument('unexpected "keyword argument": ' + stream_arg.repr()))
         )
-        rhs
-    elif args.size() == 1:
-        quote(std.cout)
     else:
-        output = quote(unquote(output) << unquote(last))
         quote(std.cout)
+    )    
+
+    result: mut = stream
+
+    if (decorate_error:
+        result = quote(unquote(result) << "🙀")
     )
 
-    return quote(unquote(stream) << unquote(output) << std.endl)
+    for (arg in args | std.views.take(std.ssize(args) - 1):
+        result = quote(unquote(result) << unquote(arg))
+    )
+
+    # add a newline but try to avoid a double newline
+    last = if (args.size() and (args.back().equals(quote(std.endl)) or (
+               isinstance(args.back(), StringLiteral) and args.back().repr().ends_with('\n"'))):
+        args.back()
+    elif args.size():
+        quote(unquote(args.back()) << std.endl)
+    else:
+        quote(std.endl)
+    )
+
+    return quote(unquote(result) << unquote(last))
 )
 
 def (main:

@@ -11,6 +11,8 @@ include (range_utility)
 
 unsafe()
 
+#ceto.enable_printf_debugging()
+
 if (_MSC_VER:
     include <windows.h>
     cpp'
@@ -54,6 +56,161 @@ class (MacroScope:
         return s
     ) : MacroScope:mut
 ) : unique
+
+def (debug_match, m: 
+    unsafe_for((k, v) in std.ranges.subrange(m.begin(), m.end()):
+        std.cout << "k" << k << "v" << v.repr()
+    )
+)
+
+def (is_optional_pattern, pattern: Node, params: const:std.map<std.string, Node>:ref:
+    #std.cout << "isopt\n"
+    if (not isinstance(pattern, Identifier):
+        return False
+    )
+    patt_param_it = params.find(pattern.name().value())
+    #std.cout << "isopt2\n"
+    if (patt_param_it != params.end():
+        patt_param = patt_param_it->second
+        #std.cout << "isopt3\n"
+        if (isinstance(patt_param, TypeOp):
+            rhs: mut = patt_param.args[1]
+            is_alternational: mut = False
+            #std.cout << "isopt4\n"
+            while ((r = asinstance(rhs, BitwiseOrOp)):
+                is_alternational = True
+                rhs = r.rhs()
+                #std.cout << "isopt5\n"
+            )
+            if (is_alternational and rhs.name() == "None":
+                #return asinstance(rhs.parent(), BinOp).lhs()
+                std.cout << "isopt t\n"
+                return True
+            )
+            #std.cout << "isopt6\n"
+        )
+    )
+    std.cout << "isopt f\n"
+    return False
+)
+
+def (macro_matches_args, args, pattern_args, params: const:std.map<std.string, Node>:ref:
+    pattern_iterator: mut = pattern_args.begin()
+    arg_iterator: mut = args.begin()
+    submatches: mut = std.map<std.string, Node> {}
+
+    while (True:
+        if (pattern_iterator == pattern_args.end():
+            if (arg_iterator != args.end():
+                # no match - no pattern for args
+                return {}
+            else:
+                break
+            )
+        )
+
+        subpattern: mut = *pattern_iterator
+
+        if (isinstance(subpattern, Identifier):
+            search = params.find(subpattern.name().value())
+
+            if (search != params.end():
+                param_name = search->first
+                matched_param = search->second
+
+                if ((type_match = asinstance(matched_param, TypeOp)):
+                    if ((list_param = asinstance(type_match.rhs(), ListLiteral)):
+                        # variadic wildcard pattern
+
+                        if (list_param.args.size() != 1:
+                            throw (SemanticAnalysisError("bad ListLiteral args in macro param"))
+                        )
+
+                        wildcard_list_type = list_param.args[0]
+                        if (not isinstance(wildcard_list_type, Identifier):
+                            throw (SemanticAnalysisError("bad ListLiteral arg type in macro param"))
+                        )
+
+                        wildcard_list_name = type_match.lhs()
+                        if (not isinstance(wildcard_list_name, Identifier):
+                            throw (SemanticAnalysisError("arg of type ListLiteral must be an identifier"))
+                        )
+
+                        wildcard_type_op = TypeOp(":", [wildcard_list_name, wildcard_list_type]: Node)
+                        wildcard_list_params: std.map<std.string, Node> = { {wildcard_list_name.name().value(), wildcard_type_op} }
+                        wildcard_list_matches: mut:[Node] = []
+
+                        while (arg_iterator != args.end():
+                            arg = *arg_iterator
+                            if (macro_matches(arg, wildcard_list_name, wildcard_list_params):
+                                wildcard_list_matches.append(arg)
+                            else:
+                                break
+                            )
+                            arg_iterator += 1
+                        )
+
+                        submatches[param_name] = ListLiteral(wildcard_list_matches)
+
+                        pattern_iterator += 1
+                        if (pattern_iterator == pattern_args.end():
+                            if (arg_iterator != args.end():
+                                # no match - out of patterns, still have args
+                                return {}
+                            )
+                            break
+                        )
+                    )
+                )
+            )
+        )
+
+#        if (arg_iterator == args.end():
+#            if (pattern_iterator != pattern_args.end():
+#                # no match - out of args, still have patterns
+#                return {}
+#            )
+#            break
+#        )
+#
+#        arg = *arg_iterator
+#        m = macro_matches(arg, subpattern, params)
+#        if (not m:
+#            return {}
+#        )
+#        submatches.insert(m.begin(), m.end())
+#
+#        arg_iterator += 1
+#        pattern_iterator += 1
+
+
+        if (arg_iterator == args.end():
+            while (pattern_iterator != pattern_args.end():
+                if (not is_optional_pattern(*pattern_iterator, params):
+                    # no match - out of args, still have (non-optional) patterns
+                    return {}
+                )
+                pattern_iterator += 1
+            )
+            return submatches  # match success because only optionals follow
+        )
+
+        arg = *arg_iterator
+        m = macro_matches(arg, subpattern, params)
+        if (m:
+            submatches.insert(m.begin(), m.end())
+        else:
+            if (not is_optional_pattern(subpattern, params):
+                return {}
+            )
+        )
+
+        arg_iterator += 1
+        pattern_iterator += 1
+    )
+
+    return submatches
+) : std.optional<std.map<std.string, Node>>
 
 
 def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
@@ -115,7 +272,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                 )
                 if ((or_param = asinstance(typed_param.rhs(), BitwiseOrOp)):
                     if (or_param.lhs().name() == "None" or or_param.rhs().name() == "None":
-                        # this will need adjusting for the more than 3 BinOp args case once we 
+                        # this will need adjusting for the more than 3 BinOp args case once we
                         # flatten the ast after/during parsing (prior to macro expand)
 
                         for (a in binop_pattern.args:
@@ -158,10 +315,143 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
         submatches.insert(m.begin(), m.end())  # std::optional autoderef
     )
 
+    left_to_right_matches = macro_matches_args(node.args, pattern.args, params)
+    
+    if (pattern.args.size() > 1:
+        right_to_left_matches = macro_matches_args(ceto.util.reversed(node.args), ceto.util.reversed(pattern.args), params)
+
+        if (right_to_left_matches and (not left_to_right_matches or left_to_right_matches.size() < right_to_left_matches.size()):
+            submatches.insert(right_to_left_matches.begin(), right_to_left_matches.end())
+            return submatches
+        )
+    )
+
+    if (not left_to_right_matches:
+        return {}
+    )
+
+    submatches.insert(left_to_right_matches.begin(), left_to_right_matches.end())
+
+    return submatches
+) : std.optional<std.map<std.string, Node>>
+
+def (macro_matches_not_greedy_enough, node: Node, pattern: Node, params: const:std.map<std.string, Node>:ref:
+    std.cout << "node: " << node.repr() << " pattern: " << pattern.repr() << "\n"
+
+    if (isinstance(pattern, Identifier):
+        search = params.find(pattern.name().value())
+
+        if (search != params.end():
+
+            param_name = search->first
+            matched_param = search->second
+            if (isinstance(matched_param, Identifier):
+                # wildcard match
+                return std.map<std.string, Node>{{param_name, node}}
+            elif (typeop = asinstance(matched_param, TypeOp)):
+                param_type = typeop.rhs()
+
+                # constrained wildcard / match by type
+                if (isinstance(param_type, Identifier):
+                    if ((param_type.name() == "BinOp" and isinstance(node, BinOp) or  # base class handling
+                         param_type.name() == "UnOp" and isinstance(node, UnOp) or    # same
+                         param_type.name() == "Node" or                               # redundant but allowed
+                         node.classname() == typeop.rhs().name()):                    # exact match
+                        return std.map<std.string, Node>{{param_name, node}}
+                    )
+                elif (or_type = asinstance(param_type, BitwiseOrOp)):
+                    std.cout << "\n\n\n\nor_type simple" << or_type.repr() << "\n\n\n\n"
+                    lhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.lhs()])} }
+                    if ((m = macro_matches(node, pattern, lhs_alternate_param)):
+                        std.cout << 1 << std.endl
+                        debug_match(m)
+                        return m
+                    )
+                    rhs_alternate_param: std.map<std.string, Node> = { {param_name, TypeOp(":", [matched_param, or_type.rhs()])} }
+                    if ((m = macro_matches(node, pattern, rhs_alternate_param)):
+                        std.cout << 2 << std.endl
+                        return m
+                    )
+                    std.cout << 3 << std.endl
+                    return {}
+                )
+            )
+        )
+
+    elif (binop_pattern = asinstance(pattern, BinOp)):
+        std.cout << "\n\n\n\nbinop_pattern" << binop_pattern.repr() << "\n\n\n\n"
+        idents: mut:[Node] = []
+
+        for (a in binop_pattern.args:
+            if (isinstance(a, Identifier):
+                idents.append(a)
+            )
+        )
+
+        for (i in idents:
+            search = params.find(i.name().value())
+            if (search != params.end():
+                param_name = search->first
+                typed_param = asinstance(search->second, TypeOp)
+                if (not typed_param:
+                    continue
+                )
+                if ((or_param = asinstance(typed_param.rhs(), BitwiseOrOp)):
+                    if (or_param.lhs().name() == "None" or or_param.rhs().name() == "None":
+                        # this will need adjusting for the more than 3 BinOp args case once we 
+                        # flatten the ast after/during parsing (prior to macro expand)
+
+                        std.cout << "\n\n\n\nor_param" << or_param.repr() << "\n\n\n\n"
+
+                        for (a in binop_pattern.args:
+                            if (a.name() != i.name():
+                                m = macro_matches(node, a, params)
+                                if (m:
+                                    return m
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    if (node.classname() != pattern.classname():
+        return {}
+    )
+
+    if ((node.func == None) != (pattern.func == None):
+        return {}
+    )
+
+    if (node.args.size() == 0 and node.func == None and pattern.func == None:
+        if (node.equals(pattern):
+            # leaf match
+            return std.map<std.string, Node> {}
+        #elif is_optional_pattern(pattern, params):
+        #    # leaf match
+        #    return std.map<std.string, Node> {}
+        else:    
+            return {}
+        )
+    )
+
+    submatches: mut = std.map<std.string, Node> {}
+
+    if (node.func:
+        m = macro_matches(node.func, pattern.func, params)
+        if (not m:
+            return {}
+        )
+        submatches.insert(m.begin(), m.end())  # std::optional autoderef
+    )
+
     pattern_iterator: mut = pattern.args.cbegin()
     arg_iterator: mut = node.args.cbegin()
 
     while (True:
+        std.cout << "main loop\n"
         if (pattern_iterator == pattern.args.end():
             if (arg_iterator != node.args.end():
                 # no match - no pattern for args
@@ -172,6 +462,8 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
         )
 
         subpattern: mut = *pattern_iterator
+        std.cout << "subpatt " << subpattern.repr() << "\n"
+        next_optional_match_success: mut = False
 
         if (isinstance(subpattern, Identifier):
             search = params.find(subpattern.name().value())
@@ -204,32 +496,96 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 
                         # how many patterns remain after this one?
                         remaining_patterns = std.distance(pattern_iterator + 1, pattern.args.end())
+                        std.cout << "remain patts" << remaining_patterns << "\n"
 
                         while (arg_iterator != node.args.end():
                             remaining_args = std.distance(arg_iterator, node.args.end())
+                            std.cout << "remain args" << remaining_args << "\n"
 
-                            # leave enough args for the remaining patterns (don't be too greedy)
-                            if (remaining_args <= remaining_patterns:
+                            num_optional_match_fails: mut = 0
+                            next_optional_match_success = False
+
+                            # avoid greedily consuming args when an optional pattern follows a variadic
+                            if (remaining_patterns >= 1:
+                                next_patt_it: mut = pattern_iterator + 1
+
+                                std.cout << "have remain patts\n"
+
+                                while (next_patt_it != pattern.args.end():
+                                    std.cout << "next patt\n"
+                                    next_patt = *next_patt_it
+                                    if (is_optional_pattern(next_patt, params):
+                                        # next pattern is an optional, try a match
+                                        arg = *arg_iterator
+                                        m = macro_matches(arg, next_patt, params)
+                                        if (m:
+                                            std.cout << "succ\n"
+                                            # if it succeeds we're done matching for the current variadic (don't be greedy)
+                                            debug_match(m)
+                                            debug_match(submatches)
+                                            submatches.insert(m.begin(), m.end())
+                                            debug_match(submatches)
+                                            arg_iterator += 1
+                                            #pattern_iterator += 1
+                                            pattern_iterator = next_patt_it
+                                            subpattern = next_patt
+                                            next_optional_match_success = True
+                                            break
+                                        else:
+                                            std.cout << "fail\n"
+                                            # if it doesn't succeed
+                                            num_optional_match_fails += 1
+                                            #pattern_iterator = next_patt_it + 1
+                                        )
+                                    )
+                                    next_patt_it += 1
+                                    std.cout << "done next patt\n"
+                                )
+                            )
+                            std.cout << "a\n"
+
+                            if (next_optional_match_success:
                                 break
                             )
+                            std.cout << "b\n"
+
+                            # leave enough args for the remaining patterns (don't be greedy), but disregard non-matching optionals trailing our variadic
+                            #truly_remaining_patterns = if (next_optional_match_fail: remaining_patterns - 1, else: remaining_patterns)
+                            #if (remaining_args <= truly_remaining_patterns:
+                            if (remaining_args - num_optional_match_fails <= remaining_patterns:
+                                std.cout << "b.1\n"
+                                arg_iterator += 1
+                                break
+                            )
+                            std.cout << "c\n"
 
                             arg = *arg_iterator
                             if (macro_matches(arg, wildcard_list_name, wildcard_list_params):
                                 wildcard_list_matches.append(arg)
                                 arg_iterator += 1
+                                #std.cout << "d\n"
                             else:
+                                #std.cout << "e\n"
                                 break
                             )
+                            #arg_iterator += 1
                         )
+                        #std.cout << "have submatches...\n"
+                        #std.cout << "f\n"
 
                         submatches[param_name] = ListLiteral(wildcard_list_matches)
+                        if (next_optional_match_success:
+                            break
+                        )
 
                         pattern_iterator += 1
                         if (pattern_iterator == pattern.args.end():
                             if (arg_iterator != node.args.end():
                                 # no match - out of patterns, still have args
+                                std.cout << "no match - out of patterns, still have args\n"
                                 return {}
                             )
+                            std.cout << "no match - out of patterns, still have args\n"
                             break
                         )
                         subpattern = *pattern_iterator
@@ -250,25 +606,45 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
                 )
             )
         )
+        std.cout << "g\n"
+        debug_match(submatches)
+        std.cout << if (arg_iterator == node.args.end(): "eq", else: "ne")
+        std.cout << "g2\n"
 
         if (arg_iterator == node.args.end():
-            if (pattern_iterator != pattern.args.end():
-                # no match - out of args, still have patterns
-                return {}
+            std.cout << "h\n"
+            while (pattern_iterator != pattern.args.end():
+                std.cout << "i\n"
+                if (not is_optional_pattern(*pattern_iterator, params):
+                    std.cout << "j\n"
+                    # no match - out of args, still have (non-optional) patterns
+                    return {}
+                )
+                pattern_iterator += 1
+                std.cout << "k\n"
             )
-            break
+            std.cout << "k2\n"
+            return submatches  # match success because only optionals follow
         )
+
+        std.cout << "subpattern:" #<< subpattern.repr() << "\n"
+
+        debug_match(submatches)
 
         arg = *arg_iterator
         m = macro_matches(arg, subpattern, params)
-        if (not m:
-            return {}
+        if (m:
+            submatches.insert(m.begin(), m.end())
+            arg_iterator += 1
+        else:
+            if (not is_optional_pattern(subpattern, params):
+                return {}
+            )
         )
-        submatches.insert(m.begin(), m.end())
 
-        arg_iterator += 1
         pattern_iterator += 1
     )
+    std.cout << "done\n"
 
     return submatches
 ) : std.optional<std.map<std.string, Node>>
@@ -317,7 +693,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
         while (scope:
             for (definition in ceto.util.reversed(scope->macro_definitions):
                 skip_definition: mut = False
-                unsafe_for ((key, defns) in self.skipped_definitions:
+                unsafe_for ((key, defns):const:auto:ref in self.skipped_definitions:
                     if (ceto.util.contains(defns, definition):
                         skip_definition = True
                         break

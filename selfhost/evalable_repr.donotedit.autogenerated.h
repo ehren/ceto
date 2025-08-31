@@ -36,8 +36,8 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     decltype(std::string {""}) repr = std::string {""};
 
-        template <typename ceto__private__T138>
-auto generate_loc(const ceto__private__T138& node) -> void {
+        template <typename ceto__private__T140>
+auto generate_loc(const ceto__private__T140& node) -> void {
             if (!(this -> preserve_source_loc)) {
                 return;
             }
@@ -53,19 +53,19 @@ auto generate_loc(const ceto__private__T138& node) -> void {
             }
             (this -> repr) += "[";
             
-                auto&& ceto__private__intermediate39 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate41 = (*ceto::mad(node)).args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate39) + 2; }, "not a contiguous container");
-                size_t ceto__private__size41 = std::size(ceto__private__intermediate39);
-                for (size_t ceto__private__idx40 = 0; ; ceto__private__idx40++) {
-                    if (std::size(ceto__private__intermediate39) != ceto__private__size41) {
+                static_assert(requires { std::begin(ceto__private__intermediate41) + 2; }, "not a contiguous container");
+                size_t ceto__private__size43 = std::size(ceto__private__intermediate41);
+                for (size_t ceto__private__idx42 = 0; ; ceto__private__idx42++) {
+                    if (std::size(ceto__private__intermediate41) != ceto__private__size43) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx40 >= ceto__private__size41) {
+                    if (ceto__private__idx42 >= ceto__private__size43) {
                         break;
                     }
-                    const auto arg = ceto__private__intermediate39[ceto__private__idx40];
+                    const auto arg = ceto__private__intermediate41[ceto__private__idx42];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 
@@ -112,16 +112,16 @@ auto generate_loc(const ceto__private__T138& node) -> void {
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size43 = std::size(args);
-                for (size_t ceto__private__idx42 = 0; ; ceto__private__idx42++) {
-                    if (std::size(args) != ceto__private__size43) {
+                size_t ceto__private__size45 = std::size(args);
+                for (size_t ceto__private__idx44 = 0; ; ceto__private__idx44++) {
+                    if (std::size(args) != ceto__private__size45) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx42 >= ceto__private__size43) {
+                    if (ceto__private__idx44 >= ceto__private__size45) {
                         break;
                     }
-                    const auto arg = args[ceto__private__idx42];
+                    const auto arg = args[ceto__private__idx44];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 

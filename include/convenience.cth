@@ -1,3 +1,5 @@
+include <set>
+
 # def (foo<T> -> def (foo:template<typename:T>
 defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
     template_header: Node = quote(template<typename:unquote(T)>)
@@ -47,7 +49,7 @@ defmacro(scope (:
     return quote(if (1, unquote(block)): constexpr)
 )
 
-defmacro (None:type, type:
+defmacro (None.type, type:
     return quote((lambda(:
         return None
     ): unquote(type)) ())
@@ -67,7 +69,7 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 
     vacuous: Node = quote(True)
     assertion: mut = vacuous
-    map_type: mut = None:Node
+    map_type: mut = None.Node
     # ^ Note that we can't write mut:Node/Node:mut on the left (assertion and
     # map_type must be mut vars holding instances of Node aka Node:const aka const:Node)
 
@@ -107,6 +109,88 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
     ) ())
 )
 
+cpp'
+#define CETO_ENABLE_PRINTF_DEBUGGING
+'
+
+# printf debugging
+#defmacro(node, node:
+#    enable: mut:static:bool = False
+#
+#    # TODO should take source loc or at least file into account (which will also allow logging in lambda bodies)
+#    already_processed: mut:static:std.set<std.string> = {}
+#
+#    if (not enable:
+#        if (node.equals(quote(ceto.enable_printf_debugging())):
+#            enable = True
+#            return quote(pass)
+#        )
+#    )
+#
+#    if (isinstance(node, Call) and node.args.size() > 0 and node.func.name() == "def":
+#        type_of_name: mut = node.args.at(0)
+#        name = type_of_name.args.at(0).repr()
+#        if (name.starts_with("macro_impl"):
+#            # macro matching runs on the generated function implementing the macro when the DLL is compiled including for the current macro leading to very confusing compile-time output
+#            # (it also runs on the defmacro Call even when it's not being compiled to DLL but that's not a match)
+#            return None  # just filter all macro implementations
+#        elif name == "init":
+#            # we don't want to insert lines in constructors (interferes w/ implicit initializer list because non-initialization statements appear first)
+#            return None
+#        )
+#
+#        class (State:
+#            local_enable: bool = False
+#        )
+#        state: mut = State()
+#        type_of_name = type_of_name.replace(lambda(orig: 
+#            if (orig.equals(quote(ceto.enable_printf_debugging)) or orig.equals(quote(CETO_ENABLE_PRINTF_DEBUGGING)): 
+#                capture: mut = state
+#                capture.local_enable = True
+#                quote(CETO_ENABLE_PRINTF_DEBUGGING) 
+#            else: 
+#                None.Node
+#            )
+#        ))
+#
+##        while (isinstance(type_of_name, TypeOp):
+##            if (type_of_name.args.at(0).equals(ceto.enable_printf_debugging):
+##                type_of_name.args.at(0) = quote(CETO_PRIVATE_NOTHING)
+##                local_enable = True
+##            )
+##            type_of_name = type_of_name.args.at(1)
+##        )
+#        if (not enable or state.local_enable:
+#            return None
+#        )
+#
+#        args: mut = node.args
+#        block = args.back()
+#        if (not isinstance(block, Block):
+#            return None  # forward declaration
+#        )
+#        args.pop_back()
+#        args.at(0) = type_of_name
+#        defrepr = Call(node.func, args).repr()
+#        if (already_processed.contains(defrepr):
+#            return None
+#        )
+#        already_processed.insert(defrepr)
+#        
+#        new_args: mut:[Node] = []
+#        for (arg in block.args:
+#            string_lit = StringLiteral(arg.repr())
+#            new_args.push_back(quote(std.cout << "running: " << unquote(string_lit) << "\n"))
+#            new_args.push_back(arg)
+#        )
+#        new_block = Block(new_args)
+#        args.push_back(new_block)
+#        return Call(node.func, args)
+#    )
+#
+#    return None
+#)
+
 
 # just for testing out performance consequences of safe for loops in selfhost (not too significant)
 #defmacro (for(x:T in iterable, block), x, T: Node|None, iterable, block: Block:
@@ -123,7 +207,7 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 #
 #    return Call(quote(unsafe_for), args)
 #)
-#
+
 #defmacro (vec[index], vec, index:
 #    if (vec.name() == "lambda":
 #        return None
@@ -131,4 +215,3 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 #
 #    return quote(unquote(vec).unsafe[unquote(index)])
 #)
-

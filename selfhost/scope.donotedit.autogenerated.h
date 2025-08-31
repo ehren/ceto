@@ -178,19 +178,19 @@ using VariableDefinition::VariableDefinition;
             return false;
         }
         
-            auto&& ceto__private__intermediate20 = (*ceto::mad(root)).args;
+            auto&& ceto__private__intermediate22 = (*ceto::mad(root)).args;
 
-            static_assert(requires { std::begin(ceto__private__intermediate20) + 2; }, "not a contiguous container");
-            size_t ceto__private__size22 = std::size(ceto__private__intermediate20);
-            for (size_t ceto__private__idx21 = 0; ; ceto__private__idx21++) {
-                if (std::size(ceto__private__intermediate20) != ceto__private__size22) {
+            static_assert(requires { std::begin(ceto__private__intermediate22) + 2; }, "not a contiguous container");
+            size_t ceto__private__size24 = std::size(ceto__private__intermediate22);
+            for (size_t ceto__private__idx23 = 0; ; ceto__private__idx23++) {
+                if (std::size(ceto__private__intermediate22) != ceto__private__size24) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx21 >= ceto__private__size22) {
+                if (ceto__private__idx23 >= ceto__private__size24) {
                     break;
                 }
-                const auto arg = ceto__private__intermediate20[ceto__private__idx21];
+                const auto arg = ceto__private__intermediate22[ceto__private__idx23];
                             const auto cb = comes_before(arg, before, after);
                     if ((*ceto::mad_smartptr(cb)).has_value()) {
                         return cb;
@@ -292,19 +292,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 return nullptr;
             }
             
-                auto&& ceto__private__intermediate23 = this -> class_definitions;
+                auto&& ceto__private__intermediate25 = this -> class_definitions;
 
-                static_assert(requires { std::begin(ceto__private__intermediate23) + 2; }, "not a contiguous container");
-                size_t ceto__private__size25 = std::size(ceto__private__intermediate23);
-                for (size_t ceto__private__idx24 = 0; ; ceto__private__idx24++) {
-                    if (std::size(ceto__private__intermediate23) != ceto__private__size25) {
+                static_assert(requires { std::begin(ceto__private__intermediate25) + 2; }, "not a contiguous container");
+                size_t ceto__private__size27 = std::size(ceto__private__intermediate25);
+                for (size_t ceto__private__idx26 = 0; ; ceto__private__idx26++) {
+                    if (std::size(ceto__private__intermediate25) != ceto__private__size27) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx24 >= ceto__private__size25) {
+                    if (ceto__private__idx26 >= ceto__private__size27) {
                         break;
                     }
-                    const auto c = ceto__private__intermediate23[ceto__private__idx24];
+                    const auto c = ceto__private__intermediate25[ceto__private__idx26];
                                     if ((*ceto::mad((*ceto::mad(c)).name_node)).name() == (*ceto::mad(class_node)).name()) {
                                 return c;
                             }
@@ -324,19 +324,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 return nullptr;
             }
             
-                auto&& ceto__private__intermediate26 = this -> function_definitions;
+                auto&& ceto__private__intermediate28 = this -> function_definitions;
 
-                static_assert(requires { std::begin(ceto__private__intermediate26) + 2; }, "not a contiguous container");
-                size_t ceto__private__size28 = std::size(ceto__private__intermediate26);
-                for (size_t ceto__private__idx27 = 0; ; ceto__private__idx27++) {
-                    if (std::size(ceto__private__intermediate26) != ceto__private__size28) {
+                static_assert(requires { std::begin(ceto__private__intermediate28) + 2; }, "not a contiguous container");
+                size_t ceto__private__size30 = std::size(ceto__private__intermediate28);
+                for (size_t ceto__private__idx29 = 0; ; ceto__private__idx29++) {
+                    if (std::size(ceto__private__intermediate28) != ceto__private__size30) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx27 >= ceto__private__size28) {
+                    if (ceto__private__idx29 >= ceto__private__size30) {
                         break;
                     }
-                    const auto f = ceto__private__intermediate26[ceto__private__idx27];
+                    const auto f = ceto__private__intermediate28[ceto__private__idx29];
                                     if ((*ceto::mad((*ceto::mad(f)).function_name)).name() == (*ceto::mad(function_name_node)).name()) {
                                 return f;
                             }
@@ -353,19 +353,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 return nullptr;
             }
             
-                auto&& ceto__private__intermediate29 = this -> namespace_definitions;
+                auto&& ceto__private__intermediate31 = this -> namespace_definitions;
 
-                static_assert(requires { std::begin(ceto__private__intermediate29) + 2; }, "not a contiguous container");
-                size_t ceto__private__size31 = std::size(ceto__private__intermediate29);
-                for (size_t ceto__private__idx30 = 0; ; ceto__private__idx30++) {
-                    if (std::size(ceto__private__intermediate29) != ceto__private__size31) {
+                static_assert(requires { std::begin(ceto__private__intermediate31) + 2; }, "not a contiguous container");
+                size_t ceto__private__size33 = std::size(ceto__private__intermediate31);
+                for (size_t ceto__private__idx32 = 0; ; ceto__private__idx32++) {
+                    if (std::size(ceto__private__intermediate31) != ceto__private__size33) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx30 >= ceto__private__size31) {
+                    if (ceto__private__idx32 >= ceto__private__size33) {
                         break;
                     }
-                    const auto n = ceto__private__intermediate29[ceto__private__idx30];
+                    const auto n = ceto__private__intermediate31[ceto__private__idx32];
                                     if ((*ceto::mad((*ceto::mad(n)).namespace_name)).name() == (*ceto::mad(namespace_name_node)).name()) {
                                 return n;
                             }
@@ -379,19 +379,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
 
         inline auto is_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) const -> auto {
             
-                auto&& ceto__private__intermediate32 = this -> unsafe_nodes;
+                auto&& ceto__private__intermediate34 = this -> unsafe_nodes;
 
-                static_assert(requires { std::begin(ceto__private__intermediate32) + 2; }, "not a contiguous container");
-                size_t ceto__private__size34 = std::size(ceto__private__intermediate32);
-                for (size_t ceto__private__idx33 = 0; ; ceto__private__idx33++) {
-                    if (std::size(ceto__private__intermediate32) != ceto__private__size34) {
+                static_assert(requires { std::begin(ceto__private__intermediate34) + 2; }, "not a contiguous container");
+                size_t ceto__private__size36 = std::size(ceto__private__intermediate34);
+                for (size_t ceto__private__idx35 = 0; ; ceto__private__idx35++) {
+                    if (std::size(ceto__private__intermediate34) != ceto__private__size36) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx33 >= ceto__private__size34) {
+                    if (ceto__private__idx35 >= ceto__private__size36) {
                         break;
                     }
-                    const auto x = ceto__private__intermediate32[ceto__private__idx33];
+                    const auto x = ceto__private__intermediate34[ceto__private__idx35];
                                     if ((*ceto::mad(x)).equals(node)) {
                                 return true;
                             }
@@ -411,19 +411,19 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             }
             std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> results = std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(results)>>);
             
-                auto&& ceto__private__intermediate35 = this -> variable_definitions;
+                auto&& ceto__private__intermediate37 = this -> variable_definitions;
 
-                static_assert(requires { std::begin(ceto__private__intermediate35) + 2; }, "not a contiguous container");
-                size_t ceto__private__size37 = std::size(ceto__private__intermediate35);
-                for (size_t ceto__private__idx36 = 0; ; ceto__private__idx36++) {
-                    if (std::size(ceto__private__intermediate35) != ceto__private__size37) {
+                static_assert(requires { std::begin(ceto__private__intermediate37) + 2; }, "not a contiguous container");
+                size_t ceto__private__size39 = std::size(ceto__private__intermediate37);
+                for (size_t ceto__private__idx38 = 0; ; ceto__private__idx38++) {
+                    if (std::size(ceto__private__intermediate37) != ceto__private__size39) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx36 >= ceto__private__size37) {
+                    if (ceto__private__idx38 >= ceto__private__size39) {
                         break;
                     }
-                    const auto d = ceto__private__intermediate35[ceto__private__idx36];
+                    const auto d = ceto__private__intermediate37[ceto__private__idx38];
                                     if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
                                 auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
                                 while (true) {                        if ((std::dynamic_pointer_cast<const Module>(ceto::get_underlying(parent_block)) != nullptr)) {
