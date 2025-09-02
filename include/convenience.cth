@@ -136,6 +136,13 @@ defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
                     ignore = True
                     break
                 )
+            elif (attr = asinstance(parent, BinOp)):
+                if (not (isinstance(attr, AttributeAccess) or isinstance(attr, ScopeResolution) or isinstance(attr, ArrowOp)):
+                    pass
+                elif orig.equals(attr.rhs()):
+                    ignore = True
+                    break
+                )
             )
             parent = parent.parent()
         )

@@ -108,19 +108,19 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
             
-                auto&& ceto__private__intermediate315 = this -> args;
+                auto&& ceto__private__intermediate5 = this -> args;
 
-                static_assert(requires { std::begin(ceto__private__intermediate315) + 2; }, "not a contiguous container");
-                size_t ceto__private__size317 = std::size(ceto__private__intermediate315);
-                for (size_t ceto__private__idx316 = 0; ; ceto__private__idx316++) {
-                    if (std::size(ceto__private__intermediate315) != ceto__private__size317) {
+                static_assert(requires { std::begin(ceto__private__intermediate5) + 2; }, "not a contiguous container");
+                size_t ceto__private__size7 = std::size(ceto__private__intermediate5);
+                for (size_t ceto__private__idx6 = 0; ; ceto__private__idx6++) {
+                    if (std::size(ceto__private__intermediate5) != ceto__private__size7) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx316 >= ceto__private__size317) {
+                    if (ceto__private__idx6 >= ceto__private__size7) {
                         break;
                     }
-                    const auto a = ceto__private__intermediate315[ceto__private__idx316];
+                    const auto a = ceto__private__intermediate5[ceto__private__idx6];
                                     (new_args).push_back((*ceto::mad(a)).clone());
 
                 }
@@ -135,6 +135,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return none;
             }}()
 , this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -154,21 +155,21 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return false;
             }
             
-                auto&& ceto__private__intermediate318 = this -> args;
-            auto&& ceto__private__intermediate320 = (*ceto::mad(ceto__private__intermediate318)).size();
-            auto&& ceto__private__intermediate321 = ceto::util::range(ceto__private__intermediate320);
+                auto&& ceto__private__intermediate8 = this -> args;
+            auto&& ceto__private__intermediate10 = (*ceto::mad(ceto__private__intermediate8)).size();
+            auto&& ceto__private__intermediate11 = ceto::util::range(ceto__private__intermediate10);
 
-                static_assert(requires { std::begin(ceto__private__intermediate321) + 2; }, "not a contiguous container");
-                size_t ceto__private__size323 = std::size(ceto__private__intermediate321);
-                for (size_t ceto__private__idx322 = 0; ; ceto__private__idx322++) {
-                    if (std::size(ceto__private__intermediate321) != ceto__private__size323) {
+                static_assert(requires { std::begin(ceto__private__intermediate11) + 2; }, "not a contiguous container");
+                size_t ceto__private__size13 = std::size(ceto__private__intermediate11);
+                for (size_t ceto__private__idx12 = 0; ; ceto__private__idx12++) {
+                    if (std::size(ceto__private__intermediate11) != ceto__private__size13) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx322 >= ceto__private__size323) {
+                    if (ceto__private__idx12 >= ceto__private__size13) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate321[ceto__private__idx322];
+                    const auto i = ceto__private__intermediate11[ceto__private__idx12];
                                     if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
                                 return false;
                             }
@@ -177,25 +178,25 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return true;
         }
 
-        template <typename ceto__private__T1324>
-auto replace(const ceto__private__T1324& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T114>
+auto replace(const ceto__private__T114& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             const auto self = ceto::shared_from(this);
             
-                auto&& ceto__private__intermediate325 = this -> args;
-            auto&& ceto__private__intermediate327 = (*ceto::mad(ceto__private__intermediate325)).size();
-            auto&& ceto__private__intermediate328 = ceto::util::range(ceto__private__intermediate327);
+                auto&& ceto__private__intermediate15 = this -> args;
+            auto&& ceto__private__intermediate17 = (*ceto::mad(ceto__private__intermediate15)).size();
+            auto&& ceto__private__intermediate18 = ceto::util::range(ceto__private__intermediate17);
 
-                static_assert(requires { std::begin(ceto__private__intermediate328) + 2; }, "not a contiguous container");
-                size_t ceto__private__size330 = std::size(ceto__private__intermediate328);
-                for (size_t ceto__private__idx329 = 0; ; ceto__private__idx329++) {
-                    if (std::size(ceto__private__intermediate328) != ceto__private__size330) {
+                static_assert(requires { std::begin(ceto__private__intermediate18) + 2; }, "not a contiguous container");
+                size_t ceto__private__size20 = std::size(ceto__private__intermediate18);
+                for (size_t ceto__private__idx19 = 0; ; ceto__private__idx19++) {
+                    if (std::size(ceto__private__intermediate18) != ceto__private__size20) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx329 >= ceto__private__size330) {
+                    if (ceto__private__idx19 >= ceto__private__size20) {
                         break;
                     }
-                    const auto i = ceto__private__intermediate328[ceto__private__idx329];
+                    const auto i = ceto__private__intermediate18[ceto__private__idx19];
                                     (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
 
                 }
@@ -209,8 +210,8 @@ auto replace(const ceto__private__T1324& replacer) -> ceto::propagate_const<std:
             return self;
         }
 
-        template <typename ceto__private__T1331>
-auto replace(const ceto__private__T1331& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T121>
+auto replace(const ceto__private__T121& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             return (*ceto::mad(this -> clone())).replace(replacer);
         }
 
@@ -269,6 +270,7 @@ struct UnOp : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<UnOp>(this -> op, this -> cloned_args(), source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -293,6 +295,7 @@ struct LeftAssociativeUnOp : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<LeftAssociativeUnOp>(this -> op, this -> cloned_args(), source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -325,6 +328,7 @@ struct BinOp : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<BinOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -356,6 +360,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<TypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -373,6 +378,7 @@ using TypeOp::TypeOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<SyntaxTypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -392,6 +398,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<AttributeAccess>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -407,6 +414,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<ArrowOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -422,6 +430,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<ScopeResolution>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -437,6 +446,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Assign>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -458,6 +468,7 @@ using Assign::Assign;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<NamedParameter>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -473,6 +484,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<BitwiseOrOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -488,6 +500,7 @@ using BinOp::BinOp;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<EqualsCompareOp>(this -> op, this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -519,6 +532,7 @@ struct Identifier : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Identifier>(this -> _name, this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -548,6 +562,7 @@ using Node::Node;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Call>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -570,6 +585,7 @@ using Node::Node;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<ArrayAccess>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -592,6 +608,7 @@ using Node::Node;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<BracedCall>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -614,6 +631,7 @@ using Node::Node;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Template>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -686,6 +704,7 @@ struct StringLiteral : public Node {
                 return (this -> suffix);
             }}()
 , this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -722,6 +741,7 @@ struct IntegerLiteral : public Node {
                 return (this -> suffix);
             }}()
 , this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -790,6 +810,7 @@ struct FloatLiteral : public Node {
                 return (this -> suffix);
             }}()
 , this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -815,6 +836,7 @@ struct ListLike_ : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<ListLike_>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -850,6 +872,7 @@ using ListLike_::ListLike_;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<TupleLiteral>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -865,6 +888,7 @@ using ListLike_::ListLike_;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<BracedLiteral>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -880,6 +904,7 @@ using ListLike_::ListLike_;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Block>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -897,6 +922,7 @@ using Block::Block;
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<Module>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -917,6 +943,7 @@ struct RedundantParens : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<RedundantParens>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
@@ -942,6 +969,7 @@ struct InfixWrapper_ : public Node {
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
             auto c { ceto::make_shared_propagate_const<InfixWrapper_>(this -> cloned_args(), this -> source) } ;
+            (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 

@@ -74,6 +74,7 @@ class (Node:
     def (clone: virtual:
         none: Node:mut = None
         c: mut = Node(if (self.func: self.func.clone() else: none), self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 
@@ -249,6 +250,7 @@ class (UnOp(Node):
 
     def (clone: override:
         c: mut = UnOp(self.op, self.cloned_args(), source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -271,6 +273,7 @@ class (LeftAssociativeUnOp(Node):
 
     def (clone: override:
         c: mut = LeftAssociativeUnOp(self.op, self.cloned_args(), source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -301,6 +304,7 @@ class (BinOp(Node):
 
     def (clone: override:
         c: mut = BinOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 
@@ -327,6 +331,7 @@ class (TypeOp(BinOp):
 
     def (clone: override:
         c: mut = TypeOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -340,6 +345,7 @@ class (SyntaxTypeOp(TypeOp):
 
     def (clone: override:
         c: mut = SyntaxTypeOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -356,6 +362,7 @@ class (AttributeAccess(BinOp):
 
     def (clone: override:
         c: mut = AttributeAccess(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -367,6 +374,7 @@ class (ArrowOp(BinOp):
 
     def (clone: override:
         c: mut = ArrowOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -378,6 +386,7 @@ class (ScopeResolution(BinOp):
 
     def (clone: override:
         c: mut = ScopeResolution(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -389,6 +398,7 @@ class (Assign(BinOp):
 
     def (clone: override:
         c: mut = Assign(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -404,6 +414,7 @@ class (NamedParameter(Assign):
 
     def (clone: override:
         c: mut = NamedParameter(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -415,6 +426,7 @@ class (BitwiseOrOp(BinOp):
 
     def (clone: override:
         c: mut = BitwiseOrOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -426,6 +438,7 @@ class (EqualsCompareOp(BinOp):
 
     def (clone: override:
         c: mut = EqualsCompareOp(self.op, self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -460,6 +473,7 @@ class (Identifier(Node):
 
     def (clone: override:
         c: mut = Identifier(self._name, self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -478,6 +492,7 @@ class (Call(Node):
 
     def (clone: override:
         c: mut = Call(self.func.clone(), self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -494,6 +509,7 @@ class (ArrayAccess(Node):
 
     def (clone: override:
         c: mut = ArrayAccess(self.func.clone(), self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -510,6 +526,7 @@ class (BracedCall(Node):
 
     def (clone: override:
         c: mut = BracedCall(self.func.clone(), self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -526,6 +543,7 @@ class (Template(Node):
 
     def (clone: override:
         c: mut = Template(self.func.clone(), self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -592,6 +610,7 @@ class (StringLiteral(Node):
             if (self.prefix: asinstance(self.prefix.clone(), Identifier) else: self.prefix),
             if (self.suffix: asinstance(self.suffix.clone(), Identifier) else: self.suffix),
             self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -618,6 +637,7 @@ class (IntegerLiteral(Node):
         c: mut = IntegerLiteral(self.integer_string,
             if (self.suffix: asinstance(self.suffix.clone(), Identifier) else: self.suffix),
             self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 
@@ -676,6 +696,7 @@ class (FloatLiteral(Node):
         c: mut = FloatLiteral(self.float_string, 
             if (self.suffix: asinstance(self.suffix.clone(), Identifier) else: self.suffix), 
             self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -696,6 +717,7 @@ class (ListLike_(Node):
 
     def (clone: override:
         c: mut = ListLike_(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -718,6 +740,7 @@ class (TupleLiteral(ListLike_):
 
     def (clone: override:
         c: mut = TupleLiteral(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -729,6 +752,7 @@ class (BracedLiteral(ListLike_):
 
     def (clone: override:
         c: mut = BracedLiteral(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -740,6 +764,7 @@ class (Block(ListLike_):
 
     def (clone: override:
         c: mut = Block(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -753,6 +778,7 @@ class (Module(Block):
 
     def (clone: override:
         c: mut = Module(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -773,6 +799,7 @@ class (RedundantParens(Node):
 
     def (clone: override:
         c: mut = RedundantParens(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
@@ -793,10 +820,12 @@ class (InfixWrapper_(Node):
 
     def (clone: override:
         c: mut = InfixWrapper_(self.cloned_args(), self.source)
+        c._parent = self._parent
         return c
     ) : Node:mut
 )
 
+# TODO this should go in ast.ctp with a function pointer passed to the DLL (I think each DLL has it's own copy -- identifier reuse bugs)
 def (gensym:
     counter: mut:static:unsigned:long:long = 0
     s = Identifier("ceto__private__ident__" + std.to_string(counter))
