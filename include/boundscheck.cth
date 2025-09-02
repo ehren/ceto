@@ -289,58 +289,41 @@ defmacro (array.unsafe[index], array, index:
 )
 
 # "def (foo, x, y, loc = std.source_location.current():" as a macro that expands to two functions + preprocessor check
-defmacro (def (args): return_type, args: [Node], return_type:Node|None:  # this could use a more fine-grained pattern (and matching improvements)
-    if (args.size() < 3:
-        return None
-    )
+defmacro (def (args, loc = std.source_location.current(), block): return_type, args: [Node], loc: Identifier, block: Block, return_type: Node|None:
+    full_loc_arg = quote(unquote(loc): const:std.source_location:ref = std.source_location.current())
+    new_args: mut = args
+    new_args.push_back(full_loc_arg)
+    new_args.push_back(block)
 
-    if (not isinstance(args.at(args.size() - 1), Block):
-        # forward declaration (or some wacky macro)
-        return None
-    )
-
-    # Note: because this macro is used by ceto.bounds_check it must use a.at(b) rather than a[b]!
-    loc_assign = args.at(args.size() - 2)  # last arg before Block
-
-    if (isinstance(loc_assign, Assign) and loc_assign.args.at(1).equals(quote(std.source_location.current())):
-        if ((loc = asinstance(loc_assign.args.at(0), Identifier)):
-            full_loc_arg = quote(unquote(loc): const:std.source_location:ref = std.source_location.current())
-            new_args: mut = args
-            new_args.at(new_args.size() - 2) = full_loc_arg
-
-            def_maker = lambda(def_args:
-                call: Node = Call(quote(def), def_args)
-                if (return_type:
-                    typed_call: Node = quote(unquote(call) : unquote(return_type))
-                    typed_call
-                else:
-                    call
-                )
-            )
-
-            def_loc = def_maker(new_args)
-            new_args.erase(new_args.end() - 2)
-            def_no_loc: mut = def_maker(new_args)
-
-            def_no_loc = def_no_loc.replace(
-                quote(unquote(loc).file_name()), quote("(file_name() unavailable - no std.source_location)"s)).replace(
-                quote(unquote(loc).function_name()), quote("(function_name() unavailable)"s)).replace(
-                quote(unquote(loc).line()), quote(0)).replace(
-                quote(unquote(loc).column()), quote(0))
-
-            # TODO at the least we should be checking no 'loc' remain (
-            # should also ensure loc.file_name() etc doesn't occur in a
-            # lambda[ref] body - need more traversal options for .replace)
-
-            return quote(if (defined(CETO_HAS_SOURCE_LOCATION):
-                unquote(def_loc)
-            else:
-                unquote(def_no_loc)
-            ): preprocessor)
+    def_maker = lambda(def_args:
+        call: Node = Call(quote(def), def_args)
+        if (return_type:
+            typed_call: Node = quote(unquote(call) : unquote(return_type))
+            typed_call
+        else:
+            call
         )
     )
 
-    return None
+    def_loc = def_maker(new_args)
+    new_args.erase(new_args.end() - 2)
+    def_no_loc: mut = def_maker(new_args)
+
+    def_no_loc = def_no_loc.replace(
+        quote(unquote(loc).file_name()), quote("(file_name() unavailable - no std.source_location)"s)).replace(
+        quote(unquote(loc).function_name()), quote("(function_name() unavailable)"s)).replace(
+        quote(unquote(loc).line()), quote(0)).replace(
+        quote(unquote(loc).column()), quote(0))
+
+    # TODO at the least we should be checking no 'loc' remain (
+    # should also ensure loc.file_name() etc doesn't occur in a
+    # lambda[ref] body - should use single arg .replace(lambda(orig, ...)) with extra checks
+
+    return quote(if (defined(CETO_HAS_SOURCE_LOCATION):
+        unquote(def_loc)
+    else:
+        unquote(def_no_loc)
+    ): preprocessor)
 )
 
 namespace (ceto)

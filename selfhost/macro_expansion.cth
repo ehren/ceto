@@ -94,7 +94,7 @@ def (is_optional_pattern, pattern: Node, params: const:std.map<std.string, Node>
     return False
 )
 
-def (macro_matches_args, args, pattern_args, params: const:std.map<std.string, Node>:ref:
+def (macro_matches_args, args, pattern_args, params: const:std.map<std.string, Node>:ref, is_reversed = False:
     pattern_iterator: mut = pattern_args.begin()
     arg_iterator: mut = args.begin()
     submatches: mut = std.map<std.string, Node> {}
@@ -148,6 +148,10 @@ def (macro_matches_args, args, pattern_args, params: const:std.map<std.string, N
                                 break
                             )
                             arg_iterator += 1
+                        )
+
+                        if (is_reversed:
+                            std.reverse(wildcard_list_matches.begin(), wildcard_list_matches.end())
                         )
 
                         submatches[param_name] = ListLiteral(wildcard_list_matches)
@@ -318,7 +322,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
     left_to_right_matches = macro_matches_args(node.args, pattern.args, params)
     
     if (pattern.args.size() > 1:
-        right_to_left_matches = macro_matches_args(ceto.util.reversed(node.args), ceto.util.reversed(pattern.args), params)
+        right_to_left_matches = macro_matches_args(ceto.util.reversed(node.args), ceto.util.reversed(pattern.args), params, True)
 
         if (right_to_left_matches and (not left_to_right_matches or left_to_right_matches.size() < right_to_left_matches.size()):
             submatches.insert(right_to_left_matches.begin(), right_to_left_matches.end())
