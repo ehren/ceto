@@ -109,6 +109,62 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
     ) ())
 )
 
+defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
+    x_as_Foo: Node = gensym()
+    class (State:
+        did_replace = False
+    )
+    state: mut = State()
+    x_is_ident = isinstance(x, Identifier)
+    new_expr = expr.replace(lambda (orig:
+        if (not orig.equals(x):
+            return None.Node
+        )
+        parent: mut = orig.parent()
+        ignore: mut = False
+        while (parent:
+            if (isinstance(parent, Call):
+                func = parent.func
+                name = func.name()
+                if (name:
+                    name_val = name.value()
+                    if (ceto.util.contains(["isinstance"s, "asinstance"s, "lambda"s, "class"s, "struct"s], name_val):
+                        ignore = True
+                        break
+                    )
+                elif func.equals(quote(lambda[])):
+                    ignore = True
+                    break
+                )
+            )
+            parent = parent.parent()
+        )
+        if (ignore:
+            return None.Node
+        )
+        capture: mut = state
+        capture.did_replace = True
+        if (x_is_ident:
+            return x_as_Foo
+        )
+        return quote(asinstance(unquote(x), unquote(Foo)))
+    ))
+    if (not state.did_replace:
+        return None
+    )
+    if (x_is_ident:
+        return quote(lambda(:
+            unquote(x_as_Foo) = asinstance(unquote(x), unquote(Foo))
+            if (not unquote(x_as_Foo):
+                return False
+            )
+            return True and unquote(new_expr)
+        )())
+    else:
+        return quote(asinstance(unquote(x), unquote(Foo)) != None and unquote(new_expr))
+    )
+)
+
 cpp'
 #define CETO_ENABLE_PRINTF_DEBUGGING
 '
