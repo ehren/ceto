@@ -26,7 +26,7 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
         )
     else:
         quote(std.cout)
-    )    
+    )
 
     result: mut = stream
 
@@ -39,11 +39,14 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
     )
 
     # add a newline but try to avoid a double newline
-    last = if (args.size() and (args.back().equals(quote(std.endl)) or (
-               isinstance(args.back(), StringLiteral) and args.back().str.ends_with("\n"))):
-        args.back()
-    elif args.size():
-        quote(unquote(args.back()) << std.endl)
+    last = if (args.size():
+        back = args.back()
+        if (back.equals(quote(std.endl)) or (isinstance(back, StringLiteral)
+                                             and back.str.ends_with("\n")):
+            back
+        else:
+            quote(unquote(back) << std.endl)
+        )
     else:
         quote(std.endl)
     )

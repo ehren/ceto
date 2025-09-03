@@ -109,15 +109,25 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
     ) ())
 )
 
-defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
-    x_as_Foo: Node = gensym()
+defmacro (isinstance(x, [Foos]), x, Foos: [Node]:
+    if (Foos.size() == 0:
+        throw (std.runtime_error("empty isinstance list:" + x.parent().repr()))
+    )
+    or_expr: mut = quote(isinstance(unquote(x), unquote(Foos.at(0))))
+    for (foo in Foos | std.views.drop(1):
+        or_expr = quote(unquote(or_expr) or isinstance(unquote(x), unquote(foo)))
+    )
+    return or_expr
+)
+
+defmacro (isinstance(x, Foo) and expr, x: Identifier, Foo, expr:
+    x_as_foo: Node = gensym()
     class (State:
         did_replace = False
     )
     state: mut = State()
-    x_is_ident = isinstance(x, Identifier)
     new_expr = expr.replace(lambda (orig:
-        if (not orig.equals(x):
+        if (orig.name() != x.name():
             return None.Node
         )
         parent: mut = orig.parent()
@@ -128,6 +138,8 @@ defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
                 name = func.name()
                 if (name:
                     name_val = name.value()
+                    # if this were implemented in the backend we could check if x and the replaced x have the same VariableDefinition
+                    # (TODO scope / lookup table support for macros)
                     if (ceto.util.contains(["isinstance"s, "asinstance"s, "lambda"s, "class"s, "struct"s], name_val):
                         ignore = True
                         break
@@ -137,9 +149,7 @@ defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
                     break
                 )
             elif (attr = asinstance(parent, BinOp)):
-                if (not (isinstance(attr, AttributeAccess) or isinstance(attr, ScopeResolution) or isinstance(attr, ArrowOp)):
-                    pass
-                elif orig.equals(attr.rhs()):
+                if (isinstance(attr, [AttributeAccess, ScopeResolution, ArrowOp]) and orig.equals(attr.rhs()):
                     ignore = True
                     break
                 )
@@ -151,25 +161,20 @@ defmacro (isinstance(x, Foo) and expr, x, Foo, expr:
         )
         capture: mut = state
         capture.did_replace = True
-        if (x_is_ident:
-            return x_as_Foo
-        )
-        return quote(asinstance(unquote(x), unquote(Foo)))
+        return x_as_foo
     ))
+
     if (not state.did_replace:
         return None
     )
-    if (x_is_ident:
-        return quote(lambda(:
-            unquote(x_as_Foo) = asinstance(unquote(x), unquote(Foo))
-            if (not unquote(x_as_Foo):
-                return False
-            )
-            return True and unquote(new_expr)
-        )())
-    else:
-        return quote(asinstance(unquote(x), unquote(Foo)) != None and unquote(new_expr))
-    )
+
+    return quote(lambda(:
+        unquote(x_as_foo) = asinstance(unquote(x), unquote(Foo))
+        if (not unquote(x_as_foo):
+            return False
+        )
+        return True and unquote(new_expr)
+    )())
 )
 
 cpp'
