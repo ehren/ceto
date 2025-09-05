@@ -1277,20 +1277,160 @@ def codegen_for(node, cx):
         var_str = codegen_node(var, cx)
         type_str = None
 
-    if type_str is None:
-        #type_str = "const auto&"  # not safe in general
-        type_str = "const auto"
-
     indt = cx.indent_str()
     block_cx = cx.enter_scope()
-    block_str = codegen_block(block, block_cx)
 
     iterable = instmt.rhs
+    block_str = codegen_block(block, block_cx)
 
-    if node.func.name == "unsafe_for":
-        forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, codegen_node(iterable, cx))
+    is_over_non_aliased_vec = isinstance(iterable, ListLiteral)
+
+    emit_conditionally_indexing_for = False
+    allow_range_based_for_condition = ""
+    if is_over_non_aliased_vec:
+        pass
+    elif isinstance(iterable, Identifier):
+        vardefs = iterable.scope.find_defs(iterable)
+        if len(vardefs) == 1:
+            vardef = vardefs[0]
+            if isinstance(vardef, (LocalVariableDefinition, ParameterDefinition)) and isinstance(vardef.defining_node, Assign):  # TODO should work with non-assign params (find_uses needs fix)
+                uses = list(find_uses(vardef.defining_node))
+                assert len(uses) > 0
+                if len(uses) == 1:
+                    if isinstance(vardef.defining_node, Assign) and isinstance(vardef.defining_node.rhs, ListLiteral): # and (not vardef.defining_node.lhs.declared_type or not any(t.name == "ref" for t in type_node_to_list_of_types(vardef.defining_node.lhs.declared_type):
+                        is_over_non_aliased_vec = True
+                    else:
+                        emit_conditionally_indexing_for = True
+    else:
+        emit_conditionally_indexing_for = True
+
+    if type_str is None:
+        if is_over_non_aliased_vec:
+            type_str = "const auto&"
+        else:
+            type_str = "const auto"
+
+    if node.func.name == "unsafe_for" or is_over_non_aliased_vec:
+        iterable_str = codegen_node(iterable, cx)
+        forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, iterable_str)
         forstr += block_str
         forstr += indt + "}\n"
+        return forstr
+    elif emit_conditionally_indexing_for:
+        iterable_str = codegen_node(iterable, cx)
+        allow_range_based_for_condition = "!std::is_reference_v<decltype(" + iterable_str + ")> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
+
+        all_returns = list(find_all(block, test=is_return))
+        void_returns = [ret for ret in all_returns if is_void_return(ret)]
+        non_void_returns = [ret for ret in all_returns if not is_void_return(ret)]
+
+        eligible_returns = list(find_all(block, test=is_return, stop=creates_new_variable_scope))
+        eligible_void_returns = [ret for ret in eligible_returns if is_void_return(ret)]
+        eligible_non_void_returns = [ret for ret in eligible_returns if not is_void_return(ret)]
+
+        if eligible_void_returns and eligible_non_void_returns:
+            raise CodeGenError("mix of void and non-void return in for-loop body", node)
+
+        is_return_eligible = { i: ret in eligible_returns for i, ret in enumerate(all_returns) }
+        is_void_return_eligible = { i: ret in eligible_void_returns for i, ret in enumerate(void_returns) }
+        is_non_void_return_eligible = { i: ret in eligible_non_void_returns for i, ret in enumerate(non_void_returns) }
+
+        breaks = list(find_all(block, test=lambda n: n.name == "break", stop=creates_new_variable_scope))
+        all_breaks = list(find_all(block, test=lambda n: n.name == "break"))
+        is_break_eligible = { i: brk in breaks for i, brk in enumerate(all_breaks) }
+
+        continues = list(find_all(block, test=lambda n: n.name == "continue", stop=creates_new_variable_scope))
+        all_continues = list(find_all(block, test=lambda n: n.name == "continue"))
+        is_continue_eligible = { i: cont in continues for i, cont in enumerate(all_continues) }
+
+        decltype_block_lines = []
+        loop_block_lines = []
+        return_vars = []
+        did_returnvars = []
+
+        break_enumerator = enumerate(all_breaks)
+        continue_enumerator = enumerate(all_continues)
+        void_return_enumerator = enumerate(void_returns)
+        non_void_return_enumerator = enumerate(non_void_returns)
+
+        for line in block_str.splitlines():
+            stripped = line.strip()
+
+            if stripped == "break;":
+                i, brk = next(break_enumerator)
+                if is_break_eligible[i]:
+                    loop_block_lines.append("return ceto::LoopControl::Break;")
+                    decltype_block_lines.append('throw "break";')
+                else:
+                    loop_block_lines.append(line)
+                    decltype_block_lines.append(line)
+
+            elif stripped == "continue;":
+                i, cont = next(continue_enumerator)
+                if is_continue_eligible[i]:
+                    loop_block_lines.append("return ceto::LoopControl::Continue;")
+                    decltype_block_lines.append('throw "continue";')
+                else:
+                    loop_block_lines.append(line)
+                    decltype_block_lines.append(line)
+
+            elif stripped == "return;":
+                i, ret = next(void_return_enumerator)
+                if is_void_return_eligible[i]:
+                    loop_block_lines.append("return ceto::LoopControl::Break;")
+                    assert(not eligible_non_void_returns)
+                    # no need for the decltype (return value is obviously void)
+                else:
+                    loop_block_lines.append(line)
+                    decltype_block_lines.append(line)
+
+            elif stripped.startswith("return "):
+                i, ret = next(non_void_return_enumerator)
+                if is_non_void_return_eligible[i]:
+                    assert(not eligible_void_returns)
+                    return_expr = stripped[len("return "):].rstrip(';')
+                    return_var = gensym("return_var")
+                    did_return_var = gensym("did_return")
+                    return_vars.append(return_var)
+                    did_returnvars.append(did_return_var)
+                    loop_block_lines.append(f"{return_var} = {return_expr};")
+                    loop_block_lines.append(f"{did_return_var} = true;")
+                    loop_block_lines.append("return ceto::LoopControl::Break;")
+                else:
+                    loop_block_lines.append(line)
+
+                decltype_block_lines.append(line)
+
+            else:
+                loop_block_lines.append(line)
+                decltype_block_lines.append(line)
+
+        assert(len(eligible_non_void_returns) == len(return_vars))
+
+        rewritten_block = "\n".join(loop_block_lines)
+        forstr = rf"""ceto::safe_for_loop<{allow_range_based_for_condition}>({iterable_str}, [&]({type_str} {var_str}) -> ceto::LoopControl {{
+{rewritten_block}
+    return ceto::LoopControl::Continue;
+}});"""
+
+        if return_vars:
+            decltype_block_str = "\n".join(decltype_block_lines)
+            return_var_type = f"""decltype([&]({type_str} {var_str}) -> decltype(auto) {{
+{decltype_block_str}
+    throw "loop end";
+}}(*std::begin({iterable_str})))"""
+
+            return_decls = ""
+            for return_var, did_return_var in zip(return_vars, did_returnvars):
+                return_decls += f"{return_var_type} {return_var};\n"
+                return_decls += f"bool {did_return_var} = false;\n"
+
+            forstr = return_decls + forstr
+            for return_var, did_return_var in zip(return_vars, did_returnvars):
+                forstr += f"if ({did_return_var}) {{\n"
+                forstr += f"    return {return_var};\n"
+                forstr += "}\n"
+
         return forstr
 
     # if our for-loop preamble just contains auto&& iterable = foo.bar().baz() we end up with the
@@ -1328,7 +1468,6 @@ def codegen_for(node, cx):
     idx = gensym("idx")
     initial_list_size = gensym("size")
 
-    # has_return = any(find_all(block, test=is_return, stop=creates_new_variable_scope))
 
     forstr = rf"""
     {iterable_str}

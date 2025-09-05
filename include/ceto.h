@@ -347,9 +347,7 @@ template <typename T>
 concept IsContainer = requires(T t)
 {
     std::begin(t);
-    std::cbegin(t);
     std::end(t);
-    std::cend(t);
 };
 
 template <typename T>
@@ -357,6 +355,59 @@ concept IsStateless = requires(T t)
 {
     +t;
 };
+
+template<typename Container>
+concept ContiguousContainer = requires(Container c) {
+    std::begin(c) + 2;
+    std::end(c);
+    std::size(c);
+    c[0];
+};
+
+template <typename T>
+concept OwningContainer = IsContainer<std::remove_cvref_t<T>> && requires(T t) {
+    t.clear();
+};
+
+enum class LoopControl { Continue, Break };
+
+template<typename Container, typename Func>
+void for_loop_indexing(Container&& container, Func&& func) {
+    const auto size = std::size(container);
+    for (size_t i = 0; i < size; ++i) {
+        if (i >= size) {
+            throw std::out_of_range("Index out of bounds in for_loop_indexing");
+        }
+        LoopControl result = func(container[i]);
+        if (result == LoopControl::Break) {
+            break;
+        }
+    }
+}
+
+template<typename Container, typename Func>
+void for_loop_ranged(Container&& container, Func&& func) {
+    for (auto&& element : container) {
+        LoopControl result = func(element);
+        if (result == LoopControl::Break) {
+            break;
+        }
+    }
+}
+
+template<bool UseRangeBasedFor = false, typename Container, typename Func>
+void safe_for_loop(Container&& container, Func&& func) {
+    if constexpr (UseRangeBasedFor) {
+        for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
+    } else {
+        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>>) {
+            for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
+        } else {
+            static_assert(UseRangeBasedFor,
+                "Container is not contiguous and we can't safely emit a range based for");
+        }
+    }
+}
 
 } // end namespace ceto
 

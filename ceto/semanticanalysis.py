@@ -807,16 +807,13 @@ def warn_and_remove_redundant_parenthesese(expr, error=False):
 
 
 def is_return(node):
-    return ((isinstance(node, TypeOp) and node.lhs.name == "return") or (
-            isinstance(node, Identifier) and node.name == "return") or (
-            isinstance(node, UnOp) and node.op == "return"))
-
+    return (isinstance(node, TypeOp) and node.lhs.name == "return") or (
+            is_void_return(node) or (isinstance(node, UnOp) and node.op == "return"))
 
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
-# (NOTE: requires prior replacing of UnOp return)
+# note: "return void();" is not considered a void return here
 def is_void_return(node):
-    return not isinstance(node, TypeOp) and is_return(node) and not (isinstance(node.parent, TypeOp) and node.parent.lhs is node)
-
+    return isinstance(node, Identifier) and node.name == "return" and not (isinstance(node.parent, TypeOp) and node.parent.lhs is node) and not isinstance(node.parent, UnOp)
 
 # find closest following use
 def find_use(assign: Assign):
