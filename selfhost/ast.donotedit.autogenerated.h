@@ -107,24 +107,10 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
         inline auto cloned_args() const -> std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> {
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
-            
-                auto&& ceto__private__intermediate5 = this -> args;
-
-                static_assert(requires { std::begin(ceto__private__intermediate5) + 2; }, "not a contiguous container");
-                size_t ceto__private__size7 = std::size(ceto__private__intermediate5);
-                for (size_t ceto__private__idx6 = 0; ; ceto__private__idx6++) {
-                    if (std::size(ceto__private__intermediate5) != ceto__private__size7) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx6 >= ceto__private__size7) {
-                        break;
-                    }
-                    const auto a = ceto__private__intermediate5[ceto__private__idx6];
-                                    (new_args).push_back((*ceto::mad(a)).clone());
-
-                }
-                return new_args;
+            ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> args)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> args))>>>((this -> args), [&](const auto a) -> ceto::LoopControl {
+                (new_args).push_back((*ceto::mad(a)).clone());
+    return ceto::LoopControl::Continue;
+});            return new_args;
         }
 
          virtual inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> {
@@ -154,53 +140,33 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
                 return false;
             }
-            
-                auto&& ceto__private__intermediate8 = this -> args;
-            auto&& ceto__private__intermediate10 = (*ceto::mad(ceto__private__intermediate8)).size();
-            auto&& ceto__private__intermediate11 = ceto::util::range(ceto__private__intermediate10);
-
-                static_assert(requires { std::begin(ceto__private__intermediate11) + 2; }, "not a contiguous container");
-                size_t ceto__private__size13 = std::size(ceto__private__intermediate11);
-                for (size_t ceto__private__idx12 = 0; ; ceto__private__idx12++) {
-                    if (std::size(ceto__private__intermediate11) != ceto__private__size13) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx12 >= ceto__private__size13) {
-                        break;
-                    }
-                    const auto i = ceto__private__intermediate11[ceto__private__idx12];
-                                    if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
-                                return false;
-                            }
-
+            std::optional<decltype([&](const auto i) {
+                if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
+                    return false;
                 }
-                return true;
+    throw "loop end";
+}(*std::begin(ceto::util::range((*ceto::mad(this -> args)).size()))))> ceto__private__return_var5;
+bool ceto__private__did_return6 = false;
+ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
+                if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
+ceto__private__return_var5.emplace(false);
+ceto__private__did_return6 = true;
+return ceto::LoopControl::Break;
+                }
+    return ceto::LoopControl::Continue;
+});if (ceto__private__did_return6) {
+    return std::move(*ceto__private__return_var5);
+}
+            return true;
         }
 
-        template <typename ceto__private__T114>
-auto replace(const ceto__private__T114& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T17>
+auto replace(const ceto__private__T17& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             const auto self = ceto::shared_from(this);
-            
-                auto&& ceto__private__intermediate15 = this -> args;
-            auto&& ceto__private__intermediate17 = (*ceto::mad(ceto__private__intermediate15)).size();
-            auto&& ceto__private__intermediate18 = ceto::util::range(ceto__private__intermediate17);
-
-                static_assert(requires { std::begin(ceto__private__intermediate18) + 2; }, "not a contiguous container");
-                size_t ceto__private__size20 = std::size(ceto__private__intermediate18);
-                for (size_t ceto__private__idx19 = 0; ; ceto__private__idx19++) {
-                    if (std::size(ceto__private__intermediate18) != ceto__private__size20) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx19 >= ceto__private__size20) {
-                        break;
-                    }
-                    const auto i = ceto__private__intermediate18[ceto__private__idx19];
-                                    (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
-
-                }
-                if (this -> func) {
+            ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
+                (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
+    return ceto::LoopControl::Continue;
+});            if (this -> func) {
                 (this -> func) = (*ceto::mad(this -> func)).replace(replacer);
             }
             const auto replacement = replacer(self);
@@ -210,8 +176,8 @@ auto replace(const ceto__private__T114& replacer) -> ceto::propagate_const<std::
             return self;
         }
 
-        template <typename ceto__private__T121>
-auto replace(const ceto__private__T121& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T18>
+auto replace(const ceto__private__T18& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             return (*ceto::mad(this -> clone())).replace(replacer);
         }
 

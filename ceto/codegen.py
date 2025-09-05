@@ -1318,7 +1318,7 @@ def codegen_for(node, cx):
         return forstr
     elif emit_conditionally_indexing_for:
         iterable_str = codegen_node(iterable, cx)
-        allow_range_based_for_condition = "!std::is_reference_v<decltype(" + iterable_str + ")> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
+        allow_range_based_for_condition = "!std::is_reference_v<decltype((" + iterable_str + "))> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
 
         all_returns = list(find_all(block, test=is_return))
         void_returns = [ret for ret in all_returns if is_void_return(ret)]
@@ -1331,22 +1331,22 @@ def codegen_for(node, cx):
         if eligible_void_returns and eligible_non_void_returns:
             raise CodeGenError("mix of void and non-void return in for-loop body", node)
 
-        is_return_eligible = { i: ret in eligible_returns for i, ret in enumerate(all_returns) }
         is_void_return_eligible = { i: ret in eligible_void_returns for i, ret in enumerate(void_returns) }
         is_non_void_return_eligible = { i: ret in eligible_non_void_returns for i, ret in enumerate(non_void_returns) }
 
-        breaks = list(find_all(block, test=lambda n: n.name == "break", stop=creates_new_variable_scope))
+        stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "unsafe_for", "while")))
+
+        breaks = list(find_all(block, test=lambda n: n.name == "break", stop=stop_loop_control_replacement_test))
         all_breaks = list(find_all(block, test=lambda n: n.name == "break"))
         is_break_eligible = { i: brk in breaks for i, brk in enumerate(all_breaks) }
 
-        continues = list(find_all(block, test=lambda n: n.name == "continue", stop=creates_new_variable_scope))
+        continues = list(find_all(block, test=lambda n: n.name == "continue", stop=stop_loop_control_replacement_test))
         all_continues = list(find_all(block, test=lambda n: n.name == "continue"))
         is_continue_eligible = { i: cont in continues for i, cont in enumerate(all_continues) }
 
         decltype_block_lines = []
         loop_block_lines = []
         return_vars = []
-        did_returnvars = []
 
         break_enumerator = enumerate(all_breaks)
         continue_enumerator = enumerate(all_continues)
@@ -1391,9 +1391,8 @@ def codegen_for(node, cx):
                     return_expr = stripped[len("return "):].rstrip(';')
                     return_var = gensym("return_var")
                     did_return_var = gensym("did_return")
-                    return_vars.append(return_var)
-                    did_returnvars.append(did_return_var)
-                    loop_block_lines.append(f"{return_var} = {return_expr};")
+                    return_vars.append((return_var, did_return_var))
+                    loop_block_lines.append(f"{return_var}.emplace({return_expr});")
                     loop_block_lines.append(f"{did_return_var} = true;")
                     loop_block_lines.append("return ceto::LoopControl::Break;")
                 else:
@@ -1415,21 +1414,21 @@ def codegen_for(node, cx):
 
         if return_vars:
             decltype_block_str = "\n".join(decltype_block_lines)
-            return_var_type = f"""decltype([&]({type_str} {var_str}) -> decltype(auto) {{
+            return_var_type = f"""std::optional<decltype([&]({type_str} {var_str}) {{
 {decltype_block_str}
     throw "loop end";
-}}(*std::begin({iterable_str})))"""
+}}(*std::begin({iterable_str})))>"""
 
             return_decls = ""
-            for return_var, did_return_var in zip(return_vars, did_returnvars):
+            for return_var, did_return_var in return_vars:
                 return_decls += f"{return_var_type} {return_var};\n"
                 return_decls += f"bool {did_return_var} = false;\n"
 
-            forstr = return_decls + forstr
-            for return_var, did_return_var in zip(return_vars, did_returnvars):
                 forstr += f"if ({did_return_var}) {{\n"
-                forstr += f"    return {return_var};\n"
+                forstr += f"    return std::move(*{return_var});\n"
                 forstr += "}\n"
+
+            forstr = return_decls + forstr
 
         return forstr
 
@@ -1467,7 +1466,6 @@ def codegen_for(node, cx):
 
     idx = gensym("idx")
     initial_list_size = gensym("size")
-
 
     forstr = rf"""
     {iterable_str}

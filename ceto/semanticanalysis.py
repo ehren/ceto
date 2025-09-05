@@ -840,8 +840,6 @@ def find_all(node: Node, test=lambda n: False, stop=lambda n: False):
         yield node
 
     for arg in node.args:
-        if stop(arg):
-            return
         yield from find_all(arg, test=test, stop=stop)
     if node.func:
         yield from find_all(node.func, test=test, stop=stop)
