@@ -68,118 +68,118 @@ struct (BaseVisitor<class:Derived>(Visitor):
     ### handful of subclasses for specific logic (without needing to implement visit for all node types).
 
     def (visit: override:mut, node: Node.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: UnOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: LeftAssociativeUnOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: BinOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: TypeOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: SyntaxTypeOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: AttributeAccess.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: ArrowOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Assign.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: ScopeResolution.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: NamedParameter.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: BitwiseOrOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: EqualsCompareOp.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Identifier.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Call.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: ArrayAccess.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: BracedCall.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Template.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: StringLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: IntegerLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: FloatLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: ListLike_.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: ListLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: TupleLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: BracedLiteral.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Block.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: Module.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: RedundantParens.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 
     def (visit: override:mut, node: InfixWrapper_.class:
-        static_cast<Derived:ptr>(this)->visit(node)
+        static_cast<Derived:pointer>(this)->visit(node)
     )
 )

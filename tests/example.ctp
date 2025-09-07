@@ -53,9 +53,10 @@ defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
 
-def (main, argc: int, argv: const:char:ptr:const:ptr:
+def (main, argc: int, argv: char:pointer:pointer:
 
-    args = [std.string(a), for (a in std.span(argv, argc))]
+    # args = [std.string(a), for (a in std.span(unsafe(argv), argc))]  # error: static assertion failed due to requirement 'OwningContainer<std::span<const char *const, 18446744073709551615>>
+    args = [std.string(a), for (a in std.vector(unsafe(argv), unsafe(argv+argc)))]
 
     summary = ", ".join(args)
 
@@ -64,21 +65,8 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of 'calls_method'
 
-    fut: mut = std.async(std.launch.async, lambda(:
-
-        # Implicit copy capture (no capture list specified) for shared/weak
-        # ceto-class instances, arithmetic types, and enums only.
-        # Prefer capture lists for anything useful despite safety/verbosity gotchas?
-        # Just add:
-        # defmacro (lambda(args), args: [Node]:
-        #     block = Block(args)
-        #     return quote(lambda[] (block))
-        # )
-
-        f.method(f).data_member
-    ))
-
-    std.cout << fut.get()
+    fut: mut = std.async(std.launch.async, lambda(f.method(f)))
+    fut.get().method(f)
 
     u: mut = UniqueFoo()
     u2 = UniqueFoo()

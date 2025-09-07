@@ -1971,8 +1971,8 @@ def _codegen_compound_class_type(types, cx):
             return "const ceto::propagate_const<std::unique_ptr<const " + class_name + ">>&", indices
         if indices := _sublist_indices([class_name, "const", "ref"], typenames):
             return "const ceto::propagate_const<std::unique_ptr<const " + class_name + ">>&", indices
-    if not class_def.is_struct and ("ref" in typenames or "ptr" in typenames or "rref" in typenames):
-        raise CodeGenError("no ref/ptr specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
+    if not class_def.is_struct and ("ref" in typenames or "pointer" in typenames):
+        raise CodeGenError("no ref/pointer specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
     if indices := _sublist_indices(["shared", "mut", class_name], typenames):
         return _propagate_const_str("std::shared_ptr<" + class_name + ">"), indices
     if indices := _sublist_indices(["shared", "const", class_name], typenames):
@@ -2021,7 +2021,7 @@ def codegen_type(expr_node, type_node, cx):
     types = type_node_to_list_of_types(type_node)
     type_names = [t.name for t in types]
 
-    if type_names[0] in ["ptr", "ref", "rref"]:
+    if type_names[0] in ["pointer", "ref"]:
         raise CodeGenError(f"Invalid specifier. '{type_node.name}' can't be used at the beginning of a type. Maybe you want: 'auto:{type_node.name}':", type_node)
 
     # TODO better ptr handling - 'same behavior as add_const_t' not workable.
@@ -2069,12 +2069,10 @@ def codegen_type(expr_node, type_node, cx):
             if len(t.args) == 0:
                 raise CodeGenError("No empty tuples as types", expr_node)
             code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
-        elif t.name == "ptr":
+        elif t.name == "pointer":
             code = "*"
         elif t.name == "ref":
             code = "&"
-        elif t.name == "rref":
-            code = "&&"
         elif t.name == "mut":
             raise CodeGenError("unexpected placement of 'mut'", expr_node)
 
@@ -2841,9 +2839,9 @@ def codegen_variable_declaration_type(node: Identifier, cx: Scope):
                     break
 
             if lhs_type_str is None:
-                if (type_list[0].name == "const" and type_list[-1].name != "ptr") or type_list[-1].name == "const":
+                if (type_list[0].name == "const" and type_list[-1].name != "pointer") or type_list[-1].name == "const":
                     lhs_type_str = codegen_type(node, node.declared_type, cx)
-                elif type_list[-1].name == "ptr":
+                elif type_list[-1].name == "pointer":
                     lhs_type_str = codegen_type(node, node.declared_type, cx) + " const"
                 # else:
                 #     assert 0
@@ -3116,8 +3114,8 @@ def codegen_node(node: Node, cx: Scope):
     elif isinstance(node, Identifier):
         name = node.name
 
-        if name == "ptr":
-            raise CodeGenError("Use of 'ptr' outside type context is an error", node)
+        if name == "pointer":
+            raise CodeGenError("Use of 'pointer' outside type context is an error", node)
         elif name == "ref":
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
         elif name == "None":

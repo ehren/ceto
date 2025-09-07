@@ -42,7 +42,7 @@ class (MacroDefinition:
 )
 
 class (MacroScope:
-    parent: MacroScope.class:const:ptr = None
+    parent: MacroScope.class:const:pointer = None
 
     macro_definitions: [MacroDefinition] = []
 
@@ -353,7 +353,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     skipped_definitions: std.map<Node, std.vector<MacroDefinition>> = {}
 
     def (expand: mut, node: Node:
-        scope: mut:auto:const:ptr = (&self.current_scope)->get()
+        scope: mut:auto:const:pointer = (&self.current_scope)->get()
         while (scope:
             unsafe_for (definition: const:auto:ref in ceto.util.reversed(scope->macro_definitions):
                 skip_definition: mut = False

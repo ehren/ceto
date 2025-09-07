@@ -34,8 +34,10 @@ cpp'
 PYBIND11_MODULE(_abstractsyntaxtree, m) {
 '
 
-# trick transpiler into local variable context
-lambda(m : mut:auto:rref:
+# trick compiler into local variable context 
+# TODO arguably we shouldn't allow a lambda at file scope (at least in safe contexts) even though it's useful here
+# - can run into the static initialization order fiasco (making the lambda capture by ref would prevent C++ compilation at file scope)
+lambda(m : mut:auto:ref:ref:
 
     pybind11.literals: using:namespace  # to bring in the `_a` literal
 
