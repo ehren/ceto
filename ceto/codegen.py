@@ -2404,6 +2404,11 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
             if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, (AttributeAccess, ScopeResolution)) and parent.func.lhs.lhs.name in ["self", "this"])):
                 is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
+            if node.parent.func and node.parent.func.func:
+                template_func = node.parent.func.func
+                if isinstance(template_func, AttributeAccess) and template_func.lhs.name == "std" and template_func.rhs.name == "get":
+                    # allow std.get<0>(...)
+                    return code
             condition = f"((!std::is_reference_v<decltype{_strip_outer_double_parentheses('('+ code+ ')')}> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
             return f"[&]() -> decltype(auto) {{ static_assert({condition}); return {code}; }}()"
 
@@ -3221,8 +3226,8 @@ def codegen_node(node: Node, cx: Scope):
 
             binop_str = " ".join([codegen_node(node.lhs, cx), opstr, codegen_node(node.rhs, cx)])
 
-            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) \
-               and node.op != node.parent.op: # TODO there should be a higher/lower precedence check here
+            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess, TypeOp)) and node.op != node.parent.op: 
+                # TODO there should be a higher/lower precedence check here
                 # guard against precedence mismatch, extra parenthesese not strictly preserved in the ast)
                 binop_str = "(" + binop_str + ")"
 

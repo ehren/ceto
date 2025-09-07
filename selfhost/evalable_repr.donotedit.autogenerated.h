@@ -36,8 +36,8 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     decltype(std::string {""}) repr = std::string {""};
 
-        template <typename ceto__private__T121>
-auto generate_loc(const ceto__private__T121& node) -> void {
+        template <typename ceto__private__T1184>
+auto generate_loc(const ceto__private__T1184& node) -> void {
             if (!(this -> preserve_source_loc)) {
                 return;
             }
@@ -98,16 +98,16 @@ auto generate_loc(const ceto__private__T121& node) -> void {
             
     
                 static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size23 = std::size(args);
-                for (size_t ceto__private__idx22 = 0; ; ceto__private__idx22++) {
-                    if (std::size(args) != ceto__private__size23) {
+                size_t ceto__private__size186 = std::size(args);
+                for (size_t ceto__private__idx185 = 0; ; ceto__private__idx185++) {
+                    if (std::size(args) != ceto__private__size186) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx22 >= ceto__private__size23) {
+                    if (ceto__private__idx185 >= ceto__private__size186) {
                         break;
                     }
-                    const auto arg = args[ceto__private__idx22];
+                    const auto arg = args[ceto__private__idx185];
                                     (*ceto::mad(arg)).accept((*this));
                             (this -> repr) += ", ";
 

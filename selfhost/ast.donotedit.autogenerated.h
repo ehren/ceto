@@ -88,12 +88,12 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return (classname + "(" + [&]() {if (this -> func) {
+            return classname + "(" + [&]() {if (this -> func) {
                 return (*ceto::mad(this -> func)).repr();
             } else {
                 return std::string {""};
             }}()
- + ")([" + csv + "])");
+ + ")([" + csv + "])";
         }
 
          virtual inline auto name() const -> std::optional<std::string> {
@@ -134,7 +134,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             }
             if ((this -> func) && !(*ceto::mad(this -> func)).equals((*ceto::mad(other)).func)) {
                 return false;
-            } else if ((!(this -> func) && (*ceto::mad(other)).func)) {
+            } else if (!(this -> func) && (*ceto::mad(other)).func) {
                 return false;
             }
             if ((*ceto::mad(this -> args)).size() != (*ceto::mad((*ceto::mad(other)).args)).size()) {
@@ -145,23 +145,23 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                     return false;
                 }
     throw "loop end";
-}(*std::begin(ceto::util::range((*ceto::mad(this -> args)).size()))))> ceto__private__return_var5;
-bool ceto__private__did_return6 = false;
+}(*std::begin(ceto::util::range((*ceto::mad(this -> args)).size()))))> ceto__private__return_var168;
+bool ceto__private__did_return169 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
                 if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
-ceto__private__return_var5.emplace(false);
-ceto__private__did_return6 = true;
+ceto__private__return_var168.emplace(false);
+ceto__private__did_return169 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return6) {
-    return std::move(*ceto__private__return_var5);
+});if (ceto__private__did_return169) {
+    return std::move(*ceto__private__return_var168);
 }
             return true;
         }
 
-        template <typename ceto__private__T17>
-auto replace(const ceto__private__T17& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T1170>
+auto replace(const ceto__private__T1170& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             const auto self = ceto::shared_from(this);
             ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
                 (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
@@ -176,8 +176,8 @@ auto replace(const ceto__private__T17& replacer) -> ceto::propagate_const<std::s
             return self;
         }
 
-        template <typename ceto__private__T18>
-auto replace(const ceto__private__T18& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T1171>
+auto replace(const ceto__private__T1171& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             return (*ceto::mad(this -> clone())).replace(replacer);
         }
 
@@ -227,7 +227,7 @@ struct UnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return (std::string {"("} + (this -> op) + " " + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + ")");
+            return std::string {"("} + (this -> op) + " " + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -252,7 +252,7 @@ struct LeftAssociativeUnOp : public Node {
     std::string op;
 
         inline auto repr() const -> std::string override {
-            return ("(" + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + " " + (this -> op) + ")");
+            return "(" + (*ceto::mad((*ceto::mad(this -> args)).at(0))).repr() + " " + (this -> op) + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -285,7 +285,7 @@ struct BinOp : public Node {
         }
 
         inline auto repr() const -> std::string override {
-            return ("(" + (*ceto::mad(this -> lhs())).repr() + " " + (this -> op) + " " + (*ceto::mad(this -> rhs())).repr() + ")");
+            return "(" + (*ceto::mad(this -> lhs())).repr() + " " + (this -> op) + " " + (*ceto::mad(this -> rhs())).repr() + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -306,7 +306,7 @@ struct BinOp : public Node {
             if ((this -> op) != (*ceto::mad(other)).op) {
                 return false;
             }
-            return ((*ceto::mad(this -> lhs())).equals((*ceto::mad(other)).lhs()) && (*ceto::mad(this -> rhs())).equals((*ceto::mad(other)).rhs()));
+            return (*ceto::mad(this -> lhs())).equals((*ceto::mad(other)).lhs()) && (*ceto::mad(this -> rhs())).equals((*ceto::mad(other)).rhs());
         }
 
     explicit BinOp(const std::string&  op, const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (nullptr, args, source), op(op) {
@@ -355,7 +355,7 @@ struct AttributeAccess : public BinOp {
 using BinOp::BinOp;
 
         inline auto repr() const -> std::string override {
-            return ((*ceto::mad(this -> lhs())).repr() + "." + (*ceto::mad(this -> rhs())).repr());
+            return (*ceto::mad(this -> lhs())).repr() + "." + (*ceto::mad(this -> rhs())).repr();
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -423,9 +423,9 @@ struct NamedParameter : public Assign {
 using Assign::Assign;
 
         inline auto repr() const -> std::string override {
-            return (std::string {"NamedParameter("} + ceto::util::join(this -> args, [](const auto &a) {
+            return std::string {"NamedParameter("} + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ") + ")");
+                    }, ", ") + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -477,11 +477,11 @@ struct Identifier : public Node {
     std::string _name;
 
         inline auto repr() const -> std::string override {
-            return (this -> _name);
+            return this -> _name;
         }
 
         inline auto name() const -> std::optional<std::string> override {
-            return (this -> _name);
+            return this -> _name;
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -493,7 +493,7 @@ struct Identifier : public Node {
             if (!other) {
                 return false;
             }
-            return ((this -> _name) == (*ceto::mad(other))._name);
+            return (this -> _name) == (*ceto::mad(other))._name;
         }
 
         inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
@@ -519,7 +519,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((*ceto::mad(this -> func)).repr() + "(" + csv + ")");
+            return (*ceto::mad(this -> func)).repr() + "(" + csv + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -542,7 +542,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((*ceto::mad(this -> func)).repr() + "[" + csv + "]");
+            return (*ceto::mad(this -> func)).repr() + "[" + csv + "]";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -565,7 +565,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((*ceto::mad(this -> func)).repr() + "{" + csv + "}");
+            return (*ceto::mad(this -> func)).repr() + "{" + csv + "}";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -588,7 +588,7 @@ using Node::Node;
             const auto csv = ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
                     }, ", ");
-            return ((*ceto::mad(this -> func)).repr() + "<" + csv + ">");
+            return (*ceto::mad(this -> func)).repr() + "<" + csv + ">";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -620,7 +620,7 @@ struct StringLiteral : public Node {
         }
 
         inline auto repr() const -> std::string override {
-            return ([&]() {if (this -> prefix) {
+            return [&]() {if (this -> prefix) {
                 return (*ceto::mad_smartptr((*ceto::mad(this -> prefix)).name())).value();
             } else {
                 return std::string {""};
@@ -630,7 +630,7 @@ struct StringLiteral : public Node {
             } else {
                 return std::string {""};
             }}()
-);
+;
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -647,12 +647,12 @@ struct StringLiteral : public Node {
             }
             if ((this -> prefix) && !(*ceto::mad(this -> prefix)).equals((*ceto::mad(other)).prefix)) {
                 return false;
-            } else if ((!(this -> prefix) && (*ceto::mad(other)).prefix)) {
+            } else if (!(this -> prefix) && (*ceto::mad(other)).prefix) {
                 return false;
             }
             if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
                 return false;
-            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+            } else if (!(this -> suffix) && (*ceto::mad(other)).suffix) {
                 return false;
             }
             return true;
@@ -662,12 +662,12 @@ struct StringLiteral : public Node {
             auto c { ceto::make_shared_propagate_const<StringLiteral>(this -> str, [&]() {if (this -> prefix) {
                 return ceto::propagate_const<std::shared_ptr<const Identifier>>(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying((*ceto::mad(this -> prefix)).clone())));
             } else {
-                return (this -> prefix);
+                return this -> prefix;
             }}()
 , [&]() {if (this -> suffix) {
                 return ceto::propagate_const<std::shared_ptr<const Identifier>>(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying((*ceto::mad(this -> suffix)).clone())));
             } else {
-                return (this -> suffix);
+                return this -> suffix;
             }}()
 , this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
@@ -688,12 +688,12 @@ struct IntegerLiteral : public Node {
     ceto::propagate_const<std::shared_ptr<const Identifier>> suffix;
 
         inline auto repr() const -> std::string override {
-            return ((this -> integer_string) + [&]() {if (this -> suffix) {
+            return (this -> integer_string) + [&]() {if (this -> suffix) {
                 return (*ceto::mad_smartptr((*ceto::mad(this -> suffix)).name())).value();
             } else {
                 return std::string {""};
             }}()
-);
+;
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -704,7 +704,7 @@ struct IntegerLiteral : public Node {
             auto c { ceto::make_shared_propagate_const<IntegerLiteral>(this -> integer_string, [&]() {if (this -> suffix) {
                 return ceto::propagate_const<std::shared_ptr<const Identifier>>(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying((*ceto::mad(this -> suffix)).clone())));
             } else {
-                return (this -> suffix);
+                return this -> suffix;
             }}()
 , this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
@@ -721,7 +721,7 @@ struct IntegerLiteral : public Node {
             }
             if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
                 return false;
-            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+            } else if (!(this -> suffix) && (*ceto::mad(other)).suffix) {
                 return false;
             }
             return true;
@@ -741,12 +741,12 @@ struct FloatLiteral : public Node {
     ceto::propagate_const<std::shared_ptr<const Identifier>> suffix;
 
         inline auto repr() const -> std::string override {
-            return ((this -> float_string) + [&]() {if (this -> suffix) {
+            return (this -> float_string) + [&]() {if (this -> suffix) {
                 return (*ceto::mad_smartptr((*ceto::mad(this -> suffix)).name())).value();
             } else {
                 return std::string {""};
             }}()
-);
+;
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -763,7 +763,7 @@ struct FloatLiteral : public Node {
             }
             if ((this -> suffix) && !(*ceto::mad(this -> suffix)).equals((*ceto::mad(other)).suffix)) {
                 return false;
-            } else if ((!(this -> suffix) && (*ceto::mad(other)).suffix)) {
+            } else if (!(this -> suffix) && (*ceto::mad(other)).suffix) {
                 return false;
             }
             return true;
@@ -773,7 +773,7 @@ struct FloatLiteral : public Node {
             auto c { ceto::make_shared_propagate_const<FloatLiteral>(this -> float_string, [&]() {if (this -> suffix) {
                 return ceto::propagate_const<std::shared_ptr<const Identifier>>(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying((*ceto::mad(this -> suffix)).clone())));
             } else {
-                return (this -> suffix);
+                return this -> suffix;
             }}()
 , this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
@@ -791,9 +791,9 @@ struct ListLike_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
+            return classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ") + ")");
+                    }, ", ") + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -898,9 +898,9 @@ struct RedundantParens : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
+            return classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ") + ")");
+                    }, ", ") + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {
@@ -924,9 +924,9 @@ struct InfixWrapper_ : public Node {
 
         inline auto repr() const -> std::string override {
             const auto classname = this -> classname();
-            return (classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
+            return classname + "(" + ceto::util::join(this -> args, [](const auto &a) {
                     return (*ceto::mad(a)).repr();
-                    }, ", ") + ")");
+                    }, ", ") + ")";
         }
 
         inline auto accept( Visitor &  visitor) const -> void override {

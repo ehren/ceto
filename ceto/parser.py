@@ -104,9 +104,6 @@ def _build_grammar():
 
     parenthesized_infix = lparen + infix_expr + rparen
 
-    template_disambig_char = pp.Suppress("\x06")
-    template <<= set_parse_action((ident | parenthesized_infix) + pp.Suppress("<") + optional_infix_csv + pp.Suppress(">") + pp.Optional(template_disambig_char), _parse_template)
-
     non_block_args = pp.Optional(pp.delimitedList(optional_infix))
 
     # no python slice syntax - but can be faked with TypeOp
@@ -114,6 +111,9 @@ def _build_grammar():
     array_access_args = lit_lbrack + optional_infix_csv + lit_rbrack
 
     braced_args = lit_lbrace + optional_infix_csv + lit_rbrace
+
+    template_disambig_char = pp.Suppress("\x06")
+    template_args = pp.Literal("<") + optional_infix_csv + pp.Literal(">") + pp.Optional(template_disambig_char)
 
     call_args = lit_lparen + non_block_args + pp.ZeroOrMore(block + non_block_args) + lit_rparen
 
@@ -127,7 +127,7 @@ def _build_grammar():
         (dotop_or_arrowop, 2, pp.opAssoc.LEFT, _parse_left_associative_bin_op),
     ])
 
-    maybe_scope_resolved_call_like <<= set_parse_action(scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution)))), _parse_maybe_scope_resolved_call_like)
+    maybe_scope_resolved_call_like <<= set_parse_action(scope_resolution + pp.OneOrMore(pp.Group((call_args|array_access_args|braced_args|template_args) + pp.Group(pp.Optional((dotop_or_arrowop|scopeop) + scope_resolution)))), _parse_maybe_scope_resolved_call_like)
 
     signop = pp.oneOf("+ -")
     multop = pp.oneOf("* / %")
@@ -309,6 +309,9 @@ def _parse_maybe_scope_resolved_call_like(s, l, t):
     elif leading_punctuation == "{":
         assert end_punctuation == "}"
         call = BracedCall(func, args, source)
+    elif leading_punctuation == "<":
+        assert end_punctuation == ">"
+        call = Template(func, args, source)
 
     if scope_resolve_part:
         scope_op, scope_op_rhs = scope_resolve_part
@@ -336,14 +339,6 @@ def _parse_float_literal(s, l, t):
     suffix = t[1] if len(t) > 1 else None
     source = _source_loc(s, l)
     return FloatLiteral(float_str, suffix, source)
-
-
-def _parse_template(s, l, t):
-    lst = t.asList()
-    func = lst[0]
-    args = lst[1:]
-    source = _source_loc(s, l)
-    return Template(func, args, source)
 
 
 def _parse_string_literal(s, loc, tokens):
