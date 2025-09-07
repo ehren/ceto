@@ -252,6 +252,7 @@ lambda(m : mut:auto:rref:
         "mark_node_unsafe", &Scope.mark_node_unsafe).def(
         "lookup_class", &Scope.lookup_class).def(
         "lookup_function", &Scope.lookup_function).def(
+        "lookup_namespace", &Scope.lookup_namespace).def(
         "find_defs", &Scope.find_defs, py.arg("var_node"), py.arg("find_all") = true).def(
         "find_def", &Scope.find_def).def(
         "enter_scope", &Scope.enter_scope).def_property_readonly(

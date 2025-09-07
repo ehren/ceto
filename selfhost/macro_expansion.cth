@@ -355,7 +355,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     def (expand: mut, node: Node:
         scope: mut:auto:const:ptr = (&self.current_scope)->get()
         while (scope:
-            for (definition in ceto.util.reversed(scope->macro_definitions):
+            unsafe_for (definition: const:auto:ref in ceto.util.reversed(scope->macro_definitions):
                 skip_definition: mut = False
                 unsafe_for ((key, defns):const:auto:ref in self.skipped_definitions:
                     if (ceto.util.contains(defns, definition):

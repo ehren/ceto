@@ -109,12 +109,12 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
     ) ())
 )
 
-defmacro (isinstance(x, [Foos]), x, Foos: [Node]:
+defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     if (Foos.size() == 0:
         throw (std.runtime_error("empty isinstance list:" + x.parent().repr()))
     )
     or_expr: mut = quote(isinstance(unquote(x), unquote(Foos.at(0))))
-    for (foo in Foos | std.views.drop(1):
+    unsafe_for (foo in Foos | std.views.drop(1):
         or_expr = quote(unquote(or_expr) or isinstance(unquote(x), unquote(foo)))
     )
     return or_expr
@@ -149,7 +149,7 @@ defmacro (isinstance(x, Foo) and expr, x: Identifier, Foo, expr:
                     break
                 )
             elif (attr = asinstance(parent, BinOp)):
-                if (isinstance(attr, [AttributeAccess, ScopeResolution, ArrowOp]) and orig.equals(attr.rhs()):
+                if (isinstance(attr, (AttributeAccess, ScopeResolution, ArrowOp)) and orig.equals(attr.rhs()):
                     ignore = True
                     break
                 )

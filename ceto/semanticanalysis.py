@@ -8,7 +8,7 @@ import shutil
 
 from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
-from .scope import ClassDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, FunctionDefinition, creates_new_variable_scope, Scope, comes_before
+from .scope import ClassDefinition, VariableDefinition, LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, FieldDefinition, FunctionDefinition, NamespaceDefinition, creates_new_variable_scope, Scope, comes_before
 
 # from ._abstractsyntaxtree import visit_macro_definitions, MacroDefinition, MacroScope
 # from ._abstractsyntaxtree import macro_matches, macro_trampoline
@@ -893,7 +893,7 @@ def _find_uses(node, search_node):
 
 def is_def_or_class_like(call : Call):
     assert isinstance(call, Call)
-    if call.func.name in ["def", "defmacro", "lambda", "class", "struct"]:
+    if call.func.name in ["def", "defmacro", "lambda", "class", "struct", "namespace"]:
         return True
     if isinstance(call.func, ArrayAccess) and call.func.func.name == "lambda":
         # lambda with explicit capture list
@@ -946,6 +946,14 @@ class ScopeVisitor:
                 if call.func.name in ["class", "struct"]:
                     #call.scope.add_class_definition(
                     pass  # TODO
+                elif call.func.name == "namespace":
+                    if isinstance(call.args[0], (Identifier, ScopeResolution, AttributeAccess)):
+                        identifier = call.args[0]
+                        while isinstance(identifier, (ScopeResolution, AttributeAccess)):
+                            identifier = identifier.lhs
+                        if isinstance(identifier, Identifier):
+                            nd = NamespaceDefinition(call, identifier)
+                            call.scope.add_namespace_definition(nd)
                 elif call.func.name == "def":
                     def_name = call.args[0]
                     while isinstance(def_name, (Template, Call)):
@@ -971,6 +979,8 @@ class ScopeVisitor:
                 if call.func.name in ["class", "struct"]:
                     a.scope.in_function_body = False
                     a.scope.in_class_body = True
+                elif call.func.name == "namespace":
+                    pass
                 else:
                     #a.scope.in_class_body = False  # maybe we should do this
                     a.scope.in_function_body = True

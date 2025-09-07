@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <optional>
 #include <iostream>
+#include <ranges>
 
 #if defined(__cpp_lib_source_location)
 #include <source_location>
@@ -365,9 +366,19 @@ concept ContiguousContainer = requires(Container c) {
 };
 
 template <typename T>
-concept OwningContainer = IsContainer<std::remove_cvref_t<T>> && requires(T t) {
+concept OwningContainer = IsContainer<std::remove_cvref_t<T>> && requires(std::remove_cvref_t<T> t) {
     t.clear();
+    t.resize(42);
+    typename T::allocator_type;
 };
+
+
+// with c++23 could also allow std::ranges::repeat_view
+template<typename T>
+concept IsIotaView = 
+    std::same_as<std::remove_cvref_t<T>, std::ranges::iota_view<
+        std::ranges::range_value_t<std::remove_cvref_t<T>>,
+        std::ranges::range_value_t<std::remove_cvref_t<T>>>>;
 
 enum class LoopControl { Continue, Break };
 
@@ -400,11 +411,11 @@ void safe_for_loop(Container&& container, Func&& func) {
     if constexpr (UseRangeBasedFor) {
         for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
     } else {
-        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>>) {
+        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>> && (OwningContainer<std::remove_cvref_t<Container>> || IsIotaView<std::remove_cvref_t<Container>>)) {
             for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
         } else {
-            static_assert(UseRangeBasedFor,
-                "Container is not contiguous and we can't safely emit a range based for");
+            static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop");
+            static_assert(OwningContainer<std::remove_cvref_t<Container>> || IsIotaView<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't safely emit a for-loop");
         }
     }
 }

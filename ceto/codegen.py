@@ -1559,10 +1559,46 @@ def is_last_use_of_identifier(node: Identifier):
     return is_last_use
 
 
+def validate_scope_resolution(node, cx):
+    if cx.is_unsafe:
+        # TODO don't allow even in unsafe contexts
+        #return
+        pass
+
+    leading = node
+    scope_resolution_list = []
+    while isinstance(leading, (AttributeAccess, ScopeResolution)):
+        scope_resolution_list.insert(0, leading.rhs)
+        leading = leading.lhs
+    scope_resolution_list.insert(0, leading)
+
+    if isinstance(leading, Call) and leading.func.name == "decltype":
+        return
+
+    if isinstance(leading, Template):
+        # deal with this later
+        return
+
+    if not isinstance(leading, Identifier):
+        raise CodeGenError("unexpected scope resolved construct", node)
+
+    if leading.scope.lookup_namespace(leading):
+        return
+
+    #raise CodeGenError("unknown scope resolution", node)
+    print("**************************************\n"*10)
+    print("unknown scope resolution", node, scope_resolution_list, "!!!!!!!!!\n")
+
+
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
     assert isinstance(node, AttributeAccess)
 
-    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):  # TODO: bad separate lookup mechanism for class defs and variable defs won't work with shadowing of a class name by a local (legal in C++)
+    do_validate_scope_resolution = False
+
+    if not isinstance(node.parent, (AttributeAccess, ScopeResolution)):
+        do_validate_scope_resolution = True
+
+    if isinstance(node.lhs, Identifier) and cx.lookup_class(node.lhs):
         if node.rhs.name == "class":
             # one might need the raw class name Foo rather than shared_ptr<(const)Foo> without going through hacks like std.type_identity_t<Foo:mut>::element_type.
             # Note that Foo.class.static_member is not handled (resulting in a C++ error for such code) - good because Foo.static_member already works even for externally defined C++ classes
@@ -1571,6 +1607,8 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
 
         # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
         return node.lhs.name + "::" + codegen_node(node.rhs, cx)
+
+    printed_scope_resolution = False
 
     if isinstance(node.lhs, (Identifier, AttributeAccess)):
         # implicit scope resolution:
@@ -1594,15 +1632,20 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
             while scope_resolution_list:
                 if isinstance(scope_resolution_list[0], Identifier):
                     item = scope_resolution_list.pop()
+                    printed_scope_resolution = True
                     scope_resolution_code += "::" + item.name
                 else:
                     break
 
             if not scope_resolution_list:
+                if printed_scope_resolution and do_validate_scope_resolution:
+                    validate_scope_resolution(node, cx)
                 return scope_resolution_code
             else:
                 remaining = list_to_attribute_access_node(scope_resolution_list)
                 assert remaining is not None
+                if do_validate_scope_resolution:
+                    validate_scope_resolution(node, cx)
                 return scope_resolution_code + "::" + codegen_node(remaining, cx)
 
     # maybe autoderef
@@ -3159,8 +3202,12 @@ def codegen_node(node: Node, cx: Scope):
             return assign_code
 
         else:
-            if isinstance(node, AttributeAccess):
-                return codegen_attribute_access(node, cx)
+            if isinstance(node, (AttributeAccess, ScopeResolution)):
+                if not isinstance(node.parent, (AttributeAccess, ScopeResolution)):
+                    if isinstance(node, ScopeResolution):
+                        validate_scope_resolution(node, cx)
+                if isinstance(node, AttributeAccess):
+                    return codegen_attribute_access(node, cx)
 
             elif is_comment(node):
                 # probably needs to go near method handling logic now that precedence issue fixed (TODO re-enable comment stashing)
