@@ -183,18 +183,18 @@ using VariableDefinition::VariableDefinition;
                 return cb;
             }
     throw "loop end";
-}(*std::begin((*ceto::mad(root)).args)))> ceto__private__return_var9;
-bool ceto__private__did_return10 = false;
+}(*std::begin((*ceto::mad(root)).args)))> ceto__private__return_var106;
+bool ceto__private__did_return107 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(root)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(root)).args)>>>((*ceto::mad(root)).args, [&](const auto arg) -> ceto::LoopControl {
             const auto cb = comes_before(arg, before, after);
             if ((*ceto::mad_smartptr(cb)).has_value()) {
-ceto__private__return_var9.emplace(cb);
-ceto__private__did_return10 = true;
+ceto__private__return_var106.emplace(cb);
+ceto__private__did_return107 = true;
 return ceto::LoopControl::Break;
             }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return10) {
-    return std::move(*ceto__private__return_var9);
+});if (ceto__private__did_return107) {
+    return std::move(*ceto__private__return_var106);
 }
         if ((*ceto::mad(root)).func) {
             const auto cb = comes_before((*ceto::mad(root)).func, before, after);
@@ -297,17 +297,17 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                     return c;
                 }
     throw "loop end";
-}(*std::begin((this -> class_definitions))))> ceto__private__return_var11;
-bool ceto__private__did_return12 = false;
+}(*std::begin((this -> class_definitions))))> ceto__private__return_var108;
+bool ceto__private__did_return109 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> class_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> class_definitions))>>>((this -> class_definitions), [&](const auto c) -> ceto::LoopControl {
                 if ((*ceto::mad((*ceto::mad(c)).name_node)).name() == (*ceto::mad(class_node)).name()) {
-ceto__private__return_var11.emplace(c);
-ceto__private__did_return12 = true;
+ceto__private__return_var108.emplace(c);
+ceto__private__did_return109 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return12) {
-    return std::move(*ceto__private__return_var11);
+});if (ceto__private__did_return109) {
+    return std::move(*ceto__private__return_var108);
 }
             if ((*ceto::mad(this -> interfaces)).contains((*ceto::mad_smartptr((*ceto::mad(class_node)).name())).value())) {
                 return ceto::make_shared_propagate_const<const InterfaceDefinition>();
@@ -327,17 +327,17 @@ return ceto::LoopControl::Break;
                     return f;
                 }
     throw "loop end";
-}(*std::begin((this -> function_definitions))))> ceto__private__return_var13;
-bool ceto__private__did_return14 = false;
+}(*std::begin((this -> function_definitions))))> ceto__private__return_var110;
+bool ceto__private__did_return111 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> function_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> function_definitions))>>>((this -> function_definitions), [&](const auto f) -> ceto::LoopControl {
                 if ((*ceto::mad((*ceto::mad(f)).function_name)).name() == (*ceto::mad(function_name_node)).name()) {
-ceto__private__return_var13.emplace(f);
-ceto__private__did_return14 = true;
+ceto__private__return_var110.emplace(f);
+ceto__private__did_return111 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return14) {
-    return std::move(*ceto__private__return_var13);
+});if (ceto__private__did_return111) {
+    return std::move(*ceto__private__return_var110);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 return (*ceto::mad(s)).lookup_function(function_name_node);
@@ -351,17 +351,17 @@ return ceto::LoopControl::Break;
                     return n;
                 }
     throw "loop end";
-}(*std::begin((this -> namespace_definitions))))> ceto__private__return_var15;
-bool ceto__private__did_return16 = false;
+}(*std::begin((this -> namespace_definitions))))> ceto__private__return_var112;
+bool ceto__private__did_return113 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> namespace_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> namespace_definitions))>>>((this -> namespace_definitions), [&](const auto n) -> ceto::LoopControl {
                 if ((*ceto::mad((*ceto::mad(n)).namespace_name)).equals(namespace_name_node)) {
-ceto__private__return_var15.emplace(n);
-ceto__private__did_return16 = true;
+ceto__private__return_var112.emplace(n);
+ceto__private__did_return113 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return16) {
-    return std::move(*ceto__private__return_var15);
+});if (ceto__private__did_return113) {
+    return std::move(*ceto__private__return_var112);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 return (*ceto::mad(s)).lookup_namespace(namespace_name_node);
@@ -375,17 +375,17 @@ return ceto::LoopControl::Break;
                     return true;
                 }
     throw "loop end";
-}(*std::begin((this -> unsafe_nodes))))> ceto__private__return_var17;
-bool ceto__private__did_return18 = false;
+}(*std::begin((this -> unsafe_nodes))))> ceto__private__return_var114;
+bool ceto__private__did_return115 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> unsafe_nodes)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> unsafe_nodes))>>>((this -> unsafe_nodes), [&](const auto x) -> ceto::LoopControl {
                 if ((*ceto::mad(x)).equals(node)) {
-ceto__private__return_var17.emplace(true);
-ceto__private__did_return18 = true;
+ceto__private__return_var114.emplace(true);
+ceto__private__did_return115 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return18) {
-    return std::move(*ceto__private__return_var17);
+});if (ceto__private__did_return115) {
+    return std::move(*ceto__private__return_var114);
 }
             const auto parent = (*ceto::mad(this -> _parent)).lock();
             return (parent && (*ceto::mad(parent)).is_node_unsafe(node));
@@ -401,17 +401,17 @@ return ceto::LoopControl::Break;
                     return true;
                 }
     throw "loop end";
-}(*std::begin((this -> external_cpp))))> ceto__private__return_var19;
-bool ceto__private__did_return20 = false;
+}(*std::begin((this -> external_cpp))))> ceto__private__return_var116;
+bool ceto__private__did_return117 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> external_cpp)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> external_cpp))>>>((this -> external_cpp), [&](const auto x) -> ceto::LoopControl {
                 if ((*ceto::mad(x)).equals(node)) {
-ceto__private__return_var19.emplace(true);
-ceto__private__did_return20 = true;
+ceto__private__return_var116.emplace(true);
+ceto__private__did_return117 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return20) {
-    return std::move(*ceto__private__return_var19);
+});if (ceto__private__did_return117) {
+    return std::move(*ceto__private__return_var116);
 }
             const auto parent = (*ceto::mad(this -> _parent)).lock();
             return (parent && (*ceto::mad(parent)).is_external_cpp(node));
@@ -449,8 +449,8 @@ return ceto::LoopControl::Break;
                     }
                 }
     throw "loop end";
-}(*std::begin((this -> variable_definitions))))> ceto__private__return_var21;
-bool ceto__private__did_return22 = false;
+}(*std::begin((this -> variable_definitions))))> ceto__private__return_var118;
+bool ceto__private__did_return119 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> variable_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> variable_definitions))>>>((this -> variable_definitions), [&](const auto d) -> ceto::LoopControl {
                 if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
                     auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
@@ -462,8 +462,8 @@ ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> variable_definitions
                     const auto defined_before = comes_before(parent_block, (*ceto::mad(d)).defined_node, var_node);
                     if (defined_before && (*ceto::mad_smartptr(defined_before)).value()) {
                         if (!find_all) {
-ceto__private__return_var21.emplace(std::vector {d});
-ceto__private__did_return22 = true;
+ceto__private__return_var118.emplace(std::vector {d});
+ceto__private__did_return119 = true;
 return ceto::LoopControl::Break;
                         }
                         (results).push_back(d);
@@ -476,8 +476,8 @@ return ceto::LoopControl::Break;
                     }
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return22) {
-    return std::move(*ceto__private__return_var21);
+});if (ceto__private__did_return119) {
+    return std::move(*ceto__private__return_var118);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 const auto more = (*ceto::mad(s)).find_defs(var_node, find_all);
@@ -506,6 +506,7 @@ return ceto::LoopControl::Break;
             (*ceto::mad(s)).in_decltype = (this -> in_decltype);
             (*ceto::mad(s))._is_unsafe = (this -> _is_unsafe);
             (*ceto::mad(s)).external_cpp = (this -> external_cpp);
+            (*ceto::mad(s)).namespace_definitions = (this -> namespace_definitions);
             (*ceto::mad(s)).indent = ((this -> indent) + 1);
             return s;
         }

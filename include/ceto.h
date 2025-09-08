@@ -212,83 +212,10 @@ auto make_unique_propagate_const(A&&... args) -> auto {
     return ceto::propagate_const<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
 }
 
-// Automatic make_shared insertion. Works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
+// Notes regarding a non-removed call_or_construct implementation (resurrecting it would require fixing breakage since introducing const by default / propagate_const by default:
+// ceto::call_or_construct() works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
 // TODO consider re-enabling in certain contexts: would allow decltype(x)(1, 2) to result in a make_shared when x is a shared_ptr<shared_object> (this will fail in most cases now but may succeed undesirably in a few others e.g. decltype(x)() is an empty shared_ptr under naive class lookup when some might expect make_shared<decltype(*x)>()  (default constructor call)
-
-template<typename T, typename... Args>
-std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
-call_or_construct(Args&&... args) {
-    // use braced args to disable narrowing conversions
-    using TT = decltype(T{std::forward<Args>(args)...});
-    return std::make_shared<TT>(std::forward<Args>(args)...);
-}
-
-template<typename T, typename... Args>
-std::enable_if_t<std::is_base_of_v<shared_object, std::remove_const_t<T>> && std::is_const_v<T>, std::shared_ptr<T>>
-call_or_construct(Args&&... args) {
-    using tt = std::remove_const_t<T>;
-    // use braced args to disable narrowing conversions
-    using TT = const decltype(tt{std::forward<Args>(args)...});
-    return std::make_shared<TT>(std::forward<Args>(args)...);
-}
-
-// no braced call for 0-args case - avoid needing to define an explicit no-arg constructor
-template<typename T>
-std::enable_if_t<std::is_base_of_v<shared_object, T>, std::shared_ptr<T>>
-call_or_construct() {
-    return std::make_shared<T>();
-}
-
-template<typename T, typename... Args>
-std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
-call_or_construct(Args&&... args) {
-    using TT = decltype(T{std::forward<Args>(args)...});
-    return std::make_unique<TT>(std::forward<Args>(args)...);
-}
-
-template<typename T, typename... Args>
-std::enable_if_t<std::is_base_of_v<object, std::remove_const_t<T>> && std::is_const_v<T> && !std::is_base_of_v<shared_object, std::remove_const_t<T>>, std::unique_ptr<T>>
-call_or_construct(Args&&... args) {
-    using tt = std::remove_const_t<T>;
-    using TT = const decltype(tt{std::forward<Args>(args)...});
-    return std::make_unique<TT>(std::forward<Args>(args)...);
-}
-
-template<typename T>
-std::enable_if_t<std::is_base_of_v<object, T> && !std::is_base_of_v<shared_object, T>, std::unique_ptr<T>>
-call_or_construct() {
-    return std::make_unique<T>();
-}
-
-// non-object concrete classes/structs (in C++ sense)
-template <typename T, typename... Args>
-std::enable_if_t<!std::is_base_of_v<object, T> /*&& !std::is_void_v<T>*/, T>
-call_or_construct(Args&&... args) {
-    return T{std::forward<Args>(args)...};
-}
-
-template <typename T>
-std::enable_if_t<!std::is_base_of_v<object, T> /*&& !std::is_void_v<T>*/, T>
-call_or_construct() {
-    return T();
-}
-
-// non-type template param version needed for e.g. construct_or_call<printf>("hi")
-template<auto T, typename... Args>
-auto
-call_or_construct(Args&&... args) {
-    return T(std::forward<Args>(args)...);
-}
-
-// template classes (forwarding to call_or_construct again seems to handle both object derived and plain classes)
-template<template<class ...> class T, class... TArgs>
-auto
-call_or_construct(TArgs&&... args) {
-    using TT = decltype(T(std::forward<TArgs>(args)...));
-    return call_or_construct<TT>(T(std::forward<TArgs>(args)...));
-}
-
 
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
@@ -418,6 +345,23 @@ void safe_for_loop(Container&& container, Func&& func) {
             static_assert(OwningContainer<std::remove_cvref_t<Container>> || IsIotaView<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't safely emit a for-loop");
         }
     }
+}
+
+// scope resolutions whether . or :: or values that fail a lookup/validation must pass an is_simple<foo.bar.baz> check
+// (only non-simple external C++ must be predeclared with a cpp(printf, std.thread) call)
+
+template<auto T>
+constexpr bool is_simple() {
+    return std::is_fundamental_v<decltype(T)> ||
+           std::is_enum_v<decltype(T)> ||
+           std::is_arithmetic_v<decltype(T)>;
+}
+
+template<typename T>
+constexpr bool is_simple() {
+    return std::is_fundamental_v<T> ||
+           std::is_enum_v<T> ||
+           std::is_arithmetic_v<T>;
 }
 
 } // end namespace ceto

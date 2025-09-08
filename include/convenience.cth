@@ -110,6 +110,8 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 )
 
 defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
+    cpp (std.views)
+
     if (Foos.size() == 0:
         throw (std.runtime_error("empty isinstance list:" + x.parent().repr()))
     )

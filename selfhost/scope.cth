@@ -369,6 +369,7 @@ class (Scope:
         s.in_decltype = self.in_decltype
         s._is_unsafe = self._is_unsafe
         s.external_cpp = self.external_cpp
+        s.namespace_definitions = self.namespace_definitions
         s.indent = self.indent + 1
         return s
     ) : Scope

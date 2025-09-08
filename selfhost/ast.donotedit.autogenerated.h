@@ -145,23 +145,23 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                     return false;
                 }
     throw "loop end";
-}(*std::begin(ceto::util::range((*ceto::mad(this -> args)).size()))))> ceto__private__return_var5;
-bool ceto__private__did_return6 = false;
+}(*std::begin(ceto::util::range((*ceto::mad(this -> args)).size()))))> ceto__private__return_var102;
+bool ceto__private__did_return103 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
                 if (!(*ceto::mad((*ceto::mad(this -> args)).at(i))).equals((*ceto::mad((*ceto::mad(other)).args)).at(i))) {
-ceto__private__return_var5.emplace(false);
-ceto__private__did_return6 = true;
+ceto__private__return_var102.emplace(false);
+ceto__private__did_return103 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return6) {
-    return std::move(*ceto__private__return_var5);
+});if (ceto__private__did_return103) {
+    return std::move(*ceto__private__return_var102);
 }
             return true;
         }
 
-        template <typename ceto__private__T17>
-auto replace(const ceto__private__T17& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T1104>
+auto replace(const ceto__private__T1104& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             const auto self = ceto::shared_from(this);
             ceto::safe_for_loop<!std::is_reference_v<decltype((ceto::util::range((*ceto::mad(this -> args)).size())))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](const auto i) -> ceto::LoopControl {
                 (*ceto::mad(this -> args)).at(i) = (*ceto::mad((*ceto::mad(this -> args)).at(i))).replace(replacer);
@@ -176,8 +176,8 @@ auto replace(const ceto__private__T17& replacer) -> ceto::propagate_const<std::s
             return self;
         }
 
-        template <typename ceto__private__T18>
-auto replace(const ceto__private__T18& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
+        template <typename ceto__private__T1105>
+auto replace(const ceto__private__T1105& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),ceto::propagate_const<std::shared_ptr<const Node>>> {
             return (*ceto::mad(this -> clone())).replace(replacer);
         }
 

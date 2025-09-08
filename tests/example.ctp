@@ -43,6 +43,8 @@ def (string_join, vec: [std.string], sep = ", "s:
         return ""
     )
 
+    cpp(std.accumulate)
+
     unsafe (:
         return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
             lambda[&sep] (a, b, a + sep + b))
@@ -64,6 +66,8 @@ def (main, argc: int, argv: char:pointer:pointer:
     f.method(args)    # autoderef
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of 'calls_method'
+
+    cpp(std.async, std.launch.async)
 
     fut: mut = std.async(std.launch.async, lambda(f.method(f)))
     fut.get().method(f)

@@ -1571,9 +1571,8 @@ def scope_resolution_list(node):
 
 def validate_scope_resolution(node, cx):
     if cx.is_unsafe:
-        # TODO don't allow even in unsafe contexts
+        # TODO don't allow even in unsafe contexts (needs selfhost fixes)
         return
-        pass
 
     assert isinstance(node, ScopeResolution) or isinstance(node, AttributeAccess)
 
@@ -1592,8 +1591,13 @@ def validate_scope_resolution(node, cx):
     if not isinstance(leading, Identifier):
         raise CodeGenError("unexpected scope resolved construct", node)
 
-    if leading.scope.lookup_namespace(leading) or leading.scope.lookup_namespace(node):
+    if leading.scope.lookup_namespace(node):
         return
+
+    initial_segments = [resolutions[:i] for i in range(1, len(resolutions))]
+    for i in initial_segments:
+        if leading.scope.lookup_namespace(list_to_attribute_access_node(i)):
+            return
 
     resolution_names = tuple(t.name for t in resolutions)
 
@@ -1603,21 +1607,52 @@ def validate_scope_resolution(node, cx):
             ("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"),
             ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
             ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
-            ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"),
+            ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
+            ("std", "size"), ("std", "ssize"),
+            ("std", "logic_error"),
+            ("std", "invalid_argument"),
+            ("std", "domain_error"),
+            ("std", "length_error"),
+            ("std", "out_of_range"),
+            ("std", "future_error"),
+            ("std", "runtime_error"),
+            ("std", "range_error"),
+            ("std", "overflow_error"),
+            ("std", "underflow_error"),
+            ("std", "regex_error"),
+            ("std", "system_error"),
+            ("std", "ios_base", "failure"),
+            ("std", "filesystem", "filesystem_error"),
+            ("std", "tx_exception"),
+            ("std", "nonexistent_local_time"),
+            ("std", "ambiguous_local_time"),
+            ("std", "format_error"),
+            ("std", "bad_typeid"),
+            ("std", "bad_cast"),
+            ("std", "bad_any_cast"),
+            ("std", "bad_optional_access"),
+            ("std", "bad_expected_access"),
+            ("std", "bad_weak_ptr"),
+            ("std", "bad_function_call"),
+            ("std", "bad_alloc"),
+            ("std", "bad_array_new_length"),
+            ("std", "bad_exception"),
+            ("std", "bad_variant_access"),
+            ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why cpp call in macro dll impl not registering)
             ("std", "remove_cvref_t")):
             return
-        else:
-            pass
-            #raise CodeGenError("unknown scope resolution", node)
 
     external_cpp = tuple(tuple(n.name for n in scope_resolution_list(arg)) for arg in cx.external_cpp)
     if resolution_names in external_cpp:
         return
 
-    print("**************************************\n"*10)
-    print("Unknown scope resolution. To call external C++ add a cpp call", node)
-    #CodeGenError(f"Unknown scope resolution. To call external C++ add a call to cpp({'.'.join(resolution_names)})", node)
-    breakpoint()
+    for i in initial_segments:
+        if tuple(j.name for j in i) in external_cpp:
+            return
+
+    #print("**************************************\n"*10)
+    #print("Unknown scope resolution. To call external C++ add a cpp call", node)
+    #breakpoint()
     raise CodeGenError("Unknown scope resolution. To call external C++ add a cpp call", node)
 
 
@@ -1636,7 +1671,6 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
             # TODO ^ needs test
             return node.lhs.name
 
-        # TODO there's a bug/misfeature where class names are registered as VariableDefs (there's a similar bug with function def names that 'does the right thing for the wrong reasons' w.r.t e.g. lambda capture - will eventually need fixing too)
         return node.lhs.name + "::" + codegen_node(node.rhs, cx)
 
     printed_scope_resolution = False
@@ -1658,7 +1692,7 @@ def codegen_attribute_access(node: AttributeAccess, cx: Scope):
 
         if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
 
-            # I think we can get away without overparenthesizing chained scope resolutions (in C++ :: binds tightest so is not actually left associative - https://learn.microsoft.com/en-us/cpp/cpp/cpp-built-in-operators-precedence-and-associativity?view=msvc-170 is a better reference than https://en.cppreference.com/w/cpp/language/operator_precedence here)
+            # I think we can get away without overparenthesizing chained scope resolutions
             scope_resolution_code = leading.name
             while scope_resolution_list:
                 if isinstance(scope_resolution_list[0], Identifier):

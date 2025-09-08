@@ -576,7 +576,7 @@ def list_to_typed_node(lst):
 
 
 def list_to_attribute_access_node(lst):
-    # TODO refactor copied code from above (even better: flatten bin-op args post-parse!)
+    # TODO refactor copied code from above
     op = None
     first = None
     if not lst:
@@ -949,11 +949,11 @@ class ScopeVisitor:
                 elif call.func.name == "namespace":
                     if isinstance(call.args[0], (Identifier, ScopeResolution, AttributeAccess)):
                         identifier = call.args[0]
-                        while isinstance(identifier, (ScopeResolution, AttributeAccess)):
-                            identifier = identifier.lhs
-                        if isinstance(identifier, Identifier):
-                            nd = NamespaceDefinition(call, identifier)
-                            call.scope.add_namespace_definition(nd)
+                        #while isinstance(identifier, (ScopeResolution, AttributeAccess)):
+                        #    identifier = identifier.lhs
+                        #if isinstance(identifier, Identifier):
+                        nd = NamespaceDefinition(call, call.args[0])
+                        call.scope.add_namespace_definition(nd)
                 elif call.func.name == "def":
                     def_name = call.args[0]
                     while isinstance(def_name, (Template, Call)):
@@ -1315,6 +1315,7 @@ def prepare_macro_ready_callback(module):
         # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
         # another alternative on msvc would be to drop the extern "C" and use GetProcAddress(handle, MAKEINTRESOURCEA(1)) # might even get away without making a .def file to specify ordinal 1 since only 1 func in dll: https://stackoverflow.com/questions/57968865/exporting-a-c-function-from-a-dll-without-extern-c#comment102348942_57968998
         impl_str = """
+cpp(std.variant)
 if (_MSC_VER:
     def (force_instantiate_template_msvc_hack:
         vrnt:std.variant<Node, ceto.macros.Skip> = {}
@@ -1323,7 +1324,7 @@ if (_MSC_VER:
 ): preprocessor
 """ + impl_str
 
-        msvc_hack, macro_impl = parse(impl_str).args
+        extern_cpp_decl, msvc_hack, macro_impl = parse(impl_str).args
         assert isinstance(macro_impl, TypeOp)
         impl_def = macro_impl.args[0]
         assert isinstance(impl_def, Call)
@@ -1339,7 +1340,7 @@ if (_MSC_VER:
 
         impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
-        macro_impl_module.args = [msvc_hack] + macro_impl_module_args
+        macro_impl_module.args = [extern_cpp_decl, msvc_hack] + macro_impl_module_args
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")

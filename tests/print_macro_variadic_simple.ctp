@@ -1,5 +1,7 @@
 defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 
+    cpp (std.views.take)
+
     decorate_error: mut = False
 
     stream = if (stream_arg:
@@ -27,7 +29,7 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
         result = quote(unquote(result) << "🙀")
     )
 
-    for (arg in args | std.views.take(std.ssize(args) - 1):
+    unsafe_for (arg in args | std.views.take(std.ssize(args) - 1):
         result = quote(unquote(result) << unquote(arg))
     )
 
