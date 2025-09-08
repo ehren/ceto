@@ -123,8 +123,8 @@ struct MacroScope : public ceto::object {
         return false;
     }
 
-    template <typename ceto__private__T1187, typename ceto__private__T2188>
-auto macro_matches_args(const ceto__private__T1187& args, const ceto__private__T2188& pattern_args,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params, const decltype(false) is_reversed = false) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
+    template <typename ceto__private__T126, typename ceto__private__T227>
+auto macro_matches_args(const ceto__private__T126& args, const ceto__private__T227& pattern_args,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params, const decltype(false) is_reversed = false) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
         auto pattern_iterator { (*ceto::mad(pattern_args)).begin() } ;
         auto arg_iterator { (*ceto::mad(args)).begin() } ;
         auto submatches { std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{} } ;
@@ -239,16 +239,16 @@ auto macro_matches_args(const ceto__private__T1187& args, const ceto__private__T
 });            
     
                 static_assert(requires { std::begin(idents) + 2; }, "not a contiguous container");
-                size_t ceto__private__size192 = std::size(idents);
-                for (size_t ceto__private__idx191 = 0; ; ceto__private__idx191++) {
-                    if (std::size(idents) != ceto__private__size192) {
+                size_t ceto__private__size31 = std::size(idents);
+                for (size_t ceto__private__idx30 = 0; ; ceto__private__idx30++) {
+                    if (std::size(idents) != ceto__private__size31) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx191 >= ceto__private__size192) {
+                    if (ceto__private__idx30 >= ceto__private__size31) {
                         break;
                     }
-                    const auto i = idents[ceto__private__idx191];
+                    const auto i = idents[ceto__private__idx30];
                                     const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(i)).name())).value());
                             if (search != (*ceto::mad(params)).end()) {
                                 const auto param_name = (search -> first);
@@ -266,20 +266,20 @@ auto macro_matches_args(const ceto__private__T1187& args, const ceto__private__T
                                                 }
                                             }
                 throw "loop end";
-            }(*std::begin((*ceto::mad(binop_pattern)).args)))> ceto__private__return_var189;
-            bool ceto__private__did_return190 = false;
+            }(*std::begin((*ceto::mad(binop_pattern)).args)))> ceto__private__return_var28;
+            bool ceto__private__did_return29 = false;
             ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(binop_pattern)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(binop_pattern)).args)>>>((*ceto::mad(binop_pattern)).args, [&](const auto a) -> ceto::LoopControl {
                                             if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
                                                 const auto m = macro_matches(node, a, params);
                                                 if (m) {
-            ceto__private__return_var189.emplace(m);
-            ceto__private__did_return190 = true;
+            ceto__private__return_var28.emplace(m);
+            ceto__private__did_return29 = true;
             return ceto::LoopControl::Break;
                                                 }
                                             }
                 return ceto::LoopControl::Continue;
-            });if (ceto__private__did_return190) {
-                return std::move(*ceto__private__return_var189);
+            });if (ceto__private__did_return29) {
+                return std::move(*ceto__private__return_var28);
             }
                                     }
                                 }
@@ -454,16 +454,16 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             
     
                 static_assert(requires { std::begin(match_args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size194 = std::size(match_args);
-                for (size_t ceto__private__idx193 = 0; ; ceto__private__idx193++) {
-                    if (std::size(match_args) != ceto__private__size194) {
+                size_t ceto__private__size33 = std::size(match_args);
+                for (size_t ceto__private__idx32 = 0; ; ceto__private__idx32++) {
+                    if (std::size(match_args) != ceto__private__size33) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx193 >= ceto__private__size194) {
+                    if (ceto__private__idx32 >= ceto__private__size33) {
                         break;
                     }
-                    const auto arg = match_args[ceto__private__idx193];
+                    const auto arg = match_args[ceto__private__idx32];
                                     const auto name = [&]() {if ((std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(arg)) != nullptr)) {
                                 return (*ceto::mad_smartptr((*ceto::mad(arg)).name())).value();
                             } else if (!(std::dynamic_pointer_cast<const TypeOp>(ceto::get_underlying(arg)) != nullptr)) {

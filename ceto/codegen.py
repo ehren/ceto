@@ -318,8 +318,8 @@ def codegen_def(defnode: Call, cx):
         inline = ""
 
     if name == "main":
-        if return_type_node or name_node.declared_type:
-            raise CodeGenError("main implicitly returns int. no explicit return type or directives allowed.", defnode)
+        if return_type_node and return_type_node.name != "int" or name_node.declared_type:
+            raise CodeGenError("main implicitly returns int. no other explicit return types or directives allowed.", defnode)
         template = ""
         inline = ""
         if not isinstance(defnode.parent, Module):
@@ -1559,35 +1559,66 @@ def is_last_use_of_identifier(node: Identifier):
     return is_last_use
 
 
-def validate_scope_resolution(node, cx):
-    if cx.is_unsafe:
-        # TODO don't allow even in unsafe contexts
-        #return
-        pass
-
+def scope_resolution_list(node):
     leading = node
     scope_resolution_list = []
     while isinstance(leading, (AttributeAccess, ScopeResolution)):
         scope_resolution_list.insert(0, leading.rhs)
         leading = leading.lhs
     scope_resolution_list.insert(0, leading)
+    return scope_resolution_list
+
+
+def validate_scope_resolution(node, cx):
+    if cx.is_unsafe:
+        # TODO don't allow even in unsafe contexts
+        return
+        pass
+
+    assert isinstance(node, ScopeResolution) or isinstance(node, AttributeAccess)
+
+    if node.parent.func and node.parent.func.name == "cpp":
+        return
+
+    resolutions = scope_resolution_list(node)
+    leading = resolutions[0]
 
     if isinstance(leading, Call) and leading.func.name == "decltype":
         return
 
     if isinstance(leading, Template):
-        # deal with this later
         return
 
     if not isinstance(leading, Identifier):
         raise CodeGenError("unexpected scope resolved construct", node)
 
-    if leading.scope.lookup_namespace(leading):
+    if leading.scope.lookup_namespace(leading) or leading.scope.lookup_namespace(node):
         return
 
-    #raise CodeGenError("unknown scope resolution", node)
+    resolution_names = tuple(t.name for t in resolutions)
+
+    if leading.name == "std":
+        # these are fine (additional constraints on e.g. vector are applied elsewhere)
+        if resolution_names in (
+            ("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"),
+            ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
+            ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
+            ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"),
+            ("std", "remove_cvref_t")):
+            return
+        else:
+            pass
+            #raise CodeGenError("unknown scope resolution", node)
+
+    external_cpp = tuple(tuple(n.name for n in scope_resolution_list(arg)) for arg in cx.external_cpp)
+    if resolution_names in external_cpp:
+        return
+
     print("**************************************\n"*10)
-    print("unknown scope resolution", node, scope_resolution_list, "!!!!!!!!!\n")
+    print("Unknown scope resolution. To call external C++ add a cpp call", node)
+    #CodeGenError(f"Unknown scope resolution. To call external C++ add a call to cpp({'.'.join(resolution_names)})", node)
+    breakpoint()
+    raise CodeGenError("Unknown scope resolution. To call external C++ add a cpp call", node)
 
 
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
@@ -1874,6 +1905,7 @@ def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
                     [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
 
                 # but it's now usable as a default argument:
+                # (maybe with a little bit more IFNDR unsafety due to decltype in params list but it's fine)
                 return "const decltype(" + vector_part + ")& ", arg.lhs.name + " = " + vector_part
         # elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
         #     pass
@@ -2537,12 +2569,24 @@ def codegen_call(node: Call, cx: Scope):
                 node.scope.is_unsafe = old_unsafe
                 return "/* unsafe: */ " + code
             else:
-                static_assert(False, "unexpected number of unsafe args")
+                raise CodeGenError("unexpected number of unsafe args", node)
 
         elif func_name == "ceto_private_module_boundary" and len(node.args) == 0:
             cx.is_unsafe = False
             node.scope.is_unsafe = False
+            node.scope.external_cpp = []
+            cx.external_cpp = []
             return "\n"
+        elif func_name == "cpp":
+            if len(node.args) == 0:
+                raise CodeGenError("cpp call takes one or more args", node)
+            if not isinstance(node.parent, Block):
+                raise CodeGenError("cpp call must be at block scope", node)
+            for arg in node.args:
+                cx.add_external_cpp(arg)
+                node.scope.add_external_cpp(arg)
+            comment = " // external C++: " + ", ".join(str(a) for a in node.args)
+            return comment + "\n"
         elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
             # calling plain "decltype" in ceto will always strip outer double parenthesese 
             # (they are often accidentally added by codegen's overeager parenthesization)
@@ -2602,12 +2646,12 @@ def codegen_call(node: Call, cx: Scope):
             if mangle_free_func and not isinstance(node.scope.find_def(node.func), VariableDefinition):
                 func_str = mangle_prefix + func_str
 
-            # TODO we do want to ban a number of decltype uses - but not yet
-            # TODO we should verify that "defined" inside if:preprocessor (or ban both in safe mode)
-            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include"]:
+            # TODO we do want to ban a number of decltype uses at least outside of unsafe (e.g. sneaking in ref types)
+            # TODO we should verify that "defined" inside if:preprocessor
+            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "cpp", "CETO_UNSAFE_ARRAY_ACCESS"]:
                 if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
-                    #raise CodeGenError("call to unknown function - use unsafe to call external C++", node)
-                    pass
+                    if func_str not in (c.name for c in cx.external_cpp):
+                        raise CodeGenError(f"call to unknown function - to call external C++ add a call to cpp({func_str})", node)
 
             simple_call_str = func_str + args_str
 
@@ -3212,12 +3256,6 @@ def codegen_node(node: Node, cx: Scope):
                 if isinstance(node, AttributeAccess):
                     return codegen_attribute_access(node, cx)
 
-            elif is_comment(node):
-                # probably needs to go near method handling logic now that precedence issue fixed (TODO re-enable comment stashing)
-                if not (len(node.rhs.args) == 1 or isinstance(node.rhs.args[0], StringLiteral)):
-                    raise CodeGenError("unexpected ceto::comment ", node)
-                return "//" + node.rhs.args[0].func.replace("\n", "\\n") + "\n"
-
             opstr = node.op
             if opstr == "and":  # don't use the weird C operators tho tempting
                 opstr = "&&"
@@ -3226,10 +3264,13 @@ def codegen_node(node: Node, cx: Scope):
 
             binop_str = " ".join([codegen_node(node.lhs, cx), opstr, codegen_node(node.rhs, cx)])
 
-            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess, TypeOp)) and node.op != node.parent.op: 
-                # TODO there should be a higher/lower precedence check here
-                # guard against precedence mismatch, extra parenthesese not strictly preserved in the ast)
-                binop_str = "(" + binop_str + ")"
+            if isinstance(node.parent, (BinOp, UnOp)) and not isinstance(node.parent, (ScopeResolution, ArrowOp, AttributeAccess)) and node.op != node.parent.op: 
+                # TODO there should be a more thorough higher/lower precedence check here
+                if isinstance(node.parent, TypeOp) and isinstance(node, (ScopeResolution, ArrowOp, AttributeAccess)):
+                    pass
+                else:
+                    # guard against precedence mismatch, extra parenthesese not strictly preserved in the ast)
+                    binop_str = "(" + binop_str + ")"
 
             return binop_str
 
@@ -3279,6 +3320,9 @@ def codegen_node(node: Node, cx: Scope):
         if cx.lookup_class(node.func):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)
             raise CodeGenError("Use round parentheses for ceto-defined class/struct constructor call (curly braces are automatic)", node)
+        if isinstance(node.func, Identifier) and node.func.name not in (c.name for c in cx.external_cpp):
+            # validating scope resolution elsewhere handles the std.string_view { "dangling"s } cases
+            raise CodeGenError(f"braced call to unknown external C++ struct - to call external C++ add a call to cpp({func_str})", node)
         return codegen_node(node.func, cx) + "{" + ", ".join(codegen_node(a, cx) for a in node.args) + "}"
     elif isinstance(node, UnOp):
         opername = node.op
@@ -3346,6 +3390,14 @@ def codegen_node(node: Node, cx: Scope):
             ptr_begin, ptr_end = ptr_name
             return ptr_begin + "const " + node.func.name + template_args + ptr_end
         else:
+            if isinstance(node.func, Identifier) and not node.func.scope.lookup_function(node.func) and not \
+                    node.func.scope.lookup_class(node.func) and node.func.name not in (c.name for c in cx.external_cpp):
+                if not cx.is_unsafe:  # TODO remove this when below todo fixed
+                    if node.func.name == "static_cast" and len(node.args) == 1 and node.args[0].name == "void":
+                        pass
+                    else:
+                        raise CodeGenError(f"template (aka template head) with unknown name - to call external C++ add a call to cpp({node.func.name})", node)
+                        # TODO is_template<T>::value in include/append_to_pushback.cth fails - we're likely not registering a ClassDefinition for explicit template structs
             return codegen_node(node.func, cx) + template_args
 
-    assert False, "unhandled node: " + str(node)
+    raise CodeGenError("unhandled node: ", node)

@@ -47,7 +47,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
     decltype(false) is_concrete = false;
 
         inline auto repr() const -> auto {
-            return this -> class_name() + "(" + (*ceto::mad(this -> name_node)).repr() + ", " + (*ceto::mad(this -> class_def_node)).repr() + std::to_string(this -> is_unique) + ", " + std::to_string(this -> is_struct) + ", " + std::to_string(this -> is_forward_declaration) + ")";
+            return (this -> class_name() + "(" + (*ceto::mad(this -> name_node)).repr() + ", " + (*ceto::mad(this -> class_def_node)).repr() + std::to_string(this -> is_unique) + ", " + std::to_string(this -> is_struct) + ", " + std::to_string(this -> is_forward_declaration) + ")");
         }
 
          virtual inline auto class_name() const -> std::string {
@@ -80,7 +80,7 @@ struct FunctionDefinition : public ceto::shared_object, public std::enable_share
         }
 
         inline auto repr() const -> auto {
-            return this -> class_name() + "(" + (*ceto::mad(this -> def_node)).repr() + ", " + (*ceto::mad(this -> function_name)).repr() + ")";
+            return (this -> class_name() + "(" + (*ceto::mad(this -> def_node)).repr() + ", " + (*ceto::mad(this -> function_name)).repr() + ")");
         }
 
          virtual ~FunctionDefinition() = default;
@@ -102,7 +102,7 @@ struct NamespaceDefinition : public ceto::shared_object, public std::enable_shar
         }
 
         inline auto repr() const -> auto {
-            return this -> class_name() + "(" + (*ceto::mad(this -> namespace_node)).repr() + ", " + (*ceto::mad(this -> namespace_name)).repr() + ")";
+            return (this -> class_name() + "(" + (*ceto::mad(this -> namespace_node)).repr() + ", " + (*ceto::mad(this -> namespace_name)).repr() + ")");
         }
 
          virtual ~NamespaceDefinition() = default;
@@ -124,7 +124,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
         }
 
         inline auto repr() const -> auto {
-            return this -> class_name() + "(" + (*ceto::mad(this -> defined_node)).repr() + ", " + (*ceto::mad(this -> defining_node)).repr() + ")";
+            return (this -> class_name() + "(" + (*ceto::mad(this -> defined_node)).repr() + ", " + (*ceto::mad(this -> defining_node)).repr() + ")");
         }
 
          virtual ~VariableDefinition() = default;
@@ -164,7 +164,7 @@ using VariableDefinition::VariableDefinition;
             const auto name = (*ceto::mad((*ceto::mad(e)).func)).name();
             if (name) {
                 return ceto::util::contains(std::vector {{std::string {"def"}, std::string {"lambda"}, std::string {"class"}, std::string {"struct"}, std::string {"defmacro"}}}, (*ceto::mad_smartptr(name)).value());
-            } else if ((std::dynamic_pointer_cast<const ArrayAccess>(ceto::get_underlying((*ceto::mad(e)).func)) != nullptr) && ((*ceto::mad((*ceto::mad((*ceto::mad(e)).func)).func)).name() == "lambda")) {
+            } else if (((std::dynamic_pointer_cast<const ArrayAccess>(ceto::get_underlying((*ceto::mad(e)).func)) != nullptr) && ((*ceto::mad((*ceto::mad((*ceto::mad(e)).func)).func)).name() == "lambda"))) {
                 return true;
             }
         }
@@ -174,7 +174,7 @@ using VariableDefinition::VariableDefinition;
     inline auto comes_before(const ceto::propagate_const<std::shared_ptr<const Node>>&  root, const ceto::propagate_const<std::shared_ptr<const Node>>&  before, const ceto::propagate_const<std::shared_ptr<const Node>>&  after) -> std::optional<bool> {
         if (root == before) {
             return true;
-        } else if (root == after) {
+        } else if ((root == after)) {
             return false;
         }
         std::optional<decltype([&](const auto arg) {
@@ -183,18 +183,18 @@ using VariableDefinition::VariableDefinition;
                 return cb;
             }
     throw "loop end";
-}(*std::begin((*ceto::mad(root)).args)))> ceto__private__return_var172;
-bool ceto__private__did_return173 = false;
+}(*std::begin((*ceto::mad(root)).args)))> ceto__private__return_var9;
+bool ceto__private__did_return10 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(root)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(root)).args)>>>((*ceto::mad(root)).args, [&](const auto arg) -> ceto::LoopControl {
             const auto cb = comes_before(arg, before, after);
             if ((*ceto::mad_smartptr(cb)).has_value()) {
-ceto__private__return_var172.emplace(cb);
-ceto__private__did_return173 = true;
+ceto__private__return_var9.emplace(cb);
+ceto__private__did_return10 = true;
 return ceto::LoopControl::Break;
             }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return173) {
-    return std::move(*ceto__private__return_var172);
+});if (ceto__private__did_return10) {
+    return std::move(*ceto__private__return_var9);
 }
         if ((*ceto::mad(root)).func) {
             const auto cb = comes_before((*ceto::mad(root)).func, before, after);
@@ -218,6 +218,8 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
     std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>> namespace_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}), std::remove_cvref_t<decltype(namespace_definitions)>>);
 
     std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> unsafe_nodes = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(unsafe_nodes)>>);
+
+    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> external_cpp = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(external_cpp)>>);
 
     decltype(0) indent = 0;
 
@@ -243,47 +245,47 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                     const auto name = (*ceto::mad((*ceto::mad(parent)).func)).name();
                     if ((name == "class") || (name == "struct")) {
                         const auto defn = ceto::make_shared_propagate_const<const FieldDefinition>(defined_node, defining_node);
-                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
-                    } else if ((name == "def") || (name == "lambda") || (name == "defmacro")) {
+                        ceto::append_or_push_back(this -> variable_definitions, defn);
+                    } else if (((name == "def") || (name == "lambda") || (name == "defmacro"))) {
                         const auto defn = ceto::make_shared_propagate_const<const ParameterDefinition>(defined_node, defining_node);
-                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                        ceto::append_or_push_back(this -> variable_definitions, defn);
                     } else {
                         const auto defn = ceto::make_shared_propagate_const<const LocalVariableDefinition>(defined_node, defining_node);
-                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                        ceto::append_or_push_back(this -> variable_definitions, defn);
                         std::cerr << "this is no good?\n";
                     }
                     return;
-                } else if ((std::dynamic_pointer_cast<const Block>(ceto::get_underlying(parent)) != nullptr) && creates_new_variable_scope((*ceto::mad(parent)).parent())) {
+                } else if (((std::dynamic_pointer_cast<const Block>(ceto::get_underlying(parent)) != nullptr) && creates_new_variable_scope((*ceto::mad(parent)).parent()))) {
                     const auto name = (*ceto::mad((*ceto::mad((*ceto::mad(parent)).parent())).func)).name();
                     if ((name == "class") || (name == "struct")) {
                         const auto defn = ceto::make_shared_propagate_const<const FieldDefinition>(defined_node, defining_node);
-                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                        ceto::append_or_push_back(this -> variable_definitions, defn);
                     } else {
                         const auto defn = ceto::make_shared_propagate_const<const LocalVariableDefinition>(defined_node, defining_node);
-                        (*ceto::mad(this -> variable_definitions)).push_back(defn);
+                        ceto::append_or_push_back(this -> variable_definitions, defn);
                     }
                     return;
                 }
                 parent = (*ceto::mad(parent)).parent();
             }
             const auto defn = ceto::make_shared_propagate_const<const GlobalVariableDefinition>(defined_node, defining_node);
-            (*ceto::mad(this -> variable_definitions)).push_back(defn);
+            ceto::append_or_push_back(this -> variable_definitions, defn);
         }
 
         inline auto add_interface_method(const std::string&  interface_name, const ceto::propagate_const<std::shared_ptr<const Node>>&  interface_method_def_node) -> void {
-            (*ceto::mad(ceto::bounds_check(this -> interfaces, interface_name))).push_back(interface_method_def_node);
+            ceto::append_or_push_back(ceto::bounds_check(this -> interfaces, interface_name), interface_method_def_node);
         }
 
         inline auto add_class_definition(const ceto::propagate_const<std::shared_ptr<const ClassDefinition>>&  class_definition) -> void {
-            (*ceto::mad(this -> class_definitions)).push_back(class_definition);
+            ceto::append_or_push_back(this -> class_definitions, class_definition);
         }
 
         inline auto add_function_definition(const ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>&  function_definition) -> void {
-            (*ceto::mad(this -> function_definitions)).push_back(function_definition);
+            ceto::append_or_push_back(this -> function_definitions, function_definition);
         }
 
         inline auto add_namespace_definition(const ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>&  namespace_definition) -> void {
-            (*ceto::mad(this -> namespace_definitions)).push_back(namespace_definition);
+            ceto::append_or_push_back(this -> namespace_definitions, namespace_definition);
         }
 
         inline auto lookup_class(const ceto::propagate_const<std::shared_ptr<const Node>>&  class_node) const -> ceto::propagate_const<std::shared_ptr<const ClassDefinition>> {
@@ -295,17 +297,17 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                     return c;
                 }
     throw "loop end";
-}(*std::begin((this -> class_definitions))))> ceto__private__return_var174;
-bool ceto__private__did_return175 = false;
+}(*std::begin((this -> class_definitions))))> ceto__private__return_var11;
+bool ceto__private__did_return12 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> class_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> class_definitions))>>>((this -> class_definitions), [&](const auto c) -> ceto::LoopControl {
                 if ((*ceto::mad((*ceto::mad(c)).name_node)).name() == (*ceto::mad(class_node)).name()) {
-ceto__private__return_var174.emplace(c);
-ceto__private__did_return175 = true;
+ceto__private__return_var11.emplace(c);
+ceto__private__did_return12 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return175) {
-    return std::move(*ceto__private__return_var174);
+});if (ceto__private__did_return12) {
+    return std::move(*ceto__private__return_var11);
 }
             if ((*ceto::mad(this -> interfaces)).contains((*ceto::mad_smartptr((*ceto::mad(class_node)).name())).value())) {
                 return ceto::make_shared_propagate_const<const InterfaceDefinition>();
@@ -325,17 +327,17 @@ return ceto::LoopControl::Break;
                     return f;
                 }
     throw "loop end";
-}(*std::begin((this -> function_definitions))))> ceto__private__return_var176;
-bool ceto__private__did_return177 = false;
+}(*std::begin((this -> function_definitions))))> ceto__private__return_var13;
+bool ceto__private__did_return14 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> function_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> function_definitions))>>>((this -> function_definitions), [&](const auto f) -> ceto::LoopControl {
                 if ((*ceto::mad((*ceto::mad(f)).function_name)).name() == (*ceto::mad(function_name_node)).name()) {
-ceto__private__return_var176.emplace(f);
-ceto__private__did_return177 = true;
+ceto__private__return_var13.emplace(f);
+ceto__private__did_return14 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return177) {
-    return std::move(*ceto__private__return_var176);
+});if (ceto__private__did_return14) {
+    return std::move(*ceto__private__return_var13);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 return (*ceto::mad(s)).lookup_function(function_name_node);
@@ -344,25 +346,22 @@ return ceto::LoopControl::Break;
         }
 
         inline auto lookup_namespace(const ceto::propagate_const<std::shared_ptr<const Node>>&  namespace_name_node) const -> ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>> {
-            if (!(std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(namespace_name_node)) != nullptr)) {
-                return nullptr;
-            }
             std::optional<decltype([&](const auto n) {
-                if ((*ceto::mad((*ceto::mad(n)).namespace_name)).name() == (*ceto::mad(namespace_name_node)).name()) {
+                if ((*ceto::mad((*ceto::mad(n)).namespace_name)).equals(namespace_name_node)) {
                     return n;
                 }
     throw "loop end";
-}(*std::begin((this -> namespace_definitions))))> ceto__private__return_var178;
-bool ceto__private__did_return179 = false;
+}(*std::begin((this -> namespace_definitions))))> ceto__private__return_var15;
+bool ceto__private__did_return16 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> namespace_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> namespace_definitions))>>>((this -> namespace_definitions), [&](const auto n) -> ceto::LoopControl {
-                if ((*ceto::mad((*ceto::mad(n)).namespace_name)).name() == (*ceto::mad(namespace_name_node)).name()) {
-ceto__private__return_var178.emplace(n);
-ceto__private__did_return179 = true;
+                if ((*ceto::mad((*ceto::mad(n)).namespace_name)).equals(namespace_name_node)) {
+ceto__private__return_var15.emplace(n);
+ceto__private__did_return16 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return179) {
-    return std::move(*ceto__private__return_var178);
+});if (ceto__private__did_return16) {
+    return std::move(*ceto__private__return_var15);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 return (*ceto::mad(s)).lookup_namespace(namespace_name_node);
@@ -376,24 +375,50 @@ return ceto::LoopControl::Break;
                     return true;
                 }
     throw "loop end";
-}(*std::begin((this -> unsafe_nodes))))> ceto__private__return_var180;
-bool ceto__private__did_return181 = false;
+}(*std::begin((this -> unsafe_nodes))))> ceto__private__return_var17;
+bool ceto__private__did_return18 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> unsafe_nodes)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> unsafe_nodes))>>>((this -> unsafe_nodes), [&](const auto x) -> ceto::LoopControl {
                 if ((*ceto::mad(x)).equals(node)) {
-ceto__private__return_var180.emplace(true);
-ceto__private__did_return181 = true;
+ceto__private__return_var17.emplace(true);
+ceto__private__did_return18 = true;
 return ceto::LoopControl::Break;
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return181) {
-    return std::move(*ceto__private__return_var180);
+});if (ceto__private__did_return18) {
+    return std::move(*ceto__private__return_var17);
 }
             const auto parent = (*ceto::mad(this -> _parent)).lock();
-            return parent && (*ceto::mad(parent)).is_node_unsafe(node);
+            return (parent && (*ceto::mad(parent)).is_node_unsafe(node));
         }
 
         inline auto mark_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
-            (*ceto::mad(this -> unsafe_nodes)).push_back(node);
+            ceto::append_or_push_back(this -> unsafe_nodes, node);
+        }
+
+        inline auto is_external_cpp(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) const -> auto {
+            std::optional<decltype([&](const auto x) {
+                if ((*ceto::mad(x)).equals(node)) {
+                    return true;
+                }
+    throw "loop end";
+}(*std::begin((this -> external_cpp))))> ceto__private__return_var19;
+bool ceto__private__did_return20 = false;
+ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> external_cpp)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> external_cpp))>>>((this -> external_cpp), [&](const auto x) -> ceto::LoopControl {
+                if ((*ceto::mad(x)).equals(node)) {
+ceto__private__return_var19.emplace(true);
+ceto__private__did_return20 = true;
+return ceto::LoopControl::Break;
+                }
+    return ceto::LoopControl::Continue;
+});if (ceto__private__did_return20) {
+    return std::move(*ceto__private__return_var19);
+}
+            const auto parent = (*ceto::mad(this -> _parent)).lock();
+            return (parent && (*ceto::mad(parent)).is_external_cpp(node));
+        }
+
+        inline auto add_external_cpp(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
+            ceto::append_or_push_back(this -> external_cpp, node);
         }
 
         inline auto find_defs(const ceto::propagate_const<std::shared_ptr<const Node>>&  var_node, const decltype(true) find_all = true) const -> std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> {
@@ -424,8 +449,8 @@ return ceto::LoopControl::Break;
                     }
                 }
     throw "loop end";
-}(*std::begin((this -> variable_definitions))))> ceto__private__return_var182;
-bool ceto__private__did_return183 = false;
+}(*std::begin((this -> variable_definitions))))> ceto__private__return_var21;
+bool ceto__private__did_return22 = false;
 ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> variable_definitions)))> && ceto::OwningContainer<std::remove_cvref_t<decltype((this -> variable_definitions))>>>((this -> variable_definitions), [&](const auto d) -> ceto::LoopControl {
                 if (((*ceto::mad((*ceto::mad(d)).defined_node)).name() == (*ceto::mad(var_node)).name()) && ((*ceto::mad(d)).defined_node != var_node)) {
                     auto parent_block { (*ceto::mad((*ceto::mad(d)).defined_node)).parent() } ;
@@ -437,8 +462,8 @@ ceto::safe_for_loop<!std::is_reference_v<decltype(((this -> variable_definitions
                     const auto defined_before = comes_before(parent_block, (*ceto::mad(d)).defined_node, var_node);
                     if (defined_before && (*ceto::mad_smartptr(defined_before)).value()) {
                         if (!find_all) {
-ceto__private__return_var182.emplace(std::vector {d});
-ceto__private__did_return183 = true;
+ceto__private__return_var21.emplace(std::vector {d});
+ceto__private__did_return22 = true;
 return ceto::LoopControl::Break;
                         }
                         (results).push_back(d);
@@ -451,8 +476,8 @@ return ceto::LoopControl::Break;
                     }
                 }
     return ceto::LoopControl::Continue;
-});if (ceto__private__did_return183) {
-    return std::move(*ceto__private__return_var182);
+});if (ceto__private__did_return22) {
+    return std::move(*ceto__private__return_var21);
 }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 const auto more = (*ceto::mad(s)).find_defs(var_node, find_all);
@@ -480,6 +505,7 @@ return ceto::LoopControl::Break;
             (*ceto::mad(s)).in_function_body = (this -> in_function_body);
             (*ceto::mad(s)).in_decltype = (this -> in_decltype);
             (*ceto::mad(s))._is_unsafe = (this -> _is_unsafe);
+            (*ceto::mad(s)).external_cpp = (this -> external_cpp);
             (*ceto::mad(s)).indent = ((this -> indent) + 1);
             return s;
         }
@@ -489,7 +515,7 @@ return ceto::LoopControl::Break;
         }
 
         inline auto is_unsafe() const -> bool {
-            return (this -> _is_unsafe) || (this -> parent() && (*ceto::mad(this -> parent())).is_unsafe());
+            return ((this -> _is_unsafe) || (this -> parent() && (*ceto::mad(this -> parent())).is_unsafe()));
         }
 
         inline auto set_is_unsafe(const bool  u) -> void {

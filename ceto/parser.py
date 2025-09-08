@@ -55,7 +55,6 @@ def _build_grammar():
     # dict_literal = pp.Forward()
     braced_literal = pp.Forward()
     maybe_scope_resolved_call_like = pp.Forward()
-    template = pp.Forward()
     scope_resolution = pp.Forward()
     infix_expr = pp.Forward()
 
@@ -65,7 +64,6 @@ def _build_grammar():
     non_numeric_atom = (
         dblquoted_str
         | quoted_str
-        | template
         | ident
         | list_literal
         | tuple_literal

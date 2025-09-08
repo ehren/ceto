@@ -239,6 +239,7 @@ lambda(m : mut:auto:ref:ref:
     py.class_<Scope.class, Scope:mut>(m, "Scope").def(
         py.init<>()).def_readwrite(
         "indent", &Scope.indent).def_readwrite(
+        "external_cpp", &Scope.external_cpp).def_readwrite(
         "in_function_body", &Scope.in_function_body).def_readwrite(
         "in_function_param_list", &Scope.in_function_param_list).def_readwrite(
         "in_class_body", &Scope.in_class_body).def_property(
@@ -250,6 +251,8 @@ lambda(m : mut:auto:ref:ref:
         "add_class_definition", &Scope.add_class_definition).def(
         "add_namespace_definition", &Scope.add_namespace_definition).def(
         "add_function_definition", &Scope.add_function_definition).def(
+        "add_external_cpp", &Scope.add_external_cpp).def(
+        "is_external_cpp", &Scope.is_external_cpp).def(
         "is_node_unsafe", &Scope.is_node_unsafe).def(
         "mark_node_unsafe", &Scope.mark_node_unsafe).def(
         "lookup_class", &Scope.lookup_class).def(

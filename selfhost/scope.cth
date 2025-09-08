@@ -154,7 +154,13 @@ class (Scope:
     variable_definitions: [VariableDefinition] = []
     function_definitions: [FunctionDefinition] = []
     namespace_definitions: [NamespaceDefinition] = []
+    # TODO we must associate a Scope with each Node prior to codegen (to make things like
+    # the decltype computation for untyped empty vecs easier) but we shouldn't store a Scope
+    # instance as a data member of Node. We should instead compute a dict/map of scopes keyed by nodes 
+    # (needs python side fixes; when complete the circular references/leaks from Scope (and Definitions) 
+    # storing Nodes here will disappear)
     unsafe_nodes: [Node] = []
+    external_cpp: [Node] = []
 
     indent = 0
     _parent: weak:Scope = {}
@@ -176,13 +182,13 @@ class (Scope:
                 name = parent.func.name()
                 if (name == "class" or name == "struct":
                     defn = FieldDefinition(defined_node, defining_node)
-                    self.variable_definitions.push_back(defn)
+                    self.variable_definitions.append(defn)
                 elif name == "def" or name == "lambda" or name == "defmacro":
                     defn = ParameterDefinition(defined_node, defining_node)
-                    self.variable_definitions.push_back(defn)
+                    self.variable_definitions.append(defn)
                 else:
                     defn = LocalVariableDefinition(defined_node, defining_node)
-                    self.variable_definitions.push_back(defn)
+                    self.variable_definitions.append(defn)
                     std.cerr << "this is no good?\n"
                 )
                 return
@@ -191,33 +197,33 @@ class (Scope:
 
                 if (name == "class" or name == "struct":
                     defn = FieldDefinition(defined_node, defining_node)
-                    self.variable_definitions.push_back(defn)
+                    self.variable_definitions.append(defn)
                 else:
                     defn = LocalVariableDefinition(defined_node, defining_node)
-                    self.variable_definitions.push_back(defn)
+                    self.variable_definitions.append(defn)
                 )
                 return
             )
             parent = parent.parent()
         )
         defn = GlobalVariableDefinition(defined_node, defining_node)
-        self.variable_definitions.push_back(defn)
+        self.variable_definitions.append(defn)
     )
 
     def (add_interface_method: mut, interface_name: std.string, interface_method_def_node: Node:
-        self.interfaces[interface_name].push_back(interface_method_def_node)
+        self.interfaces[interface_name].append(interface_method_def_node)
     )
 
     def (add_class_definition: mut, class_definition: ClassDefinition:
-        self.class_definitions.push_back(class_definition)
+        self.class_definitions.append(class_definition)
     )
 
     def (add_function_definition: mut, function_definition: FunctionDefinition:
-        self.function_definitions.push_back(function_definition)
+        self.function_definitions.append(function_definition)
     )
 
     def (add_namespace_definition: mut, namespace_definition: NamespaceDefinition:
-        self.namespace_definitions.push_back(namespace_definition)
+        self.namespace_definitions.append(namespace_definition)
     )
 
     def (lookup_class, class_node: Node:
@@ -256,12 +262,8 @@ class (Scope:
     ) : FunctionDefinition
 
     def (lookup_namespace, namespace_name_node: Node:
-        if (not isinstance(namespace_name_node, Identifier):
-            return None
-        )
-
         for (n in self.namespace_definitions:
-            if (n.namespace_name.name() == namespace_name_node.name():
+            if (n.namespace_name.equals(namespace_name_node):
                 return n
             )
         )
@@ -282,7 +284,21 @@ class (Scope:
     )
 
     def (mark_node_unsafe: mut, node: Node:
-        self.unsafe_nodes.push_back(node)
+        self.unsafe_nodes.append(node)
+    )
+
+    def (is_external_cpp, node: Node:
+        for (x in self.external_cpp:
+            if (x.equals(node):
+                return True
+            )
+        )
+        parent = self._parent.lock()
+        return parent and parent.is_external_cpp(node)
+    )
+
+    def (add_external_cpp: mut, node: Node:
+        self.external_cpp.append(node)
     )
 
     def (find_defs, var_node: Node, find_all=true:
@@ -352,6 +368,7 @@ class (Scope:
         s.in_function_body = self.in_function_body
         s.in_decltype = self.in_decltype
         s._is_unsafe = self._is_unsafe
+        s.external_cpp = self.external_cpp
         s.indent = self.indent + 1
         return s
     ) : Scope

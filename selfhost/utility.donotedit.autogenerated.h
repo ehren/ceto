@@ -43,13 +43,13 @@
 #endif
 
 namespace ceto::util {
-        template <typename ceto__private__T1164, typename ceto__private__T2165>
-auto join(const ceto__private__T1164& v, const ceto__private__T2165& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
+        template <typename ceto__private__T11, typename ceto__private__T22>
+auto join(const ceto__private__T11& v, const ceto__private__T22& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
         if ((*ceto::mad(v)).empty()) {
             return std::string {""};
         }
         return std::accumulate((*ceto::mad(v)).cbegin() + 1, (*ceto::mad(v)).cend(), to_string((*ceto::mad(v)).at(0)), [&to_string, &sep](const auto &a, const auto &el) {
-                return a + sep + to_string(el);
+                return (a + sep + to_string(el));
                 });
     }
 
@@ -66,13 +66,13 @@ auto join(const ceto__private__T1164& v, const ceto__private__T2165& to_string, 
         return new_string;
     }
 
-        template <typename ceto__private__T1166>
-auto contains(const ceto__private__T1166& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
-        return std::find((*ceto::mad(container)).begin(), (*ceto::mad(container)).end(), element) != (*ceto::mad(container)).end();
+        template <typename ceto__private__T13>
+auto contains(const ceto__private__T13& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
+        return (std::find((*ceto::mad(container)).begin(), (*ceto::mad(container)).end(), element) != (*ceto::mad(container)).end());
     }
 
-        template <typename ceto__private__T1167>
-auto typeid_name(const ceto__private__T1167& object) -> auto {
+        template <typename ceto__private__T14>
+auto typeid_name(const ceto__private__T14& object) -> auto {
         #if _MSC_VER
             const auto name = (*ceto::mad(typeid(object))).name();
             using namespace std::literals;
