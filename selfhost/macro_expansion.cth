@@ -59,9 +59,9 @@ class (MacroScope:
 
 # def (debug_match, m:
 #     # m: map or optional<map>
-#     unsafe_for((k, v) in std.ranges.subrange(m.begin(), m.end()):
+#     for((k, v) in std.ranges.subrange(m.begin(), m.end()):
 #         std.cout << "k" << k << "v" << v.repr() << "\n"
-#     )
+#     ): unsafe
 # )
 
 def (is_optional_pattern, pattern: Node, params: const:std.map<std.string, Node>:ref:
@@ -355,14 +355,14 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
     def (expand: mut, node: Node:
         scope: mut:auto:const:pointer = (&self.current_scope)->get()
         while (scope:
-            unsafe_for (definition: const:auto:ref in ceto.util.reversed(scope->macro_definitions):
+            for (definition: const:auto:ref in ceto.util.reversed(scope->macro_definitions):
                 skip_definition: mut = False
-                unsafe_for ((key, defns):const:auto:ref in self.skipped_definitions:
+                for ((key, defns):const:auto:ref in self.skipped_definitions:
                     if (ceto.util.contains(defns, definition):
                         skip_definition = True
                         break
                     )
-                )
+                ): unsafe
                 if (skip_definition:
                     continue
                 )
@@ -383,7 +383,7 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
                         )
                     )
                 )
-            )
+            ): unsafe
             scope = scope->parent
         )
 

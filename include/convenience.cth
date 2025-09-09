@@ -115,10 +115,13 @@ defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     if (Foos.size() == 0:
         throw (std.runtime_error("empty isinstance list:" + x.parent().repr()))
     )
+    
     or_expr: mut = quote(isinstance(unquote(x), unquote(Foos.at(0))))
-    unsafe_for (foo in Foos | std.views.drop(1):
+    
+    for (foo in Foos | std.views.drop(1):
         or_expr = quote(unquote(or_expr) or isinstance(unquote(x), unquote(foo)))
-    )
+    ): unsafe
+
     return or_expr
 )
 

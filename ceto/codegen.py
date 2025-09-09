@@ -1256,6 +1256,13 @@ def codegen_for(node, cx):
 
     instmt = node.args[0]
 
+    if node.declared_type:
+        is_unsafe_for = node.declared_type.name == "unsafe"
+        if not is_unsafe_for:
+            raise CodeGenError("unexpected type of for", node.declared_type)
+    else:
+        is_unsafe_for = False
+
     if not isinstance(instmt, BinOp) or instmt.op != "in":
         raise CodeGenError("unexpected 1st argument to for", node)
 
@@ -1270,7 +1277,9 @@ def codegen_for(node, cx):
     elif var.declared_type is not None:
         assert isinstance(var, Identifier)
         type_list = type_node_to_list_of_types(var.declared_type)
-        if any(t.name == "ref" for t in type_list):
+        if not is_unsafe_for and any(t.name == "ref" for t in type_list):
+            # we'll allow a ref type iter var with for (...): unsafe 
+            # - it's safe as long as your usage of for (...): unsafe is otherwise safe
             var.scope.mark_node_unsafe(var)
         type_str, var_str = _type_and_name_initializer_from_typed_def_param(var, cx)
     else:
@@ -1305,12 +1314,12 @@ def codegen_for(node, cx):
         emit_conditionally_indexing_for = True
 
     if type_str is None:
-        if is_over_non_aliased_vec:
+        if is_over_non_aliased_vec or is_unsafe_for:
             type_str = "const auto&"
         else:
             type_str = "const auto"
 
-    if node.func.name == "unsafe_for" or is_over_non_aliased_vec:
+    if is_unsafe_for or is_over_non_aliased_vec:
         iterable_str = codegen_node(iterable, cx)
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, iterable_str)
         forstr += block_str
@@ -1334,7 +1343,7 @@ def codegen_for(node, cx):
         is_void_return_eligible = { i: ret in eligible_void_returns for i, ret in enumerate(void_returns) }
         is_non_void_return_eligible = { i: ret in eligible_non_void_returns for i, ret in enumerate(non_void_returns) }
 
-        stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "unsafe_for", "while")))
+        stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "while")))
 
         breaks = list(find_all(block, test=lambda n: n.name == "break", stop=stop_loop_control_replacement_test))
         all_breaks = list(find_all(block, test=lambda n: n.name == "break"))

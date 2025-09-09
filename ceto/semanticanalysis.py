@@ -217,7 +217,7 @@ def safety_checks(node):
                     for defn in for_scope.find_defs(n):
                         if isinstance(defn, ParameterDefinition):
                             return True
-                        if isinstance(defn, LocalVariableDefinition) and isinstance(defn.defining_node, Call) and defn.defining_node.func.name in ["for", "unsafe_for"]:
+                        if isinstance(defn, LocalVariableDefinition) and isinstance(defn.defining_node, Call) and defn.defining_node.func.name == "for":
                             iter = defn.defining_node.args[0].rhs
                             if isinstance(iter, AttributeAccess) and iter.lhs.name == "self" and is_acceptable_use_of_self_this(iter.lhs):
                                 continue  # this one's ok
@@ -735,7 +735,7 @@ def one_liner_expander(parsed):
                     last_statement = block.args[-1]
                     if is_return(last_statement):
                         pass
-                    elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "unsafe_for", "class" "struct"]:
+                    elif isinstance(last_statement, Call) and last_statement.func.name in ["while", "for", "class" "struct"]:
                         synthetic_return = Identifier("return")  # void return
                         block.args += [synthetic_return]
                     else:
@@ -938,7 +938,7 @@ class ScopeVisitor:
                     a.scope = thenscope.enter_scope()
                 else:
                     a.scope = call.scope.enter_scope()
-            elif call.func.name in ["if", "for", "unsafe_for", "while"]:
+            elif call.func.name in ["if", "for", "while"]:
                 a.scope = call.scope.enter_scope()
             elif is_def_or_class_like(call):
                 a.scope = call_inner_scope
@@ -969,7 +969,7 @@ class ScopeVisitor:
                 assert call.func.name == "lambda", "unexpected non-lowered ast TypeOf node"
                 a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
 
-            elif isinstance(a, BinOp) and a.op == "in" and call.func.name in ["for", "unsafe_for"]:
+            elif isinstance(a, BinOp) and a.op == "in" and call.func.name in "for":
                 if isinstance(a.lhs, Identifier):
                     a.scope.add_variable_definition(defined_node=a.lhs, defining_node=call)
                 elif isinstance(a.lhs, TupleLiteral):
