@@ -29,9 +29,9 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
         result = quote(unquote(result) << "🙀")
     )
 
-    for (arg in args | std.views.take(std.ssize(args) - 1):
+    for (arg in args | std.views.take(std.ssize(args) - 1) | []:
         result = quote(unquote(result) << unquote(arg))
-    ) : unsafe
+    )
 
     # add a newline but try to avoid a double newline
     last = if (args.size():

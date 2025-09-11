@@ -687,19 +687,23 @@ def expand_includes(node: Module):
     return node
 
 
-def parse_from_cmdargs(cmdargs):
-    filename = cmdargs.filename
-    dirname = os.path.dirname(os.path.realpath(cmdargs.filename))
+def parse_from_filename(filename, add_slm = True):
+    dirname = os.path.dirname(os.path.realpath(filename))
     repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
 
     global add_standard_lib_macros
-    add_standard_lib_macros = True
+    add_standard_lib_macros = add_slm
 
     result = _parse_maybe_cached(filename, repr_path)
 
     global seen_modules
     seen_modules = set()
     return result
+
+
+def parse_from_cmdargs(cmdargs):
+    filename = cmdargs.filename
+    return parse_from_filename(filename)
 
 
 def parse(source: str):

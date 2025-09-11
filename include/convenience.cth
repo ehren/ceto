@@ -1,5 +1,3 @@
-include <set>
-
 # def (foo<T> -> def (foo:template<typename:T>
 defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
     template_header: Node = quote(template<typename:unquote(T)>)
@@ -109,6 +107,48 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
     ) ())
 )
 
+#defmacro(decltype(foo).bar, foo, bar:
+#    # codegen has enough complication w/ implicit scope resolution as is (plus decltype)
+#    # one case fewer to worry about:
+#    return quote(decltype(unquote(foo))::unquote(bar))
+#)
+
+namespace(ceto.util:
+    # TODO needs the syntax suggestion in boundscheck.cth
+    cpp'
+    template <template <class...> class T_container>
+    struct to {
+    };'
+
+    # c z: https://stackoverflow.com/a/79612294/1391250
+    # template <template <class...> class T_container, std::ranges::range T_range>
+    # auto operator|(T_range&& r, to<T_container>) {
+    #     using value_type = typename decltype(r.begin())::value_type;
+    #     return T_container<value_type>{r.begin(), r.end()};
+    # }
+
+    cpp(std.ranges.range,
+        to, T_container  # TODO won't be necessary once 'to' is a ceto struct
+    )
+
+    def (operator("|"): template <template <class...>:class:T_container, std.ranges.range:T_range>,
+         r: mut:T_range:ref:ref, 
+         t: to<T_container>:
+
+        static_cast<void>(t)  # unused (TODO _: type for param decl without variable name)
+        value_type: using = typename : decltype(r.begin())::value_type
+        return T_container<value_type>{unsafe(r.begin()), unsafe(r.end())}
+    )
+)
+
+defmacro (view | [], view:
+    if (__cplusplus >= 202302L:
+        return quote(unquote(view) | std.ranges.to<std.vector>())
+    else:
+        return quote(unquote(view) | ceto.util.to<std.vector>())
+    ): preprocessor
+)
+
 defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     cpp (std.views)
 
@@ -118,9 +158,9 @@ defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     
     or_expr: mut = quote(isinstance(unquote(x), unquote(Foos.at(0))))
     
-    for (foo in Foos | std.views.drop(1):
+    for (foo in Foos | std.views.drop(1) | []:
         or_expr = quote(unquote(or_expr) or isinstance(unquote(x), unquote(foo)))
-    ): unsafe
+    )
 
     return or_expr
 )
@@ -191,7 +231,7 @@ cpp'
 #    enable: mut:static:bool = False
 #
 #    # TODO should take source loc or at least file into account (which will also allow logging in lambda bodies)
-#    already_processed: mut:static:std.set<std.string> = {}
+#    already_processed: mut:static:std.unordered_map<std.string, bool> = {}  # use a map to avoid include<set> in all programs
 #
 #    if (not enable:
 #        if (node.equals(quote(ceto.enable_printf_debugging())):
@@ -245,10 +285,10 @@ cpp'
 #        args.pop_back()
 #        args.at(0) = type_of_name
 #        defrepr = Call(node.func, args).repr()
-#        if (already_processed.contains(defrepr):
+#        if (already_processed.at(defrepr):
 #            return None
 #        )
-#        already_processed.insert(defrepr)
+#        already_processed.at(defrepr) = True
 #        
 #        new_args: mut:[Node] = []
 #        for (arg in block.args:

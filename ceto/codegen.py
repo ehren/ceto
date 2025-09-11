@@ -239,7 +239,7 @@ def codegen_def(defnode: Call, cx):
             # the hidden self/this is the other ref param allowing bad aliasing related UB
             raise CodeGenError(f"mut:ref params in methods can't be used outside of unsafe blocks", maybe_bad_mut_ref_param_name_nodes[0])
 
-        if maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes:
+        if False and maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes:  # this stuff works but our callsite ref passing ban means it's a bit redundant
             # like the is_fundamental_v checks at the callsite (see ban_reference_in_subexpression) we can allow more if we start tagging structs that don't transitively hold smart pointers.
             # banning raw references and non-owning/unsafe external C++ (e.g. views) as members of a struct passed in combination with a mut:ref param can be done here (with the tagging) or simply at the struct/class definition site (TODO still need class/struct/def unsafe coloring not just unsafe blocks)
             assert_ref_safety = "static_assert(" + " && ".join("std::is_fundamental_v<decltype(" + a.name + ")>" for a in maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes) + ', "you cannot use the mut:ref param ' + maybe_bad_mut_ref_param_name_nodes[0].name + ' (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");'
@@ -2096,7 +2096,7 @@ def codegen_type(expr_node, type_node, cx):
         pass
     elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess, Template)):
         raise CodeGenError("unexpected typed expression", expr_node)
-    if isinstance(expr_node, Call) and not is_call_lambda(expr_node) and expr_node.func.name != "def":
+    if isinstance(expr_node, Call) and not is_call_lambda(expr_node) and expr_node.func.name != "def" and expr_node.func.name != "operator":
         raise CodeGenError("unexpected typed call", expr_node)
 
     types = type_node_to_list_of_types(type_node)
@@ -3445,6 +3445,8 @@ def codegen_node(node: Node, cx: Scope):
                     if node.func.name == "static_cast" and len(node.args) == 1 and node.args[0].name == "void":
                         pass
                     elif node.func.name == "template":
+                        pass
+                    elif cx.is_external_cpp(node.func):
                         pass
                     else:
                         raise CodeGenError(f"template (aka template head) with unknown name - to call external C++ add a call to cpp({node.func.name})", node)
