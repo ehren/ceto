@@ -36,8 +36,8 @@ struct EvalableAstReprVisitor : public BaseVisitor<EvalableAstReprVisitor> {
 
     decltype(std::string {""}) repr = std::string {""};
 
-        template <typename ceto__private__T123>
-auto generate_loc(const ceto__private__T123& node) -> void {
+        template <typename ceto__private__T1259>
+auto generate_loc(const ceto__private__T1259& node) -> void {
             if (!(this -> preserve_source_loc)) {
                 return;
             }
@@ -52,11 +52,25 @@ auto generate_loc(const ceto__private__T123& node) -> void {
                 (this -> repr) += ", ";
             }
             (this -> repr) += "[";
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(node)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(node)).args)>>>((*ceto::mad(node)).args, [&](const auto arg) -> ceto::LoopControl {
-                (*ceto::mad(arg)).accept((*this));
-                (this -> repr) += ", ";
-    return ceto::LoopControl::Continue;
-});            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            
+                auto&& ceto__private__intermediate260 = (*ceto::mad(node)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate260) + 2; }, "not a contiguous container");
+                size_t ceto__private__size262 = std::size(ceto__private__intermediate260);
+                for (size_t ceto__private__idx261 = 0; ; ceto__private__idx261++) {
+                    if (std::size(ceto__private__intermediate260) != ceto__private__size262) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx261 >= ceto__private__size262) {
+                        break;
+                    }
+                    const auto arg = ceto__private__intermediate260[ceto__private__idx261];
+                                    (*ceto::mad(arg)).accept((*this));
+                            (this -> repr) += ", ";
+
+                }
+                (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";
@@ -95,24 +109,12 @@ auto generate_loc(const ceto__private__T123& node) -> void {
         inline auto visit(const BinOp&  node) -> void override {
             (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             auto && args { (*ceto::mad(node)).args } ;
-            
-    
-                static_assert(requires { std::begin(args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size25 = std::size(args);
-                for (size_t ceto__private__idx24 = 0; ; ceto__private__idx24++) {
-                    if (std::size(args) != ceto__private__size25) {
-                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                        std::terminate();
-                    }
-                    if (ceto__private__idx24 >= ceto__private__size25) {
-                        break;
-                    }
-                    const auto arg = args[ceto__private__idx24];
-                                    (*ceto::mad(arg)).accept((*this));
-                            (this -> repr) += ", ";
-
-                }
-                (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            ceto::safe_for_loop<!std::is_reference_v<decltype(args)> && ceto::OwningContainer<std::remove_cvref_t<decltype(args)>>>(args, [&](auto &&ceto__private__lambda_param263) -> ceto::LoopControl {
+    const auto arg = ceto__private__lambda_param263;
+                (*ceto::mad(arg)).accept((*this));
+                (this -> repr) += ", ";
+    return ceto::LoopControl::Continue;
+});            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
                 return ": Node";
             } else {
                 return "";

@@ -1,4 +1,4 @@
-def (foo<T>, x: T:
+def (foo<T>:static, x: T:
     return x
 )
 

@@ -10,7 +10,7 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     Scope, ClassDefinition, creates_new_variable_scope, VariableDefinition, \
     LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
-    nested_same_binop_to_list, gensym, FieldDefinition
+    nested_same_binop_to_list, gensym, comes_before, FieldDefinition
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 
@@ -1270,6 +1270,9 @@ def codegen_for(node, cx):
     if not isinstance(var, (Identifier, TupleLiteral)):
         raise CodeGenError("Unexpected iter var", var)
 
+    if not isinstance(node.parent, Block):
+        raise CodeGenError("for must be at block scope", node)
+
     if isinstance(var, TupleLiteral):
         structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
         type_str = " "
@@ -1300,16 +1303,19 @@ def codegen_for(node, cx):
         pass
     elif isinstance(iterable, Identifier):
         vardefs = iterable.scope.find_defs(iterable)
-        if len(vardefs) == 1:
+        if len(vardefs) > 0:
             vardef = vardefs[0]
-            if isinstance(vardef, (LocalVariableDefinition, ParameterDefinition)) and isinstance(vardef.defining_node, Assign):  # TODO should work with non-assign params (find_uses needs fix)
+            if isinstance(vardef, (LocalVariableDefinition, ParameterDefinition)) and isinstance(vardef.defining_node, (Assign, Identifier)):
                 uses = list(find_uses(vardef.defining_node))
                 assert len(uses) > 0
-                if len(uses) == 1:
-                    if isinstance(vardef.defining_node, Assign) and isinstance(vardef.defining_node.rhs, ListLiteral): # and (not vardef.defining_node.lhs.declared_type or not any(t.name == "ref" for t in type_node_to_list_of_types(vardef.defining_node.lhs.declared_type):
+                # compute condition only for iterables whose first use of their def is the iterable and all other uses follow the for loop
+                if uses[0] is iterable and all(comes_before(node.parent, node, use) for use in uses[1:]):
+                    if isinstance(vardef.defining_node, Assign) and isinstance(vardef.defining_node.rhs, ListLiteral):
                         is_over_non_aliased_vec = True
                     else:
                         emit_conditionally_indexing_for = True
+    elif isinstance(iterable, (AttributeAccess, ArrowOp)):
+        emit_conditionally_indexing_for = False
     else:
         emit_conditionally_indexing_for = True
 
@@ -1327,8 +1333,7 @@ def codegen_for(node, cx):
         return forstr
     elif emit_conditionally_indexing_for:
         iterable_str = codegen_node(iterable, cx)
-        allow_range_based_for_condition = "!std::is_reference_v<decltype((" + iterable_str + "))> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
-
+        allow_range_based_for_condition = "!std::is_reference_v<decltype" + _strip_outer_double_parentheses("(" + iterable_str + ")") + "> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
         all_returns = list(find_all(block, test=is_return))
         void_returns = [ret for ret in all_returns if is_void_return(ret)]
         non_void_returns = [ret for ret in all_returns if not is_void_return(ret)]
@@ -1415,15 +1420,18 @@ def codegen_for(node, cx):
 
         assert(len(eligible_non_void_returns) == len(return_vars))
 
+        lambda_param = gensym("lambda_param")
         rewritten_block = "\n".join(loop_block_lines)
-        forstr = rf"""ceto::safe_for_loop<{allow_range_based_for_condition}>({iterable_str}, [&]({type_str} {var_str}) -> ceto::LoopControl {{
+        forstr = rf"""ceto::safe_for_loop<{allow_range_based_for_condition}>({iterable_str}, [&](auto &&{lambda_param}) -> ceto::LoopControl {{
+    {type_str} {var_str} = {lambda_param};
 {rewritten_block}
     return ceto::LoopControl::Continue;
 }});"""
 
         if return_vars:
             decltype_block_str = "\n".join(decltype_block_lines)
-            return_var_type = f"""std::optional<decltype([&]({type_str} {var_str}) {{
+            return_var_type = f"""std::optional<decltype([&](auto&& {lambda_param}) {{
+    {type_str} {var_str} = {lambda_param};
 {decltype_block_str}
     throw "loop end";
 }}(*std::begin({iterable_str})))>"""
@@ -1527,8 +1535,6 @@ def _is_unique_var(node: Identifier, cx: Scope):
 def is_last_use_of_identifier(node: Identifier):
     assert isinstance(node, Identifier)
     name = node.name
-    if name == "u" and node in node.parent.args:
-        pass
     ident_ancestor = node.parent
     prev_ancestor = node
     is_last_use = True
@@ -1617,7 +1623,7 @@ def validate_scope_resolution(node, cx):
             ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
             ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
             ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
-            ("std", "size"), ("std", "ssize"),
+            ("std", "size"), ("std", "ssize"), ("std", "optional"),
             ("std", "logic_error"),
             ("std", "invalid_argument"),
             ("std", "domain_error"),
@@ -3437,6 +3443,8 @@ def codegen_node(node: Node, cx: Scope):
                     node.func.scope.lookup_class(node.func) and node.func.name not in (c.name for c in cx.external_cpp):
                 if not cx.is_unsafe:  # TODO remove this when below todo fixed
                     if node.func.name == "static_cast" and len(node.args) == 1 and node.args[0].name == "void":
+                        pass
+                    elif node.func.name == "template":
                         pass
                     else:
                         raise CodeGenError(f"template (aka template head) with unknown name - to call external C++ add a call to cpp({node.func.name})", node)

@@ -54,41 +54,27 @@
 
     auto main() -> int {
         auto tuples { std::vector<decltype(std::make_tuple(std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>(), std::declval<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>()+1))>() } ;
-        
-            auto&& ceto__private__intermediate1 = std::ranges::iota_view(0, 10);
-
-            static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
-            size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
-            for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx2 >= ceto__private__size3) {
-                    break;
-                }
-                const auto i = ceto__private__intermediate1[ceto__private__idx2];
-                            (tuples).push_back(std::make_tuple(i, i + 1));
-
-            }
-            const auto [a, b] = std::make_tuple(ceto::bounds_check(tuples, 0), ceto::bounds_check(tuples, 1));
+        ceto::safe_for_loop<!std::is_reference_v<decltype((std::ranges::iota_view(0, 10)))> && ceto::OwningContainer<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>(std::ranges::iota_view(0, 10), [&](const auto i) -> ceto::LoopControl {
+            (tuples).push_back(std::make_tuple(i, i + 1));
+    return ceto::LoopControl::Continue;
+});        const auto [a, b] = std::make_tuple(ceto::bounds_check(tuples, 0), ceto::bounds_check(tuples, 1));
         (tuples).push_back(a);
         std::tie(ceto::bounds_check(tuples, 4), ceto::bounds_check(tuples, 6)) = std::make_tuple(std::make_tuple(0, 0), b);
-        std::tie(std::get<0>([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(ceto::bounds_check(tuples, 7))> ) && true)); return ceto::bounds_check(tuples, 7); }()), std::get<1>([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(ceto::bounds_check(tuples, 7))> ) && true)); return ceto::bounds_check(tuples, 7); }())) = foo(ceto::bounds_check(tuples, 7));
+        std::tie(std::get<0>(ceto::bounds_check(tuples, 7)), std::get<1>(ceto::bounds_check(tuples, 7))) = foo(ceto::bounds_check(tuples, 7));
         
     
             static_assert(requires { std::begin(tuples) + 2; }, "not a contiguous container");
-            size_t ceto__private__size5 = std::size(tuples);
-            for (size_t ceto__private__idx4 = 0; ; ceto__private__idx4++) {
-                if (std::size(tuples) != ceto__private__size5) {
+            size_t ceto__private__size165 = std::size(tuples);
+            for (size_t ceto__private__idx164 = 0; ; ceto__private__idx164++) {
+                if (std::size(tuples) != ceto__private__size165) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx4 >= ceto__private__size5) {
+                if (ceto__private__idx164 >= ceto__private__size165) {
                     break;
                 }
-                  const auto& [x, y] = tuples[ceto__private__idx4];
-                            ((std::cout << x) << y) << "\n";
+                  const auto& [x, y] = tuples[ceto__private__idx164];
+                            std::cout << x << y << "\n";
 
             }
         }

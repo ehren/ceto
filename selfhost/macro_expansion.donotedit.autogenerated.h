@@ -123,8 +123,8 @@ struct MacroScope : public ceto::object {
         return false;
     }
 
-    template <typename ceto__private__T126, typename ceto__private__T227>
-auto macro_matches_args(const ceto__private__T126& args, const ceto__private__T227& pattern_args,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params, const decltype(false) is_reversed = false) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
+    template <typename ceto__private__T1264, typename ceto__private__T2265>
+auto macro_matches_args(const ceto__private__T1264& args, const ceto__private__T2265& pattern_args,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params, const decltype(false) is_reversed = false) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
         auto pattern_iterator { (*ceto::mad(pattern_args)).begin() } ;
         auto arg_iterator { (*ceto::mad(args)).begin() } ;
         auto submatches { std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{} } ;
@@ -231,24 +231,38 @@ auto macro_matches_args(const ceto__private__T126& args, const ceto__private__T2
             }
         } else if (const auto binop_pattern = ceto::propagate_const<std::shared_ptr<const BinOp>>(std::dynamic_pointer_cast<const BinOp>(ceto::get_underlying(pattern)))) {
             std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> idents = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(idents)>>);
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(binop_pattern)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(binop_pattern)).args)>>>((*ceto::mad(binop_pattern)).args, [&](const auto a) -> ceto::LoopControl {
-                if ((std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(a)) != nullptr)) {
-                    (idents).push_back(a);
-                }
-    return ceto::LoopControl::Continue;
-});            
-    
-                static_assert(requires { std::begin(idents) + 2; }, "not a contiguous container");
-                size_t ceto__private__size31 = std::size(idents);
-                for (size_t ceto__private__idx30 = 0; ; ceto__private__idx30++) {
-                    if (std::size(idents) != ceto__private__size31) {
+            
+                auto&& ceto__private__intermediate266 = (*ceto::mad(binop_pattern)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate266) + 2; }, "not a contiguous container");
+                size_t ceto__private__size268 = std::size(ceto__private__intermediate266);
+                for (size_t ceto__private__idx267 = 0; ; ceto__private__idx267++) {
+                    if (std::size(ceto__private__intermediate266) != ceto__private__size268) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx30 >= ceto__private__size31) {
+                    if (ceto__private__idx267 >= ceto__private__size268) {
                         break;
                     }
-                    const auto i = idents[ceto__private__idx30];
+                    const auto a = ceto__private__intermediate266[ceto__private__idx267];
+                                    if ((std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(a)) != nullptr)) {
+                                (idents).push_back(a);
+                            }
+
+                }
+                
+    
+                static_assert(requires { std::begin(idents) + 2; }, "not a contiguous container");
+                size_t ceto__private__size273 = std::size(idents);
+                for (size_t ceto__private__idx272 = 0; ; ceto__private__idx272++) {
+                    if (std::size(idents) != ceto__private__size273) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx272 >= ceto__private__size273) {
+                        break;
+                    }
+                    const auto i = idents[ceto__private__idx272];
                                     const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(i)).name())).value());
                             if (search != (*ceto::mad(params)).end()) {
                                 const auto param_name = (search -> first);
@@ -258,30 +272,29 @@ auto macro_matches_args(const ceto__private__T126& args, const ceto__private__T2
                                 }
                                 if (const auto or_param = ceto::propagate_const<std::shared_ptr<const BitwiseOrOp>>(std::dynamic_pointer_cast<const BitwiseOrOp>(ceto::get_underlying((*ceto::mad(typed_param)).rhs())))) {
                                     if (((*ceto::mad((*ceto::mad(or_param)).lhs())).name() == "None") || ((*ceto::mad((*ceto::mad(or_param)).rhs())).name() == "None")) {
-                                        std::optional<decltype([&](const auto a) {
-                                            if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
-                                                const auto m = macro_matches(node, a, params);
-                                                if (m) {
-                                                    return m;
+                            
+                                            auto&& ceto__private__intermediate269 = (*ceto::mad(binop_pattern)).args;
+
+                                            static_assert(requires { std::begin(ceto__private__intermediate269) + 2; }, "not a contiguous container");
+                                            size_t ceto__private__size271 = std::size(ceto__private__intermediate269);
+                                            for (size_t ceto__private__idx270 = 0; ; ceto__private__idx270++) {
+                                                if (std::size(ceto__private__intermediate269) != ceto__private__size271) {
+                                                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                                                    std::terminate();
                                                 }
-                                            }
-                throw "loop end";
-            }(*std::begin((*ceto::mad(binop_pattern)).args)))> ceto__private__return_var28;
-            bool ceto__private__did_return29 = false;
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(binop_pattern)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(binop_pattern)).args)>>>((*ceto::mad(binop_pattern)).args, [&](const auto a) -> ceto::LoopControl {
-                                            if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
-                                                const auto m = macro_matches(node, a, params);
-                                                if (m) {
-            ceto__private__return_var28.emplace(m);
-            ceto__private__did_return29 = true;
-            return ceto::LoopControl::Break;
+                                                if (ceto__private__idx270 >= ceto__private__size271) {
+                                                    break;
                                                 }
+                                                const auto a = ceto__private__intermediate269[ceto__private__idx270];
+                                                                                if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
+                                                                            const auto m = macro_matches(node, a, params);
+                                                                            if (m) {
+                                                                                return m;
+                                                                            }
+                                                                        }
+
                                             }
-                return ceto::LoopControl::Continue;
-            });if (ceto__private__did_return29) {
-                return std::move(*ceto__private__return_var28);
-            }
-                                    }
+                                        }
                                 }
                             }
 
@@ -416,10 +429,24 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             if ((*ceto::mad(node)).func) {
                 (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             }
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(node)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(node)).args)>>>((*ceto::mad(node)).args, [&](const auto arg) -> ceto::LoopControl {
-                (*ceto::mad(arg)).accept((*this));
-    return ceto::LoopControl::Continue;
-});        }
+            
+                auto&& ceto__private__intermediate274 = (*ceto::mad(node)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate274) + 2; }, "not a contiguous container");
+                size_t ceto__private__size276 = std::size(ceto__private__intermediate274);
+                for (size_t ceto__private__idx275 = 0; ; ceto__private__idx275++) {
+                    if (std::size(ceto__private__intermediate274) != ceto__private__size276) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx275 >= ceto__private__size276) {
+                        break;
+                    }
+                    const auto arg = ceto__private__intermediate274[ceto__private__idx275];
+                                    (*ceto::mad(arg)).accept((*this));
+
+                }
+            }
 
         inline auto visit(const Call&  call_node) -> void override {
             const auto node = ceto::shared_from((&call_node));
@@ -428,10 +455,24 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
                 return;
             }
             (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(node)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(node)).args)>>>((*ceto::mad(node)).args, [&](const auto arg) -> ceto::LoopControl {
-                (*ceto::mad(arg)).accept((*this));
-    return ceto::LoopControl::Continue;
-});            if ((*ceto::mad((*ceto::mad(node)).func)).name() != "defmacro") {
+            
+                auto&& ceto__private__intermediate277 = (*ceto::mad(node)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate277) + 2; }, "not a contiguous container");
+                size_t ceto__private__size279 = std::size(ceto__private__intermediate277);
+                for (size_t ceto__private__idx278 = 0; ; ceto__private__idx278++) {
+                    if (std::size(ceto__private__intermediate277) != ceto__private__size279) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx278 >= ceto__private__size279) {
+                        break;
+                    }
+                    const auto arg = ceto__private__intermediate277[ceto__private__idx278];
+                                    (*ceto::mad(arg)).accept((*this));
+
+                }
+                if ((*ceto::mad((*ceto::mad(node)).func)).name() != "defmacro") {
                 return;
             }
             if (!(std::dynamic_pointer_cast<const Module>(ceto::get_underlying((*ceto::mad(node)).parent())) != nullptr)) {
@@ -454,16 +495,16 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             
     
                 static_assert(requires { std::begin(match_args) + 2; }, "not a contiguous container");
-                size_t ceto__private__size33 = std::size(match_args);
-                for (size_t ceto__private__idx32 = 0; ; ceto__private__idx32++) {
-                    if (std::size(match_args) != ceto__private__size33) {
+                size_t ceto__private__size281 = std::size(match_args);
+                for (size_t ceto__private__idx280 = 0; ; ceto__private__idx280++) {
+                    if (std::size(match_args) != ceto__private__size281) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx32 >= ceto__private__size33) {
+                    if (ceto__private__idx280 >= ceto__private__size281) {
                         break;
                     }
-                    const auto arg = match_args[ceto__private__idx32];
+                    const auto arg = match_args[ceto__private__idx280];
                                     const auto name = [&]() {if ((std::dynamic_pointer_cast<const Identifier>(ceto::get_underlying(arg)) != nullptr)) {
                                 return (*ceto::mad_smartptr((*ceto::mad(arg)).name())).value();
                             } else if (!(std::dynamic_pointer_cast<const TypeOp>(ceto::get_underlying(arg)) != nullptr)) {
@@ -489,10 +530,24 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
         inline auto visit(const Module&  node) -> void override {
             auto s = ceto::make_unique_propagate_const<MacroScope>();
             (this -> current_scope) = std::move(s);
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(node)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(node)).args)>>>((*ceto::mad(node)).args, [&](const auto arg) -> ceto::LoopControl {
-                (*ceto::mad(arg)).accept((*this));
-    return ceto::LoopControl::Continue;
-});        }
+            
+                auto&& ceto__private__intermediate282 = (*ceto::mad(node)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate282) + 2; }, "not a contiguous container");
+                size_t ceto__private__size284 = std::size(ceto__private__intermediate282);
+                for (size_t ceto__private__idx283 = 0; ; ceto__private__idx283++) {
+                    if (std::size(ceto__private__intermediate282) != ceto__private__size284) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx283 >= ceto__private__size284) {
+                        break;
+                    }
+                    const auto arg = ceto__private__intermediate282[ceto__private__idx283];
+                                    (*ceto::mad(arg)).accept((*this));
+
+                }
+            }
 
         inline auto visit(const Block&  block_node) -> void override {
             ceto::propagate_const<std::unique_ptr<MacroScope>> outer = std::move(this -> current_scope); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move(this -> current_scope)), std::remove_cvref_t<decltype(outer)>>);
@@ -502,10 +557,24 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
             if ((*ceto::mad(expand_result)).did_expand) {
                 return;
             }
-            ceto::safe_for_loop<!std::is_reference_v<decltype(((*ceto::mad(node)).args))> && ceto::OwningContainer<std::remove_cvref_t<decltype((*ceto::mad(node)).args)>>>((*ceto::mad(node)).args, [&](const auto arg) -> ceto::LoopControl {
-                (*ceto::mad(arg)).accept((*this));
-    return ceto::LoopControl::Continue;
-});            (this -> current_scope) = std::move(outer);
+            
+                auto&& ceto__private__intermediate285 = (*ceto::mad(node)).args;
+
+                static_assert(requires { std::begin(ceto__private__intermediate285) + 2; }, "not a contiguous container");
+                size_t ceto__private__size287 = std::size(ceto__private__intermediate285);
+                for (size_t ceto__private__idx286 = 0; ; ceto__private__idx286++) {
+                    if (std::size(ceto__private__intermediate285) != ceto__private__size287) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx286 >= ceto__private__size287) {
+                        break;
+                    }
+                    const auto arg = ceto__private__intermediate285[ceto__private__idx286];
+                                    (*ceto::mad(arg)).accept((*this));
+
+                }
+                (this -> current_scope) = std::move(outer);
         }
 
     explicit MacroDefinitionVisitor(std::function<void(ceto::propagate_const<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> &)> on_visit_definition) : on_visit_definition(on_visit_definition) {}

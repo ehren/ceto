@@ -3,6 +3,7 @@ include <ranges>
 def (maybe_reserve: template<typename:T>,
                vec: mut:[T]:ref,
              sized: mut:auto:ref:ref:
+    cpp(std.forward)
     vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
 ) : void:requires:requires(std.size(sized))
 

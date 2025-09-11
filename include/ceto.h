@@ -278,6 +278,7 @@ concept IsContainer = requires(T t)
     std::end(t);
 };
 
+// only applied to known callables
 template <typename T>
 concept IsStateless = requires(T t)
 {
@@ -295,7 +296,6 @@ concept ContiguousContainer = requires(Container c) {
 template <typename T>
 concept OwningContainer = IsContainer<std::remove_cvref_t<T>> && requires(std::remove_cvref_t<T> t) {
     t.clear();
-    t.resize(42);
     typename T::allocator_type;
 };
 

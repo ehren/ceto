@@ -43,8 +43,8 @@
 #endif
 
 namespace ceto::util {
-        template <typename ceto__private__T11, typename ceto__private__T22>
-auto join(const ceto__private__T11& v, const ceto__private__T22& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
+        template <typename ceto__private__T1225, typename ceto__private__T2226>
+auto join(const ceto__private__T1225& v, const ceto__private__T2226& to_string, const decltype(std::string {""})&  sep = std::string {""}) -> auto {
         if ((*ceto::mad(v)).empty()) {
             return std::string {""};
         }
@@ -66,13 +66,13 @@ auto join(const ceto__private__T11& v, const ceto__private__T22& to_string, cons
         return new_string;
     }
 
-        template <typename ceto__private__T13>
-auto contains(const ceto__private__T13& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
+        template <typename ceto__private__T1227>
+auto contains(const ceto__private__T1227& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
         return (std::find((*ceto::mad(container)).begin(), (*ceto::mad(container)).end(), element) != (*ceto::mad(container)).end());
     }
 
-        template <typename ceto__private__T14>
-auto typeid_name(const ceto__private__T14& object) -> auto {
+        template <typename ceto__private__T1228>
+auto typeid_name(const ceto__private__T1228& object) -> auto {
         #if _MSC_VER
             const auto name = (*ceto::mad(typeid(object))).name();
             using namespace std::literals;

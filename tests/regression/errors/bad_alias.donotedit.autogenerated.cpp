@@ -50,8 +50,8 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
 
     ceto__private__C1 vec;
 
-        template <typename T1>
-auto bad_method(const T1& x) -> void {
+        template <typename ceto__private__T12>
+auto bad_method(const ceto__private__T12& x) -> void {
             (*ceto::mad(this -> vec)).clear();
             (*ceto::mad(this -> vec)).push_back(42);
             (*ceto::mad(this -> vec)).push_back(42);
@@ -69,18 +69,18 @@ auto bad_method(const T1& x) -> void {
 
 };
 
-template <typename ceto__private__C2>struct FooStruct : public ceto::object {
+template <typename ceto__private__C3>struct FooStruct : public ceto::object {
 
-    ceto__private__C2 foo;
+    ceto__private__C3 foo;
 
-    explicit FooStruct(ceto__private__C2 foo) : foo(std::move(foo)) {}
+    explicit FooStruct(ceto__private__C3 foo) : foo(std::move(foo)) {}
 
     FooStruct() = delete;
 
 };
 
-    template <typename T1>
-auto bad(const T1& x,  auto  foo) -> void {
+    template <typename ceto__private__T14>
+auto bad(const ceto__private__T14& x,  auto  foo) -> void {
         (*ceto::mad((*ceto::mad(foo)).vec)).clear();
         (*ceto::mad((*ceto::mad(foo)).vec)).push_back(1);
         (*ceto::mad((*ceto::mad(foo)).vec)).push_back(1);
@@ -92,8 +92,8 @@ auto bad(const T1& x,  auto  foo) -> void {
         std::cout << "\ndone bad\n";
     }
 
-    template <typename T1, typename T2>
-auto bad2(const T1& x, const T2& foo) -> void {
+    template <typename ceto__private__T15, typename ceto__private__T26>
+auto bad2(const ceto__private__T15& x, const ceto__private__T26& foo) -> void {
         auto m { foo } ;
         (*ceto::mad((*ceto::mad(m)).vec)).clear();
         (*ceto::mad((*ceto::mad(m)).vec)).push_back(1);
@@ -108,8 +108,8 @@ auto bad2(const T1& x, const T2& foo) -> void {
         std::cout << "\ndone bad2\n";
     }
 
-    template <typename T1, typename T2>
-auto bad3(const T1& x, const T2& foo_struct) -> void {
+    template <typename ceto__private__T17, typename ceto__private__T28>
+auto bad3(const ceto__private__T17& x, const ceto__private__T28& foo_struct) -> void {
         auto fm { foo_struct } ;
         auto m { (*ceto::mad(fm)).foo } ;
         (*ceto::mad((*ceto::mad(m)).vec)).clear();
@@ -124,8 +124,8 @@ auto bad3(const T1& x, const T2& foo_struct) -> void {
         std::cout << "\ndone bad3\n";
     }
 
-    template <typename T1, typename T2>
-auto ok4(const T1& v, const T2& foo_struct) -> void {
+    template <typename ceto__private__T19, typename ceto__private__T210>
+auto ok4(const ceto__private__T19& v, const ceto__private__T210& foo_struct) -> void {
         auto fm { foo_struct } ;
         auto m { (*ceto::mad(fm)).foo } ;
         (*ceto::mad((*ceto::mad(m)).vec)).clear();
@@ -140,9 +140,9 @@ auto ok4(const T1& v, const T2& foo_struct) -> void {
         std::cout << "\ndone ok4\n";
     }
 
-    template <typename T1>
-auto bad5(const T1& x,  auto &  v) -> void {
-        (*ceto::mad(v)).clear();
+    template <typename ceto__private__T111>
+auto bad5(const ceto__private__T111& x,  auto &  v) -> void {
+static_assert(std::is_fundamental_v<decltype(x)>, "you cannot use the mut:ref param v (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");        (*ceto::mad(v)).clear();
         (*ceto::mad(v)).push_back(1);
         (*ceto::mad(v)).push_back(1);
         (*ceto::mad(v)).push_back(1);
@@ -158,48 +158,44 @@ auto bad5(const T1& x,  auto &  v) -> void {
         std::cout << "\ndone bad5\n";
     }
 
-    template <typename T1>
-auto bad6(const T1& v,  auto &  v2) -> void {
-        
+    template <typename ceto__private__T112>
+auto bad6(const ceto__private__T112& v,  auto &  v2) -> void {
+static_assert(std::is_fundamental_v<decltype(v)>, "you cannot use the mut:ref param v2 (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");        
     
             static_assert(requires { std::begin(v) + 2; }, "not a contiguous container");
-            size_t ceto__private__size4 = std::size(v);
-            for (size_t ceto__private__idx3 = 0; ; ceto__private__idx3++) {
-                if (std::size(v) != ceto__private__size4) {
+            size_t ceto__private__size14 = std::size(v);
+            for (size_t ceto__private__idx13 = 0; ; ceto__private__idx13++) {
+                if (std::size(v) != ceto__private__size14) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx3 >= ceto__private__size4) {
+                if (ceto__private__idx13 >= ceto__private__size14) {
                     break;
                 }
-                 auto &  x = v[ceto__private__idx3];
-                            bad5([&]() {if (1) {
-                        // unsafe;
-                        return x;
-                    }}()
-        , v2);
+                 auto &  x = v[ceto__private__idx13];
+                            bad5(/* unsafe: */ x, v2);
                     break;
 
             }
             std::cout << "\ndone bad6\n";
     }
 
-    template <typename T1>
-auto bad7(const T1& f,  auto &  v2) -> void {
-        
-            auto&& ceto__private__intermediate5 = (*ceto::mad(f)).vec;
+    template <typename ceto__private__T115>
+auto bad7(const ceto__private__T115& f,  auto &  v2) -> void {
+static_assert(std::is_fundamental_v<decltype(f)>, "you cannot use the mut:ref param v2 (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");        
+            auto&& ceto__private__intermediate16 = (*ceto::mad(f)).vec;
 
-            static_assert(requires { std::begin(ceto__private__intermediate5) + 2; }, "not a contiguous container");
-            size_t ceto__private__size7 = std::size(ceto__private__intermediate5);
-            for (size_t ceto__private__idx6 = 0; ; ceto__private__idx6++) {
-                if (std::size(ceto__private__intermediate5) != ceto__private__size7) {
+            static_assert(requires { std::begin(ceto__private__intermediate16) + 2; }, "not a contiguous container");
+            size_t ceto__private__size18 = std::size(ceto__private__intermediate16);
+            for (size_t ceto__private__idx17 = 0; ; ceto__private__idx17++) {
+                if (std::size(ceto__private__intermediate16) != ceto__private__size18) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx6 >= ceto__private__size7) {
+                if (ceto__private__idx17 >= ceto__private__size18) {
                     break;
                 }
-                 const auto &  x = ceto__private__intermediate5[ceto__private__idx6];
+                 const auto &  x = ceto__private__intermediate16[ceto__private__idx17];
                             (*ceto::mad(v2)).push_back(1);
                     (*ceto::mad(v2)).push_back(1);
                     (*ceto::mad(v2)).push_back(1);
@@ -216,22 +212,22 @@ auto bad7(const T1& f,  auto &  v2) -> void {
             std::cout << "\ndone bad7\n";
     }
 
-    template <typename T1>
-auto bad8(const T1& f,  auto  f2) -> void {
+    template <typename ceto__private__T119>
+auto bad8(const ceto__private__T119& f,  auto  f2) -> void {
         
-            auto&& ceto__private__intermediate8 = (*ceto::mad(f)).vec;
+            auto&& ceto__private__intermediate20 = (*ceto::mad(f)).vec;
 
-            static_assert(requires { std::begin(ceto__private__intermediate8) + 2; }, "not a contiguous container");
-            size_t ceto__private__size10 = std::size(ceto__private__intermediate8);
-            for (size_t ceto__private__idx9 = 0; ; ceto__private__idx9++) {
-                if (std::size(ceto__private__intermediate8) != ceto__private__size10) {
+            static_assert(requires { std::begin(ceto__private__intermediate20) + 2; }, "not a contiguous container");
+            size_t ceto__private__size22 = std::size(ceto__private__intermediate20);
+            for (size_t ceto__private__idx21 = 0; ; ceto__private__idx21++) {
+                if (std::size(ceto__private__intermediate20) != ceto__private__size22) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx9 >= ceto__private__size10) {
+                if (ceto__private__idx21 >= ceto__private__size22) {
                     break;
                 }
-                 const auto &  x = ceto__private__intermediate8[ceto__private__idx9];
+                 const auto &  x = ceto__private__intermediate20[ceto__private__idx21];
                             (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
@@ -248,22 +244,22 @@ auto bad8(const T1& f,  auto  f2) -> void {
             std::cout << "\ndone bad8\n";
     }
 
-    template <typename T1>
-auto ok9(const T1& f,  auto  f2) -> void {
+    template <typename ceto__private__T123>
+auto ok9(const ceto__private__T123& f,  auto  f2) -> void {
         
-            auto&& ceto__private__intermediate11 = (*ceto::mad(f)).vec;
+            auto&& ceto__private__intermediate24 = (*ceto::mad(f)).vec;
 
-            static_assert(requires { std::begin(ceto__private__intermediate11) + 2; }, "not a contiguous container");
-            size_t ceto__private__size13 = std::size(ceto__private__intermediate11);
-            for (size_t ceto__private__idx12 = 0; ; ceto__private__idx12++) {
-                if (std::size(ceto__private__intermediate11) != ceto__private__size13) {
+            static_assert(requires { std::begin(ceto__private__intermediate24) + 2; }, "not a contiguous container");
+            size_t ceto__private__size26 = std::size(ceto__private__intermediate24);
+            for (size_t ceto__private__idx25 = 0; ; ceto__private__idx25++) {
+                if (std::size(ceto__private__intermediate24) != ceto__private__size26) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx12 >= ceto__private__size13) {
+                if (ceto__private__idx25 >= ceto__private__size26) {
                     break;
                 }
-                const auto x = ceto__private__intermediate11[ceto__private__idx12];
+                const auto x = ceto__private__intermediate24[ceto__private__idx25];
                             (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
@@ -279,19 +275,19 @@ auto ok9(const T1& f,  auto  f2) -> void {
 
     inline auto ok10( auto  f,  auto  f2) -> void {
         
-            auto&& ceto__private__intermediate14 = (*ceto::mad(f)).vec;
+            auto&& ceto__private__intermediate27 = (*ceto::mad(f)).vec;
 
-            static_assert(requires { std::begin(ceto__private__intermediate14) + 2; }, "not a contiguous container");
-            size_t ceto__private__size16 = std::size(ceto__private__intermediate14);
-            for (size_t ceto__private__idx15 = 0; ; ceto__private__idx15++) {
-                if (std::size(ceto__private__intermediate14) != ceto__private__size16) {
+            static_assert(requires { std::begin(ceto__private__intermediate27) + 2; }, "not a contiguous container");
+            size_t ceto__private__size29 = std::size(ceto__private__intermediate27);
+            for (size_t ceto__private__idx28 = 0; ; ceto__private__idx28++) {
+                if (std::size(ceto__private__intermediate27) != ceto__private__size29) {
                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                     std::terminate();
                 }
-                if (ceto__private__idx15 >= ceto__private__size16) {
+                if (ceto__private__idx28 >= ceto__private__size29) {
                     break;
                 }
-                const auto x = ceto__private__intermediate14[ceto__private__idx15];
+                const auto x = ceto__private__intermediate27[ceto__private__idx28];
                             ceto::append_or_push_back((*ceto::mad(f2)).vec, 1);
                     std::cout << x;
                     break;
@@ -387,30 +383,26 @@ struct HoldsFunc : public ceto::shared_object, public std::enable_shared_from_th
         bad_lambda_like_bad5([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(ceto::bounds_check((*ceto::mad(f)).vec, 0))>  || (!std::is_reference_v<decltype((*ceto::mad(f)).vec)> && std::is_fundamental_v<std::remove_cvref_t<decltype((*ceto::mad(f)).vec)>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(bad_lambda_like_bad5)>>)); return ceto::bounds_check((*ceto::mad(f)).vec, 0); }(), (*ceto::mad(f)).vec);
         const auto bad_lambda_like_bad8 = [](const auto &f,  auto  f2) {
                 
-                    auto&& ceto__private__intermediate17 = (*ceto::mad(f)).vec;
+                    auto&& ceto__private__intermediate30 = (*ceto::mad(f)).vec;
 
-                    static_assert(requires { std::begin(ceto__private__intermediate17) + 2; }, "not a contiguous container");
-                    size_t ceto__private__size19 = std::size(ceto__private__intermediate17);
-                    for (size_t ceto__private__idx18 = 0; ; ceto__private__idx18++) {
-                        if (std::size(ceto__private__intermediate17) != ceto__private__size19) {
+                    static_assert(requires { std::begin(ceto__private__intermediate30) + 2; }, "not a contiguous container");
+                    size_t ceto__private__size32 = std::size(ceto__private__intermediate30);
+                    for (size_t ceto__private__idx31 = 0; ; ceto__private__idx31++) {
+                        if (std::size(ceto__private__intermediate30) != ceto__private__size32) {
                             std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                             std::terminate();
                         }
-                        if (ceto__private__idx18 >= ceto__private__size19) {
+                        if (ceto__private__idx31 >= ceto__private__size32) {
                             break;
                         }
-                         const auto &  x = ceto__private__intermediate17[ceto__private__idx18];
+                         const auto &  x = ceto__private__intermediate30[ceto__private__idx31];
                                             (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
                                     (*ceto::mad((*ceto::mad(f2)).vec)).push_back(1);
-                                    std::cout << [&]() {if (1) {
-                                        // unsafe;
-                                        return x;
-                                    }}()
-                ;
+                                    std::cout << /* unsafe: */ x;
                                     break;
 
                     }

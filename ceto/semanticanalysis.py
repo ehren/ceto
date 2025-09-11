@@ -5,6 +5,7 @@ import os
 import subprocess
 import concurrent.futures
 import shutil
+import itertools
 
 from .abstractsyntaxtree import *#Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, RedundantParens, Identifier, SyntaxTypeOp, AttributeAccess, ArrayAccess, NamedParameter, TupleLiteral, StringLiteral, Template
 
@@ -858,16 +859,22 @@ def find_nodes(node, search_node):
 
 
 def find_uses(node):
-    return _find_uses(node, node)
+    for u in _find_uses(node, node):
+        if isinstance(u.parent, (AttributeAccess, ScopeResolution, ArrowOp)) and u is not u.parent.lhs:
+            pass
+        else:
+            yield u
 
 
 def _find_uses(node, search_node):
-    # assert isinstance(node, Assign)
-    if not isinstance(node, Assign):
+    if isinstance(node, Assign):
+        tofind = node.lhs
+    elif isinstance(node, Identifier):
+        tofind = node
+    else:
         return
-    assign = node
 
-    if isinstance(search_node, Identifier) and assign.lhs.name == search_node.name:
+    if isinstance(search_node, Identifier) and tofind.name == search_node.name:
         return (yield search_node)
 
     if isinstance(search_node.parent, Call) and search_node.parent.func.name in ["def", "lambda"]:
@@ -876,7 +883,7 @@ def _find_uses(node, search_node):
         for f in block.args:
             # if isinstance(assign.lhs, Identifier) and assign.lhs.name == f:
             #     return f, f
-            yield from find_nodes(assign.lhs, f)
+            yield from find_nodes(tofind, f)
 
     elif isinstance(search_node.parent, Block):
         index = search_node.parent.args.index(search_node)
@@ -884,11 +891,11 @@ def _find_uses(node, search_node):
         for f in following:
             # if isinstance(assign.lhs, Identifier) and assign.lhs.name == f:
             #     return f, f
-            yield from find_nodes(assign.lhs, f)
+            yield from find_nodes(tofind, f)
     else:
         for a in search_node.args:
-            yield from find_nodes(assign.lhs, a)
-        yield from find_nodes(assign.lhs, search_node.func)
+            yield from find_nodes(tofind, a)
+        yield from find_nodes(tofind, search_node.func)
 
 
 def is_def_or_class_like(call : Call):
@@ -991,7 +998,7 @@ class ScopeVisitor:
 
     def visit_Identifier(self, ident):
         self.visit_Node(ident)
-        if ident.declared_type and not isinstance(ident.parent, Template) and not ident.declared_type.name in ["using", "namespace", "typedef"] :
+        if ident.declared_type and not isinstance(ident.parent, Template) and not ident.declared_type.name in ["using", "namespace", "typedef"]:
             ident.scope.add_variable_definition(defined_node=ident, defining_node=ident)
 
     def visit_Assign(self, assign):
@@ -1002,6 +1009,9 @@ class ScopeVisitor:
             for a in assign.lhs.args:
                 if isinstance(a, Identifier):
                     assign.scope.add_variable_definition(defined_node=a, defining_node=assign)
+
+    def visit_NamedParameter(self, named):
+        self.visit_Assign(named)
 
     def visit_Module(self, module):
         if module.scope:

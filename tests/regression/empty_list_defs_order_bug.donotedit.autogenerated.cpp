@@ -53,23 +53,11 @@
 ;
     auto main() -> int {
         auto result { std::vector<std::ranges::range_value_t<std::remove_cvref_t<decltype(std::ranges::iota_view(0, 10))>>>() } ;
-        auto && z { std::ranges::iota_view(0, 10) } ;
-        
-    
-            static_assert(requires { std::begin(z) + 2; }, "not a contiguous container");
-            size_t ceto__private__size2 = std::size(z);
-            for (size_t ceto__private__idx1 = 0; ; ceto__private__idx1++) {
-                if (std::size(z) != ceto__private__size2) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx1 >= ceto__private__size2) {
-                    break;
-                }
-                const auto y = z[ceto__private__idx1];
-                            (result).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(y)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(result)>>)); return y; }());
-
-            }
-            std::cout << (*ceto::mad(result)).size();
+        auto z { std::ranges::iota_view(0, 10) } ;
+        ceto::safe_for_loop<!std::is_reference_v<decltype(z)> && ceto::OwningContainer<std::remove_cvref_t<decltype(z)>>>(z, [&](auto &&ceto__private__lambda_param1) -> ceto::LoopControl {
+    const auto y = ceto__private__lambda_param1;
+            (result).push_back([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(y)> ) && true || ceto::IsContainer<std::remove_cvref_t<decltype(result)>>)); return y; }());
+    return ceto::LoopControl::Continue;
+});        std::cout << (*ceto::mad(result)).size();
     }
 

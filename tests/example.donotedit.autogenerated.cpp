@@ -56,12 +56,12 @@
 ;
 #include <future>
 ;
-template <typename ceto__private__C14>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
+template <typename ceto__private__C177>struct Foo : public ceto::enable_shared_from_this_base_for_templates {
 
-    ceto__private__C14 data_member;
+    ceto__private__C177 data_member;
 
-        template <typename ceto__private__T115>
-auto method(const ceto__private__T115& param) const -> auto {
+        template <typename ceto__private__T1178>
+auto method(const ceto__private__T1178& param) const -> auto {
             const auto self = ceto::shared_from(this);
             std::cout << (*ceto::mad(param)).size() << "\n";
             return self;
@@ -71,14 +71,14 @@ auto method(const ceto__private__T115& param) const -> auto {
             return (*ceto::mad(this -> data_member)).size();
         }
 
-    explicit Foo(ceto__private__C14 data_member) : data_member(std::move(data_member)) {}
+    explicit Foo(ceto__private__C177 data_member) : data_member(std::move(data_member)) {}
 
     Foo() = delete;
 
 };
 
-    template <typename ceto__private__T116>
-auto calls_method(const ceto__private__T116& f) -> auto {
+    template <typename ceto__private__T1179>
+auto calls_method(const ceto__private__T1179& f) -> auto {
         return (*ceto::mad(f)).method(f);
     }
 

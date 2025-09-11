@@ -58,8 +58,8 @@ static_assert(true);
 
 ;
     auto main() -> int {
-        (std::cout << 1) << "\n";
-        (std::cout << (1 + 1)) << "\n";
-        (((std::cout << 4) << "\n") << 1) << "\n";
+        std::cout << 1 << "\n";
+        std::cout << (1 + 1) << "\n";
+        std::cout << 4 << "\n" << 1 << "\n";
     }
 
