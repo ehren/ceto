@@ -142,11 +142,14 @@ namespace(ceto.util:
 )
 
 defmacro (view | [], view:
-    if (__cplusplus >= 202302L:
-        return quote(unquote(view) | std.ranges.to<std.vector>())
-    else:
-        return quote(unquote(view) | ceto.util.to<std.vector>())
-    ): preprocessor
+    return quote(lambda(:
+        if (__cplusplus >= 202302L:
+            cpp (std.ranges.to)
+            return unquote(view) | std.ranges.to<std.vector>()
+        else:
+            return unquote(view) | ceto.util.to<std.vector>()
+        ): preprocessor
+    )())
 )
 
 defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
