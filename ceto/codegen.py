@@ -1623,7 +1623,7 @@ def validate_scope_resolution(node, cx):
             ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
             ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
             ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
-            ("std", "size"), ("std", "ssize"), ("std", "optional"),
+            ("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"),
             ("std", "logic_error"),
             ("std", "invalid_argument"),
             ("std", "domain_error"),
@@ -2498,6 +2498,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
 
     return code
 
+allowed_simple_types = ("int", "void", "char", "short", "long", "unsigned", "size_t", "uintptr_t", "intptr_t", "float", "double", "bool", "wchar_t", "signed", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "char16_t", "char32_t")
 
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
@@ -2697,7 +2698,7 @@ def codegen_call(node: Call, cx: Scope):
 
             # TODO we do want to ban a number of decltype uses at least outside of unsafe (e.g. sneaking in ref types)
             # TODO we should verify that "defined" inside if:preprocessor
-            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "cpp", "CETO_UNSAFE_ARRAY_ACCESS"]:
+            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "cpp", "CETO_UNSAFE_ARRAY_ACCESS"] and func_str not in allowed_simple_types:
                 if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                     if func_str not in (c.name for c in cx.external_cpp):
                         raise CodeGenError(f"call to unknown function - to call external C++ add a call to cpp({func_str})", node)
