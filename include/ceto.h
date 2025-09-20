@@ -302,10 +302,13 @@ concept OwningContainer = IsContainer<std::remove_cvref_t<T>> && requires(std::r
 
 // with c++23 could also allow std::ranges::repeat_view
 template<typename T>
-concept IsIotaView = 
-    std::same_as<std::remove_cvref_t<T>, std::ranges::iota_view<
-        std::ranges::range_value_t<std::remove_cvref_t<T>>,
-        std::ranges::range_value_t<std::remove_cvref_t<T>>>>;
+inline constexpr bool is_iota_view_v = false;
+
+template<typename W, typename B>
+inline constexpr bool is_iota_view_v<std::ranges::iota_view<W, B>> = true;
+
+template<typename T>
+concept IsIotaView = is_iota_view_v<std::remove_cvref_t<T>>;
 
 enum class LoopControl { Continue, Break };
 
@@ -334,15 +337,28 @@ void for_loop_ranged(Container&& container, Func&& func) {
 }
 
 template<bool UseRangeBasedFor = false, typename Container, typename Func>
-void safe_for_loop(Container&& container, Func&& func) {
-    if constexpr (UseRangeBasedFor) {
+void safe_for_loop_strict(Container&& container, Func&& func) {
+    if constexpr (UseRangeBasedFor || IsIotaView<std::remove_cvref_t<Container>>) {
         for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
     } else {
-        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>> && (OwningContainer<std::remove_cvref_t<Container>> || IsIotaView<std::remove_cvref_t<Container>>)) {
+        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>> && OwningContainer<std::remove_cvref_t<Container>>) {
             for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
         } else {
             static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop");
-            static_assert(OwningContainer<std::remove_cvref_t<Container>> || IsIotaView<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't safely emit a for-loop");
+            static_assert(OwningContainer<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't safely emit a for-loop. Use for (...):unsafe or create a vec from your view with view | []");
+        }
+    }
+}
+
+template<bool UseRangeBasedFor = false, typename Container, typename Func>
+void safe_for_loop(Container&& container, Func&& func) {
+    if constexpr (UseRangeBasedFor || !OwningContainer<std::remove_cvref_t<Container>>) {
+        for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
+    } else {
+        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>>) {
+            for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
+        } else {
+            static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop; it's also not a non-aliased local - make a copy to safely iterate or use for(...):unsafe");
         }
     }
 }

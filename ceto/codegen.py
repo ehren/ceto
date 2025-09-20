@@ -1584,6 +1584,27 @@ def scope_resolution_list(node):
     return scope_resolution_list
 
 
+
+allowed_scope_resolutions = (
+("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"),
+("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
+("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
+("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
+("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"), ("std", "to_string"),
+("std", "logic_error"), ("std", "invalid_argument"), ("std", "domain_error"), ("std", "length_error"),
+("std", "out_of_range"), ("std", "future_error"), ("std", "runtime_error"), ("std", "range_error"),
+("std", "overflow_error"), ("std", "underflow_error"), ("std", "regex_error"), ("std", "system_error"),
+("std", "ios_base", "failure"), ("std", "filesystem", "filesystem_error"), ("std", "tx_exception"),
+("std", "nonexistent_local_time"), ("std", "ambiguous_local_time"), ("std", "format_error"),
+("std", "bad_typeid"), ("std", "bad_cast"), ("std", "bad_any_cast"), ("std", "bad_optional_access"),
+("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
+("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
+("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why cpp call in macro dll impl not registering)
+("std", "chrono"),  # duration_cast is banned specially below
+("std", "literals"),
+("std", "terminate"),
+("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "is_reference_v"), ("std", "is_const_v"))
+
 def validate_scope_resolution(node, cx):
     if cx.is_unsafe:
         # TODO don't allow even in unsafe contexts (needs selfhost fixes)
@@ -1618,44 +1639,15 @@ def validate_scope_resolution(node, cx):
 
     if leading.name == "std":
         # these are fine (additional constraints on e.g. vector are applied elsewhere)
-        if resolution_names in (
-            ("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"),
-            ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
-            ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
-            ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
-            ("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"),
-            ("std", "logic_error"),
-            ("std", "invalid_argument"),
-            ("std", "domain_error"),
-            ("std", "length_error"),
-            ("std", "out_of_range"),
-            ("std", "future_error"),
-            ("std", "runtime_error"),
-            ("std", "range_error"),
-            ("std", "overflow_error"),
-            ("std", "underflow_error"),
-            ("std", "regex_error"),
-            ("std", "system_error"),
-            ("std", "ios_base", "failure"),
-            ("std", "filesystem", "filesystem_error"),
-            ("std", "tx_exception"),
-            ("std", "nonexistent_local_time"),
-            ("std", "ambiguous_local_time"),
-            ("std", "format_error"),
-            ("std", "bad_typeid"),
-            ("std", "bad_cast"),
-            ("std", "bad_any_cast"),
-            ("std", "bad_optional_access"),
-            ("std", "bad_expected_access"),
-            ("std", "bad_weak_ptr"),
-            ("std", "bad_function_call"),
-            ("std", "bad_alloc"),
-            ("std", "bad_array_new_length"),
-            ("std", "bad_exception"),
-            ("std", "bad_variant_access"),
-            ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why cpp call in macro dll impl not registering)
-            ("std", "remove_cvref_t")):
-            return
+        if resolution_names in allowed_scope_resolutions or any(tuple(i.name for i in initial) in allowed_scope_resolutions for initial in initial_segments):
+
+            if any("cast" in name for name in (r for r in resolution_names)):
+                # don't automatically allow e.g. std.chrono.duration_cast:
+                # https://en.cppreference.com/w/cpp/chrono/duration/duration_cast.html
+                # "Casting from a floating-point duration to an integer duration is subject to undefined behavior ..."
+                pass
+            else:
+                return
 
     external_cpp = tuple(tuple(n.name for n in scope_resolution_list(arg)) for arg in cx.external_cpp)
     if resolution_names in external_cpp:
