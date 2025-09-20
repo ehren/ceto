@@ -127,8 +127,8 @@ namespace(ceto.util:
     #     return T_container<value_type>{r.begin(), r.end()};
     # }
 
-    cpp(std.ranges.range,
-        to, T_container  # TODO won't be necessary once 'to' is a ceto struct
+    unsafe.extern(std.ranges.range,
+                  to, T_container  # TODO won't be necessary once 'to' is a ceto struct
     )
 
     def (operator("|"): template <template <class...>:class:T_container, std.ranges.range:T_range>,
@@ -144,7 +144,7 @@ namespace(ceto.util:
 defmacro (view | [], view:
     return quote(lambda(:
         if (__cplusplus >= 202302L:
-            cpp (std.ranges.to)
+            unsafe.extern (std.ranges.to)
             return unquote(view) | std.ranges.to<std.vector>()
         else:
             return unquote(view) | ceto.util.to<std.vector>()
@@ -153,7 +153,7 @@ defmacro (view | [], view:
 )
 
 defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
-    cpp (std.views)
+    unsafe.extern (std.views)
 
     if (Foos.size() == 0:
         throw (std.runtime_error("empty isinstance list:" + x.parent().repr()))
@@ -161,7 +161,7 @@ defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     
     or_expr: mut = quote(isinstance(unquote(x), unquote(Foos.at(0))))
     
-    for (foo in Foos | std.views.drop(1) | []:
+    for (foo in Foos | std.views.drop(1):
         or_expr = quote(unquote(or_expr) or isinstance(unquote(x), unquote(foo)))
     )
 

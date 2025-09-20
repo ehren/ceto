@@ -280,10 +280,8 @@ concept IsContainer = requires(T t)
 
 // only applied to known callables
 template <typename T>
-concept IsStateless = requires(T t)
-{
-    +t;
-};
+concept IsStateless = std::is_empty_v<std::remove_cvref_t<T>> &&
+                      std::is_class_v<std::remove_cvref_t<T>>;
 
 template<typename Container>
 concept ContiguousContainer = requires(Container c) {

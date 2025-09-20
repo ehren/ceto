@@ -1328,7 +1328,7 @@ def prepare_macro_ready_callback(module):
         # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
         # another alternative on msvc would be to drop the extern "C" and use GetProcAddress(handle, MAKEINTRESOURCEA(1)) # might even get away without making a .def file to specify ordinal 1 since only 1 func in dll: https://stackoverflow.com/questions/57968865/exporting-a-c-function-from-a-dll-without-extern-c#comment102348942_57968998
         impl_str = """
-cpp(std.variant)
+unsafe.extern(std.variant)
 if (_MSC_VER:
     def (force_instantiate_template_msvc_hack:
         vrnt:std.variant<Node, ceto.macros.Skip> = {}

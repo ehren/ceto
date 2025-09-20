@@ -3,7 +3,7 @@ include <ranges>
 def (maybe_reserve: template<typename:T>,
                vec: mut:[T]:ref,
              sized: mut:auto:ref:ref:
-    cpp(std.forward)
+    unsafe.extern(std.forward)
     vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
 ) : void:requires:requires(std.size(sized))
 
@@ -24,17 +24,15 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
         dont_reserve: Node = quote(pass)
         dont_reserve
     else:
-        reserve: Node = quote(maybe_reserve(unquote(result), unsafe(unquote(zz))))
+        reserve: Node = quote(maybe_reserve(unquote(result), unquote(zz)))
         reserve
     )
 
-    return quote(lambda (:
-
+    return quote(lambda (unquote(zz): mut:auto:ref:ref:
         unquote(result): mut = []
-        unquote(zz): mut:auto:ref:ref = unquote(z)
         unquote(pre_reserve_stmt)
 
-        for (unquote(y) in unsafe(unquote(zz)):
+        for (unquote(y) in unquote(zz):
             unquote(if (c.name() == "True":
                 # Omit literal if (True) check (reduce clutter for 2-arg case below)
                 quote(unquote(result).append(unquote(x)))
@@ -46,7 +44,7 @@ defmacro ([x, for (y in z), if (c)], x, y, z, c:
         )
 
         unquote(result)
-    ) ())
+    ) (unquote(z)))
 )
 
 defmacro ([x, for (y in z)], x, y, z:

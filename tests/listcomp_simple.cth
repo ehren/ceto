@@ -1,0 +1,27 @@
+include <ranges>
+
+defmacro ([x, for (y in z), if (c)], x, y, z, c:
+    result = gensym()
+
+    return quote(lambda (:
+        unquote(result): mut = []
+
+        for (unquote(y) in unquote(z):
+            unquote(if (c.name() == "True":
+                # Omit literal if (True) check (reduce clutter for 2-arg case below)
+                quote(unquote(result).append(unquote(x)))
+            else:
+                quote(if (unquote(c):
+                    unquote(result).append(unquote(x))
+                ))
+            ))
+        )
+
+        unquote(result)
+    ) ())
+)
+
+defmacro ([x, for (y in z)], x, y, z:
+    # Use the existing 3-arg definition
+    return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
+)

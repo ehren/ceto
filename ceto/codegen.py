@@ -566,7 +566,7 @@ def codegen_lambda(node, cx):
 
         capture_list = [codegen_capture_list_item(a) for a in node.func.args]
 
-    elif cx.parent.in_function_body:
+    elif cx.in_function_body or cx.parent.in_function_body:
         def is_capture(n):
             if not isinstance(n, Identifier):
                 return False
@@ -599,8 +599,8 @@ def codegen_lambda(node, cx):
                 if is_capture:
                     possible_captures.append(i.name)
 
-        if isinstance(node.parent, Call) and node is node.parent.func:
-            # immediately invoked (TODO: nonescaping)
+        if isinstance(node.parent, Call) and node is node.parent.func and possible_captures:
+            # immediately invoked that captures (TODO: nonescaping)
             # capture by const ref: https://stackoverflow.com/questions/3772867/lambda-capture-as-const-reference/32440415#32440415
             # TODO we still have some work with lowering implicit captures to explicit capture lists as an ast->ast pass in semanticanalysis
             # before this can work (scope handling and _decltype_string with explicit capture lists fixes)
@@ -1584,9 +1584,8 @@ def scope_resolution_list(node):
     return scope_resolution_list
 
 
-
 allowed_scope_resolutions = (
-("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"),
+("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"), ("std", "get"),
 ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
 ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
 ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
@@ -1605,6 +1604,7 @@ allowed_scope_resolutions = (
 ("std", "terminate"),
 ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "is_reference_v"), ("std", "is_const_v"))
 
+
 def validate_scope_resolution(node, cx):
     if cx.is_unsafe:
         # TODO don't allow even in unsafe contexts (needs selfhost fixes)
@@ -1612,7 +1612,7 @@ def validate_scope_resolution(node, cx):
 
     assert isinstance(node, ScopeResolution) or isinstance(node, AttributeAccess)
 
-    if node.parent.func and node.parent.func.name == "cpp":
+    if node.parent.func and isinstance(node.parent.func, AttributeAccess) and [a.name for a in node.parent.func.args] == ["unsafe", "extern"]:
         return
 
     resolutions = scope_resolution_list(node)
@@ -1659,7 +1659,6 @@ def validate_scope_resolution(node, cx):
 
     #print("**************************************\n"*10)
     #print("Unknown scope resolution. To call external C++ add a cpp call", node)
-    #breakpoint()
     raise CodeGenError("Unknown scope resolution. To call external C++ add a cpp call", node)
 
 
@@ -2456,8 +2455,10 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
                 others_simple = " || (" + others_simple + ")"
 
             is_stateless = "true"
+            is_stateless_one_arg = ""
 
             if isinstance(node.parent.func, Identifier):
+
                 if len(node.parent.args) == 1:
                     # detect simple one arg calls
                     if node.parent.func.scope.lookup_function(node.parent.func):
@@ -2468,6 +2469,12 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
                 parent_func_defs = node.parent.func.scope.find_defs(node.parent.func)
                 if len(parent_func_defs) == 1 and isinstance(parent_func_defs[0], VariableDefinition):
                     is_stateless = "ceto::IsStateless<std::remove_cvref_t<decltype(" + node.parent.func.name + ")>>"
+                    if len(parent.args) == 1:
+                        is_stateless_one_arg = "|| " + is_stateless
+
+            if len(parent.args) == 1 and isinstance(parent.func, Call) and is_call_lambda(parent.func):
+                # immediately invoked lambda with one arg
+                is_stateless_one_arg = "|| ceto::IsStateless<std::remove_cvref_t<decltype(" + codegen_lambda(parent.func, parent.func.scope) + ")>>"
 
             # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
             while not isinstance(parent.parent, Block):
@@ -2475,14 +2482,14 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
 
             is_passed_to_container_method = ""
             if isinstance(parent, Call) and isinstance(parent.func, AttributeAccess) and (isinstance(parent.func.lhs.scope.find_def(parent.func.lhs), VariableDefinition) or (isinstance(parent.func.lhs, (AttributeAccess, ScopeResolution)) and parent.func.lhs.lhs.name in ["self", "this"])):
-                is_passed_to_container_method = " || ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
+                is_passed_to_container_method = "|| ceto::IsContainer<std::remove_cvref_t<decltype(" + codegen_node(parent.func.lhs, cx) + ")>>"
 
             if node.parent.func and node.parent.func.func:
                 template_func = node.parent.func.func
                 if isinstance(template_func, AttributeAccess) and template_func.lhs.name == "std" and template_func.rhs.name == "get":
                     # allow std.get<0>(...)
                     return code
-            condition = f"((!std::is_reference_v<decltype{_strip_outer_double_parentheses('('+ code+ ')')}> {others_simple}) && {is_stateless}{is_passed_to_container_method})"
+            condition = f"(((!std::is_reference_v<decltype{_strip_outer_double_parentheses('('+ code+ ')')}> {others_simple}) && {is_stateless}) {is_stateless_one_arg} {is_passed_to_container_method})"
             return f"[&]() -> decltype(auto) {{ static_assert({condition}); return {code}; }}()"
 
     finally:
@@ -2619,16 +2626,6 @@ def codegen_call(node: Call, cx: Scope):
             node.scope.external_cpp = []
             cx.external_cpp = []
             return "\n"
-        elif func_name == "cpp":
-            if len(node.args) == 0:
-                raise CodeGenError("cpp call takes one or more args", node)
-            if not isinstance(node.parent, Block):
-                raise CodeGenError("cpp call must be at block scope", node)
-            for arg in node.args:
-                cx.add_external_cpp(arg)
-                node.scope.add_external_cpp(arg)
-            comment = " // external C++: " + ", ".join(str(a) for a in node.args)
-            return comment + "\n"
         elif func_name == "overparenthesized_decltype" and len(node.args) == 1:
             # calling plain "decltype" in ceto will always strip outer double parenthesese 
             # (they are often accidentally added by codegen's overeager parenthesization)
@@ -2690,7 +2687,7 @@ def codegen_call(node: Call, cx: Scope):
 
             # TODO we do want to ban a number of decltype uses at least outside of unsafe (e.g. sneaking in ref types)
             # TODO we should verify that "defined" inside if:preprocessor
-            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "cpp", "CETO_UNSAFE_ARRAY_ACCESS"] and func_str not in allowed_simple_types:
+            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "CETO_UNSAFE_ARRAY_ACCESS"] and func_str not in allowed_simple_types:
                 if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                     if func_str not in (c.name for c in cx.external_cpp):
                         raise CodeGenError(f"call to unknown function - to call external C++ add a call to cpp({func_str})", node)
@@ -2736,6 +2733,17 @@ def codegen_call(node: Call, cx: Scope):
             return call_str
     else:
         # method or namespaced call
+
+        if isinstance(node.func, AttributeAccess) and [a.name for a in node.func.args] == ["unsafe", "extern"]:
+            if len(node.args) == 0:
+                raise CodeGenError("unsafe.extern call takes one or more args", node)
+            if not isinstance(node.parent, Block):
+                raise CodeGenError("unsafe.extern call must be at block scope", node)
+            for arg in node.args:
+                cx.add_external_cpp(arg)
+                node.scope.add_external_cpp(arg)
+            comment = " // unsafe external C++: " + ", ".join(str(a) for a in node.args)
+            return comment + "\n"
 
         # not auto-flattening args is becoming annoying!
         # TODO make bin-op arg handling more ergonomic - maybe flatten bin-op args earlier (look at e.g. sympy's Add/Mul handling)
