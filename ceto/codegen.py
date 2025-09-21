@@ -751,7 +751,12 @@ def codegen_class(node : Call, cx):
 
                 type_list = type_node_to_list_of_types(b.declared_type)
                 if any(t.name == "ref" for t in type_list):
-                    b.scope.mark_node_unsafe(AttributeAccess(".", [Identifier("self"), b]))
+                    ref_attr_access = AttributeAccess(".", [Identifier("self"), b])
+                    # not to sure requiring an unsafe block to access the ref attr internally is worth it:
+                    b.scope.mark_node_unsafe(ref_attr_access)
+                    inner_cx.mark_node_unsafe(ref_attr_access)
+                    # given one must use an unsafe block to mention the struct/class type at all:
+                    cx.mark_node_unsafe(name)
 
                 decl = codegen_type(b, b.declared_type, inner_cx) + " " + b.name
                 field_types[b.name] = field_type
@@ -2417,6 +2422,20 @@ def _strip_outer_double_parentheses(s: str):
         return s
 
 
+def is_maybe_implicit_scope_resolution(node: Node, cx: Scope) -> bool:
+    if isinstance(node, ScopeResolution):
+        return True
+    
+    if isinstance(node, AttributeAccess):
+        scope_resolutions = scope_resolution_list(node)
+        leading = scope_resolutions[0]
+        
+        if isinstance(leading, Identifier) and leading.name != "self" and not leading.scope.find_def(leading):
+            return True
+    
+    return False
+
+
 _ban_check_cache = threading.local()
 
 def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
@@ -2472,9 +2491,16 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
                     if len(parent.args) == 1:
                         is_stateless_one_arg = "|| " + is_stateless
 
-            if len(parent.args) == 1 and isinstance(parent.func, Call) and is_call_lambda(parent.func):
-                # immediately invoked lambda with one arg
-                is_stateless_one_arg = "|| ceto::IsStateless<std::remove_cvref_t<decltype(" + codegen_lambda(parent.func, parent.func.scope) + ")>>"
+            if len(parent.args) == 1:
+                if isinstance(parent.func, Call) and is_call_lambda(parent.func):
+                    # immediately invoked lambda with one arg
+                    is_stateless_one_arg = "|| ceto::IsStateless<std::remove_cvref_t<decltype(" + codegen_lambda(parent.func, parent.func.scope) + ")>>"
+
+                elif is_maybe_implicit_scope_resolution(parent.func, cx):
+                    # scope resolved free standing func w/ one arg
+                    attr_code = codegen_attribute_access(parent.func, parent.func.scope)
+                    assert "::" in attr_code and not "ceto::mad" in attr_code
+                    is_stateless_one_arg = " || true"
 
             # detect some known methods e.g. push back on a std container (we'd ban a non-owning container by just not whitelisting std.reference_wrapper in safe code?)
             while not isinstance(parent.parent, Block):
@@ -2497,7 +2523,9 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
 
     return code
 
+
 allowed_simple_types = ("int", "void", "char", "short", "long", "unsigned", "size_t", "uintptr_t", "intptr_t", "float", "double", "bool", "wchar_t", "signed", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "char16_t", "char32_t")
+
 
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
@@ -2524,6 +2552,10 @@ def codegen_call(node: Call, cx: Scope):
     mangle_free_func = False
 
     if isinstance(node.func, Identifier):
+
+        if not cx.is_unsafe and cx.is_node_unsafe(node.func):
+            raise CodeGenError(f"using '{node.func.name}' requires an unsafe block", node.func)
+
         func_name = node.func.name
         if func_name == "if":
             return codegen_if(node, cx)
@@ -3238,11 +3270,13 @@ def codegen_node(node: Node, cx: Scope):
             if is_self_attribute_access and not cx.is_unsafe and node.scope.is_node_unsafe(AttributeAccess(".", [Identifier("self"), node])):
                 raise CodeGenError("access to field requires an unsafe block", node.parent)
 
-        if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and
-                node is node.parent.lhs) and (
-           ptr_name := _shared_ptr_str_for_type(node, cx)):
-            ptr_begin, ptr_end = ptr_name
-            return ptr_begin + "const " + name + ptr_end
+        if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and node is node.parent.lhs):
+            if not cx.is_unsafe and cx.is_node_unsafe(node):
+                raise CodeGenError("using '{name}' requires an unsafe block", node)
+
+            if ptr_name := _shared_ptr_str_for_type(node, cx):
+                ptr_begin, ptr_end = ptr_name
+                return ptr_begin + "const " + name + ptr_end
 
         is_last_use = is_last_use_of_identifier(node)
 
