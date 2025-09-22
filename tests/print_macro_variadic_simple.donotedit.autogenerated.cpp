@@ -58,7 +58,9 @@
         std::cout << a << std::endl;
         std::cout << a << a << std::endl;
         std::cerr << "🙀" << a << a << std::endl;
-        std::cerr << "🙀" << a << std::endl;
+         // unsafe external C++: std.ofstream
+;
+        std::ofstream("example.txt") << a << std::endl;
         std::cerr << "🙀" << a << std::endl;
         std::cout << std::endl;
         std::cerr << "🙀" << "aa\n";

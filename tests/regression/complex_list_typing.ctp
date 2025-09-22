@@ -1,5 +1,7 @@
 # Test Output: 000000000000000000000000000000000000000000
 
+unsafe.extern (static_cast)
+
 def (f, a : [[int]]:
     std.cout << a[0][0]
     static_assert(std.is_const_v<std.remove_reference_t<decltype(a)>>)

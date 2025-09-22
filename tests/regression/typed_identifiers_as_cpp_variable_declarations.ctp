@@ -4,9 +4,9 @@
 def (main:
     x:int:mut
     x = 0
-    (static_cast<void>)(x)  # silence unused variable warning
+    static_cast<void>(x)  # silence unused variable warning
     
-    f = lambda (y:const:char:ptr, z:int:mut:
+    f = lambda (y:const:char:pointer, z:int:mut:
         std: using: namespace  # variable declaration 'like'
         t : typedef : int
         w : t = 3
@@ -18,4 +18,3 @@ def (main:
     
     f("hi", 5)
 )
-    

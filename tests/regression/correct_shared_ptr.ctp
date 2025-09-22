@@ -1,4 +1,4 @@
-
+unsafe.extern (static_cast, printf)
 
 class (Foo: # this is the parse prob
     # x = 1
@@ -10,7 +10,7 @@ class (Foo: # this is the parse prob
     # )
 
     def (destruct:
-        printf("dead %p\n", static_cast<const:void:ptr>(this))
+        printf("dead %p\n", static_cast<const:void:pointer>(this))
     )
 
     def (bar:
@@ -18,7 +18,7 @@ class (Foo: # this is the parse prob
     )
 
     def (foo:
-        printf("in foo method %p\n", static_cast<const:void:ptr>(this))
+        printf("in foo method %p\n", static_cast<const:void:pointer>(this))
 
         bar()  # should be disallowed but needs call-def lookup (not just "is it a class?")
         self.bar()

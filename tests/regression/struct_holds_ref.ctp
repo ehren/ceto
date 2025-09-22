@@ -12,6 +12,7 @@ defmacro (struct_and_class(args), args: [Node]:
     new_args[0] = Identifier(id.name().value() + "_struct")
     strct = Call(Identifier("struct"), new_args)
 
+    # TODO this is "broken" (if : preprocessor shouldn't create a new Scope - somehow namespace lookup / safety changes broke this)
     # somewhat of a hack to replace a single call with 2 calls at file scope:
     return quote(if (1:
         unquote(clazz)

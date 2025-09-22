@@ -16,7 +16,10 @@ class (Delegate:
     )
 )
 
+unsafe.extern (std.thread, std.this_thread)
+
 class (Timer:
+
     _delegate: Delegate
 
     _thread: std.thread = {}

@@ -27,7 +27,7 @@
 ;
      template<typename T> inline auto maybe_reserve( std::vector<T> &  vec,  auto &&  sized) -> void requires (requires () {    std::size(sized);
 }) {
-         // external C++: std.forward
+         // unsafe external C++: std.forward
 ;
         (*ceto::mad(vec)).reserve(std::size(std::forward<decltype(sized)>(sized)));
     }

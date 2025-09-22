@@ -43,7 +43,7 @@ def (string_join, vec: [std.string], sep = ", "s:
         return ""
     )
 
-    cpp(std.accumulate)
+    unsafe.extern(std.accumulate)
 
     unsafe (:
         return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
@@ -56,9 +56,9 @@ defmacro (s.join(v), s: StringLiteral, v:
 )
 
 def (main, argc: int, argv: char:pointer:pointer:
+    unsafe.extern(std.span, std.async, std.launch.async, std.thread)
 
-    # args = [std.string(a), for (a in std.span(unsafe(argv), argc))]  # error: static assertion failed due to requirement 'OwningContainer<std::span<const char *const, 18446744073709551615>>
-    args = [std.string(a), for (a in std.vector(unsafe(argv), unsafe(argv+argc)))]
+    args = [std.string(a), for (a in std.span(unsafe(argv), argc))]
 
     summary = ", ".join(args)
 
@@ -67,10 +67,17 @@ def (main, argc: int, argv: char:pointer:pointer:
     f.method(f)       # autoderef also in the body of 'method'
     calls_method(f)   # autoderef in the body of 'calls_method'
 
-    cpp(std.async, std.launch.async)
 
     fut: mut = std.async(std.launch.async, lambda(f.method(f)))
     fut.get().method(f)
+
+    thread: mut = std.thread(lambda(:
+        std.cout << f.size()
+        #return
+        f.method(f)
+    ))
+
+    thread.join()    
 
     u: mut = UniqueFoo()
     u2 = UniqueFoo()

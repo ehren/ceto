@@ -1,7 +1,5 @@
 defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 
-    cpp (std.views.take)
-
     decorate_error: mut = False
 
     stream = if (stream_arg:
@@ -29,7 +27,9 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
         result = quote(unquote(result) << "🙀")
     )
 
-    for (arg in args | std.views.take(std.ssize(args) - 1) | []:
+    unsafe.extern (std.views.take)
+
+    for (arg in args | std.views.take(std.ssize(args) - 1):
         result = quote(unquote(result) << unquote(arg))
     )
 
@@ -56,7 +56,9 @@ def (main:
     print(a, a)
     print(a, a, file=std.cerr)
 
-    print(a,file=std.cerr)
+    unsafe.extern(std.ofstream)
+
+    print(a,file=std.ofstream("example.txt"))
     print(a, file=std.cerr)
     print()
     print("aa\n", file=std.cerr)

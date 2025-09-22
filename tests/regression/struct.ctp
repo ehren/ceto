@@ -33,25 +33,25 @@ def (by_mut_ref, f: Foo:ref:mut:  # pass by non-const reference
     std.cout << f.x
 )
 
-def (by_ptr, f: Foo:ptr:  # TODO - our add const for function params with raw pointers should behave like the shared_ptr case. That is, this should really be a const Foo *const - we're generating a const Foo*  (not that it's recommended to use raw pointers anywhere)
-    # static_assert(std.is_same_v<decltype(f), const:Foo:ptr:const>)  # TODO this should work
-    static_assert(std.is_same_v<decltype(f), const:Foo:ptr>)  # TODO this is wrong
+def (by_ptr, f: Foo:pointer:  # TODO - our add const for function params with raw pointers should behave like the shared_ptr case. That is, this should really be a const Foo *const - we're generating a const Foo*  (not that it's recommended to use raw pointers anywhere)
+    # static_assert(std.is_same_v<decltype(f), const:Foo:pointer:const>)  # TODO this should work
+    static_assert(std.is_same_v<decltype(f), const:Foo:pointer>)  # TODO this is wrong
     static_assert(not std.is_reference_v<decltype(f)>)
     static_assert(not std.is_const_v<std.remove_reference_t<decltype(f)>>)  # TODO this is wrong
     static_assert(std.is_const_v<std.remove_reference_t<decltype(*f)>>)  # this is right at least
     std.cout << f->x
 )
 
-def (by_ptr_all_const, f: const:Foo:ptr:const:  # TODO this is what we want for Foo:ptr 
-    # static_assert(std.is_same_v<decltype(f), const:Foo:ptr:const>)
+def (by_ptr_all_const, f: const:Foo:pointer:const:  # TODO this is what we want for Foo:pointer 
+    # static_assert(std.is_same_v<decltype(f), const:Foo:pointer:const>)
     static_assert(not std.is_reference_v<decltype(f)>)
     static_assert(std.is_const_v<std.remove_reference_t<decltype(f)>>)
     static_assert(std.is_const_v<std.remove_reference_t<decltype(*f)>>)
     std.cout << f->x
 )
 
-def (by_ptr_mut, f: Foo:ptr:mut:
-    static_assert(std.is_same_v<decltype(f), Foo:ptr>)
+def (by_ptr_mut, f: Foo:pointer:mut:
+    static_assert(std.is_same_v<decltype(f), Foo:pointer>)
     static_assert(not std.is_reference_v<decltype(f)>)
     static_assert(not std.is_const_v<std.remove_reference_t<decltype(f)>>)
     static_assert(not std.is_const_v<std.remove_reference_t<decltype(*f)>>)

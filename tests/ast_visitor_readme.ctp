@@ -18,6 +18,10 @@ class (Visitor:
     def (visit: virtual:mut, node: BinOp): void = 0
 
     def (visit: virtual:mut, node: Add): void = 0
+
+    def (destruct: virtual:
+        pass
+    )
 )
 
 class (Node:
@@ -25,6 +29,10 @@ class (Node:
 
     def (accept: virtual, visitor: Visitor:mut:
         visitor.visit(self)
+    )
+
+    def (destruct: virtual:
+        pass
     )
 )
 
@@ -77,8 +85,7 @@ class (SimpleVisitor(Visitor):
     def (visit: virtual:mut, node: BinOp:
         self.record += "visiting BinOp\n"
 
-        args: mut:auto:ref:ref = node.args
-        for (arg in args:
+        for (arg in node.args:
             arg.accept(self)
         )
     )
@@ -86,8 +93,7 @@ class (SimpleVisitor(Visitor):
     def (visit: virtual:mut, node: Add:
         self.record += "visiting Add\n"
 
-        args: mut:auto:ref:ref = node.args
-        for (arg in args:
+        for (arg in node.args:
             arg.accept(self)
         )
     )

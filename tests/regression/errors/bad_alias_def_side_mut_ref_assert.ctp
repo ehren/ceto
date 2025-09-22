@@ -28,6 +28,12 @@ def (bad7_explicit, f:const:auto:ref, v2: mut:auto:ref:
     std.cout << "\ndone bad7_explicit\n"
 )
 
+#def (bad, m:mut:auto:ref, c:
+#    for (i in m:
+#        
+#    )
+#)
+
 def (main:
     vec: mut = [1,2,3,4]
     f: mut = Foo(vec)

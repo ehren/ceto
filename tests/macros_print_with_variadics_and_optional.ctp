@@ -7,6 +7,8 @@ defmacro (print(args), args: [Node]:
         )
     )
 
+    # Let the existing macro handle the implementation
+
     # TODO with splice:
     # return quote(print(splice(args), file=std.cout))
 

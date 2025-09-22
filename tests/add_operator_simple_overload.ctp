@@ -16,6 +16,9 @@
 # Test Output: done
 
 
+unsafe.extern (printf)
+
+
 class (Foo:
 
     def (operator("+"), foo:Foo:
