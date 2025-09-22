@@ -1260,6 +1260,7 @@ def codegen_for(node, cx):
     iter_type : Node = None
 
     instmt = node.args[0]
+    block_cx = cx.enter_scope()
 
     if node.declared_type:
         is_unsafe_for = node.declared_type.name == "unsafe"
@@ -1279,7 +1280,7 @@ def codegen_for(node, cx):
         raise CodeGenError("for must be at block scope", node)
 
     if isinstance(var, TupleLiteral):
-        structured_binding = _structured_binding_unpack_from_tuple(var, True, cx)
+        structured_binding = _structured_binding_unpack_from_tuple(var, True, block_cx)
         type_str = " "
         var_str = structured_binding
     elif var.declared_type is not None:
@@ -1289,13 +1290,12 @@ def codegen_for(node, cx):
             # we'll allow a ref type iter var with for (...): unsafe 
             # - it's safe as long as your usage of for (...): unsafe is otherwise safe
             var.scope.mark_node_unsafe(var)
-        type_str, var_str = _type_and_name_initializer_from_typed_def_param(var, cx)
+        type_str, var_str = _type_and_name_initializer_from_typed_def_param(var, block_cx)
     else:
-        var_str = codegen_node(var, cx)
+        var_str = codegen_node(var, block_cx)
         type_str = None
 
     indt = cx.indent_str()
-    block_cx = cx.enter_scope()
 
     iterable = instmt.rhs
     block_str = codegen_block(block, block_cx)
@@ -1331,13 +1331,13 @@ def codegen_for(node, cx):
             type_str = "const auto"
 
     if is_unsafe_for or is_over_non_aliased_vec:
-        iterable_str = codegen_node(iterable, cx)
+        iterable_str = codegen_node(iterable, block_cx)
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, iterable_str)
         forstr += block_str
         forstr += indt + "}\n"
         return forstr
     elif emit_conditionally_indexing_for:
-        iterable_str = codegen_node(iterable, cx)
+        iterable_str = codegen_node(iterable, block_cx)
         allow_range_based_for_condition = "!std::is_reference_v<decltype" + _strip_outer_double_parentheses("(" + iterable_str + ")") + "> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
         all_returns = list(find_all(block, test=is_return))
         void_returns = [ret for ret in all_returns if is_void_return(ret)]
@@ -1470,20 +1470,20 @@ def codegen_for(node, cx):
         if isinstance(assign.rhs, AttributeAccess) and assign.lhs in transformer.intermediate_vars:
             # scope hasn't been rebuilt with the intermediate vars so codegen_attribute_access
             # will print it as a scope resolution. Print directly as an autoderef:
-            rhs = codegen_autoderef_attribute_access(assign.rhs, cx)
+            rhs = codegen_autoderef_attribute_access(assign.rhs, block_cx)
         elif isinstance(assign.rhs, Call) and assign.rhs.func in transformer.intermediate_vars:
             # The ANF algorithm tries to take the address of a method using
             # intermediate1 = intermediate2.foo. Undo this:
             assign_strs.pop()
             # Generate the method call directly using the previously computed attribute access code
-            rhs = code_for_intermediate[assign.rhs.func] + "(" + ", ".join(codegen_node(a, cx) for a in assign.rhs.args) + ")"
+            rhs = code_for_intermediate[assign.rhs.func] + "(" + ", ".join(codegen_node(a, block_cx) for a in assign.rhs.args) + ")"
         else:
-            rhs = codegen_node(assign.rhs, cx)
+            rhs = codegen_node(assign.rhs, block_cx)
         code_for_intermediate[assign.lhs] = rhs
         assign_strs.append("auto&& " + assign.lhs.name + " = " + rhs + ";\n")
 
     iterable_str = "".join(assign_strs)
-    rng = codegen_node(iterable_final, cx)
+    rng = codegen_node(iterable_final, block_cx)
     assert(len(rng) > 0)
 
     idx = gensym("idx")
@@ -1589,30 +1589,33 @@ def scope_resolution_list(node):
     return scope_resolution_list
 
 
+# allowed _without_ an unsafe.extern declaration
 allowed_scope_resolutions = (
-("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"), ("std", "get"),
-("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
-("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
-("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
-("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"), ("std", "to_string"),
-("std", "logic_error"), ("std", "invalid_argument"), ("std", "domain_error"), ("std", "length_error"),
-("std", "out_of_range"), ("std", "future_error"), ("std", "runtime_error"), ("std", "range_error"),
-("std", "overflow_error"), ("std", "underflow_error"), ("std", "regex_error"), ("std", "system_error"),
-("std", "ios_base", "failure"), ("std", "filesystem", "filesystem_error"), ("std", "tx_exception"),
-("std", "nonexistent_local_time"), ("std", "ambiguous_local_time"), ("std", "format_error"),
-("std", "bad_typeid"), ("std", "bad_cast"), ("std", "bad_any_cast"), ("std", "bad_optional_access"),
-("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
-("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
-("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why cpp call in macro dll impl not registering)
-("std", "chrono"),  # duration_cast is banned specially below
-("std", "literals"),
-("std", "terminate"),
-("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "is_reference_v"), ("std", "is_const_v"))
+    ("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"), ("std", "get"),
+    ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
+    ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
+    ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
+    ("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"), ("std", "to_string"),
+    ("std", "logic_error"), ("std", "invalid_argument"), ("std", "domain_error"), ("std", "length_error"),
+    ("std", "out_of_range"), ("std", "future_error"), ("std", "runtime_error"), ("std", "range_error"),
+    ("std", "overflow_error"), ("std", "underflow_error"), ("std", "regex_error"), ("std", "system_error"),
+    ("std", "ios_base", "failure"), ("std", "filesystem", "filesystem_error"), ("std", "tx_exception"),
+    ("std", "nonexistent_local_time"), ("std", "ambiguous_local_time"), ("std", "format_error"),
+    ("std", "bad_typeid"), ("std", "bad_cast"), ("std", "bad_any_cast"), ("std", "bad_optional_access"),
+    ("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
+    ("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
+    ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why extern.unsafe call in macro dll impl not registering)
+    ("std", "literals"),
+    ("std", "terminate"),
+    ("std", "chrono"),  # duration_cast is banned specially below
+    ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "remove_reference"), 
+    ("std", "remove_const"), ("std", "add_const"), ("std", "add_const_t"), ("std", "is_reference_v"), ("std", "is_const_v")
+)
 
 
 def validate_scope_resolution(node, cx):
     if cx.is_unsafe:
-        # TODO don't allow even in unsafe contexts (needs selfhost fixes)
+        # TODO don't allow even in unsafe contexts? (needs selfhost fixes)
         return
 
     assert isinstance(node, ScopeResolution) or isinstance(node, AttributeAccess)
@@ -2178,7 +2181,9 @@ def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, 
 
     structured_binding = "[" + ", ".join(codegen_node(a, cx) for a in node.args) + "]"
 
-    if is_for_loop_iter:
+    # it's not safe to emit a local ref var ever
+    # TODO in the case of iteration over a view/non-owning container (created w/ unsafe.extern) we might as well emit const auto& because if the ref var is invalidated the c++ iterators are too
+    if is_for_loop_iter and False:
         ref_part = "& "
     else:
         ref_part = " "
@@ -2197,6 +2202,9 @@ def _structured_binding_unpack_from_tuple(node: TupleLiteral, is_for_loop_iter, 
         # const:Foo where Foo is a ceto class (only cvref qualified 'auto'
         # allowed in structured bindings, otherwise C++ error).
         binding_types = [t for t in binding_types if t.name != "mut"]
+        if any(t.name == "ref" for t in binding_types):
+            for a in node.args:
+                cx.mark_node_unsafe(a)
         binding_type = list_to_typed_node(binding_types)
         binding_type_code = codegen_type(node, binding_type, cx)
         return binding_type_code + " " + structured_binding
