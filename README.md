@@ -4,7 +4,11 @@ Ceto is an experimental language where calls may take indented blocks as argumen
 
 ## Example
 
+Any expression can be redefined as a macro. That's used here to provide python-style optional keyword arguments to a toy print function macro:
+
 ```python
+include <fstream>
+
 defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 
     decorate_error: mut = False
@@ -34,6 +38,8 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
         result = quote(unquote(result) << "🙀")
     )
 
+    unsafe.extern(std.views.take)
+
     for (arg in args | std.views.take(std.ssize(args) - 1):
         result = quote(unquote(result) << unquote(arg))
     )
@@ -55,11 +61,14 @@ defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 )
 
 def (main:
+    unsafe.extern(std.ofstream)
     x: mut = []
     x.append(5)
-    print(x[0], file=std.ofstream("example.txt"))
+    print(x[0], file=std.ofstream("example.txt", std.ios.app))
 )
 ```
+
+This example illustrates macros with variadic params combined with optional params demonstrating that our variadic matching is not "too greedy". ```unsafe.extern``` is required for potentially dangerous external C++: we provide for-loop iteration safety, C++ raw reference safety, and general reference-semantics safety when writing 100% safe ceto code (free of keyword ```unsafe```). This safety guarantee applies when iterating over stl containers like ```std.vector```, ```std.array```, and (in some cases) even ```std.map```. There are no safety guarantees however with non-owning views like ```std.views.take```, ```std.stringview```, or ```std.span``` (or anything else pulled in with an ```unsafe.extern``` declaration).
 
 ## Usage
 
@@ -72,34 +81,18 @@ $ ceto ./tests/example.ctp
 
 ## Language Tour
 
-### Listcomp example
+### Simple Listcomp
+
+We can use the existing list literal and call syntax with the macro system for a python-ish list comprehension:
 
 ```python
-include <ranges>
-
 defmacro ([x, for (y in z), if (c)], x, y, z, c:
     result = gensym()
-    z_ref = gensym()
-
-    pre_reserve_stmt = if (isinstance(c, EqualsCompareOp) and std.ranges.any_of(
-                           c.args, lambda(a, a.equals(x) or a.equals(y))):
-        # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
-        # e.g. [x, for (y in z), if (y == something)]
-        dont_reserve: Node = quote(pass)
-        dont_reserve
-    else:
-        reserve: Node = quote(util.maybe_reserve(unquote(result), unsafe(unquote(z_ref)))
-        reserve
-    )
 
     return quote(lambda (:
-
         unquote(result): mut = []
 
-        unquote(z_ref): mut:auto:ref:ref = unquote(z)
-        unquote(pre_reserve_stmt)
-
-        for (unquote(y) in unsafe(unquote(z_ref)):  # unsafe to use local var of ref type
+        for (unquote(y) in unquote(z):
             unquote(if (c.name() == "True":
                 # Omit literal if (True) check (reduce clutter for 2-arg case below)
                 quote(unquote(result).append(unquote(x)))
@@ -119,20 +112,68 @@ defmacro ([x, for (y in z)], x, y, z:
     return quote([unquote(x), for (unquote(y) in unquote(z)), if (True)])
 )
 
-namespace (util)
+def (main:
+    vec = [x*2, for (x in std.ranges.iota_view(0, 10))]
+
+    for (i in vec:
+        std.cout << i
+    )
+)
+```
+
+### Pre-reserving listcomp (ceto macros + ordinary C++ template metaprogramming)
+
+The above simple listcomp macro works but we can improve it by pre-reserving the size of our results vector when the max size of the listcomp result is known:
+
+```python
+defmacro ([expr, for (i in iterable), if (cond)], expr, i, iterable, cond:
+    result = gensym()
+    iterable_param = gensym()
+
+    pre_reserve_stmt = if (isinstance(cond, EqualsCompareOp) and std.ranges.any_of(
+                           cond.args, lambda(a, a.equals(expr) or a.equals(i))):
+        # Don't bother pre-reserving a std.size(z) sized vector for simple searches 
+        # e.g. [x, for (y in z) if (y == something)]
+        dont_reserve: Node = quote(pass)
+        dont_reserve
+    else:
+        reserve: Node = quote(maybe_reserve(unquote(result), unquote(iterable_param)))
+        reserve
+    )
+
+    return quote(lambda (unquote(iterable_param): mut:auto:ref:ref:
+        unquote(result): mut = []
+        unquote(pre_reserve_stmt)
+
+        for (unquote(i) in unquote(iterable_param):
+            unquote(if (cond.name() == "True":
+                # Omit literal if (True) check (reduce clutter for 2-arg case below)
+                quote(unquote(result).append(unquote(expr)))
+            else:
+                quote(if (unquote(cond):
+                    unquote(result).append(unquote(expr))
+                ))
+            ))
+        )
+
+        unquote(result)
+    ) (unquote(iterable)))
+)
+
+defmacro ([expr, for (i in iterable)], expr, i, iterable:
+    # Use the existing 3-arg definition
+    return quote([unquote(expr), for (unquote(i) in unquote(iterable)), if (True)])
+)
 
 def (maybe_reserve<T>, vec: mut:[T]:ref, sized: mut:auto:ref:ref:
+    unsafe.extern(std.forward)
     vec.reserve(std.size(std.forward<decltype(sized)>(sized)))
 ) : void:requires:requires(std.size(sized))
 
 def (maybe_reserve<T>, vec: mut:[T]:ref, unsized: mut:auto:ref:ref:
     pass
 ) : void:requires:not requires(std.size(unsized))
-```
 
-These macros are provided by default as standard library built-ins, see [include/listcomp.cth](https://github.com/ehren/ceto/blob/main/include/listcomp.cth) 
-
-```python
 def (main:
     l = [x, for (x in std.ranges.iota_view(0, 10)), if (x % 2 == 0)]
 
@@ -141,20 +182,22 @@ def (main:
     )
 
     l2 = [x + 1, for (x in l)]
-
+ 
     for (i in [x, for (x in l2), if (x > 5)]:
         std.cout << i
     )
-
+ 
     for (i in [x * 100, for (x in l)]:
         std.cout << i
     )
 )
 ```
 
+These macros are also provided by default as standard library built-ins, see [include/listcomp.cth](https://github.com/ehren/ceto/blob/main/include/listcomp.cth) 
+
 ### Parameter passing, ```class``` basics
 
-You can get somewhat far with python 2 like non-type annotated code as shorthand for unconstrained C++ template metaprogramming and duck typing.
+You can get somewhat far with python 2 like non-type annotated code as a shorthand for unconstrained C++ template metaprogramming and duck typing.
 
 ```python
 include <numeric>
@@ -202,14 +245,6 @@ def (string_join, vec: [std.string], sep = ", "s:
     )
 
     unsafe (:
-        # 3 things require unsafe below:
-        #   1) Direct use of C++ iterators.
-        #   2) vec[0] is a reference - safe code must copy to a value before passing or
-        #      an elided static_assert that no aliasing related badness occurs though the
-        #      other parameters would fail. Note: vec[0] is still bounds checked (use
-        #      vec.unsafe[0] to avoid).
-        #   3) lambda with ref capture is always unsafe - there is a safe (at least in
-        #      single threaded code) implicit capture mechanism shown below.
         return std.accumulate(vec.cbegin() + 1, vec.cend(), vec[0],
             lambda[&sep] (a, b, a + sep + b))
     )
@@ -219,10 +254,11 @@ defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
 
-def (main, argc: int, argv: const:char:ptr:const:ptr:
+def (main, argc: int, argv: const:char:ptr:const:pointer:
+    unsafe.extern(std.span, std.async)
 
     # macro invocations:
-    args = [std.string(a), for (a in std.span(argv, argc))]
+    args = [std.string(a), for (a in std.span(unsafe(argv), argc))]
     summary = ", ".join(args)
 
     f = Foo(summary)  # implicit make_shared / extra CTAD:
@@ -237,8 +273,8 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
     fut: mut = std.async(std.launch.async, lambda(f.method(f)))
     fut.get().method(f)
 
-    u: mut = UniqueFoo()    # u is a "non-const" ceto::propagate_const<std::unique_ptr<"non-const" UniqueFoo>> in C++
-    u2 = UniqueFoo()        # u2 is a non-const ceto::propagate_const<std::unique_ptr<const UniqueFoo>> in C++
+    u: mut = UniqueFoo()
+    u2 = UniqueFoo()
 
     u.consuming_method(u2)  # implicit std.move from last use of u2.
                             # :unique are non-const (allowing move) but
@@ -248,7 +284,104 @@ def (main, argc: int, argv: const:char:ptr:const:ptr:
 )
 ```
 
-Duck typed functions are even slighlty more generic than unconstrained C++ templates because `.` is a maybe autoderef when not an implicit scope resolution.
+Duck typed functions are even slightlty more generic than unconstrained C++ templates because `.` is a maybe autoderef when not an implicit scope resolution. This works by compiling a generic / non-type-annotated function like
+
+```python
+def (calls_foo, f:
+    return f.foo()
+)
+```
+
+to the C++ template function
+
+```c++
+#include <ceto.h>
+
+auto calls_foo(const auto& f) -> auto {
+    return (*ceto::mad(f)).foo();
+}
+```
+
+where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a terminating nullptr check (use `->` for an unchecked access in ```unsafe``` contexts).
+
+### Safety Status
+
+100% safe* ceto programs, free of the ```unsafe``` keyword, should operate on the mantra that if something can't safely be passed by ref it should be copied. If it's expensive to copy, wrap it in a class to refcount it. When copies occur is as in C++ (aided by "always (const) auto" for python-style unannotated variable declarations). When something is (implicitly) passed by raw C++ reference is also as in C++ (no call-side borrow syntax required). Cases of potential memory unsafety when passing a ref due to aliasing/invalidation through the other arguments are stopped at the call site via hidden static_asserts. Evading these checks with the keyword ```unsafe``` can lead to wild non-local propagation of memory unsafety as in the method ```bad``` below:
+
+```python
+# Example Output: 1
+# Example Output: -529464832
+# Example Output: -488570880
+# Example Output: -520011712
+# Example Output: -520011712
+# Example Output: 11
+
+struct (HoldsRef:
+    x: int:ref
+)
+
+struct (Foo:
+    vec: [int]
+
+    def (foo: mut, x:
+        # x, lacking a type annotation, is implicitly const:auto:ref
+        static_assert(std.is_reference_v<decltype(x)> and std.is_const_v<std.remove_reference_t<decltype(x)>>)
+
+        # this could cause a vector relocation, invalidating references:
+        for (i in std.ranges.iota_view(0, std.ssize(self.vec)):
+            self.vec.append(i)
+        )
+
+        # hopefully this ref is still valid (not if you evade checks with unsafe!)
+        std.cout << x << std.endl
+    )
+
+    def (good: mut:
+        # self.foo(vec[0])  # static_assert failure
+        val = self.vec[0]
+        self.foo(val)
+    )
+
+    def (bad: mut:
+
+        self.foo(unsafe(self.vec[0]))  # UB
+
+        r: mut:auto:ref = self.vec[0]
+        self.foo(unsafe(r))  # local ref vars are almost always unsafe (UB)
+
+        unsafe.extern(std.ref)
+        
+        self.foo(std.ref(self.vec[0]))  # UB
+        self.foo(std.ref(unsafe(r)))  # UB
+
+        # std.ref (like other unsafe.extern views and spans) is itself very dangerous
+        std.cout << lambda(:
+            x = 5
+            return std.ref(x)
+        ) ().get()  # UB
+
+        # as are classes and structs that hold raw C++ references
+        std.cout << lambda(:
+            x: mut = 5
+            # ceto defined classes/structs holding raw C++ refs can only be created in an unsafe context
+            return unsafe(HoldsRef(x))
+        ) ().x  # UB
+    )
+)
+
+def (main:
+    f: mut = Foo([1, 2, 3, 4])
+    f.good()  # prints 1
+    f.bad()   # UB (and reliably prints garbage)
+)
+```
+
+## Further Reading / Lang Reference
+
+- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
+- [Classes, Inheritance, init](#autoderef-use--not--)
+- [Macros](#macros)
+    - [Alternational Arguments](#alternational-arguments)
 
 ### More generic functions, python-like list/vector notation
 
@@ -297,226 +430,6 @@ def (main:
 ```
 
 Though, we require a `mut` annotation and rely on `std.ranges`, the wacky forward inference via `decltype` to codegen the type of results above as ```std::vector<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>``` derives from the py14 implementation.
-
-### Syntax Note
-
-```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
-
-```python
-defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
-         map_var: Identifier, map: Identifier, west: Node|None, east: Node|None:
-
-    if (map.name() != "map" and map.name() != "unordered_map":
-        return None
-    )
-
-    args: mut:[Node] = []
-    keys: mut:[Node] = []
-
-    assertion: mut = quote(True)
-    map_type: mut = None:Node
-    
-    for (kv in keyvals:
-        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])),
-                                        decltype(unquote(kv.args[1]))>)
-        if (not map_type:
-            map_type = type
-        else:
-            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type),
-                                                                   unquote(map_type)>)
-        )
-        args.append(quote({ unquote(kv.args[0], unquote(kv.args[1]) }))
-        keys.append(kv.args[0])
-    )
-
-    comparator = lambda(a, b, a.equals(b))
-    unsafe (:
-        duplicate_iter = std.adjacent_find(keys.cbegin(), keys.cend(), comparator)
-        if (duplicate_iter != keys.cend():
-            # this won't catch all duplicate keys e.g. { 1 - 1: "zero", 0: "zero"}
-            throw (std.runtime_error("duplicate keys in map literal"))
-        )
-    )
-
-    # TODO with 'splice' (gh-2) this would be map_call = quote(unquote(map_type) { splice(args) }) 
-    map_call = BracedCall(map_type, args)
-
-    if (west:
-        map_type = quote(unquote(west): unquote(map_type))
-    )
-
-    if (east:
-        map_type = quote(unquote(map_type): unquote(east))
-    )
-
-    return quote(unquote(map_var): unquote(map_type) = lambda(:
-        static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
-        unquote(map_call)
-    ) ())
-)
-
-class (Foo:
-    x
-)
-
-def (main:
-    # with macro:
-    map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
-    for ((key, vec) in map:
-        std.cout << key << std.endl
-        for (foo in vec:
-            std.cout << foo.x
-        )
-    )
-
-    # without macro:
-    map2 = std.optional<std.map<int,int>> {}
-    if (map2:
-        std.cout << map2.at(42)  # std.optional autoderef  
-    )
-)
-```
-
-This is also available as a built-in in the standard library macros, see [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth).
-
-## Disabling Safety Checks
-
-In the previous example, iterating over a map, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
-
-Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
-
-```python
-defmacro (for (i:type in iterable, block), i, type: Node|None, iterable, block: Block:
-    iter_var_type = if (type:
-        type
-    else:
-        # 'unsafe' context to use local of ref type still left to user
-        # (this macro despite being dangerous still practices good safety hygene
-        #  i.e. it wouldn't run afoul of potential macro_metavars_in_unsafe like checks)
-        default_type: Node = quote(const:auto:ref)
-        default_type
-    )
-
-    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
-    args: [Node] = [in_expr, block]
-    return Call(quote(unsafe_for), args)
-)
-
-def (main:
-    vec: mut = [1, 2, 3]
-
-    for (i:int in vec:
-        vec.append(i)  # ordinarily std.terminate() before the next iteration
-        std.cout << i  # (but C++ UB with unsafe_for by default)
-    )
-)
-```
-
-Too powerful? There's a macro for that:
-
-```python
-defmacro(defmacro(args), args: [Node]:
-    throw (std.logic_error("further macro definitions are banned"))
-)
-
-# error: further macro definitions are banned
-# defmacro(2:
-#     return quote(1)
-# )
-```
-
-### Safety Status
-
-We're working on an additional construct: ```unsafe(external_cpp=[std.async, std.span, std.accumulate, printf])``` (together with simple name mangling to avoid unexpected function overloading of external C++). Until that is implemented, one must be very careful with including external C++ header files. 
-
-Example:
-
-```python
-include (some_ceto_module)  # safe (assuming some_ceto_module.cth is safe)
-include <future>  # wildly unsafe
-include <thread>  # even moreso
-include <span>  # ditto
-include"some_random_header.h"  # ditto
-```
-
-There is no current support for c++20 modules. Ceto modules are independently parsed however allowing some module-like features to not pollute downstream includers. Examples:
-
-- ```unsafe()``` call at the beginning of a file marks all functions/code unsafe in that file only
-- ```namespace (util.detail)``` means all code that follows is in that namespace avoiding the extra indent of the ```Block``` form (flat is better than nested).
-- ```unsafe(external_cpp=[...])``` affects either the file or a local scope but not including files.
-
-The generated C++ code uses header inclusion. Perhaps there is a chance to implement ```import(blah)``` together with C++ modules in the future.
-
-Memory safety even in pure ceto code is a work in progress (see the memory safety roadmap here) but even a single ```unsafe``` invites the spectre of C++ undefined behavior:
-
-```python
-include <ranges>
-
-struct (Foo:
-    vec: [int]
-
-    def (foo: mut, x:
-        # x, lacking a type annotation, is implicitly const:auto:ref
-        static_assert(std.is_reference_v<decltype(x)> and std.is_const_v<std.remove_reference_t<decltype(x)>>)
-
-        # this should cause a vector relocation, invalidating references:
-        for (i in std.ranges.iota_view(0, std.ssize(self.vec) * 2):
-            self.vec.append(i)
-        )
-
-        # hopefully this ref is still valid (not if you evade checks with unsafe!)
-        std.cout << x << std.endl  
-    )
-
-    def (good: mut:
-        # self.foo(vec[0])  # static_assert failure
-        val = self.vec[0]
-        self.foo(val)
-    )
-
-    def (bad: mut:
-        self.foo(unsafe(self.vec[0]))  # UB
-
-        r: const:auto:ref = self.vec[0]
-        self.foo(unsafe(r))  # why local ref vars are unsafe (UB)
-    )
-)
-
-def (main:
-    f: mut = Foo([1, 2, 3, 4])
-    f.good()  # prints 1
-    f.bad()   # UB (and reliable use after free / garbage x2)
-)
-```
-
-## Further Reading / Lang Reference
-
-- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
-- [Classes, Inheritance, init](#autoderef-use--not--)
-- [Macros](#macros)
-    - [Alternational Arguments](#alternational-arguments)
-
-### Autoderef (use *.* not *->*)
-
-This works by compiling a generic / non-type-annotated function like
-
-```python
-def (calls_foo, f:
-    return f.foo()
-)
-```
-
-to the C++ template function
-
-```c++
-#include <ceto.h>
-
-auto calls_foo(const auto& f) -> auto {
-    return (*ceto::mad(f)).foo();
-}
-```
-
-where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the dereference via `*` to proceed) when `f` is a smart pointer or optional, otherwise returning the `std::addressof` of `f` to cancel the dereference for anything else (more or less equivalent to ordinary attribute access `f.foo()` in C++). This is adapted from this answer: https://stackoverflow.com/questions/14466620/c-template-specialization-calling-methods-on-types-that-could-be-pointers-or/14466705#14466705 except the ceto implementation (see include/ceto.h) avoids raw pointer autoderef (you may still use `*` and `->` when working with raw pointers). When `ceto::mad` allows a dereference, it also performs a terminating nullptr check (use `->` for an unchecked access in ```unsafe``` contexts).
 
 ### Classes, Inheritance, init
 
@@ -944,6 +857,87 @@ def (main:
 )
 ```
 
+#### Syntax Note
+
+```:``` either marks the start of a ```Block``` or denotes a general purpose binary operator ([TypeOp in ast.cth](https://github.com/ehren/ceto/blob/main/selfhost/ast.cth)) available to the macro system but functioning as a type separator for C++ multiword types and specifiers; see [precedence table](https://github.com/ehren/ceto/blob/main/ceto/parser.py#L161). Here's a macro using ```TypeOp``` for a Python/JSON like ```std.map``` initialization syntax:
+
+```python
+defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
+         map_var: Identifier, map: Identifier, west: Node|None, east: Node|None:
+
+    if (map.name() != "map" and map.name() != "unordered_map":
+        return None
+    )
+
+    args: mut:[Node] = []
+    keys: mut:[Node] = []
+
+    assertion: mut = quote(True)
+    map_type: mut = None:Node
+    
+    for (kv in keyvals:
+        type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])),
+                                        decltype(unquote(kv.args[1]))>)
+        if (not map_type:
+            map_type = type
+        else:
+            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type),
+                                                                   unquote(map_type)>)
+        )
+        args.append(quote({ unquote(kv.args[0], unquote(kv.args[1]) }))
+        keys.append(kv.args[0])
+    )
+
+    comparator = lambda(a, b, a.equals(b))
+    unsafe (:
+        duplicate_iter = std.adjacent_find(keys.cbegin(), keys.cend(), comparator)
+        if (duplicate_iter != keys.cend():
+            # this won't catch all duplicate keys e.g. { 1 - 1: "zero", 0: "zero"}
+            throw (std.runtime_error("duplicate keys in map literal"))
+        )
+    )
+
+    # TODO with 'splice' (gh-2) this would be map_call = quote(unquote(map_type) { splice(args) }) 
+    map_call = BracedCall(map_type, args)
+
+    if (west:
+        map_type = quote(unquote(west): unquote(map_type))
+    )
+
+    if (east:
+        map_type = quote(unquote(map_type): unquote(east))
+    )
+
+    return quote(unquote(map_var): unquote(map_type) = lambda(:
+        static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
+        unquote(map_call)
+    ) ())
+)
+
+class (Foo:
+    x
+)
+
+def (main:
+    # with macro:
+    map: std.unordered_map = { 1: [Foo(1), Foo(2)], 2: [Foo(3)] }
+    for ((key, vec) in map:
+        std.cout << key << std.endl
+        for (foo in vec:
+            std.cout << foo.x
+        )
+    )
+
+    # without macro:
+    map2 = std.optional<std.map<int,int>> {}
+    if (map2:
+        std.cout << map2.at(42)  # std.optional autoderef  
+    )
+)
+```
+
+This is also available as a built-in in the standard library macros, see [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth).
+
 #### Alternational arguments
 
 We can't dynamically redefine integer constants like Python (https://hforsten.com/redefining-the-number-2-in-python.html) but the next best thing is possible if not recommended:
@@ -1104,64 +1098,54 @@ def (main:
 )
 ```
 
-#### Optionals + Variadics (another take at print)
+#### Optionals + Variadics
 
-The first example in this README uses variadics with pattern matching in the macro body to handle a python-like named parameter. We could instead treat the named parameter as an optional argument: 
+In the first example of this readme the variadic pattern ```args``` does not greedily consume the optional ```stream_arg``` (the pattern with more matches is chosen)
+
+#### Disabling Safety Checks
+
+In our map-literal syntax example, iterating over a map, a C++ range-based-for is emitted because the iterable is a value and a reference to it doesn't escape between it's definition and the iteration. If the body of the for-loop might modify the iterable we fallback to indexing (to avoid UB from invalidated C++ iterators) with a static_assert that the container supports bounds checked random access indexing (fails for std.map). Container size changes during iteration result in ```std.terminate()```. Use ```unsafe_for``` to unconditionally emit a C++ range-based-for.
+
+Want to claw back the performance and unsoundness of raw C++? The macro system can be used to modify safety defaults ("Every compiler flag is a bug" - Walter Bright):
 
 ```python
-defmacro (print(args), args: [Node]:
-    if (args.size():
-        call = asinstance(args[0].parent().parent(), Call)
-        if (call and call.func.name() == "defmacro":
-            # ignore print(...) as a pattern arg in a defmacro (TODO should we handle this for the user automatically?)
-            return None
-        )
-    )
-
-    # TODO with splice:
-    # return quote(print(splice(args), file=std.cout))
-
-    # without splice:
-    new_args: mut = args
-    new_args.append(quote(file=std.cout))
-    return Call(quote(print), new_args)
-)
-
-defmacro (print(args, file=optional_stream), args: [Node], file: Identifier, optional_stream: Node|None:
-    stream = if (optional_stream:
-        optional_stream
+defmacro (for (i:type in iterable, block), i, type: Node|None, iterable, block: Block:
+    iter_var_type = if (type:
+        type
     else:
-        quote(std.cout)
+        # 'unsafe' context to use local of ref type still left to user
+        # (this macro despite being dangerous still practices good safety hygene
+        #  i.e. it wouldn't run afoul of potential macro_metavars_in_unsafe like checks)
+        default_type: Node = quote(const:auto:ref)
+        default_type
     )
 
-    result: mut = stream
-
-    if (optional_stream and optional_stream.equals(quote(std.cerr)):
-        result = quote(unquote(result) << "🙀")
-    )
-
-    for (arg in args:
-        result = quote(unquote(result) << unquote(arg))
-    )
-
-    if (not optional_stream:
-        # 'file' is an Identifier in the source to be printed (not a stream arg)
-        result = quote(unquote(result) << unquote(file))
-    )
-
-    return quote(unquote(result) << std.endl)
+    in_expr = quote(unquote(i): unquote(iter_var_type) in unquote(iterable))
+    args: [Node] = [in_expr, block]
+    return Call(quote(unsafe_for), args)
 )
 
 def (main:
-    a = "a"
-    print(a)
-    print(a, a)
-    print(a, a, file=std.cerr)
-    print("b", file=std.cerr)
-    print("b")
-    print(file=std.cerr)
-    print()
+    vec: mut = [1, 2, 3]
+
+    for (i:int in vec:
+        vec.append(i)  # ordinarily std.terminate() before the next iteration
+        std.cout << i  # (but C++ UB with unsafe_for by default)
+    )
 )
+```
+
+Too powerful? There's a macro for that:
+
+```python
+defmacro(defmacro(args), args: [Node]:
+    throw (std.logic_error("further macro definitions are banned"))
+)
+
+# error: further macro definitions are banned
+# defmacro(2:
+#     return quote(1)
+# )
 ```
 
 ### Visitor Caveats / Class instances not "Smart References" / DLL Macro Implementation
