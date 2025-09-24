@@ -763,6 +763,123 @@ class (Module(Block):
 This ```accept``` has better runtime perforance than ```SimpleVisitor```'s class heavy version above but 
 note that raw pointer dereference e.g. ```*this``` and mutable C++ references in methods (allowing bad aliasing through ```this```) requires ```unsafe```.
 
+### propagate_const by default
+
+```python
+class (Foo:
+    x: int
+
+    def (foo:
+        std.cout << "i'm const\n"
+    )
+
+    def (foo: mut:
+        self.x += self.x
+        std.cout << "i'm mut\n"
+    )
+)
+
+def (calls_foo, f:
+    f.foo()  # i'm const (even if handed a mut) thanks to propagate_cost
+)
+
+def (calls_foo_through_mut, m: mut:
+    m.foo()  # const or mut according to whether m is a Foo or a Foo:mut
+)
+
+def (calls_foo_through_mut_copy, f:
+    m: mut = f
+    m.foo()  # const or mut according to whether m is a Foo or a Foo:mut
+)
+
+def (main:
+    m: mut = Foo(1)
+    c = Foo(2)
+
+    c.foo()  # i'm const
+    m.foo()  # i'm mut
+
+    calls_foo(c)  # i'm const
+    calls_foo(m)  # i'm const (thanks to propagate_const)
+
+    calls_foo_through_mut(c)  # i'm const
+    calls_foo_through_mut_copy(c)  # i'm const
+
+    calls_foo_through_mut(m)  # i'm mut
+    calls_foo_through_mut_copy(m)  # i'm mut
+
+    const_vec_of_mut: [Foo:mut] = [m]
+    const_vec_of_mut[0].foo()  # i'm const (thanks to propagate_const)
+
+    vec_mut_copy: mut = const_vec_of_mut
+    vec_mut_copy[0].foo()  # i'm mut (it was mut (that is Foo:mut) to begin with - and now the instance we're calling it through is mut too)
+
+    mut_vec_of_const: mut:[Foo] = [c, m]
+    mut_vec_of_const[0].foo()  # i'm const
+    mut_vec_of_const[1].foo()  # i'm const (conversion of m to Foo aka Foo:const during creation of mut_vec_of_const)
+    mut_vec_of_const = []      # the elements are (ptr to) const but the vec itself is mutable
+)
+```
+
+If we were using merely ```std::shared_ptr<Foo>``` for class instance variables rather than ```ceto::propagate_const<std::shared_ptr<Foo>>``` the above lines "i'm const (thanks to propage_const)" would instead read "i'm mut (no thanks to shared_ptr)"
+
+In fact, without propagate_const our code would behave very much like swift:
+
+```swift
+class Details {
+    var id: Int = 0
+}
+
+class Person {
+    var details: Details
+    init(details: Details) { self.details = details }
+}
+
+let details = Details()
+details.id = 5  // Allowed, 'id' is a var property even though the instance is created with let
+let person = Person(details: Details())
+person.details = details // Allowed, property is var even though instance created with let
+person.details.id = -1 // Allowed, 'details' and 'id' are var properties
+print(person.details.id)  // -1
+```
+
+Where the equivalent ceto always requires a mut at the mutation site:
+
+```python
+# no mut annotation necessary/allowed for simple types (const may be used for const data members in C++ - though these are rarely a good idea)
+class (Details:
+    id: int = 0
+)
+
+# mut annotation needed for class instances if we want modifyable details
+class (Person:
+    details: Details:mut
+)
+
+def (main:
+    details = Details()
+    # details.id = 5  # error (details is a const var holding a Details:const aka Details)
+    static_assert(std.is_const_v<decltype(details)> and std.is_same_v<std.remove_const_t<decltype(details)>, Details> and std.is_same_v<Details, Details:const>)
+
+    # person = Person(details)    # error (Person expects Details:mut)
+    mut_details: mut = Details()  # create a mut variable holding a Details:mut
+    mut_details.id = 5  # ok
+
+    person = Person(mut_details)
+    # person.details = mut_details  # error (unlike swift if the instance is const then no modifications may occur even if the data member holds a mut)
+    # person.details.id = -1        # error (same reason)
+
+    mut_details.id = -1  # we can still modify through a mut instance var pointing to a non-mut
+    std.cout << person.details.id  # -1
+
+    mut_instance_of_const: mut = details
+    # mut_instance_of_const.id = 5  # error: can't modify through a mut instance if it points to a non-mut
+    mut_instance_of_const = None    # we may only reassign it
+)
+```
+
+While we still have to to worry about the complications of mutable reference semantics we at least have that any function not containing 'mut' (and which transitively calls no other code with 'mut' or 'unsafe') can be assured to never modify a ceto class data member (important for future optimization and safety-check relaxation). 
+
 ### struct
 
 "The struct is a class notion is what has stopped C++ from drifting into becoming a much higher level language with a disconnected low-level subset." - Bjarne Stroustrup
@@ -799,12 +916,11 @@ def (by_mut_ref, f: Foo:ref:mut:  # pass by non-const reference (mut:Foo:ref als
     static_assert(std.is_same_v<decltype(f), Foo:ref>)
     static_assert(std.is_reference_v<decltype(f)>)
     static_assert(not std.is_const_v<std.remove_reference_t<decltype(f)>>)
-    # no unsafe block needed for a single mut:ref param 
     f.x += "hi"
     std.cout << f.x
 )
 
-# TODO: Note that using fully notated const pointers like below is recommended for all ceto code. 
+# TODO: using fully notated const pointers like below is recommended for all ceto code. 
 # The const by default (unless :unique) for function parameters feature behaves a bit like add_const_t currently
 # (the multiple mut syntax "mut:Foo:ptr:mut" is not even currently supported for Foo** in C++ -
 #  while mut:Foo:ptr or Foo:ptr:mut works currently, future ceto versions may require additional mut/const annotations)
