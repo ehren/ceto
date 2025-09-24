@@ -68,7 +68,7 @@ def (main:
 )
 ```
 
-This example illustrates macros with variadic params combined with optional params demonstrating that our variadic matching is not "too greedy". ```unsafe.extern``` is required for potentially dangerous external C++: we provide for-loop iteration safety, C++ raw reference safety, and general reference-semantics safety when writing 100% safe ceto code (free of keyword ```unsafe```). This safety guarantee applies when iterating over stl containers like ```std.vector```, ```std.array```, and (in some cases) even ```std.map```. There are no safety guarantees however with non-owning views like ```std.views.take```, ```std.stringview```, or ```std.span``` (or anything else pulled in with an ```unsafe.extern``` declaration).
+This example illustrates macros with variadic params combined with optional params demonstrating that our variadic matching is not "too greedy". ```unsafe.extern``` is required for potentially dangerous external C++: we provide for-loop iteration safety, C++ raw reference safety, and general reference-semantics safety when writing code free of keyword ```unsafe```. This safety guarantee applies when iterating over stl containers like ```std.vector```, ```std.array```, and (in some cases) even ```std.map```. There are no safety guarantees however with non-owning views like ```std.views.take```, ```std.stringview```, or ```std.span``` (or anything else pulled in with an ```unsafe.extern``` declaration).
 
 ## Usage
 
@@ -177,10 +177,6 @@ def (maybe_reserve<T>, vec: mut:[T]:ref, unsized: mut:auto:ref:ref:
 def (main:
     l = [x, for (x in std.ranges.iota_view(0, 10)), if (x % 2 == 0)]
 
-    for (x in l:
-        std.cout << x
-    )
-
     l2 = [x + 1, for (x in l)]
  
     for (i in [x, for (x in l2), if (x > 5)]:
@@ -190,10 +186,35 @@ def (main:
     for (i in [x * 100, for (x in l)]:
         std.cout << i
     )
+
+    unsafe.extern(std.views.filter)
+
+    filtered_view: mut = [0, 1, 2, 3] | std.views.filter(lambda(x, x < 5))
+
+    # no std.size available for pre-reserve case:
+    filtered_via_listcomp = [x, for (x in filtered_view), if (x < 42)]
+
+    for (x in filtered_via_listcomp:
+        std.cout << x
+    )
+
+    # in practice this is a better option for converting a view to a vec:
+
+    if (__cplusplus >= 202302L:
+        filtered_vec = filtered_view | std.ranges.to<std.vector>()
+        for (x in filtered_vec:
+            std.cout << x
+        )
+    ): preprocessor
+
+    # even better: c++20 polyfill for std.ranges.to<std.vector>() via builtin macro
+    filtered_via_polyfill = filtered_view | []
+
+    static_assert(std.is_same_v<decltype(filtered_via_polyfill), const:std.vector<int>>)
 )
 ```
 
-These macros are also provided by default as standard library built-ins, see [include/listcomp.cth](https://github.com/ehren/ceto/blob/main/include/listcomp.cth) 
+A version of the listcomp macro is provided by default as a standard library built-in, see [include/listcomp.cth](https://github.com/ehren/ceto/blob/main/include/listcomp.cth) 
 
 ### Parameter passing, ```class``` basics
 
@@ -254,7 +275,7 @@ defmacro (s.join(v), s: StringLiteral, v:
     return quote(string_join(unquote(v), unquote(s)))
 )
 
-def (main, argc: int, argv: const:char:ptr:const:pointer:
+def (main, argc: int, argv: char:pointer:pointer:
     unsafe.extern(std.span, std.async)
 
     # macro invocations:
@@ -284,7 +305,7 @@ def (main, argc: int, argv: const:char:ptr:const:pointer:
 )
 ```
 
-Duck typed functions are even slightlty more generic than unconstrained C++ templates because `.` is a maybe autoderef when not an implicit scope resolution. This works by compiling a generic / non-type-annotated function like
+Duck typed functions are even slightly more generic than unconstrained C++ templates because `.` is a maybe autoderef when not an implicit scope resolution. This works by compiling a generic / non-type-annotated function like
 
 ```python
 def (calls_foo, f:
@@ -306,7 +327,7 @@ where `ceto::mad` (maybe allow dereference) amounts to just `f` (allowing the de
 
 ### Safety Status
 
-100% safe* ceto programs, free of the ```unsafe``` keyword, should operate on the mantra that if something can't safely be passed by ref it should be copied. If it's expensive to copy, wrap it in a class to refcount it. When copies occur is as in C++ (aided by "always (const) auto" for python-style unannotated variable declarations). When something is (implicitly) passed by raw C++ reference is also as in C++ (no call-side borrow syntax required). Cases of potential memory unsafety when passing a ref due to aliasing/invalidation through the other arguments are stopped at the call site via hidden static_asserts. Evading these checks with the keyword ```unsafe``` can lead to wild non-local propagation of memory unsafety as in the method ```bad``` below:
+100% safe* ceto programs, free of the ```unsafe``` keyword, should operate on the maxim that if something can't safely be passed by ref it should be copied. If it's expensive to copy, wrap it in a class to refcount it. When copies occur is as in C++ (aided by "always (const) auto" for python-style unannotated variable declarations). When something is (implicitly) passed by raw C++ reference is also as in C++ (no call-side borrow syntax required). Cases of potential memory unsafety when passing a ref due to aliasing/invalidation through the other arguments are stopped at the call site via hidden static_asserts. Evading these checks with the keyword ```unsafe``` can lead to wild non-local propagation of memory unsafety as in the method ```bad``` below:
 
 ```python
 # Example Output: 1
@@ -811,7 +832,6 @@ Macros should be used sparingly for extending the language. When possible, C++ t
 Macros are unhygienic (use gensym for locals to avoid horrific capture bugs). Automatic hygiene at least for simple local variables as well as automatic unquoting of params might be implemented in the future (more pressingly we'll need checks to prevent expansion of paramater derived nodes in unsafe blocks generated by the macro - similar to the rust clippy macro_metavars_in_unsafe)
 
 ```python
-include <ranges>
 include <algorithm>
 
 namespace (myproj.util:
@@ -822,6 +842,7 @@ namespace (myproj.util:
 
     def (python_like_range: template<typename:...:Args>,
                       args: mut:Args:ref:ref:...:
+        unsafe.extern(std.forward)
         if ((sizeof...)(Args) == 1:
             return std.ranges.iota_view(0, std.forward<Args>(args)...)
         else:
@@ -838,20 +859,20 @@ namespace (myproj.util:
 
 defmacro(a in b, a, b:
     if ((call = asinstance(a.parent().parent(), Call)):
-        name = call.func.name()
-        if (name and myproj.util.contains(["for"s, "unsafe_for"s], name.value()):
+        if (call.func.name() == "for":
             # don't rewrite the "in" of a for-in loop (pitfall of a general syntax!)
             return None
         )
     )
-
     return quote(myproj.util.contains(unquote(b), unquote(a)))
 )
 
 def (main:
+    unsafe.extern(printf)
+
     for (x in myproj.util.python_like_range(10):
         if (x in [2, 4, 6]:
-            std.cout << x
+            printf("%d", x)
         )
     )
 )
