@@ -468,6 +468,10 @@ def codegen_lambda(node, cx):
     newcx.in_function_body = True
     type_str = ""
     invocation_str = ""
+
+    # Make parenthesese for the type optional with immediatelly invoked lambdas in a few cases 
+    # e.g. lambda(x):int() means (lambda (x):int)()
+    # TODO these should be defmacros!
     if node.declared_type is not None:
         if isinstance(node.declared_type, (TypeOp, Call)):
             if isinstance(node.declared_type, Call):
@@ -498,25 +502,22 @@ def codegen_lambda(node, cx):
 
         if not type_str:
             type_str = " -> " + codegen_type(node, node.declared_type, cx)
-    # if isinstance(node.func, ArrowOp):
-    #     # not workable for precedence reasons
-    #     if declared_type is not None:
-    #         raise CodeGenError("Multiple return types specified for lambda?", node)
-    #     declared_type = node.func.rhs
-    #     # simplify AST (still messed with for 'is return type void?' stuff)
-    #     node.declared_type = declared_type  # put type in normal position
-    #     node.func = node.func.lhs  # func is now 'lambda' keyword
 
     capture_this_by_ref = False
 
     if isinstance(node.func, ArrayAccess):
         # explicit capture list
 
+        capture_list_needs_unsafe = False
+
         def codegen_capture_list_item(a):
+
+            nonlocal capture_list_needs_unsafe
 
             def codegen_capture_list_address_op(u : UnOp):
                 if isinstance(u, UnOp) and u.op == "&" and isinstance(u.args[0], Identifier) and not u.args[0].declared_type:
                     # codegen would add parenthese to UnOp arg here:
+                    capture_list_needs_unsafe = True
                     return "&" + codegen_node(u.args[0], cx)
                 return None
 
@@ -524,6 +525,7 @@ def codegen_lambda(node, cx):
 
             if isinstance(a, Assign):
                 if ref_capture := codegen_capture_list_address_op(a.lhs):
+                    capture_list_needs_unsafe = True
                     if a.lhs.args[0].name == "this":
                         capture_this_by_ref = True
                     lhs = ref_capture
@@ -534,24 +536,30 @@ def codegen_lambda(node, cx):
                 return lhs + " = " + codegen_node(a.rhs, cx)
             else:
                 if ref_capture := codegen_capture_list_address_op(a):
+                    capture_list_needs_unsafe = True
                     if a.args[0].name == "this":
                         capture_this_by_ref = True
                     return ref_capture
                 if isinstance(a, UnOp) and a.op == "*" and a.args[0].name == "this":
+                    capture_list_needs_unsafe = True
                     return "*" + codegen_node(a.args[0])
                 if not isinstance(a, Identifier) or a.declared_type:
                     raise CodeGenError("Unexpected capture list item", a)
                 if a.name == "ref":
+                    capture_list_needs_unsafe = True
                     # special case non-type usage of ref
                     capture_this_by_ref = True
                     return "&"
                 elif a.name == "val":
+                    # perhaps this feature should just be discouraged or relegated to unsafe blocks
                     if a.scope.find_def(a):
                         raise CodeGenError("no generic 'val' capture allowed because a variable named 'val' has been defined.", a)
                     return "="
                 return codegen_node(a, cx)
 
         capture_list = [codegen_capture_list_item(a) for a in node.func.args]
+        if capture_list_needs_unsafe and not cx.is_unsafe:
+            raise CodeGenError("the capture list of this lambda requires an unsafe block", node)
 
     elif cx.in_function_body or cx.parent.in_function_body:
         def is_capture(n):

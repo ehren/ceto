@@ -1,4 +1,4 @@
-
+unsafe.extern(printf, assert, static_cast)
     
 # User Naumann: https://stackoverflow.com/a/54911828/1391250
 
@@ -13,8 +13,8 @@
 
 
 # char *(*fp)( int, float *)
-# def (test, fp: fp(int,float:ptr):char:ptr:
-# def (test, fp: ptr(int,float:ptr):char:ptr:
+# def (test, fp: fp(int,float:ptr):char:pointer:
+# def (test, fp: ptr(int,float:ptr):char:pointer:
 # def (test, fp: ptr(int,float:ptr):char:ptr
 #     pass
 # )
@@ -36,33 +36,33 @@ def (moretest2, p:
     # a < b < c > d
 )
 
-def (moretest, p: int: const : ptr: const : ptr: const : ptr:
+def (moretest, p: int: const : pointer: const : pointer: const : pointer:
     std.cout << p << "\n"
 )
 
     
 # int const *    // pointer to const int
-def (test, p: int: const: ptr:
+def (test, p: int: const: pointer:
     std.cout << p << "\n"
 )
 
 # int * const    // const pointer to int
-def (test, p: int: ptr: const:
+def (test, p: int: pointer: const:
     std.cout << p << "\n"
 )
 
 # int const * const   // const pointer to const int
-def (test2, p: int: const: ptr: const:
+def (test2, p: int: const: pointer: const:
     std.cout << p << "\n"
 )
 
 # int * const * p3;   // pointer to const pointer to int
-def (test, p: int: ptr: const: ptr:
+def (test, p: int: pointer: const: pointer:
     std.cout << p << "\n"
 )
     
 # const int * const * p4;       // pointer to const pointer to const int
-def (test3, p: const: int: ptr: const:
+def (test3, p: const: int: pointer: const:
     std.cout << p << "\n"
 )
 
@@ -72,7 +72,7 @@ def (bar, x:int:const:ref:
     
 # def (foo, items:list:string:  # pretty annoying but works or did (no longer does)
 # maybe that should be string:list anyway given the above
-def (foo, items:[string]:
+def (foo, items:[std.string]:
     std.cout << "size: " << items.size() << "\n"
     
     for (s in items:
@@ -80,12 +80,12 @@ def (foo, items:[string]:
     )
 )
     
-def (main, argc: int, argv: char:ptr:ptr:
+def (main, argc: int, argv: char:pointer:pointer:
     printf("argc %d\n", argc)
     assert(std.string(argv.unsafe[0]).length() > 0)
     
     lst = [s"hello", s"world"]
     foo(lst)
-    bar(lst.size())
+    bar(static_cast<int>(lst.size()))
 )
     
