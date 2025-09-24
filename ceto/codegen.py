@@ -1127,11 +1127,11 @@ def codegen_if(ifcall : Call, cx):
 
     # TODO should these be disallowed with expression ifs?
     elif ifkind == "preprocessor":
-        if_start = "#if "
+        if_start = "\n#if "
         block_opening = "\n"
-        elif_start = "#elif "
-        else_start = "#else\n"
-        block_closing = "#endif\n"
+        elif_start = "\n#elif "
+        else_start = "\n#else\n"
+        block_closing = "\n#endif\n"
     elif ifkind == "constexpr":
         if_start = "if constexpr ("
     elif ifkind == "consteval":  # c++23
@@ -1604,7 +1604,7 @@ allowed_scope_resolutions = (
     ("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
     ("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
     ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why extern.unsafe call in macro dll impl not registering)
-    ("std", "literals"), ("std", "nullopt"),
+    ("std", "literals"), ("std", "nullopt"), ("std", "ranges", "to"),
     ("std", "terminate"),
     ("std", "chrono"),  # duration_cast is banned specially below
     ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "remove_reference"), 
@@ -1850,8 +1850,6 @@ def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
     should_add_outer_const = True
     stripped_mut = False
 
-    # TODO should handle plain 'mut'/'const' param (generic case)
-
     if arg.declared_type is not None:
         if isinstance(arg, Identifier):
             _ensure_auto_or_ref_specifies_mut_const(type_node_to_list_of_types(arg))
@@ -1884,12 +1882,13 @@ def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
                 automatic_const_part = "const "
                 automatic_ref_part = "&"
 
+            if arg.declared_type.name == "mut":
+                return "auto ", arg.name
+
             # treat e.g. external C++ types verbatim (except for adding 'const'
             type_part = automatic_const_part + codegen_type(arg, arg_type, cx) + automatic_ref_part
             return type_part, " " + arg.name
         else:
-            # params.append(autoconst(autoref(codegen_type(arg, arg.declared_type, cx))) + " " + codegen_node(arg, cx))
-            # note precedence change making
             raise SemanticAnalysisError(
                 "unexpected typed expr in defs parameter list", arg)
     elif isinstance(arg, Assign) and not isinstance(arg, NamedParameter):
@@ -1901,7 +1900,7 @@ def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
             raise SemanticAnalysisError(
                 "Non identifier left hand side in def arg", arg)
 
-        if arg.lhs.declared_type is not None:
+        if arg.lhs.declared_type is not None and arg.lhs.declared_type.name != "mut":
             _ensure_auto_or_ref_specifies_mut_const(type_node_to_list_of_types(arg.lhs.declared_type))
 
             arg_type = arg.lhs.declared_type
@@ -1935,47 +1934,62 @@ def _type_and_name_initializer_from_typed_def_param(arg, cx) -> tuple[str, str]:
 
             return type_part, arg.lhs.name + " = " + codegen_node(arg.rhs, cx)
 
-        elif isinstance(arg.rhs, ListLiteral):
-            if not arg.rhs.args:
-                return "const std::vector<" + vector_decltype_str(arg, cx) + ">&", arg.lhs.name + " = {" + ", ".join( [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
-            else:
-                # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
-
-                # c++ gotcha - not usable as a default argument!
-                # params.append("const auto& " + arg.lhs.name + " = std::vector {" + ", ".join(
-                #         [codegen_node(a, cx) for a in arg.rhs.args]) + "}")
-
-                # inferred part still relies on CTAD:
-                vector_part = "std::vector {" + ", ".join(
-                    [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
-
-                # but it's now usable as a default argument:
-                # (maybe with a little bit more IFNDR unsafety due to decltype in params list but it's fine)
-                return "const decltype(" + vector_part + ")& ", arg.lhs.name + " = " + vector_part
         # elif isinstance(arg.rhs, Call) and arg.rhs.func.name == "lambda":
         #     pass
         else:
-            # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added
-            if isinstance(arg.rhs, Call) and (class_def := cx.lookup_class(arg.rhs.func)):
+            # typed lhs other than mut handled above
+
+            if not arg.lhs.declared_type or arg.lhs.declared_type.name != "mut":
+                automatic_const_part = "const " 
+                automatic_ref_part = "&"
+            else:
+                automatic_const_part = "" 
+                automatic_ref_part = ""
+
+            if isinstance(arg.rhs, ListLiteral):
+                # typed lhs other than mut handled above
+                if not arg.lhs.declared_type or arg.lhs.declared_type.name != "mut":
+                    automatic_const_part = "const " 
+                    automatic_ref_part = "&"
+                else:
+                    automatic_const_part = "" 
+                    automatic_ref_part = ""
+
+                if not arg.rhs.args:
+                    return automatic_const_part + "std::vector<" + vector_decltype_str(arg, cx) + ">" + automatic_ref_part, arg.lhs.name + " = {" + ", ".join( [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+                else:
+                    # the above (our own poor reimplementation of CTAD with a bit of extra forward type inference) works but we can just use CTAD:
+
+                    # c++ gotcha - not usable as a default argument!
+                    # params.append("const auto& " + arg.lhs.name + " = std::vector {" + ", ".join(
+                    #         [codegen_node(a, cx) for a in arg.rhs.args]) + "}")
+
+                    # inferred part still relies on CTAD:
+                    vector_part = "std::vector {" + ", ".join(
+                        [codegen_node(a, cx) for a in arg.rhs.args]) + "}"
+
+                    # but it's now usable as a default argument:
+                    # (maybe with a little bit more IFNDR unsafety due to decltype in params list but it's fine)
+                    return automatic_const_part + "decltype(" + vector_part + ") " + automatic_ref_part, arg.lhs.name + " = " + vector_part
+
+            # note that this adds const& to lhs for known class constructor calls e.g. Foo() but note e.g. even if Foo() + 1 returns Foo, no automagic const& added (only const)
+            elif isinstance(arg.rhs, Call) and (class_def := cx.lookup_class(arg.rhs.func)):
                 # it's a known class (object derived). auto add const&
                 # (though std::add_const_t works here, we can be direct)
                 make = codegen_node(arg.rhs, cx)
                 # (we can also be direct with the decltype addition as well though decltype_str works now)
-                # TODO needs tests
-                ref_part = ""
-                if not class_def.is_unique:
-                    ref_part = "&"
-                return "const decltype(" + make + ")" + ref_part, arg.lhs.name + " = " + make
+                if class_def.is_unique:
+                    automatic_ref_part = ""
+                    automatic_const_part = ""
+                return automatic_const_part + "decltype(" + make + ")" + automatic_ref_part, arg.lhs.name + " = " + make
             else:
-                # untyped default value
+                # untyped (or plain mut) with default value:
 
-                automatic_const_part = ""
-                automatic_ref_part = ""
-                if isinstance(arg.rhs, (ListLiteral, StringLiteral)):
+                if isinstance(arg.rhs, ListLiteral) and not args.lhs.declared_type:
                     automatic_const_part = "const "
                     automatic_ref_part = "& "
 
-                if should_add_outer_const:
+                if should_add_outer_const and not arg.lhs.declared_type:
                     automatic_const_part = "const "
 
                 type_part = automatic_const_part + "decltype(" + codegen_node(arg.rhs, cx) + ")" + automatic_ref_part
