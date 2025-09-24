@@ -12,10 +12,11 @@ defmacro (a, a: IntegerLiteral|FloatLiteral:
             return quote(1)
         )
     else:
+        unsafe.extern(std.strtod)
         f = asinstance(a, FloatLiteral)
         d = std.strtod(f.float_string.c_str(), nullptr)
         if (d >= 2.0 and d <= 3.0:
-            suffix = quote(l)
+            suffix = asinstance(quote(l), Identifier)  # TODO maybe should reconsider chage to make quote return Node rather tha the concrete subclass
             n = FloatLiteral(std.to_string(d - 0.5), suffix)
             return n
         )

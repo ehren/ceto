@@ -1,19 +1,11 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
 
+;
+
+;
+
+;
 
 ;
 
@@ -48,12 +40,16 @@
 ;
 #include <algorithm>
 ;
-    template <typename T1>
-auto contains(const T1& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
-        return (CETO_BAN_RAW_DEREFERENCABLE(std::find([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }())>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }(), [&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }())>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }(), element)) != CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()));
+    template <typename ceto__private__T11>
+auto contains(const ceto__private__T11& container,  const typename std::remove_reference_t<decltype(container)> :: value_type &  element) -> auto {
+         // unsafe external C++: std.find
+;
+        return (CETO_BAN_RAW_DEREFERENCABLE(std::find([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }())>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }(), [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()))>  || (!std::is_reference_v<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))> && std::is_fundamental_v<std::remove_cvref_t<decltype(CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()))>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cbegin()); }())>> && !std::is_reference_v<decltype(element)> && std::is_fundamental_v<std::remove_cvref_t<decltype(element)>>)) && true)  )); return CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()); }(), element)) != CETO_BAN_RAW_DEREFERENCABLE((*ceto::mad(container)).cend()));
     }
 
      template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
+         // unsafe external C++: std.forward
+;
         if constexpr (sizeof...(Args) == 1) {
             return std::ranges::iota_view(0, std::forward<Args>(args)...);
         } else {
@@ -63,24 +59,11 @@ auto contains(const T1& container,  const typename std::remove_reference_t<declt
 
     auto main() -> int {
         const auto l = std::vector {{0, 1, 2, 10, 19, 20}};
-        
-            auto&& ceto__private__intermediate1 = range(20);
-
-            static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
-            size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
-            for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx2 >= ceto__private__size3) {
-                    break;
-                }
-                const auto i = ceto__private__intermediate1[ceto__private__idx2];
-                            if (contains(l, [&]() -> decltype(auto) { static_assert(((!std::is_reference_v<decltype(i)>  || (!std::is_reference_v<decltype(l)> && std::is_fundamental_v<std::remove_cvref_t<decltype(l)>>)) && true)); return i; }())) {
-                        std::cout << i;
-                    }
-
+        ceto::safe_for_loop<!std::is_reference_v<decltype(range(20))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range(20))>>>(range(20), [&](auto &&ceto__private__lambda_param2) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param2;
+            if (contains(l, [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(i)>  || (!std::is_reference_v<decltype(l)> && std::is_fundamental_v<std::remove_cvref_t<decltype(l)>>)) && true)  )); return i; }())) {
+                std::cout << i;
             }
-        }
+    return ceto::LoopControl::Continue;
+});    }
 

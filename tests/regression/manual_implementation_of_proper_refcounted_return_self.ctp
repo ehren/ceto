@@ -1,4 +1,5 @@
 unsafe.extern(std.static_pointer_cast, shared_from_this, ceto.get_underlying)
+unsafe()  # for &,*,->
     
 class (A:
     a

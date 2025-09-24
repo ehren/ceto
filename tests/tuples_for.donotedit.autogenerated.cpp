@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -78,7 +64,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx2 >= ceto__private__size3) {
-                    break;
+                    break ;
                 }
                   const auto [x, y] = tuples[ceto__private__idx2];
                             std::cout << x << y << "\n";

@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -70,7 +56,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx1 >= ceto__private__size2) {
-                    break;
+                    break ;
                 }
                 const auto x = v[ceto__private__idx1];
                             (v2).push_back([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(x)> ) && true)  || ceto::IsContainer<std::remove_cvref_t<decltype(v2)>>)); return x; }());
@@ -87,7 +73,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx3 >= ceto__private__size4) {
-                    break;
+                    break ;
                 }
                 const auto x = v2[ceto__private__idx3];
                             std::cout << x;

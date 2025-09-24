@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -63,7 +49,7 @@ auto map(const ceto__private__T11& values, const ceto__private__T22& fun) -> aut
                     std::terminate();
                 }
                 if (ceto__private__idx3 >= ceto__private__size4) {
-                    break;
+                    break ;
                 }
                 const auto v = values[ceto__private__idx3];
                             (results).push_back(fun([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(v)> ) && ceto::IsStateless<std::remove_cvref_t<decltype(fun)>>) || ceto::IsStateless<std::remove_cvref_t<decltype(fun)>> || ceto::IsContainer<std::remove_cvref_t<decltype(results)>>)); return v; }()));

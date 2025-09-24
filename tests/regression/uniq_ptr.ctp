@@ -13,6 +13,7 @@ class (Foo:
     a:int = 5
     
     def (bar:
+        unsafe.extern(printf)
         printf("bar %d\n", self.a)
         return self.a
     )

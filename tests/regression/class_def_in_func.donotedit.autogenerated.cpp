@@ -1,19 +1,11 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
 
+;
+
+;
+
+;
 
 ;
 
@@ -48,6 +40,8 @@
         struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
                         inline auto doit() const -> void {
+                     // unsafe external C++: printf
+;
                     printf("%d\n", 55 + 89);
                 }
 

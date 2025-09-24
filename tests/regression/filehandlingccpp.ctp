@@ -1,5 +1,10 @@
 # Test Output: hello world
 
+include <fstream>
+include <sstream>
+
+unsafe.extern(fopen, fclose, fprintf, std.ifstream, std.stringstream)
+
 def (main:
     fp = fopen("file.txt", "w+")
     fprintf(fp, "hello %s", "world\n")

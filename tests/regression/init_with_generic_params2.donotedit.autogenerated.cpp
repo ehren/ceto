@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -65,9 +51,8 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
         const auto f1 = ceto::make_shared_propagate_const<const Foo>();
         const auto f2 = ceto::make_shared_propagate_const<const Foo>(1);
         const auto f3 = ceto::make_shared_propagate_const<const Foo>(2, 3);
-        ceto::safe_for_loop<!std::is_reference_v<decltype({f1, f2, f3})> && ceto::OwningContainer<std::remove_cvref_t<decltype({f1, f2, f3})>>>({f1, f2, f3}, [&](auto &&ceto__private__lambda_param1) -> ceto::LoopControl {
-    const auto f = ceto__private__lambda_param1;
+        for(const auto& f : {f1, f2, f3}) {
             std::cout << (*ceto::mad(f)).x << (*ceto::mad(f)).y;
-    return ceto::LoopControl::Continue;
-});    }
+        }
+    }
 

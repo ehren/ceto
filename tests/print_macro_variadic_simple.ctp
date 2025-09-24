@@ -1,3 +1,5 @@
+include <fstream>
+
 defmacro (print(args, stream_arg), args:[Node], stream_arg: Assign|None:
 
     decorate_error: mut = False

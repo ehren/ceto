@@ -21,6 +21,7 @@ def (accessor:
 )
 
 def (aliaser, f:
+    unsafe()
     g: mut = accessor()
     g.f = nullptr
     # f.method()  # this would raise (good)
@@ -31,6 +32,7 @@ def (aliaser, f:
 )
 
 def (main:
+    unsafe()
     f: mut = accessor()
     f.f = Foo()  # + 1
     std.cout << (&ceto.get_underlying(f.f))->use_count()

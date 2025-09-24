@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -56,6 +42,7 @@
                 return (x + y);
                 };
         (x).push_back(1);
-        std::cout << lfunc([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype(ceto::bounds_check(x, 0))> && std::is_fundamental_v<std::remove_cvref_t<decltype(ceto::bounds_check(x, 0))>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype(ceto::bounds_check(x, 0))> && std::is_fundamental_v<std::remove_cvref_t<decltype(ceto::bounds_check(x, 0))>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }())>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }(), [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype(ceto::bounds_check(x, 0))> && std::is_fundamental_v<std::remove_cvref_t<decltype(ceto::bounds_check(x, 0))>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }())> && std::is_fundamental_v<std::remove_cvref_t<decltype([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(ceto::bounds_check(x, 0))>  || (!std::is_reference_v<decltype(ceto::bounds_check(x, 0))> && std::is_fundamental_v<std::remove_cvref_t<decltype(ceto::bounds_check(x, 0))>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }())>>)) && ceto::IsStateless<std::remove_cvref_t<decltype(lfunc)>>)  )); return ceto::bounds_check(x, 0); }());
+        const auto [val1, val2] = std::make_tuple(ceto::bounds_check(x, 0), ceto::bounds_check(x, 0));
+        std::cout << lfunc(val1, val2);
     }
 

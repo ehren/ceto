@@ -24,7 +24,8 @@ def (main:
     std.cout << h.f.constmethod()
     
     fm : mut = Foo(2)
-    hm = HolderMut(fm)
+    hm: mut = HolderMut(fm)  # even though fm is a mut mut:Foo we must create hm as a mut mut:HolderMut because of propagate_const
+    std.cout << hm.f.constmethod()
     std.cout << hm.f.mutmethod()
     
     hc = HolderConst(fm)  # ok conversion

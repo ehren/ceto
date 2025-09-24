@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -85,7 +71,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
                         std::terminate();
                     }
                     if (ceto__private__idx7 >= ceto__private__size8) {
-                        break;
+                        break ;
                     }
                     const auto x = ceto__private__intermediate6[ceto__private__idx7];
                                     bar(x, x);
@@ -100,7 +86,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
                                         std::terminate();
                                     }
                                     if (ceto__private__idx4 >= ceto__private__size5) {
-                                        break;
+                                        break ;
                                     }
                                     const auto y = ceto__private__intermediate3[ceto__private__idx4];
                                                         bar(x, y);

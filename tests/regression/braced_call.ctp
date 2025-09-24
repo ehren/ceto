@@ -1,8 +1,4 @@
-
-    
-cpp'
-#include <array>
-'
+include <array>
     
 def (main:
     a = std.array<int, 3> {1,2,3}
@@ -39,4 +35,3 @@ def (main:
     get(t)
     get(t2)
 )
-    

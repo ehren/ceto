@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -74,7 +60,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                         std::terminate();
                     }
                     if (ceto__private__idx2 >= ceto__private__size3) {
-                        break;
+                        break ;
                     }
                     const auto a = ceto__private__intermediate1[ceto__private__idx2];
                                     r = (r + "arg: " + (*ceto::mad(a)).repr());

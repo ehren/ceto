@@ -3,7 +3,8 @@
 include <ranges>
 include <iostream>
 
-def (range: template<typename:...:Args>, args: mut:Args:rref:...:
+def (range: template<typename:...:Args>, args: mut:Args:ref:ref:...:
+    unsafe.extern(std.forward)
     if ((sizeof...)(Args) == 1:
         return std.ranges.iota_view(0, std.forward<Args>(args)...)
     else:

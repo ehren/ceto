@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -79,6 +65,7 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
 
     template <typename ceto__private__T11>
 auto aliaser(const ceto__private__T11& f) -> void {
+        // unsafe;
         auto g { accessor() } ;
         (*ceto::mad(g)).f = nullptr;
         std::cout << (f == nullptr);
@@ -87,6 +74,7 @@ auto aliaser(const ceto__private__T11& f) -> void {
     }
 
     auto main() -> int {
+        // unsafe;
         auto f { accessor() } ;
         (*ceto::mad(f)).f = ceto::make_shared_propagate_const<const Foo>();
         std::cout << (&ceto::get_underlying((*ceto::mad(f)).f)) -> use_count();

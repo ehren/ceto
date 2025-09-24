@@ -1,19 +1,11 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
 
+;
+
+;
+
+;
 
 ;
 
@@ -49,6 +41,8 @@
 #include <iostream>
 ;
      template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
+         // unsafe external C++: std.forward
+;
         if constexpr (sizeof...(Args) == 1) {
             return std::ranges::iota_view(0, std::forward<Args>(args)...);
         } else {
@@ -57,57 +51,17 @@
     }
 
     auto main() -> int {
-        
-            auto&& ceto__private__intermediate1 = range(10);
-
-            static_assert(requires { std::begin(ceto__private__intermediate1) + 2; }, "not a contiguous container");
-            size_t ceto__private__size3 = std::size(ceto__private__intermediate1);
-            for (size_t ceto__private__idx2 = 0; ; ceto__private__idx2++) {
-                if (std::size(ceto__private__intermediate1) != ceto__private__size3) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx2 >= ceto__private__size3) {
-                    break;
-                }
-                const auto i = ceto__private__intermediate1[ceto__private__idx2];
-                            std::cout << i;
-
-            }
-            
-            auto&& ceto__private__intermediate4 = range(0, 10);
-
-            static_assert(requires { std::begin(ceto__private__intermediate4) + 2; }, "not a contiguous container");
-            size_t ceto__private__size6 = std::size(ceto__private__intermediate4);
-            for (size_t ceto__private__idx5 = 0; ; ceto__private__idx5++) {
-                if (std::size(ceto__private__intermediate4) != ceto__private__size6) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx5 >= ceto__private__size6) {
-                    break;
-                }
-                const auto i = ceto__private__intermediate4[ceto__private__idx5];
-                            std::cout << i;
-
-            }
-            
-            auto&& ceto__private__intermediate7 = (-10);
-        auto&& ceto__private__intermediate8 = range(ceto__private__intermediate7, 10);
-
-            static_assert(requires { std::begin(ceto__private__intermediate8) + 2; }, "not a contiguous container");
-            size_t ceto__private__size10 = std::size(ceto__private__intermediate8);
-            for (size_t ceto__private__idx9 = 0; ; ceto__private__idx9++) {
-                if (std::size(ceto__private__intermediate8) != ceto__private__size10) {
-                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
-                    std::terminate();
-                }
-                if (ceto__private__idx9 >= ceto__private__size10) {
-                    break;
-                }
-                const auto i = ceto__private__intermediate8[ceto__private__idx9];
-                            std::cout << i;
-
-            }
-        }
+        ceto::safe_for_loop<!std::is_reference_v<decltype(range(10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range(10))>>>(range(10), [&](auto &&ceto__private__lambda_param1) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param1;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});        ceto::safe_for_loop<!std::is_reference_v<decltype(range(0, 10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range(0, 10))>>>(range(0, 10), [&](auto &&ceto__private__lambda_param2) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param2;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});        ceto::safe_for_loop<!std::is_reference_v<decltype(range((-10), 10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range((-10), 10))>>>(range((-10), 10), [&](auto &&ceto__private__lambda_param3) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param3;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});    }
 

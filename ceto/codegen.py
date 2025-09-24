@@ -14,29 +14,12 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
 from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
 
 
-mangle_prefix = ""  # "ceto_private_mangle_"  # TODO still needs work
-
-
 class CodeGenError(Exception):
     pass
 
 
 cpp_preamble = r"""
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 """
 
 
@@ -134,6 +117,10 @@ def codegen_block_item(b : Node, cx):
     if not is_comment(b):
         cpp += ";\n"
     return cpp
+
+
+# this needs work but maybe we should leave the option to mangle function names to avoid accidental overloads of external C++ to the macro system
+mangle_prefix = ""  # "ceto_private_mangle_"  
 
 
 def codegen_def(defnode: Call, cx):
@@ -242,7 +229,7 @@ def codegen_def(defnode: Call, cx):
         if False and maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes:  # this stuff works but our callsite ref passing ban means it's a bit redundant
             # like the is_fundamental_v checks at the callsite (see ban_reference_in_subexpression) we can allow more if we start tagging structs that don't transitively hold smart pointers.
             # banning raw references and non-owning/unsafe external C++ (e.g. views) as members of a struct passed in combination with a mut:ref param can be done here (with the tagging) or simply at the struct/class definition site (TODO still need class/struct/def unsafe coloring not just unsafe blocks)
-            assert_ref_safety = "static_assert(" + " && ".join("std::is_fundamental_v<decltype(" + a.name + ")>" for a in maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes) + ', "you cannot use the mut:ref param ' + maybe_bad_mut_ref_param_name_nodes[0].name + ' (outside of an unsafe block) together with other non-fundamental (maybe reference/pointer holding) params");'
+            assert_ref_safety = "static_assert(" + " && ".join("std::is_fundamental_v<decltype(" + a.name + ")>" for a in maybe_bad_non_mut_ref_but_still_ref_like_param_name_nodes) + ', "you cannot use the mut:ref param ' + maybe_bad_mut_ref_param_name_nodes[0].name + ' (outside of an unsafe block) together with other non-fundamental (maybe reference/ptr holding) params");'
 
     template = ""
     inline = "inline "
@@ -1300,11 +1287,11 @@ def codegen_for(node, cx):
     iterable = instmt.rhs
     block_str = codegen_block(block, block_cx)
 
-    is_over_non_aliased_vec = isinstance(iterable, ListLiteral)
+    is_over_non_aliased_owning_container = isinstance(iterable, (ListLiteral, BracedLiteral))
 
     emit_conditionally_indexing_for = False
     allow_range_based_for_condition = ""
-    if is_over_non_aliased_vec:
+    if is_over_non_aliased_owning_container:
         pass
     elif isinstance(iterable, Identifier):
         vardefs = iterable.scope.find_defs(iterable)
@@ -1316,7 +1303,7 @@ def codegen_for(node, cx):
                 # compute condition only for iterables whose first use of their def is the iterable and all other uses follow the for loop
                 if uses[0] is iterable and all(comes_before(node.parent, node, use) for use in uses[1:]):
                     if isinstance(vardef.defining_node, Assign) and isinstance(vardef.defining_node.rhs, ListLiteral):
-                        is_over_non_aliased_vec = True
+                        is_over_non_aliased_owning_container = True
                     else:
                         emit_conditionally_indexing_for = True
     elif isinstance(iterable, (AttributeAccess, ArrowOp)):
@@ -1325,25 +1312,27 @@ def codegen_for(node, cx):
         emit_conditionally_indexing_for = True
 
     if type_str is None:
-        if is_over_non_aliased_vec or is_unsafe_for:
+        if is_over_non_aliased_owning_container or is_unsafe_for:
             type_str = "const auto&"
         else:
             type_str = "const auto"
 
-    if is_unsafe_for or is_over_non_aliased_vec:
+    if is_unsafe_for or is_over_non_aliased_owning_container:
         iterable_str = codegen_node(iterable, block_cx)
         forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, iterable_str)
         forstr += block_str
         forstr += indt + "}\n"
         return forstr
     elif emit_conditionally_indexing_for:
+        stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "while")))
+
         iterable_str = codegen_node(iterable, block_cx)
         allow_range_based_for_condition = "!std::is_reference_v<decltype" + _strip_outer_double_parentheses("(" + iterable_str + ")") + "> && ceto::OwningContainer<std::remove_cvref_t<decltype(" + iterable_str + ")>>"
         all_returns = list(find_all(block, test=is_return))
         void_returns = [ret for ret in all_returns if is_void_return(ret)]
         non_void_returns = [ret for ret in all_returns if not is_void_return(ret)]
 
-        eligible_returns = list(find_all(block, test=is_return, stop=creates_new_variable_scope))
+        eligible_returns = list(find_all(block, test=is_return, stop=stop_loop_control_replacement_test))
         eligible_void_returns = [ret for ret in eligible_returns if is_void_return(ret)]
         eligible_non_void_returns = [ret for ret in eligible_returns if not is_void_return(ret)]
 
@@ -1352,8 +1341,6 @@ def codegen_for(node, cx):
 
         is_void_return_eligible = { i: ret in eligible_void_returns for i, ret in enumerate(void_returns) }
         is_non_void_return_eligible = { i: ret in eligible_non_void_returns for i, ret in enumerate(non_void_returns) }
-
-        stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "while")))
 
         breaks = list(find_all(block, test=lambda n: n.name == "break", stop=stop_loop_control_replacement_test))
         all_breaks = list(find_all(block, test=lambda n: n.name == "break"))
@@ -1376,6 +1363,7 @@ def codegen_for(node, cx):
             stripped = line.strip()
 
             if stripped == "break;":
+                # this intentionally ignores the sythetic break in an indexing-for emitted below
                 i, brk = next(break_enumerator)
                 if is_break_eligible[i]:
                     loop_block_lines.append("return ceto::LoopControl::Break;")
@@ -1499,7 +1487,7 @@ def codegen_for(node, cx):
             std::terminate();
         }}
         if ({idx} >= {initial_list_size}) {{
-            break;
+            break ;
         }}
         {type_str} {var_str} = {rng}[{idx}];
         {block_str}
@@ -1589,10 +1577,13 @@ def scope_resolution_list(node):
     return scope_resolution_list
 
 
-# allowed _without_ an unsafe.extern declaration
+# allowed without an unsafe.extern declaration
+
+allowed_simple_types = ("int", "void", "char", "short", "long", "unsigned", "size_t", "uintptr_t", "intptr_t", "float", "double", "bool", "wchar_t", "signed", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "char16_t", "char32_t")
+
 allowed_scope_resolutions = (
     ("std", "vector"), ("std", "string"), ("std", "array"), ("std", "map"), ("std", "get"),
-    ("std", "unordered_map"), ("std", "tuple"), ("std", "ranges", "iota_view"),
+    ("std", "unordered_map"), ("std", "tuple"), ("std", "make_tuple"), ("std", "ranges", "iota_view"),
     ("std", "ranges", "any_of"), ("std", "ranges", "all_of"), ("std", "ranges", "none_of"),
     ("std", "true_type"), ("std", "false_type"), ("std", "cout"), ("std", "cerr"), ("std", "endl"),
     ("std", "size"), ("std", "ssize"), ("std", "optional"), ("std", "function"), ("std", "to_string"),
@@ -1605,7 +1596,7 @@ allowed_scope_resolutions = (
     ("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
     ("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
     ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why extern.unsafe call in macro dll impl not registering)
-    ("std", "literals"),
+    ("std", "literals"), ("std", "nullopt"),
     ("std", "terminate"),
     ("std", "chrono"),  # duration_cast is banned specially below
     ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "remove_reference"), 
@@ -1635,7 +1626,7 @@ def validate_scope_resolution(node, cx):
     if not isinstance(leading, Identifier):
         raise CodeGenError("unexpected scope resolved construct", node)
 
-    if leading.scope.lookup_namespace(node):
+    if leading.scope.lookup_namespace(node) or cx.lookup_class(leading):
         return
 
     initial_segments = [resolutions[:i] for i in range(1, len(resolutions))]
@@ -1665,9 +1656,7 @@ def validate_scope_resolution(node, cx):
         if tuple(j.name for j in i) in external_cpp:
             return
 
-    #print("**************************************\n"*10)
-    #print("Unknown scope resolution. To call external C++ add a cpp call", node)
-    raise CodeGenError("Unknown scope resolution. To call external C++ add a cpp call", node)
+    raise CodeGenError(f"Unknown scope resolution. To call external C++ add an unsafe.extern({".".join(resolution_names)}) call", node)
 
 
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
@@ -2532,9 +2521,6 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
     return code
 
 
-allowed_simple_types = ("int", "void", "char", "short", "long", "unsigned", "size_t", "uintptr_t", "intptr_t", "float", "double", "bool", "wchar_t", "signed", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "char16_t", "char32_t")
-
-
 def codegen_call(node: Call, cx: Scope):
     assert isinstance(node, Call)
 
@@ -2656,7 +2642,7 @@ def codegen_call(node: Call, cx: Scope):
                 code = codegen_node(node.args[0], cx)
                 cx.is_unsafe = old_unsafe
                 node.scope.is_unsafe = old_unsafe
-                return "/* unsafe: */ " + code
+                return "/* unsafe: */ (" + code + ")"
             else:
                 raise CodeGenError("unexpected number of unsafe args", node)
 
@@ -2727,7 +2713,7 @@ def codegen_call(node: Call, cx: Scope):
 
             # TODO we do want to ban a number of decltype uses at least outside of unsafe (e.g. sneaking in ref types)
             # TODO we should verify that "defined" inside if:preprocessor
-            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "CETO_UNSAFE_ARRAY_ACCESS"] and func_str not in allowed_simple_types:
+            if not cx.is_unsafe and func_str not in ["decltype", "defined", "static_assert", "include", "CETO_UNSAFE_ARRAY_ACCESS", "void"]:
                 if not node.scope.lookup_function(node.func) and not node.scope.find_def(node.func):
                     if func_str not in (c.name for c in cx.external_cpp):
                         raise CodeGenError(f"call to unknown function - to call external C++ add a call to cpp({func_str})", node)
@@ -3311,6 +3297,9 @@ def codegen_node(node: Node, cx: Scope):
         if 0 and isinstance(node, NamedParameter):
             raise SemanticAnalysisError("Unparenthesized assignment treated like named parameter in this context (you need '(' and ')'):", node)
 
+        elif isinstance(node, ArrowOp) and not cx.is_unsafe and not node.lhs.name == "this":
+            raise CodeGenError("operator -> is banned in safe code - use an unsafe context if you must", node)
+
         elif isinstance(node, TypeOp):
             if isinstance(node, SyntaxTypeOp):
                 if node.lhs.name == "return":
@@ -3407,7 +3396,7 @@ def codegen_node(node: Node, cx: Scope):
         func_str = codegen_node(node.func, cx)
         idx_str = codegen_node(node.args[0], cx)
         return ban_reference_in_subexpression("ceto::bounds_check(" + func_str + "," + idx_str + ")", node, cx)
-        #raise CodeGenError("Array accesses should have been lowered in a macro pass! You've probably written your own array[access] defmacro (it's buggy)", node)
+        #raise CodeGenError("Array accesses should have been lowered in a macro pass!", node)
     elif isinstance(node, BracedCall):
         if cx.lookup_class(node.func):
             # cut down on multiple syntaxes for same thing (even though the make_shared/unique call utilizes curly braces)
@@ -3423,6 +3412,9 @@ def codegen_node(node: Node, cx: Scope):
         elif opername == "not":
             return "!" + codegen_node(node.args[0], cx)
         else:
+            if not cx.is_unsafe and opername in ["&", "*"]:
+                raise CodeGenError(f"operator {opername} requires an unsafe context", node) 
+
             return "(" + opername + codegen_node(node.args[0], cx) + ")"
             # return opername + codegen_node(node.args[0], cx)
     elif isinstance(node, LeftAssociativeUnOp):
@@ -3466,7 +3458,7 @@ def codegen_node(node: Node, cx: Scope):
         if node.prefix or node.suffix:
             return str(node)
         return "std::string {" + str(node) + "}"
-    # elif isinstance(node, RedundantParens):  # too complicated letting codegen deal with this. just disable -Wparens
+    # elif isinstance(node, RedundantParens):  # TODO fix this to avoid -Wparens warningwith assignments in conditions even though they're overparenthesized in the original ceto code
     #     return "(" + codegen_node(node.args[0]) + ")"
     elif isinstance(node, Template):
         if node.func.name == "include":

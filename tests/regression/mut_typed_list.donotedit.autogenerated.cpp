@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -113,7 +99,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx1 >= ceto__private__size2) {
-                    break;
+                    break ;
                 }
                 const auto v = v[ceto__private__idx1];
                             std::cout << v;

@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -94,7 +80,8 @@ struct HolderConst : public ceto::shared_object, public std::enable_shared_from_
         const auto h = ceto::make_shared_propagate_const<const HolderConst>(f);
         std::cout << (*ceto::mad((*ceto::mad(h)).f)).constmethod();
         auto fm { ceto::make_shared_propagate_const<Foo>(2) } ;
-        const auto hm = ceto::make_shared_propagate_const<const HolderMut>(fm);
+        auto hm { ceto::make_shared_propagate_const<HolderMut>(fm) } ;
+        std::cout << (*ceto::mad((*ceto::mad(hm)).f)).constmethod();
         std::cout << (*ceto::mad((*ceto::mad(hm)).f)).mutmethod();
         const auto hc = ceto::make_shared_propagate_const<const HolderConst>(fm);
         std::cout << (*ceto::mad((*ceto::mad(hc)).f)).constmethod();

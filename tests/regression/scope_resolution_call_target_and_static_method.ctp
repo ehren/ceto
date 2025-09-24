@@ -15,7 +15,10 @@ def (main:
     std.cout << std::vector(500, 5).at(499) << std::endl
     
     std::vector : using
-    v = vector(500, 5)  # ensure vector survives current 'call_or_construct' handling
+    
+    # note: using declarations aren't taken into account by safe lookup rules (good! should just ban them or require unsafe.extern(using))
+    unsafe.extern(vector)
+    v = vector(500, 5)  # ensure vector survives current 'call_or_construct' handling (later note: call_or_construct is no longer used - interferes with e.g ctad lst = [Foo{1)])
     std.cout << v.at(499)
 )
     

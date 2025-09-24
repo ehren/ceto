@@ -26,12 +26,12 @@
 #     tprintf("% world% %\n", "Hello", '!', 123);
 # }
     
-def (tprintf, format: const:char:ptr: # base function
+def (tprintf, format: const:char:pointer: # base function
     std.cout << format
 )
     
 def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic function
-      format: const:char:ptr, 
+      format: const:char:pointer, 
        value: T, 
        Fargs: Targs:...:
       

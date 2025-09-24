@@ -1,19 +1,11 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
 
+;
+
+;
+
+;
 
 ;
 
@@ -49,8 +41,10 @@ struct Foo : public ceto::object {
     int a { 5 } ; static_assert(std::is_convertible_v<decltype(5), decltype(a)>);
 
         inline auto bar() const -> auto {
+             // unsafe external C++: printf
+;
             printf("bar %d\n", this -> a);
-            return (this -> a);
+            return this -> a;
         }
 
 };

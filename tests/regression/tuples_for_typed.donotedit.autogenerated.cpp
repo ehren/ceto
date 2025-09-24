@@ -1,19 +1,5 @@
 
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <cassert>
-#include <compare> // for <=>
-#include <thread>
-#include <optional>
-
-
 #include "ceto.h"
-
 
 ;
 
@@ -70,7 +56,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx2 >= ceto__private__size3) {
-                    break;
+                    break ;
                 }
                   const auto [x, y] = tuples[ceto__private__idx2];
                             std::cout << x << y << "\n";
@@ -86,7 +72,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx4 >= ceto__private__size5) {
-                    break;
+                    break ;
                 }
                   auto & [x, y] = tuples[ceto__private__idx4];
                             static_assert(std::is_same_v<decltype((x)),int &>);
@@ -108,7 +94,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx6 >= ceto__private__size7) {
-                    break;
+                    break ;
                 }
                   const auto [x, y] = tuples[ceto__private__idx6];
                             static_assert(std::is_same_v<decltype(x),const int>);
@@ -126,7 +112,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx8 >= ceto__private__size9) {
-                    break;
+                    break ;
                 }
                   auto [x, y] = tuples[ceto__private__idx8];
                             static_assert(std::is_same_v<decltype(x),int>);
@@ -143,7 +129,7 @@
                     std::terminate();
                 }
                 if (ceto__private__idx10 >= ceto__private__size11) {
-                    break;
+                    break ;
                 }
                   const auto [x, y] = tuples[ceto__private__idx10];
                             static_assert(std::is_same_v<decltype(x),const int>);
