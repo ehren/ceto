@@ -1604,7 +1604,7 @@ allowed_scope_resolutions = (
     ("std", "bad_expected_access"), ("std", "bad_weak_ptr"), ("std", "bad_function_call"),
     ("std", "bad_alloc"), ("std", "bad_array_new_length"), ("std", "bad_exception"), ("std", "bad_variant_access"),
     ("std", "variant"),  # this is not safe but needed by the macro system (TODO find out why extern.unsafe call in macro dll impl not registering)
-    ("std", "literals"), ("std", "nullopt"), ("std", "ranges", "to"),
+    ("std", "literals"), ("std", "nullopt"), ("std", "ranges", "to"), ("std", "conditional_t"),
     ("std", "terminate"),
     ("std", "chrono"),  # duration_cast is banned specially below
     ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "remove_reference"), 
@@ -3288,7 +3288,7 @@ def codegen_node(node: Node, cx: Scope):
 
         if not (isinstance(node.parent, (AttributeAccess, ScopeResolution)) and node is node.parent.lhs):
             if not cx.is_unsafe and cx.is_node_unsafe(node):
-                raise CodeGenError("using '{name}' requires an unsafe block", node)
+                raise CodeGenError(f"using '{name}' requires an unsafe block", node)
 
             if ptr_name := _shared_ptr_str_for_type(node, cx):
                 ptr_begin, ptr_end = ptr_name
@@ -3352,6 +3352,7 @@ def codegen_node(node: Node, cx: Scope):
             return assign_code
 
         else:
+
             if isinstance(node, (AttributeAccess, ScopeResolution)):
                 if not isinstance(node.parent, (AttributeAccess, ScopeResolution)):
                     if isinstance(node, ScopeResolution):
@@ -3364,6 +3365,7 @@ def codegen_node(node: Node, cx: Scope):
                 opstr = "&&"
             elif node.op == "or":
                 opstr = "||"
+
 
             binop_str = " ".join([codegen_node(node.lhs, cx), opstr, codegen_node(node.rhs, cx)])
 
@@ -3403,6 +3405,12 @@ def codegen_node(node: Node, cx: Scope):
             # no longer necessary CTAD reimplementation:
             # return "std::vector<{}>{{{}}}".format(decltype_str(node.args[0], cx), ", ".join(elements))
         else:
+            if isinstance(node.parent, Assign) and isinstance(node.parent.lhs, Identifier) and not node.parent.lhs.declared_type:
+                vardef = node.parent.scope.find_def(node.parent.lhs)
+                if vardef:
+                    # someone wrote "vec_var = []". we want to allow the clear but just emmiting "vec_var = {}" is not great if vec_var isn't a vec.
+                    return f"[&]() {{ static_assert(ceto::is_vector_v<std::remove_cvref_t<decltype({node.parent.lhs})>>); return std::vector<std::remove_cvref_t<decltype({node.parent.lhs})::value_type>>(); }}()"
+
             raise CodeGenError("Cannot create vector without elements", node)
     elif isinstance(node, BracedLiteral):
         if isinstance(node.parent, Block):
