@@ -92,405 +92,6 @@ def build_parents(node: Node):
     return visitor(node)
 
 
-
-def _ban_references_lambda(node):
-#    code = """(lambda[ref] (:
-#    static_assert(not std::is_reference_v<decltype(ceto_private_placeholder)>)
-#    return ceto_private_placeholder
-#):decltype(auto))()"""
-
-#    from .parser import parse
-#    ban_references_lambda = parse(code).args[0]
-#    print(ban_references_lambda.ast_repr(ceto_evalable=False, preserve_source_loc=False))
-#    import sys
-#    sys.exit(-1)
-
-    clone = node.clone()
-
-    ban_references_lambda = Call(TypeOp(":", [Call(ArrayAccess(Identifier("lambda", ), [Identifier("ref", ), ], ), [Block([Call(Identifier("static_assert", ), [UnOp("not", [ScopeResolution("::", [Identifier("std", ), Template(Identifier("is_reference_v", ), [Call(Identifier("overparenthesized_decltype", ), [clone, ], ), ], ), ], )], ), ], ), SyntaxTypeOp(":", [Identifier("return"), node], ), ], ), ], ), Call(Identifier("decltype", ), [Identifier("auto", ), ], ), ], ), [], )
-
-    #ban_references_lambda = Call(Identifier("CETO_BAN_REFS"), [node])
-
-    ban_references_lambda.parent = node.parent
-    node.parent = ban_references_lambda
-    clone.parent = ban_references_lambda
-    clone.scope = node.scope
-    ban_references_lambda.scope = node.scope
-    #ban_references_lambda = basic_semantic_analysis(ban_references_lambda)
-
-    return ban_references_lambda
-
-
-def safety_checks(node):
-
-    #from ceto.compiler import cmdargs
-    #if not cmdargs._norefs:
-    #    return node
-
-    if 0 and isinstance(node, Call) and node.func.name == "for":
-
-        # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2012r0.pdf
-
-        if len(node.args) != 2:
-            raise SemanticAnalysisError("unexpected number of for args", node)
-        if not isinstance(node.args[1], Block):
-            raise SemanticAnalysisError("2nd for arg must be a Block", node)
-        #new_for = Call(Identifier("for"), node.args)
-        #return new_for
-
-        in_expr = node.args[0]
-        if not (isinstance(in_expr, BinOp) and in_expr.op == "in"):
-            raise SemanticAnalysisError("expected 'in' expression as first arg to 'for'", node)
-
-        iterable = in_expr.rhs
-        iter_var = in_expr.lhs
-        for_body = node.args[1]
-
-        if isinstance(iterable, Identifier) and any(find_all(for_body, lambda n: n.name == iterable.name)):
-            raise SemanticAnalysisError("you may not refer to the iterable in the body of a for loop!", iterable)
-        elif isinstance(iterable, AttributeAccess) and isinstance(iterable.lhs, Identifier):
-
-            for_scope = node.parent.scope
-
-            is_over_self = iterable.lhs.name == "self"
-            is_over_local_not_aliasing_self = False
-            aliased_locals = []
-            if not is_over_self:
-                is_over_local_not_aliasing_self = True
-
-                for defn in for_scope.find_defs(iterable.lhs):
-                    if isinstance(defn, ParameterDefinition):
-                        is_over_local_not_aliasing_self = False
-                        break
-                    elif isinstance(defn, LocalVariableDefinition): # and rhs of defining assignment doesn't alias self
-                        aliased_locals.append(defn.defined_node)
-
-                        to_check = [defn.defining_node]
-                        while to_check:
-                            check = to_check.pop()
-
-                            def is_local(n):
-                                localdef = n.scope.find_def(n)
-                                if isinstance(localdef, LocalVariableDefinition):
-                                    aliased_locals.append(localdef.defined_node)
-                                    check.append(localdef.defining_node)
-                                elif isinstance(localdef, ParameterDefinition):
-                                    nonlocal is_over_local_not_aliasing_self
-                                    is_over_local_not_aliasing_self = False
-
-                            find_all(check, is_local)
-
-                            if not is_over_local_not_aliasing_self:
-                                break
-
-            def is_acceptable_use_of_self_this(n):
-                assert n.name in ("this", "self")
-                assert is_over_self
-                if isinstance(n.parent, AttributeAccess) and n.parent.lhs is n and not (
-                     isinstance(n.parent.parent, Call) and n.parent is n.parent.parent.func
-                   ) and isinstance(n.parent.rhs, Identifier) and isinstance(iterable.rhs, Identifier) and n.parent.rhs.name != iterable.rhs.name:
-                        # direct access to a data member other than the one being iterated
-                        # - fine under the assumption that data members don't overlap (so long as no C style unions in safe code)
-                    return True
-                return False
-
-            def node_may_alias_iterable(n):
-                # we assume that e.g. a function call can't modify the iterable through a global variable / static local
-                if not isinstance(n, Identifier):
-                    return False
-                if iter_var.name == n.name:
-                    # TODO allow more uses of the iter var (as well as non-fundamental iter var types) in combination w/ range_for
-                    # but only
-                    # 1) vec.append/push_back(x) with vec = [] a local
-                    # 2) map[x] = x etc (map with local var defn)
-                    # 3) x.foo() if an interprocedural analysis proves no use of "mut" in all possible foo methods callable on x
-                    #   - current state of propagate_const (copyable) means one can make a mut copy and mutate (so just because x is const 
-                    #      (doesn't mean there isn't a non-const access of the iterable as a result of a const method call - though it will be
-                    #       marked with a mut annotation)
-                    # 4) same for foo(x)
-                    return False  
-                if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
-                    if is_over_self and is_acceptable_use_of_self_this(n):
-                        return False
-                    return True
-                if is_over_self:
-                    may_alias_self = False
-                    for defn in for_scope.find_defs(n):
-                        if isinstance(defn, ParameterDefinition):
-                            return True
-                        if isinstance(defn, LocalVariableDefinition) and isinstance(defn.defining_node, Call) and defn.defining_node.func.name == "for":
-                            iter = defn.defining_node.args[0].rhs
-                            if isinstance(iter, AttributeAccess) and iter.lhs.name == "self" and is_acceptable_use_of_self_this(iter.lhs):
-                                continue  # this one's ok
-                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"] and not is_acceptable_use_of_self_this(n))):
-                            may_alias_self = True
-                            break
-                        if isinstance(defn, LocalVariableDefinition) and any(find_all(defn.defining_node, lambda n: node_may_alias_iterable(n))):
-                            may_alias_self = True
-                            break
-                    return may_alias_self
-
-                if is_over_local_not_aliasing_self:
-                    for var_def in for_scope.find_defs(n):
-                        if isinstance(var_def, VariableDefinition):
-                            parent_block = var_def.defined_node.parent
-                            while True:
-                                if isinstance(parent_block, Module):
-                                    break
-                                parent_block = parent_block.parent
-
-                            for local_var in aliased_locals:
-                                defined_before = comes_before(parent_block, var_def.defined_node, local_var)
-                                if defined_before:
-                                    return True
-                    return False
-
-                if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
-                    # TODO allow more cases where the defined node doesn't alias the iterable?
-                    return True
-
-                return False
-
-            if not any(find_all(for_body, node_may_alias_iterable)):
-
-                return node
-
-        elif isinstance(iterable, Identifier):
-            # marked as ref elsewhere
-            return node
-
-        #iterable = _ban_references_lambda(iterable)
-        #if iterable:
-        #    node.args = [iter_var, iterable]
-        return node
-
-    new_args = []
-    found_new = False
-    for a in node.args:
-        new = safety_checks(a)
-        if new:
-            new_args.append(new)
-            found_new = True
-        else:
-            new_args.append(a)
-
-    if found_new:
-        node.args = new_args
-
-    if node.func:
-        new = safety_checks(node.func)
-        if new:
-            node.func = new
-
-    if 0 and isinstance(node, Call) and not is_def_or_class_like(node) and not node.func.name in ["decltype", "static_assert", "if", "while", "for", "include", "defined", "namespace"] and not (isinstance(node.parent, Call) and is_def_or_class_like(node.parent)):
-        # handled in codegen (needs to ignore class constructor calls (e.g. implicit make_shared)
-        ban_derefable = Call(Identifier("CETO_BAN_RAW_DEREFERENCABLE"), [node])
-        ban_derefable.parent = node.parent
-        node.parent = ban_derefable
-        ban_derefable.scope = node.scope
-        return ban_derefable
-
-    if isinstance(node, Call) and node.func.name == "unsafe" and len(node.args) != 0:
-        if isinstance(node.parent, Module):
-            raise SemanticAnalysisError("TODO unsafe blocks at Module scope - use an unsafe() call at the top of file for now", node)
-        if len(node.args) != 1:
-            raise SemanticAnalysisError("unsafe takes 1 arg - an expression or a Block", node)
-        if isinstance(node.args[0], Block):
-            block_args = node.args[0].args
-        else:
-            block_args = [node.args[0]]
-
-        # use the existing behaviour of if-expressions for unsafe blocks
-        # but with an "unsafe()" call at the beginning that automatically marks the rest of the block as unsafe
-        # (we want to avoid the scoping machinery / leave unsafe scopes to codegen for now)
-        block_args = [Call(Identifier("unsafe"), [])] + block_args
-
-        if isinstance(node.parent, Block):
-            unsafe_if = Call(Identifier("if"), [IntegerLiteral("1", None), Block(block_args)])
-            return unsafe_if
-        else:
-            # leave "expression unsafe" as-is (handled in codegen)
-            return node
-
-
-    return node
-
-
-def no_references_in_subexpressions_old(node):
-
-    from ceto.compiler import cmdargs
-    if not cmdargs._norefs:
-        return node
-
-    if isinstance(node, Template) and node.func.name == "include":
-        return None
-
-    if isinstance(node, BinOp) and node.op == "in" and node.parent.func and node.parent.func.name == "for" and len(node.parent.args) == 2 and isinstance(node.parent.args[1], Block):
-        iterable = node.rhs
-        iter_var = node.lhs
-        for_body = node.parent.args[1]
-
-        if isinstance(iterable, Identifier) and any(find_all(for_body, lambda n: n.name == iterable.name)):
-            raise SemanticAnalysisError("you may not refer to the iterable in the body of a for loop!", iterable)
-        elif isinstance(iterable, AttributeAccess) and isinstance(iterable.lhs, Identifier):
-
-            for_scope = node.parent.scope
-
-            is_over_self = iterable.lhs.name == "self"
-            is_over_local_not_aliasing_self = False
-            if 0 and not is_over_self:
-                is_over_local_not_aliasing_self = True
-
-                for defn in for_scope.find_defs(iterable.lhs):
-                    if isinstance(defn, ParameterDefinition):
-                        is_over_local_not_aliasing_self = False
-                        break
-                    elif isinstance(defn, LocalVariableDefinition): # and rhs of defining assignment doesn't alias self
-                        pass
-
-            def node_may_alias_iterable(n):
-                # we assume that e.g. a function call can't modify the iterable through a global variable / static local
-                if not isinstance(n, Identifier):
-                    return False
-                if iter_var.name == n.name:
-                    return False
-                if n.name in ("this", "self") and not is_over_local_not_aliasing_self:
-                    return True
-                assert 0
-                if is_over_self:
-                    may_alias_self = False
-                    for defn in for_scope.find_defs(n):
-                        if any(find_all(defn.defining_node, lambda n: n.name in ["self", "this"])):
-                            may_alias_self = True
-                            break
-                    assert 0
-                    return may_alias_self
-                if isinstance(var_def := for_scope.find_def(n), VariableDefinition):
-                    #if var_def.defined_node.scope == 
-                    # TODO allow more cases where the defined node doesn't alias the iterable
-
-                    return True
-                return False
-
-            if not any(find_all(for_body, node_may_alias_iterable)):
-                # no need to ban iterating over this maybe reference
-                return node
-
-        iterable = no_references_in_subexpressions(iterable)
-        if iterable:
-            node.args = [iter_var, iterable]
-        return node
-
-    if isinstance(node, BinOp) and isinstance(node.parent, Block) and node.op in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "~=", ">>=", "<<="]:
-        rhs = no_references_in_subexpressions(node.rhs)
-        if rhs:
-            node.args = [node.lhs, rhs]
-        return node
-
-    new_args = []
-    found_new = False
-    for a in node.args:
-        new = no_references_in_subexpressions(a)
-        if new:
-            new_args.append(new)
-            found_new = True
-        else:
-            new_args.append(a)
-
-    if found_new:
-        node.args = new_args
-
-    if node.func:
-        new = no_references_in_subexpressions(node.func)
-        if new:
-            node.func = new
-
-    if isinstance(node, Module):
-        return node
-
-    # Note we should do a better job banning Assign in subexpressions even though the Assign vs NamedParameter
-    # distinction was meant to tackle this in the simple case of x=y in a Call
-    if isinstance(node, (Block, TypeOp, ListLiteral, BracedLiteral, ScopeResolution, Template, Identifier, Assign, NamedParameter, IntegerLiteral, FloatLiteral, StringLiteral)):
-        return None
-
-    if isinstance(node.parent, (Block, TypeOp)):
-        return None
-
-    if isinstance(node.parent, (Call, BracedCall, Template, ArrayAccess)) and node is node.parent.func:
-        return None
-
-    if isinstance(node.parent, Call) and node.parent.func.name in ["if", "while"]:
-        return None
-
-    if isinstance(node.parent, Call) and is_def_or_class_like(node.parent):
-        return None
-
-    if isinstance(node, Call) and is_call_lambda(node):
-        return None
-
-    if isinstance(node, Call):
-        pass
-
-    if isinstance(node.parent, Call) and node.parent.func.name == "for":
-        return None
-
-    if isinstance(node.parent, ArrayAccess) and node.parent.func.name == "lambda":
-        return None
-
-    if isinstance(node, AttributeAccess):
-        attr_lhs = node.lhs
-        
-        # TODO arguably we should allow this->foo to be a reference regardless of the safety of ->
-        # This this-> is arguably ok too (*this is unsafe at least due to current object slicing capabilities)
-
-        if attr_lhs.name == "self":
-            # Access to one's own datamembers is always fine in a method 
-            # (any invalid use in a for loop will trigger a static_assert on the for loop 
-            #   iter rather thatn the self use in the for loop body)
-            return node
-
-        while isinstance(attr_lhs, (AttributeAccess, ScopeResolution)):
-            attr_lhs = attr_lhs.lhs
-
-        if isinstance(attr_lhs, Identifier) and attr_lhs.name != "self" and not attr_lhs.scope.find_def(attr_lhs):
-            # implicit scope resolution
-            return None
-
-    # note that banning e.g. dereferenable (requires { *foo } ) types on the lhs of an assignment should use
-    # the "no implicit conversions in assignments" logic in codegen_assign
-
-    if isinstance(node.parent, Assign):
-        # a C++ reference is ok as the type of the lhs of an assignment because C++ will perform a copy without 
-        # an explicit reference type (which, for a local variable, will TODO require an unsafe annotation even if const)
-        return None
-
-#    code = """(lambda[ref] (:
-#    static_assert(not std::is_reference_v<decltype(ceto_private_placeholder)>)
-#    return ceto_private_placeholder
-#):decltype(auto))()"""
-
-#    from .parser import parse
-#    ban_references_lambda = parse(code).args[0]
-#    print(ban_references_lambda.ast_repr(ceto_evalable=False, preserve_source_loc=False))
-#    import sys
-#    sys.exit(-1)
-
-    clone = node.clone()
-
-    ban_references_lambda = Call(TypeOp(":", [Call(ArrayAccess(Identifier("lambda", ), [Identifier("ref", ), ], ), [Block([Call(Identifier("static_assert", ), [UnOp("not", [ScopeResolution("::", [Identifier("std", ), Template(Identifier("is_reference_v", ), [Call(Identifier("overparenthesized_decltype", ), [clone, ], ), ], ), ], )], ), ], ), SyntaxTypeOp(":", [Identifier("return"), node], ), ], ), ], ), Call(Identifier("decltype", ), [Identifier("auto", ), ], ), ], ), [], )
-
-    #ban_references_lambda = Call(Identifier("CETO_BAN_REFS"), [node])
-
-    ban_references_lambda.parent = node.parent
-    node.parent = ban_references_lambda
-    clone.parent = ban_references_lambda
-    clone.scope = node.scope
-    ban_references_lambda.scope = node.scope
-    #ban_references_lambda = basic_semantic_analysis(ban_references_lambda)
-
-    return ban_references_lambda
-
-
 def type_inorder_traversal(typenode: Node, func):
     if isinstance(typenode, TypeOp):
         if not type_inorder_traversal(typenode.lhs, func):
@@ -814,10 +415,12 @@ def is_return(node):
     return (isinstance(node, TypeOp) and node.lhs.name == "return") or (
             is_void_return(node) or (isinstance(node, UnOp) and node.op == "return"))
 
+
 # whatever 'void' means - but syntactically this is 'return' (just an identifier)
 # note: "return void();" is not considered a void return here
 def is_void_return(node):
     return isinstance(node, Identifier) and node.name == "return" and not (isinstance(node.parent, TypeOp) and node.parent.lhs is node) and not isinstance(node.parent, UnOp)
+
 
 # find closest following use
 def find_use(assign: Assign):
@@ -913,7 +516,7 @@ def is_def_or_class_like(call : Call):
 
 # TODO Writing this with the exterior visitation was a bad idea - prevents things
 # like easily ignoring Template args (without accessing .parent) when determining if a variable
-# type is a declaration. Should be moved to C++ but arg flattening needs to be addressed first.
+# type is a declaration. Should be moved to C++.
 class ScopeVisitor:
     def __init__(self):
         self._module_scope = None
@@ -925,16 +528,9 @@ class ScopeVisitor:
     def visit_Call(self, call):
         self.visit_Node(call)
 
-        # TODO we should be handling class definitions here (this will allow us
-        # to stop hackily inserting the args of an included module into the includee)
-        # plus something like this:
-        #if call.func.name == "include":
-        #    assert isinstance(call.args[1], Module)
-        #    call.args[1].scope = call.scope
-        #    return
+        # TODO we should be handling class definitions here
 
         if is_def_or_class_like(call):
-            # call.scope = call.scope.enter_scope()
             call_inner_scope = call.scope.enter_scope()
 
         for a in call.args:
@@ -958,10 +554,6 @@ class ScopeVisitor:
                     pass  # TODO
                 elif call.func.name == "namespace":
                     if isinstance(call.args[0], (Identifier, ScopeResolution, AttributeAccess)):
-                        identifier = call.args[0]
-                        #while isinstance(identifier, (ScopeResolution, AttributeAccess)):
-                        #    identifier = identifier.lhs
-                        #if isinstance(identifier, Identifier):
                         nd = NamespaceDefinition(call, call.args[0])
                         call.scope.add_namespace_definition(nd)
                 elif call.func.name == "def":
@@ -1476,7 +1068,7 @@ def basic_semantic_analysis(expr: Module) -> Module:
     expr = build_types(expr)
     expr = build_parents(expr)
     expr = apply_replacers(expr, [ScopeVisitor()])
-    expr = apply_replacers(expr, [ImplicitLambdaCaptureVisitor()])
+    #expr = apply_replacers(expr, [ImplicitLambdaCaptureVisitor()])
     return expr
 
 
@@ -1486,16 +1078,6 @@ def semantic_analysis(expr: Module) -> Module:
     expr = one_liner_expander(expr)
     expr = assign_to_named_parameter(expr)
     expr = warn_and_remove_redundant_parenthesese(expr)
-
-    expr = basic_semantic_analysis(expr)
-    expr = safety_checks(expr)
-
-    def clearscope(n):
-        n.scope = None
-        return n
-
-    expr = replace_node(expr, clearscope)
-
     expr = basic_semantic_analysis(expr)
 
     def debug_defs(node):

@@ -2655,9 +2655,14 @@ def codegen_call(node: Call, cx: Scope):
                 cx.is_unsafe = True
                 node.scope.is_unsafe = True
                 return "// unsafe"
+            elif len(node.args) == 1 and isinstance(node.args[0], Block):
+                if not isinstance(node.parent, Block):
+                    raise CodeGenError("unsafe call must be in Block", node)
+                new_cx = cx.enter_scope()
+                new_cx.is_unsafe = True
+                code = codegen_block(node.args[0], new_cx)
+                return "if (1) {\n// Unsafe\n" + code + "}"
             elif len(node.args) == 1:
-            #if node.parent.args[0] is not node:
-            #    raise CodeGenError("unsafe() call must be first statement in Block", node)
                 old_unsafe = cx.is_unsafe
                 cx.is_unsafe = True
                 node.scope.is_unsafe = True
