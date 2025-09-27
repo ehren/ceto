@@ -334,20 +334,9 @@ void for_loop_ranged(Container&& container, Func&& func) {
     }
 }
 
-template<bool UseRangeBasedFor = false, typename Container, typename Func>
-void safe_for_loop_strict(Container&& container, Func&& func) {
-    if constexpr (UseRangeBasedFor || IsIotaView<std::remove_cvref_t<Container>>) {
-        for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
-    } else {
-        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>> && OwningContainer<std::remove_cvref_t<Container>>) {
-            for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
-        } else {
-            static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop");
-            static_assert(OwningContainer<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't safely emit a for-loop. Use for (...):unsafe or create a vec from your view with view | []");
-        }
-    }
-}
-
+// falls back to indexing if UsedRangeBasedFor is false unless Container is non-owning (e.g. std::span)
+// in which case you might as well use a range based for because indexing into an invalidated view is UB anyway
+// this is the default for for-loops
 template<bool UseRangeBasedFor = false, typename Container, typename Func>
 void safe_for_loop(Container&& container, Func&& func) {
     if constexpr (UseRangeBasedFor || !OwningContainer<std::remove_cvref_t<Container>>) {
@@ -357,6 +346,21 @@ void safe_for_loop(Container&& container, Func&& func) {
             for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
         } else {
             static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop; it's also not a non-aliased local - make a copy to safely iterate or use for(...):unsafe");
+        }
+    }
+}
+
+// same behaviour as safe_for_loop but this bans any use of a non-owning view/span (except iota_view)
+template<bool UseRangeBasedFor = false, typename Container, typename Func>
+void safe_for_loop_strict(Container&& container, Func&& func) {
+    if constexpr (UseRangeBasedFor || IsIotaView<std::remove_cvref_t<Container>>) {
+        for_loop_ranged(std::forward<Container>(container), std::forward<Func>(func));
+    } else {
+        if constexpr (ContiguousContainer<std::remove_cvref_t<Container>> && OwningContainer<std::remove_cvref_t<Container>>) {
+            for_loop_indexing(std::forward<Container>(container), std::forward<Func>(func));
+        } else {
+            static_assert(ContiguousContainer<std::remove_cvref_t<Container>>, "iterable is non-contiguous (ie a std.map) so we can't safely emit a size checked indexing for loop");
+            static_assert(OwningContainer<std::remove_cvref_t<Container>>, "iterable is non-owning (ie a view or span) we can't emit a for-loop with 'safer' type. Don't use 'for (...):safer' or create a vec from your view with 'view | []'");
         }
     }
 }

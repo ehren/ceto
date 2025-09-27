@@ -1259,10 +1259,12 @@ def codegen_for(node, cx):
 
     if node.declared_type:
         is_unsafe_for = node.declared_type.name == "unsafe"
-        if not is_unsafe_for:
+        is_safer_for = node.declared_type.name == "safer"
+        if not (is_unsafe_for or is_safer_for):
             raise CodeGenError("unexpected type of for", node.declared_type)
     else:
         is_unsafe_for = False
+        is_safer_for = False
 
     if not isinstance(instmt, BinOp) or instmt.op != "in":
         raise CodeGenError("unexpected 1st argument to for", node)
@@ -1325,13 +1327,11 @@ def codegen_for(node, cx):
         else:
             type_str = "const auto"
 
-    if is_unsafe_for or is_over_non_aliased_owning_container:
-        iterable_str = codegen_node(iterable, block_cx)
-        forstr = 'for({} {} : {}) {{\n'.format(type_str, var_str, iterable_str)
-        forstr += block_str
-        forstr += indt + "}\n"
-        return forstr
-    elif emit_conditionally_indexing_for:
+    emit_unconditional_range_based_for = is_unsafe_for or is_over_non_aliased_owning_container
+    if emit_unconditional_range_based_for:
+        emit_conditionally_indexing_for = False
+
+    if emit_conditionally_indexing_for:
         stop_loop_control_replacement_test = lambda n: (creates_new_variable_scope(n) or (isinstance(n, Call) and n.func.name in ("for", "while")))
 
         iterable_str = codegen_node(iterable, block_cx)
@@ -1423,7 +1423,13 @@ def codegen_for(node, cx):
 
         lambda_param = gensym("lambda_param")
         rewritten_block = "\n".join(loop_block_lines)
-        forstr = rf"""ceto::safe_for_loop<{allow_range_based_for_condition}>({iterable_str}, [&](auto &&{lambda_param}) -> ceto::LoopControl {{
+
+        if is_safer_for:
+            forstr = "ceto::safe_for_loop_strict"
+        else:
+            forstr = "ceto::safe_for_loop"
+
+        forstr += rf"""<{allow_range_based_for_condition}>({iterable_str}, [&](auto &&{lambda_param}) -> ceto::LoopControl {{
     {type_str} {var_str} = {lambda_param};
 {rewritten_block}
     return ceto::LoopControl::Continue;
@@ -1482,12 +1488,24 @@ def codegen_for(node, cx):
     rng = codegen_node(iterable_final, block_cx)
     assert(len(rng) > 0)
 
+    if emit_unconditional_range_based_for:
+        forstr = '{}\nfor({} {} : {}) {{\n'.format(iterable_str, type_str, var_str, rng)
+        forstr += block_str
+        forstr += indt + "}\n"
+        return forstr
+
     idx = gensym("idx")
     initial_list_size = gensym("size")
 
+    if is_safer_for:
+        assert_owning = f'static_assert(ceto::OwningContainer<std::remove_cvref_t<decltype({rng})>>, "a :safer for loop requires an owning container (e.g. views and std.span are non-owning");'
+    else:
+        assert_owning = ""
+
     forstr = rf"""
     {iterable_str}
-    static_assert(requires {{ std::begin({rng}) + 2; }}, "not a contiguous container");
+    static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype({rng})>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+    {assert_owning}
     size_t {initial_list_size} = std::size({rng});
     for (size_t {idx} = 0; ; {idx}++) {{
         if (std::size({rng}) != {initial_list_size}) {{
