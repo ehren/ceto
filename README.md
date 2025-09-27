@@ -458,7 +458,7 @@ include <map>
 include <string>
 
 class (Generic:
-    x  # implicit 1-arg constructor, deleted 0-arg constructor
+    x  # 1-arg constructor, deleted 0-arg constructor
 )
 
 class (Concrete(Generic):
@@ -490,24 +490,11 @@ def (main:
 )
 ```
 
-### Tuples, "tuple unpacking" (std::tuple / structured bindings / std::tie)
+All constructors whether implicit or defined by an init method use the C++ keyword ```explicit```
+
+### Tuples, "tuple unpacking" (std.tuple / structured bindings / std.tie)
 
 ```python
-# Test Output: 01
-# Test Output: 12
-# Test Output: 23
-# Test Output: 34
-# Test Output: 00
-# Test Output: 56
-# Test Output: 12
-# Test Output: 71
-# Test Output: 89
-# Test Output: 910
-# Test Output: 01
-
-include <ranges>
-include <iostream>
-
 def (foo, tuple1: (int, int), tuple2 = (0, 1):
     # TODO perhaps Python like tuple1[0] notation for transpiler known tuples
     return (std.get<0>(tuple1), std.get<1>(tuple2))
@@ -520,26 +507,27 @@ def (main:
         tuples.append((i, i + 1))
     )
 
+    # declaration (C++ structured binding)
     (a, b) = (tuples[0], tuples[1])
     tuples.append(a)
 
+    # reassignment (std::tie)
     (tuples[4], tuples[6]) = ((0, 0), b)
 
     (std.get<0>(tuples[7]), std.get<1>(tuples[7])) = foo(tuples[7])
 
-    for ((x, y) in tuples:  # const auto
+    for ((x, y) in tuples:
         std.cout << x << y << "\n"
     )
 
-    for ((x, y):mut:auto:ref in tuples:  # auto&
+    for ((x, y):mut:auto:ref in tuples:
         unsafe(:
-            # a local var of ref type is unsafe
             x += 1
             y += 2
         )
     )
 
-    for ((x, y):mut in tuples:  # just auto
+    for ((x, y):mut in tuples:
         static_assert(std.is_same_v<decltype(x), int>)
         static_assert(std.is_same_v<decltype(y), int>)
     )
@@ -864,12 +852,12 @@ def (main:
     # person.details = mut_details  # error (unlike swift if the instance is const then no modifications may occur even if the data member holds a mut)
     # person.details.id = -1        # error (same reason)
 
-    mut_details.id = -1  # we can still modify through a mut instance var pointing to a non-mut
+    mut_details.id = -1  # we can still modify through a mut instance var pointing to a mut
     std.cout << person.details.id  # -1
 
-    mut_instance_of_const: mut = details
-    # mut_instance_of_const.id = 5  # error: can't modify through a mut instance if it points to a non-mut
-    mut_instance_of_const = None    # we may only reassign it
+    mut_instance_of_const: mut = details  # while a mut binding holding a non-mut permits no direct mutation:
+    # mut_instance_of_const.id = 5        # error
+    mut_instance_of_const = None          # we may only reassign it
 )
 ```
 
@@ -1005,7 +993,7 @@ defmacro(map_var: west:std.map:east = {keyvals}, keyvals: [TypeOp],
     keys: mut:[Node] = []
 
     assertion: mut = quote(True)
-    map_type: mut = None:Node
+    map_type: mut = None.Node
     
     for (kv in keyvals:
         type = quote(std.(unquote(map))<decltype(unquote(kv.args[0])),
