@@ -68,8 +68,6 @@ def (main:
 )
 ```
 
-This example illustrates macros with variadic params combined with optional params demonstrating that our variadic matching is not "too greedy". ```unsafe.extern``` is required for potentially dangerous external C++: we provide for-loop iteration safety, C++ raw reference safety, and general reference-semantics safety when writing code free of keyword ```unsafe```. This safety guarantee applies when iterating over stl containers like ```std.vector```, ```std.array```, and (in some cases) even ```std.map```. There are no safety guarantees however with non-owning views like ```std.views.take```, ```std.stringview```, or ```std.span``` (or anything else pulled in with an ```unsafe.extern``` declaration).
-
 ## Usage
 
 ```bash
@@ -397,12 +395,9 @@ def (main:
 )
 ```
 
-## Further Reading / Lang Reference
+See [tests/regression/errors/bad_alias.ctp](https://github.com/ehren/ceto/blob/main/tests/regression/errors/bad_alias.ctp) for more reference passing assert examples (e.g. you may pass by ref to a 1 argument callable - but not if it's a non-stateless lambda). Note that accessing global variables requires a python-ish ```g: global``` declaration (only permitted in unsafe contexts).
 
-- [Autoderef (use *.* not *->*)](#autoderef-use--not--)
-- [Classes, Inheritance, init](#autoderef-use--not--)
-- [Macros](#macros)
-    - [Alternational Arguments](#alternational-arguments)
+## Further Reading / Lang Reference
 
 ### More generic functions, python-like list/vector notation
 
@@ -922,10 +917,10 @@ def (by_mut_ref, f: Foo:ref:mut:  # pass by non-const reference (mut:Foo:ref als
 
 # TODO: using fully notated const pointers like below is recommended for all ceto code. 
 # The const by default (unless :unique) for function parameters feature behaves a bit like add_const_t currently
-# (the multiple mut syntax "mut:Foo:ptr:mut" is not even currently supported for Foo** in C++ -
-#  while mut:Foo:ptr or Foo:ptr:mut works currently, future ceto versions may require additional mut/const annotations)
-def (by_ptr, f: const:Foo:ptr:const:
-    static_assert(std.is_same_v<decltype(f), const:Foo:ptr:const>)
+# (the multiple mut syntax "mut:Foo:pointer:mut" is not even currently supported for Foo** in C++ -
+#  while mut:Foo:pointer or Foo:pointer:mut works currently, future ceto versions may require additional mut/const annotations)
+def (by_pointer, f: const:Foo:pointer:const:
+    static_assert(std.is_same_v<decltype(f), const:Foo:pointer:const>)
     std.cout << unsafe(f->x)  # no autoderef for raw pointers; no explicit deref (non-null checked) in safe-mode
 )
 
@@ -937,7 +932,7 @@ def (main:
     # by_mut_ref(f)  # error: binding reference of type ‘Foo&’ to ‘const Foo’ discards qualifiers
     fm : mut = f  # copy
     by_mut_ref(fm)
-    by_ptr(unsafe(&f))
+    by_pointer(unsafe(&f))
 )
 ```
 
@@ -1333,7 +1328,7 @@ class (MacroDefinition:
 )
 
 class (MacroScope:
-    parent: MacroScope.class:const:ptr = None
+    parent: MacroScope.class:const:pointer = None
 
     macro_definitions: [MacroDefinition] = []
 
