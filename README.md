@@ -10,6 +10,7 @@ Features:
 - const by default
 - propagate_const by default
 - Swiftish lambda capture
+- expression-if by default
 - unsafe blocks
 - unsafe.extern declarations
 - C++ reference safety
