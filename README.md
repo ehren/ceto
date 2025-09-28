@@ -90,7 +90,7 @@ Features:
 - tuples, curly braced calls/lists, ...
 - No narrowing conversions in assignments (without some pitfalls of "universal initialization everywhere" like unexpected aggregate initializations)
 - extra CTAD (create a reference counted object using the same ```Foo(x, y)``` syntax as creating a struct instance even if ```Foo``` has generic class members)
-- Growing standard library macros (the slm) located in include (e.g. "isinstance(x, Foo) and expr_with_x" uses dynamic_pointer_cast but instances of x in expr_with_x are silently replaced by their downcasted counterpart via a macro transform; see usage of ast StringLiteral .str method in print macro below).
+- Growing standard library macros located in include (e.g. "isinstance(x, Foo) and expr_with_x" uses dynamic_pointer_cast but instances of x in expr_with_x are silently replaced by their downcasted counterpart via a macro transform; see usage of ast StringLiteral .str method in print macro below).
 
 ## Usage
 
