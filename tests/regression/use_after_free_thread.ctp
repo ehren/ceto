@@ -6,9 +6,10 @@
 # Test Output: in Foo: 5
 # Test Output: ub has occured
 
-# be careful with multithreaded code! (std.thread iS unSaFe)
-
+include <thread>
 include <chrono>
+
+unsafe.extern(std.thread, std.this_thread)
 
 class (Foo:
     x : int = 1
@@ -39,9 +40,9 @@ def (main:
     g.f = Foo() : mut
 
     t: mut = std.thread(lambda(:
-        gm: mut = g  # capture is const so we can't mutate through g (because of copyable propage_const), but we can mutate through a mut copy:
-        #gm.getter().long_running_method()  # this would be fine - we copy capture g/gm by value and getter returns a fresh shared_ptr instance bumping refcount (different threads accessing different shared_ptr instances even if pointing to same thing is thread safe)
-        gm.f.long_running_method()  # accessing 'gm' (different shared_ptr instances due to implicit copy capture) is safe. accessing the same shared_ptr instance 'f' is UB and a reliable use after free on all 3 platforms
+        gm: mut = g
+        #gm.getter().long_running_method()  # this is probably still technically a race condition
+        gm.f.long_running_method()  # accessing the same shared_ptr instance 'f' across two threads is definitely UB
     ))
 
     std.this_thread.sleep_for(std.chrono.milliseconds(2500))
