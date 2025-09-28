@@ -1,0 +1,60 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+template <typename ceto__private__C1>struct Blah : public ceto::enable_shared_from_this_base_for_templates {
+
+    ceto__private__C1 x;
+
+        inline auto foo() -> void {
+            (this -> x) = ((this -> x) + 1);
+        }
+
+    explicit Blah(ceto__private__C1 x) : x(std::move(x)) {}
+
+    Blah() = delete;
+
+};
+
+    auto main() -> int {
+        auto b { ceto::make_shared_propagate_const<decltype(Blah{1})>(1) } ;
+        (*ceto::mad(b)).foo();
+        std::cout << (*ceto::mad(b)).x;
+        (*ceto::mad(b)).x = 5;
+        std::cout << (*ceto::mad(b)).x;
+    }
+

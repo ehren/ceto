@@ -1,0 +1,67 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+#include <ranges>
+;
+#include <iostream>
+;
+     template<typename ... Args> inline auto range( Args && ...  args) -> decltype(auto) {
+         // unsafe external C++: std.forward
+;
+        if constexpr (sizeof...(Args) == 1) {
+            return std::ranges::iota_view(0, std::forward<Args>(args)...);
+        } else {
+            return std::ranges::iota_view(std::forward<Args>(args)...);
+        }
+    }
+
+    auto main() -> int {
+        ceto::safe_for_loop<!std::is_reference_v<decltype(range(10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range(10))>>>(range(10), [&](auto &&ceto__private__lambda_param1) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param1;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});        ceto::safe_for_loop<!std::is_reference_v<decltype(range(0, 10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range(0, 10))>>>(range(0, 10), [&](auto &&ceto__private__lambda_param2) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param2;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});        ceto::safe_for_loop<!std::is_reference_v<decltype(range((-10), 10))> && ceto::OwningContainer<std::remove_cvref_t<decltype(range((-10), 10))>>>(range((-10), 10), [&](auto &&ceto__private__lambda_param3) -> ceto::LoopControl {
+    const auto i = ceto__private__lambda_param3;
+            std::cout << i;
+    return ceto::LoopControl::Continue;
+});    }
+

@@ -1,0 +1,51 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+    template <typename ceto__private__T11, typename ceto__private__T22>
+ static auto foo(const ceto__private__T11& x, const ceto__private__T22& y) -> int {
+        return (x + y);
+    }
+
+     extern "C" inline auto foo2(const int  x, const int  y) -> int {
+        return (x + y);
+    }
+
+    auto main() -> int {
+        std::cout << foo(1, 2) << foo2(3, 4);
+    }
+

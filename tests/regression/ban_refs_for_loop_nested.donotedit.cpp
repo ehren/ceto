@@ -1,0 +1,115 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+// unsafe;
+    template <typename ceto__private__T11, typename ceto__private__T22>
+auto bar(const ceto__private__T11& x, const ceto__private__T22& y) -> void {
+        ; // pass
+    }
+
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
+
+    decltype(std::vector {{1, 2, 3}}) a = std::vector {{1, 2, 3}};
+
+    decltype(std::vector {{4, 5, 6}}) b = std::vector {{4, 5, 6}};
+
+        inline auto blah() -> void {
+            ceto::append_or_push_back(this -> a, 1);
+            ceto::append_or_push_back(this -> b, 2);
+        }
+
+        inline auto foo() -> void {
+            (*ceto::mad(this -> a)).begin();
+            if (1) {
+// Unsafe
+                (*ceto::mad(this -> a)).begin();
+};
+            (*/* unsafe: */ ((*ceto::mad(this -> a)).begin()));
+            
+                auto&& ceto__private__intermediate6 = this -> a;
+
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate6)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+    
+                size_t ceto__private__size8 = std::size(ceto__private__intermediate6);
+                for (size_t ceto__private__idx7 = 0; ; ceto__private__idx7++) {
+                    if (std::size(ceto__private__intermediate6) != ceto__private__size8) {
+                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                        std::terminate();
+                    }
+                    if (ceto__private__idx7 >= ceto__private__size8) {
+                        break ;
+                    }
+                    const auto x = ceto__private__intermediate6[ceto__private__idx7];
+                                    bar(x, x);
+                
+                                auto&& ceto__private__intermediate3 = this -> b;
+
+                                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate3)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+    
+                                size_t ceto__private__size5 = std::size(ceto__private__intermediate3);
+                                for (size_t ceto__private__idx4 = 0; ; ceto__private__idx4++) {
+                                    if (std::size(ceto__private__intermediate3) != ceto__private__size5) {
+                                        std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                                        std::terminate();
+                                    }
+                                    if (ceto__private__idx4 >= ceto__private__size5) {
+                                        break ;
+                                    }
+                                    const auto y = ceto__private__intermediate3[ceto__private__idx4];
+                                                        bar(x, y);
+
+                                }
+                                std::cout << ceto::bounds_check(this -> b, 0);
+
+                }
+            }
+
+};
+
+    inline auto create_foo() -> auto {
+        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        return f;
+    }
+
+    auto main() -> int {
+        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        (*ceto::mad(f)).foo();
+        const auto c = create_foo();
+        (*ceto::mad(c)).foo();
+    }
+

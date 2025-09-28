@@ -1,0 +1,79 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+ // unsafe external C++: static_cast, printf
+;
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
+
+    decltype(0) x = 0;
+
+        ~Foo() {
+            printf("dead %p\n", [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(static_cast<const void *>(this))>  || (!std::is_reference_v<decltype("dead %p\n")> && std::is_fundamental_v<std::remove_cvref_t<decltype("dead %p\n")>>)) && true)  )); return static_cast<const void *>(this); }());
+        }
+
+        inline auto bar() const -> void {
+            printf("in bar\n");
+        }
+
+        inline auto foo() const -> auto {
+            const auto self = ceto::shared_from(this);
+            printf("in foo method %p\n", [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(static_cast<const void *>(this))>  || (!std::is_reference_v<decltype("in foo method %p\n")> && std::is_fundamental_v<std::remove_cvref_t<decltype("in foo method %p\n")>>)) && true)  )); return static_cast<const void *>(this); }());
+            bar();
+            this -> bar();
+            printf("bar attribute access %d\n", this -> x);
+            return self;
+        }
+
+};
+
+    template <typename ceto__private__T11>
+auto calls_foo(const ceto__private__T11& x) -> auto {
+        (*ceto::mad(x)).foo();
+        return x;
+    }
+
+    auto main() -> int {
+        (*ceto::mad(ceto::make_shared_propagate_const<const Foo>())).foo();
+        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        (*ceto::mad(f)).foo();
+        (*ceto::mad(f)).x = 55;
+        (*ceto::mad(f)).foo();
+        const auto y = ceto::make_shared_propagate_const<const Foo>();
+        (*ceto::mad((*ceto::mad(calls_foo(y))).foo())).foo();
+    }
+

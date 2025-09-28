@@ -1,0 +1,60 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+struct Foo1 : public ceto::object {
+
+};
+
+struct Foo2 : public ceto::object {
+
+         virtual ~Foo2() = default;
+
+};
+
+struct Foo3 : public ceto::object {
+
+         virtual ~Foo3() = default;
+
+};
+
+    auto main() -> int {
+        static_assert(!std::has_virtual_destructor_v<Foo1>);
+        static_assert(std::has_virtual_destructor_v<Foo2>);
+        static_assert(std::has_virtual_destructor_v<Foo3>);
+    }
+

@@ -1,0 +1,48 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+    auto main() -> int {
+        auto x { std::vector<decltype(1)>() } ;
+        const auto lfunc = [](const auto &x, const auto &y) {
+                return (x + y);
+                };
+        (x).push_back(1);
+        const auto [val1, val2] = std::make_tuple(ceto::bounds_check(x, 0), ceto::bounds_check(x, 0));
+        std::cout << lfunc(val1, val2);
+    }
+

@@ -1,0 +1,100 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+    template <typename ceto__private__T11, typename ceto__private__T22>
+auto map(const ceto__private__T11& values, const ceto__private__T22& fun) -> auto {
+        auto results { std::vector<std::remove_cvref_t<decltype(fun(std::declval<std::ranges::range_value_t<decltype(values)>>()))>>() } ;
+        
+    
+            static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(values)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+    
+            size_t ceto__private__size4 = std::size(values);
+            for (size_t ceto__private__idx3 = 0; ; ceto__private__idx3++) {
+                if (std::size(values) != ceto__private__size4) {
+                    std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
+                    std::terminate();
+                }
+                if (ceto__private__idx3 >= ceto__private__size4) {
+                    break ;
+                }
+                const auto v = values[ceto__private__idx3];
+                            (results).push_back(fun([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(v)> ) && ceto::IsStateless<std::remove_cvref_t<decltype(fun)>>) || ceto::IsStateless<std::remove_cvref_t<decltype(fun)>> || ceto::IsContainer<std::remove_cvref_t<decltype(results)>>)); return v; }()));
+
+            }
+            return results;
+    }
+
+    inline auto foo(const int  x) -> auto {
+        std::cout << x;
+        return x;
+    }
+
+    template <typename ceto__private__T15>
+auto foo_generic(const ceto__private__T15& x) -> auto {
+        std::cout << x;
+        return x;
+    }
+
+    auto main() -> int {
+        const auto l = std::vector {{1, 2, 3, 4}};
+        map([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(map(l, [](const auto &x) {
+                std::cout << x;
+                return (x * 2);
+                }))>  || (!std::is_reference_v<decltype([](const auto &x) {
+                std::cout << x;
+                return x;
+                })> && std::is_fundamental_v<std::remove_cvref_t<decltype([](const auto &x) {
+                std::cout << x;
+                return x;
+                })>>)) && true)  )); return map(l, [](const auto &x) {
+                std::cout << x;
+                return (x * 2);
+                }); }(), [](const auto &x) {
+                std::cout << x;
+                return x;
+                });
+        map(l, foo);
+        map(l, [](const int  x) {
+                return foo_generic(x);
+                });
+        map(l, [](const auto &x) {
+                return foo_generic(x);
+                });
+        map(l, foo_generic<int>);
+    }
+

@@ -1,0 +1,83 @@
+
+#include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
+
+        inline auto method() const -> void {
+            std::cout << "method";
+        }
+
+        ~Foo() {
+            std::cout << "Foo destruct";
+        }
+
+};
+
+struct Holder : public ceto::shared_object, public std::enable_shared_from_this<Holder> {
+
+    ceto::propagate_const<std::shared_ptr<const Foo>> f;
+
+    explicit Holder(ceto::propagate_const<std::shared_ptr<const Foo>> f) : f(std::move(f)) {}
+
+    Holder() = delete;
+
+};
+
+    inline auto accessor() -> auto {
+        static auto g { ceto::make_shared_propagate_const<Holder>(nullptr) } ;
+        return g;
+    }
+
+    template <typename ceto__private__T11>
+auto aliaser(const ceto__private__T11& f) -> void {
+        // unsafe;
+        auto g { accessor() } ;
+        (*ceto::mad(g)).f = nullptr;
+        std::cout << (f == nullptr);
+        std::cout << (&ceto::get_underlying(f)) -> use_count();
+        std::cout << ((&f) -> get() == nullptr);
+    }
+
+    auto main() -> int {
+        // unsafe;
+        auto f { accessor() } ;
+        (*ceto::mad(f)).f = ceto::make_shared_propagate_const<const Foo>();
+        std::cout << (&ceto::get_underlying((*ceto::mad(f)).f)) -> use_count();
+        aliaser((*ceto::mad(f)).f);
+    }
+
