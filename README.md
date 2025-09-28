@@ -2,30 +2,6 @@
 
 Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. The semantics should feel a bit like Swift (classes are reference counted; structs are value types) or even an immutable by default Python with support for many native C++ constructs and external C++.
 
-Features:
-
-- transpiled to c++20. 
-- "Python" with 2 parentheses moved or inserted
-- '.' is ordinary attribute access plus smart pointer and std::optional autoderef - or scope resolution! 
-- const by default
-- propagate_const by default
-- Swiftish lambda capture
-- expression-if by default
-- unsafe blocks
-- unsafe.extern declarations
-- C++ reference safety
-- python like ```lst = [1, 2, 3]``` notation for ```std.vector``` with a bit of py14 derived forward type inference via decltype
-- for loop safety
-- partially selfhosted by cheating (see selfhost/ast.ctp for pybind11 bindings)
-- anything might be an unexpanded macro
-- bounds checking by default by defining array[index] as a macro (the C++ compile time bounds checking logic is derived from Herb Sutter's cppfront though bugs are our own see licence at ./include/boundscheck.cth)
-- :unique classes with cppfront inspired move from last use
-- C++ templates (both explicit and implicit from python like non-type annotated code)
-- tuples, curly braced calls/lists, ...
-- No narrowing conversions in assignments (without some pitfalls of "universal initialization everywhere" like unexpected aggregate initializations)
-- extra CTAD (create a reference counted object using the same ```Foo(x, y)``` syntax as creating a struct instance even if ```Foo``` has generic class members)
-- Growing standard library macros (the slm) located in include (e.g. "isinstance(x, Foo) and expr_with_x" uses dynamic_pointer_cast but instances of x in expr_with_x are silently replaced by their downcasted counterpart via a macro transform; see usage of ast StringLiteral .str method in print macro below).
-
 ## Example
 
 Any expression can be redefined via the macro system. That's used here to provide python-style optional keyword arguments to a toy print function macro:
@@ -91,6 +67,30 @@ def (main:
     print(x[0], file=std.ofstream("example.txt", std.ios.app))
 )
 ```
+
+Features:
+
+- transpiled to c++20. 
+- "Python" with 2 parentheses moved or inserted
+- '.' is ordinary attribute access plus smart pointer and std::optional autoderef - or scope resolution! 
+- const by default
+- propagate_const by default
+- Swiftish lambda capture
+- expression-if by default
+- unsafe blocks
+- unsafe.extern declarations
+- C++ reference safety
+- python like ```lst = [1, 2, 3]``` notation for ```std.vector``` with a bit of py14 derived forward type inference via decltype
+- for loop safety
+- partially selfhosted by cheating (see selfhost/ast.ctp for pybind11 bindings)
+- anything might be an unexpanded macro
+- bounds checking by default by defining array[index] as a macro (the C++ compile time bounds checking logic is derived from Herb Sutter's cppfront though bugs are our own see licence at ./include/boundscheck.cth)
+- :unique classes with cppfront inspired move from last use
+- C++ templates (both explicit and implicit from python like non-type annotated code)
+- tuples, curly braced calls/lists, ...
+- No narrowing conversions in assignments (without some pitfalls of "universal initialization everywhere" like unexpected aggregate initializations)
+- extra CTAD (create a reference counted object using the same ```Foo(x, y)``` syntax as creating a struct instance even if ```Foo``` has generic class members)
+- Growing standard library macros (the slm) located in include (e.g. "isinstance(x, Foo) and expr_with_x" uses dynamic_pointer_cast but instances of x in expr_with_x are silently replaced by their downcasted counterpart via a macro transform; see usage of ast StringLiteral .str method in print macro below).
 
 ## Usage
 
