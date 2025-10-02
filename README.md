@@ -1,6 +1,6 @@
 ## Intro
 
-Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. The semantics should feel a bit like Swift (classes are reference counted; structs are value types) or even an immutable by default Python with support for many native C++ constructs and external C++.
+Ceto is an experimental language where calls may take indented blocks as arguments for a Python-inspired free-form but infix-friendly syntax extendable by ast macros. The semantics should feel a bit like Swift (classes are reference counted; structs are value types) or even an immutable by default Python with support for many native C++ constructs and external C++. We're also taking a stab at C++ safety with unsafe blocks/unsafe.extern declarations, bounds checking, safe usages of raw C++ references relegated to function parameters with aliasing/invalidation prevention static_asserts added at the call site, and for-loops that revert to size checked-indexing for (references to) contiguous owning containers when a raw C++ range-based-for is not provably safe. Class instances are propagate_const shared_ptr to const by default encouraging immutability (with all mutation marked by `mut`).
 
 ## Example
 
@@ -68,29 +68,20 @@ def (main:
 )
 ```
 
-Features:
+As well as defining a macro this code makes two uses of defmacro standard library built-ins. `x[0]` expands to a bounds-check call via the macro system (with the C++ compile time bounds checking logic derived from Herb Sutter's cppfront though bugs are our own; see [include/boundscheck.cth](https://github.com/ehren/ceto/blob/main/include/boundscheck.cth)). While
 
-- transpiled to c++20. 
-- "Python" with 2 parentheses moved or inserted
-- '.' is ordinary attribute access plus smart pointer and std::optional autoderef - or scope resolution! 
-- const by default
-- propagate_const by default
-- Swiftish lambda capture
-- expression-if by default
-- unsafe blocks
-- unsafe.extern declarations
-- C++ reference safety
-- python like ```lst = [1, 2, 3]``` notation for ```std.vector``` with a bit of py14 derived forward type inference via decltype
-- for loop safety
-- partially selfhosted by cheating (see selfhost/ast.ctp for pybind11 bindings)
-- anything might be an unexpanded macro
-- bounds checking by default by defining array[index] as a macro (the C++ compile time bounds checking logic is derived from Herb Sutter's cppfront though bugs are our own see licence at ./include/boundscheck.cth)
-- :unique classes with cppfront inspired move from last use
-- C++ templates (both explicit and implicit from python like non-type annotated code)
-- tuples, curly braced calls/lists, ...
-- No narrowing conversions in assignments (without some pitfalls of "universal initialization everywhere" like unexpected aggregate initializations)
-- extra CTAD (create a reference counted object using the same ```Foo(x, y)``` syntax as creating a struct instance even if ```Foo``` has generic class members)
-- Growing standard library macros located in include (e.g. "isinstance(x, Foo) and expr_with_x" uses dynamic_pointer_cast but instances of x in expr_with_x are silently replaced by their downcasted counterpart via a macro transform; see usage of ast StringLiteral .str method in print macro below).
+```python
+isinstance(back, StringLiteral) and back.str.ends_with("\n")
+```
+
+is expanded via a built-in defmacro in [include/convenience.cth](https://github.com/ehren/ceto/blob/main/include/convenience.cth) to something like:
+
+```python
+lambda (:
+    new_back = asinstance(back, StringLiteral)  # dynamic_pointer_cast convenience
+    return new_back != None and new_back.str.ends_with("\n")
+) ()
+```
 
 ## Usage
 
