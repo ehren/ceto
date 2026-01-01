@@ -1,0 +1,61 @@
+# This will be automatically included only if your project uses the pure python syntax frontend
+
+# convert python style square bracket type annotations to ceto multi-word types
+# e.g. x: mut[static[int]] goes to x: mut:static:int
+defmacro(x: foo[bar], x, foo, bar:
+
+    class (State:
+        inside_decltype = False
+    )
+    state: mut = State()
+
+    # convert nested square bracket type annotations but try to allow array access expressions in a decltype
+    replacer = lambda(orig:
+        if (isinstance(orig.parent(), Call) and orig.parent().func.name() == "decltype":
+            capture: mut = state
+            capture.inside_decltype = True
+            return None
+        )
+        if (state.inside_decltype:
+            return None
+        )
+        if (isinstance(orig, ArrayAccess) and orig.args.size() == 1:
+            # nested square bracket to : separated type (not embedded in a decltype)
+            return quote(unquote(orig.func):unquote(orig.args.at(0)))
+        )
+    ): Node
+
+    new_bar = bar.replace(replacer)
+
+    # final ceto-style multi-word (separated by :) type declaration:
+    return quote(unquote(x): unquote(foo):unquote(new_bar))
+)
+
+
+defmacro(List[Foo], List: Identifier|AttributeAccess, Foo:
+    if (List.equals(quote(List)) or List.equals(quote(typing.List)) or List.equals(quote(list)):
+        return quote([unquote(Foo)])
+    )
+
+    return None
+)
+
+
+defmacro(Tuple[args], Tuple: Identifier|AttributeAccess, args: [Node]:
+    if (Tuple.equals(quote(Tuple)) or Tuple.equals(quote(tuple)) or Tuple.equals(quote(typing.Tuple)):
+        # return quote((splice(args),))  # TODO do this when 'splice' implemented
+        return TupleLiteral(args)        # for now use ast subclass directly
+    )
+
+    return None
+)
+
+
+defmacro(Dict[x, y], Dict: Identifier|AttributeAccess, x, y:
+    if (Dict.equals(quote(Dict)) or Dict.equals(quote(dict)) or Dict.equals(quote(typing.Dict)):
+        # you can override this with your own macro for Dict[x, y] if you want e.g std.unordered_map by default instead
+        return quote(std.map<unquote(x), unquote(y)>)
+    )
+
+    return None
+)
