@@ -29,18 +29,34 @@ class Visitor(ast.NodeVisitor):
         return s
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        s = "def (" + node.name
+        deco_names = []
+        template_str = ""
 
-        # this is fine for now (relies on default visit_arguments/generic_visit)
-        # but may need adjusting for keyword only args etc etc
+        # Check for native Python generic parameters (3.12+)
+        if hasattr(node, 'type_params') and node.type_params:
+            params = [self.visit(p) for p in node.type_params]
+            template_str = "<" + ", ".join(params) + ">"
+
+        if node.decorator_list:
+            for decorator in node.decorator_list:
+
+                if isinstance(decorator, ast.Name):
+                    deco_names.append(decorator.id)
+                elif isinstance(decorator, ast.Call):
+                    deco_names.append(self.visit(decorator))
+
+        # Apply decorator suffixes as "type of the name of the def"
+
+        name_suffix = ":" + ":".join(deco_names) if deco_names else ""
+
+        s = "def (" + node.name + template_str + name_suffix
+
         args_str = self.visit(node.args)
         if args_str.strip():
             s += ", " + args_str
 
         s += ":\n"
-
         s += self.handle_visit_block(node.body)
-
         s += self.cx.indent*"    " + ")"
 
         if node.returns:
@@ -48,26 +64,68 @@ class Visitor(ast.NodeVisitor):
 
         return s
 
+    def visit_ClassDef(self, node: ast.ClassDef):
+        keyword = "class"
+        other_decorators = []
+        template_str = ""
+
+        # Check for native Python generic parameters (3.12+)
+        if hasattr(node, 'type_params') and node.type_params:
+            params = [self.visit(p) for p in node.type_params]
+            template_str = "<" + ", ".join(params) + ">"
+
+        if node.decorator_list:
+            for decorator in node.decorator_list:
+
+                if isinstance(decorator, ast.Name):
+                    if decorator.id == "struct":
+                        keyword = "struct"
+                    else:
+                        other_decorators.append(decorator.id)
+
+                elif isinstance(decorator, ast.Call):
+                    other_decorators.append(self.visit(decorator))
+
+
+        s = keyword + " (" + node.name + template_str
+
+        if node.bases:
+            bases_str = ", ".join([self.visit(b) for b in node.bases])
+            s += "(" + bases_str + ")"
+
+        s += ":\n"
+        s += self.handle_visit_block(node.body)
+        s += self.cx.indent*"    " + ")"
+
+        # Add remaining decorators as a type suffix
+        suffix = ""
+        if other_decorators:
+            suffix = " : " + ":".join(other_decorators)
+
+        return s + suffix
+
+
     def visit_If(self, node: ast.If):
         s = "if (" + self.visit(node.test) + ":\n"
-
         s += self.handle_visit_block(node.body)
 
         orelse = node.orelse
-
         while orelse:
-
             if isinstance(orelse[0], ast.If):
-                # elif
                 s += self.cx.indent*"    " + "elif " + self.visit(orelse[0].test) + ":\n"
                 s += self.handle_visit_block(orelse[0].body)
                 orelse = orelse[0].orelse
             else:
-                # else
                 s += self.cx.indent*"    " + "else:\n"
                 s += self.handle_visit_block(orelse)
                 break
 
+        s += self.cx.indent*"    " + ")"
+        return s
+
+    def visit_While(self, node: ast.While):
+        s = "while (" + self.visit(node.test) + ":\n"
+        s += self.handle_visit_block(node.body)
         s += self.cx.indent*"    " + ")"
         return s
 
@@ -77,35 +135,33 @@ class Visitor(ast.NodeVisitor):
         s += self.cx.indent*"    " + ")"
         return s
 
+    def visit_Lambda(self, node: ast.Lambda):
+        # uses one-liner lambda with non-block param (no multi-line lambdas in python)
+        s = "lambda ("
+        args_str = self.visit(node.args)
+        s += args_str + ", "
+        s += self.visit(node.body)
+        s += ")"
+        return s
+
 
 if __name__ == "__main__":
     expr = r"""
-# def main(argc: int, argv: ptr(ptr(char))) -> int:      # this interferes with planned function ptr syntax
-# def main(argc: const.int, argv: char.ptr.ptr) -> int:  # too confusing? also clashes with attribute access scope resolution e.g. std.vector)
-# def main(argc: int, argv: char+ptr+ptr) -> int:        # this is also problematic e.g. explicit non-type template parameters (although no template syntax in python anyway)
-# def main(argc: int, argv: "char**") -> int:         # problematic for same reasons
-def main(argc: types("const int"), argv: types(char,ptr,ptr)) -> int:  # allow string or list. would also allow: template(std.vector, types(int,ptr))
-    x:int = 5
+@blah
+@bleh
+@struct
+@blech
+class MyDecoratedStruct:
+    x
+    y: int
 
-    if x == 0:
-        y = 1
-    elif x == 1:
-        y = 2
-    elif x == 1:
-        y = 2
-        y = 4
-    elif x == 1:
-        y = 2
-        for i in [0,1,2]:
-            std.cout << i
-    else:
-        y = 3
-        y = 5
-    std.cout << y
-    
-    """
+@static
+@inline
+def get_count() -> int:
+    return 5
+"""
+
     a = ast.parse(expr)
     v = Visitor()
     out = v.visit(a)
     print(out)
-
