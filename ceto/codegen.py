@@ -1682,7 +1682,7 @@ def validate_scope_resolution(node, cx):
         if tuple(j.name for j in i) in external_cpp:
             return
 
-    raise CodeGenError(f"Unknown scope resolution. To call external C++ add an unsafe.extern({".".join(resolution_names)}) call", node)
+    raise CodeGenError(f"Unknown scope resolution. To call external C++ add an unsafe.extern({'.'.join(resolution_names)}) call", node)
 
 
 def codegen_attribute_access(node: AttributeAccess, cx: Scope):
