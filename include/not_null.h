@@ -84,6 +84,15 @@ public:
     constexpr not_null(const not_null<U>& other) noexcept(std::is_nothrow_move_constructible<T>::value) : not_null(other.get())
     {}
 
+    // CHANGE FROM GSL:
+    // default move constructor and assignment:
+    // allowed because explicit std.move requires unsafe.extern
+    // there is move from last use for :unique classes (which doesn't give the opportunity to access moved from objects - so no need to put null checks in operator->)
+    // admittedly this makes manual use of std.move combined with ceto class instances a little unsafer (using . autoderef on a moved from instance is null deref UB)
+    // we can always add nullchecks behind a #DEFINE in ceto::mad_smartptr if you want memory safety for ceto-class instances even in the presence of badly placed std.move
+    not_null(not_null&& other) = default;
+    not_null& operator=(not_null&& other) = default;
+
     not_null(const not_null& other) = default;
     not_null& operator=(const not_null& other) = default;
     constexpr details::value_or_reference_return_t<T> get() const
