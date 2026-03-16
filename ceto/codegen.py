@@ -1566,6 +1566,10 @@ def is_last_use_of_identifier(node: Identifier):
     elif isinstance(node.parent, Call) and node.parent.func is node:
         is_last_use = False
 
+    if isinstance(node.parent, Assign) and node is node.parent.lhs and not node.scope.find_def(node):
+        # this is a definition not a use
+        return False
+
     # apparently unnecessary
     #elif isinstance(node.parent, Call) and node in node.parent.args:
     #    # if node appears in Call args more than once it's not a last use (regardless of order of evaluation of the Call args)

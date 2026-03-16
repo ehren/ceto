@@ -132,8 +132,18 @@ def main():
     try:
         code, module = compile(cmdargs)
     except (ParseException, SemanticAnalysisError, CodeGenError) as e:
-        report_error(e)
-        sys.exit(-1)
+        if isinstance(e, CodeGenError) and ("Unknown scope resolution" in str(e) or "call to unknown function" in str(e)):
+            # horrible hack - interaction between name lookup and macro expansion causes spurious name lookup errors with function calls that originate from a macro expansion
+            # only occurs on the first run when the macro is first compiled (could be a subtle difference in code paths of macro expansion in first time vs cached case)
+            # (python side scope handling is also brittle). TODO find the real issue but let's just bypass it for now by trying again:
+            try:
+                code, module = compile(cmdargs)
+                e = None
+            except (ParseException, SemanticAnalysisError, CodeGenError) as e2:
+                e = e2
+        if e:
+            report_error(e)
+            sys.exit(-1)
 
     ext = ".h"
     if module.has_main_function:
