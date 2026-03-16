@@ -126,9 +126,21 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <iostream>
 
 
 namespace ceto {
+
+template<typename T>
+T&& ensure_not_null(T&& arg) {
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+    if (std::forward<T>(arg) == nullptr) {
+        std::cerr << "null check failed creating propagate_const (non null) from ordinary smart pointer\n";
+        std::terminate();
+    }
+#endif
+    return std::forward<T>(arg);
+}
 
 template <class _Tp>
 class propagate_const;
@@ -203,17 +215,19 @@ public:
   constexpr propagate_const(propagate_const<_Up>&& __pu)
       : __t_(std::move(ceto::get_underlying(__pu))) {}
 
+  // ceto modification: added null checks to these
+
   template <class _Up,
             std::enable_if_t<!std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
                             !is_propagate_const<std::decay_t<_Up>>::value,
                         bool> = true>
-  explicit constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
+  explicit constexpr propagate_const(_Up&& __u) : __t_(ensure_not_null(std::forward<_Up>(__u))) { }
 
   template <class _Up,
             std::enable_if_t<std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
                             !is_propagate_const<std::decay_t<_Up>>::value,
                         bool> = false>
-  constexpr propagate_const(_Up&& __u) : __t_(std::forward<_Up>(__u)) {}
+  constexpr propagate_const(_Up&& __u) : __t_(ensure_not_null(std::forward<_Up>(__u))) { }
 
   propagate_const& operator=(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
@@ -247,6 +261,13 @@ public:
     __t_ = ceto::get_underlying(__u);
     return *this;
   }
+
+  // ceto modification:
+  // prevent compilation when someone attempts to assign a null pointer constant
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+  propagate_const(std::nullptr_t) = delete;
+  propagate_const& operator=(std::nullptr_t) = delete;
+#endif
 
   constexpr const element_type* get() const { return __get_pointer(__t_); }
 
