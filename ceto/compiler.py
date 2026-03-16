@@ -8,6 +8,7 @@ import subprocess
 import sys
 import argparse
 import pathlib
+import colorama
 
 from time import perf_counter
 
@@ -105,6 +106,28 @@ def report_error(e):
 
 
 def main():
+
+    colorama.init(autoreset=True) 
+
+    # inital setup of slm
+    package_dir = pathlib.Path(__file__).parent
+    install_success_path = package_dir / "install_was_successful.py"
+    with open(install_success_path, "r+") as f:
+        install_success = f.read().strip()
+        if install_success != "True" and not (len(sys.argv) > 1 and sys.argv[1] == '--_firsttimecompile'):
+            print(colorama.Fore.RED + "COMPILING STANDARD LIBRARY MACROS FOR FIRST TIME (THIS WILL TAKE A WHILE)\n\n\n")
+            compile_slm = subprocess.run(["ceto", "--_firsttimecompile", package_dir / "install_standard_library_macros.ctp"])
+            if compile_slm.returncode != 0:
+                print("COMPILING STANDARD LIBRARY MACROS FAILED (SOMETHING IS BROKEN)")
+                print("NOTE: It's possible you forgot to run 'ceto' after installation (no arguments required) with the required permissions to write to your python package dir (same permissions as when running pip install). This is likely not the issue if you're using a virtualenv.")
+                sys.exit(-1)
+            f.seek(0)
+            f.write("True")
+            f.truncate()
+            print(colorama.Fore.GREEN + "STANDARD LIBRARY MACROS (THE SLM) COMPILED SUCCESSFULLY - subsequent ceto invocations will be much faster")
+            if len(sys.argv) == 1:
+                sys.exit(0)
+
     ap = argparse.ArgumentParser()
     # -m / -c to mimic python
     ap.add_argument("-o", "--exename", help="Executable program name (including suffix if any)")
@@ -112,6 +135,7 @@ def main():
     ap.add_argument("--donotexecute", action='store_true', help="If compiling C++, do not attempt to run an executable")
     ap.add_argument("--_noslm", action='store_true', help="Do not include standard lib macros during compilation (not recommended unless compiling the standard lib macros themselves)")
     ap.add_argument("--_norefs", action='store_true', help="Enable experimental mode to ban unsafe use of C++ references (without unsafe annotation). Currently implemented: ban all C++ references from subexpressions: An expression returning a reference must either be discarded or must be on the lhs of an Assignment (requiring a 'ref' type annotion if the reference is to be preserved instead of a copy). TODO: additional unsafe annotation for const:ref / mut:ref locals/members and mut:ref params")
+    ap.add_argument("--_firsttimecompile", action='store_true', help="Ignore this: Internal option to compile standard library macros before the first program runs")
     ap.add_argument("-I", "--include", type=str, nargs="*", help="Additional search directory for ceto headers (.cth files). Directory of transpiled file (first positional arg) takes priority in search.")
     ap.add_argument("filename")
     ap.add_argument("args", nargs="*")
