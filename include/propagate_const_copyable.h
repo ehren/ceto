@@ -26,6 +26,8 @@
 #ifndef CETO_PROPAGATE_CONST
 #define CETO_PROPAGATE_CONST
 
+//#define CETO_EXPERIMENTAL_NON_NULL
+
 /*
     propagate_const synopsis
 
@@ -199,7 +201,11 @@ public:
   template <class _Up>
   friend constexpr _Up& ceto::get_underlying(propagate_const<_Up>& __pu) noexcept;
 
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+  propagate_const() = delete;
+#else
   constexpr propagate_const() = default;
+#endif
 
   propagate_const(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
@@ -273,7 +279,11 @@ public:
 
   constexpr element_type* get() { return __get_pointer(__t_); }
 
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+  explicit operator bool() const = delete;
+#else
   explicit constexpr operator bool() const { return get() != nullptr; }
+#endif
 
   constexpr const element_type* operator->() const { return get(); }
 
@@ -286,10 +296,11 @@ public:
 
   constexpr element_type* operator->() { return get(); }
 
-  template <class _Dummy = _Tp, class _Up = std::enable_if_t< std::is_convertible<_Dummy, element_type*>::value>>
-  constexpr operator element_type*() {
-    return get();
-  }
+  // ceto modification: disabled this (seem like a bad idea to implicitly convert to a raw ptr)
+  //template <class _Dummy = _Tp, class _Up = std::enable_if_t< std::is_convertible<_Dummy, element_type*>::value>>
+  //constexpr operator element_type*() {
+  //  return get();
+  //}
 
   constexpr element_type& operator*() { return *get(); }
 
@@ -299,6 +310,20 @@ public:
   }
 };
 
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+template <class Tp>
+constexpr bool operator==(const propagate_const<Tp>&, std::nullptr_t) = delete;
+
+template <class Tp>
+constexpr bool operator==(std::nullptr_t, const propagate_const<Tp>&) = delete;
+
+template <class Tp>
+constexpr bool operator!=(const propagate_const<Tp>&, std::nullptr_t) = delete;
+
+template <class Tp>
+constexpr bool operator!=(std::nullptr_t, const propagate_const<Tp>&) = delete;
+
+#else
 template <class _Tp>
 constexpr bool operator==(const propagate_const<_Tp>& __pt, std::nullptr_t) {
   return ceto::get_underlying(__pt) == nullptr;
@@ -328,6 +353,7 @@ template <class _Tp, class _Up>
 constexpr bool operator!=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
   return ceto::get_underlying(__pt) != ceto::get_underlying(__pu);
 }
+#endif
 
 template <class _Tp, class _Up>
 constexpr bool operator<(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {

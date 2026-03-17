@@ -28,16 +28,13 @@
 #define CETO_HAS_PROP_CONST_STD_EXP
 #endif
 
-#ifdef CETO_USING_GODBOLT
-// godbolt only supports single header library includes via url
-// also remember to manually: #include "https://raw.githubusercontent.com/ehren/ceto/refs/heads/main/include/propagate_const_copyable.h"
-namespace ceto {
-    template <typename T>
-    using local_shared_ptr = std::shared_ptr<T>;
-}
-#else
 #include "propagate_const_copyable.h"
 #include "kit_local_shared_ptr/smart_ptr.hpp"
+
+#ifdef CETO_EXPERIMENTAL_NON_NULL
+#define CETO_NONE std::nullopt
+#else
+#define CETO_NONE nullptr
 #endif
 
 namespace ceto {
@@ -154,10 +151,12 @@ struct EndLoopMarker : public std::runtime_error {
 // autoderef
 template<typename T>
 auto mad_smartptr(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires IsStrongPtr<T> {
+#ifndef CETO_EXPERIMENTAL_NON_NULL
     if (!std::forward<T>(obj)) {
         issue_null_deref_message(CETO_PRIVATE_SOURCE_LOC_ARG);
         std::terminate();
     }
+#endif
     return std::forward<T>(obj);
 }
 

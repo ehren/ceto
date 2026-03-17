@@ -11,7 +11,7 @@ from .semanticanalysis import IfWrapper, SemanticAnalysisError, \
     LocalVariableDefinition, GlobalVariableDefinition, ParameterDefinition, type_node_to_list_of_types, \
     list_to_typed_node, list_to_attribute_access_node, is_call_lambda, \
     nested_same_binop_to_list, gensym, comes_before, FieldDefinition
-from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp
+from .abstractsyntaxtree import Node, Module, Call, Block, UnOp, BinOp, TypeOp, Assign, Identifier, ListLiteral, TupleLiteral, BracedLiteral, ArrayAccess, BracedCall, StringLiteral, AttributeAccess, Template, ArrowOp, ScopeResolution, LeftAssociativeUnOp, IntegerLiteral, FloatLiteral, NamedParameter, SyntaxTypeOp, BitwiseOrOp
 
 
 class CodeGenError(Exception):
@@ -2126,7 +2126,7 @@ def codegen_type(expr_node, type_node, cx):
 
     if isinstance(expr_node, (ScopeResolution, AttributeAccess)) and type_node.name == "using":
         pass
-    elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess, Template)):
+    elif not isinstance(expr_node, (ListLiteral, TupleLiteral, Call, Identifier, TypeOp, AttributeAccess, Template, BitwiseOrOp)):
         raise CodeGenError("unexpected typed expression", expr_node)
     if isinstance(expr_node, Call) and not is_call_lambda(expr_node) and expr_node.func.name != "def" and expr_node.func.name != "operator":
         raise CodeGenError("unexpected typed call", expr_node)
@@ -2182,6 +2182,10 @@ def codegen_type(expr_node, type_node, cx):
             if len(t.args) == 0:
                 raise CodeGenError("No empty tuples as types", expr_node)
             code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
+        elif isinstance(t, BitwiseOrOp):
+            if t.rhs.name != "None":
+                raise CodeGenError("Only Foo|None types are supported (as an alias of std.optional. Use an explicit std.variant<Foo> if that's your intent.", t)
+            return "std::optional<" + codegen_type(expr_node, t.lhs, cx) + ">"
         elif t.name == "pointer":
             code = "*"
         elif t.name == "ref":
@@ -2940,9 +2944,13 @@ def _is_const_make(node : Call):
     elif isinstance(node.parent,
                     Assign) and node.parent.lhs.declared_type is not None:
         lhs_type = node.parent.lhs.declared_type
+        if isinstance(lhs_type, BitwiseOrOp):
+            if lhs_type.rhs.name != "None":
+                raise CodeGenError("Only Foo|None types supported", lhs_type)
+            lhs_type = lhs_type.lhs
 
         if isinstance(lhs_type, Identifier):
-            if lhs_type.name == "mut":
+            if lhs_type.name == "mut" or lhs_type.declared_type.name == "mut":
                 is_const = False
         elif isinstance(lhs_type, TypeOp):
             type_list = type_node_to_list_of_types(lhs_type)
@@ -3293,7 +3301,7 @@ def codegen_node(node: Node, cx: Scope):
         elif name == "ref":
             raise CodeGenError("Use of 'ref' outside type context is an error", node)
         elif name == "None":
-            return "nullptr"
+            return "CETO_NONE"
         elif name == "True":
             return "true"
         elif name == "False":
