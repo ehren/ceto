@@ -2950,7 +2950,7 @@ def _is_const_make(node : Call):
             lhs_type = lhs_type.lhs
 
         if isinstance(lhs_type, Identifier):
-            if lhs_type.name == "mut" or lhs_type.declared_type.name == "mut":
+            if lhs_type.name == "mut" or (lhs_type.declared_type and lhs_type.declared_type.name == "mut"):
                 is_const = False
         elif isinstance(lhs_type, TypeOp):
             type_list = type_node_to_list_of_types(lhs_type)
@@ -3385,6 +3385,10 @@ def codegen_node(node: Node, cx: Scope):
                     and not isinstance(node.parent, SyntaxTypeOp):  # avoid overparensing an assign in one-liner if condition
                 assign_code = "(" + assign_code + ")"
             return assign_code
+
+        elif isinstance(node, BitwiseOrOp) and node.rhs.name == "None":
+            # arguably we should support None|Foo too - though it's bad style so maybe not
+            return "std::optional<" + codegen_node(node.lhs, cx) + ">"
 
         else:
 
