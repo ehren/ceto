@@ -1045,6 +1045,7 @@ def codegen_if(ifcall : Call, cx):
     cpp = ""
 
     is_expression = not isinstance(ifcall.parent, Block)
+    if_expression_branch_has_throw = False
 
     if is_expression:
         if any(find_all(ifcall, is_return, stop=creates_new_variable_scope)):
@@ -1058,6 +1059,8 @@ def codegen_if(ifcall : Call, cx):
                     last_statement.parent = synthetic_return
                     synthetic_return.parent = a
                     a.args = a.args[0:-1] + [synthetic_return]
+                else:
+                    if_expression_branch_has_throw = True
 
     ifnode = IfWrapper(ifcall.func, ifcall.args)
 
@@ -1134,35 +1137,87 @@ def codegen_if(ifcall : Call, cx):
         block_closing = "\n#endif\n"
     elif ifkind == "constexpr":
         if_start = "if constexpr ("
-    elif ifkind == "consteval":  # c++23
+    elif ifkind == "consteval":
         if_start = "if consteval ("
 
     if isinstance(ifnode.cond, NamedParameter) and not ifcall.is_one_liner_if:
         raise CodeGenError("assignment in if missing extra parenthesese", ifnode.cond)
 
-    cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
+    if is_expression and not if_expression_branch_has_throw:
+        # This bit is from gemini - the parsing of the c++ output to determine if the if expression has a declaration is bad and should be fixed
+        # it will also fail when we stop naively generating two statements for a x: type = y definition that bans implicit conversions (without the pitfalls of universal/curly init)
+        # however, it's okish for now - passes test suite and selfhost compile.
 
-    cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
+        # TODO we should just fallback to the lambda based if (like in if_expression_branch_has_throw case) when an if cond has a variable definition instead of this wackiness
 
-    for elifcond, elifblock in ifnode.eliftuples:
-        cpp += indt + elif_start + codegen_node(elifcond, cx.enter_scope()) + block_opening
-        cpp += codegen_block(elifblock, cx.enter_scope())
-
-    if ifnode.elseblock:
-        cpp += indt + else_start
-        cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
-
-    cpp += indt + block_closing
-
-    if is_expression:
         if ifkind is not None:
             raise CodeGenError(f"An expression-if can't be used with a 'type', namely {ifkind}", ifnode)
-        if cx.in_function_body:
-            capture = "&"
+            
+        capture = "&" if cx.in_function_body else ""
+        lam_start = f"[{capture}]() {{\n"
+        lam_end = f"{indt}}}" + "()"
+
+        # 1. Base case: Evaluate the `else` block first
+        if ifnode.elseblock:
+            current_expr = f"{lam_start}{codegen_block(ifnode.elseblock, cx.enter_scope())}{lam_end}"
         else:
-            capture = ""
-        # note that decltype(auto) is not acceptable here (we don't want e.g. differing constness of then and else branch to interfere with using expression-if)
-        cpp = "[" + capture + "]() {" + cpp + "}()"
+            current_expr = f"{lam_start}/* implicit void */\n{lam_end}"
+
+        # 2. Work backwards through `elif` blocks
+        for elifcond, elifblock in reversed(ifnode.eliftuples):
+            cond_cpp = codegen_node(elifcond, cx).strip()
+            is_decl = cond_cpp.startswith("auto ") or cond_cpp.startswith("const auto ")
+            then_cpp = f"{lam_start}{codegen_block(elifblock, cx.enter_scope())}{lam_end}"
+            
+            if is_decl:
+                # Safely extract the variable name (e.g. 'r' from 'const auto r = ...')
+                lhs = cond_cpp.split("=")[0] if "=" in cond_cpp else cond_cpp.split("{")[0].split("(")[0]
+                var_name = lhs.split("auto")[-1].replace("&", "").strip()
+                cond_stmt = cond_cpp if cond_cpp.endswith(";") else cond_cpp + ";"
+                
+                # Wrap this specific step in an IIFE to scope the declaration
+                current_expr = f"[{capture}]() {{\n{indt}    {cond_stmt}\n{indt}    return ({var_name}) ?\n{indt}        {then_cpp} :\n{indt}        {current_expr};\n{indt}}}()"
+            else:
+                current_expr = f"(({cond_cpp}) ?\n{indt}    {then_cpp} :\n{indt}    {current_expr})"
+
+        # 3. Finally, append the main `if` condition to the chain
+        cond_cpp = codegen_node(ifnode.cond, cx).strip()
+        is_decl = cond_cpp.startswith("auto ") or cond_cpp.startswith("const auto ")
+        then_cpp = f"{lam_start}{codegen_block(ifnode.thenblock, cx.enter_scope())}{lam_end}"
+
+        if is_decl:
+            lhs = cond_cpp.split("=")[0] if "=" in cond_cpp else cond_cpp.split("{")[0].split("(")[0]
+            var_name = lhs.split("auto")[-1].replace("&", "").strip()
+            cond_stmt = cond_cpp if cond_cpp.endswith(";") else cond_cpp + ";"
+            
+            cpp += f"[{capture}]() {{\n{indt}    {cond_stmt}\n{indt}    return ({var_name}) ?\n{indt}        {then_cpp} :\n{indt}        {current_expr};\n{indt}}}()"
+        else:
+            # Wrap the outermost ternary in parens to prevent operator precedence bugs (like with std::cout <<)
+            cpp += f"(({cond_cpp}) ?\n{indt}    {then_cpp} :\n{indt}    {current_expr})"
+
+    else:
+        # Generate Standard Statement Block
+        cpp += if_start + codegen_node(ifnode.cond, cx) + block_opening
+
+        cpp += codegen_block(ifnode.thenblock, cx.enter_scope())
+
+        for elifcond, elifblock in ifnode.eliftuples:
+            cpp += indt + elif_start + codegen_node(elifcond, cx.enter_scope()) + block_opening
+            cpp += codegen_block(elifblock, cx.enter_scope())
+
+        if ifnode.elseblock:
+            cpp += indt + else_start
+            cpp += codegen_block(ifnode.elseblock, cx.enter_scope())
+
+        cpp += indt + block_closing
+
+        if if_expression_branch_has_throw:
+            if cx.in_function_body:
+                capture = "&"
+            else:
+                capture = ""
+            # note that decltype(auto) is not acceptable here (we don't want e.g. differing constness of then and else branch to interfere with using expression-if)
+            cpp = "[" + capture + "]() {" + cpp + "}()"
 
     return cpp + "\n"
 
