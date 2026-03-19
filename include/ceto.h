@@ -8,6 +8,7 @@
 #include <optional>
 #include <iostream>
 #include <ranges>
+#include <string>
 
 #if defined(__cpp_lib_source_location)
 #include <source_location>

@@ -115,6 +115,23 @@ def main():
     with open(install_success_path, "r+") as f:
         install_success = f.read().strip()
         if install_success != "True" and not (len(sys.argv) > 1 and sys.argv[1] == '--_firsttimecompile'):
+
+            # it doesn't always happen but there are some edge-cases especially when making changes to the slm where these aren't regenerated.
+            # just delete them:
+            cleanup_patterns = [
+                "ceto__private__*",  # select selfhost sources pulled in automatically during macro compilation (TODO these are copies of e.g. ast.cth which is put into the package dir. There is a -I include option now added for ceto headers - macro system should use it instead of so much file copying)
+                "ceto_private_*.cth.macro_impl.*",
+                "ceto_private_*.ceto_private.repr",
+                "ceto_private_*.donotedit.h",
+                "install_standard_library_macros",
+                "install_standard_library_macros.donotedit.cpp",
+                "install_standard_library_macros.ctp.donotedit.*"
+            ]
+            for pattern in cleanup_patterns:
+                for item in package_dir.glob(pattern):
+                    print("deleting", item)
+                    item.unlink()
+
             print(colorama.Fore.RED + "COMPILING STANDARD LIBRARY MACROS FOR FIRST TIME (THIS WILL TAKE A WHILE)\n\n\n")
             compile_slm = subprocess.run(["ceto", "--_firsttimecompile", package_dir / "install_standard_library_macros.ctp"])
             if compile_slm.returncode != 0:
