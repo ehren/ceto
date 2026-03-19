@@ -20,7 +20,7 @@
 #define CETO_PRIVATE_SOURCE_LOC_ARG
 #endif
 
-#include "propagate_const_copyable.h"
+#include "non_null_propagate_const.h"
 #include "kit_local_shared_ptr/smart_ptr.hpp"
 
 #ifdef CETO_EXPERIMENTAL_NON_NULL
@@ -41,11 +41,11 @@ concept IsBasicWeakPtr = std::same_as<T, std::weak_ptr<typename T::element_type>
 
 template <typename T>
 concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>>
-                      || (is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
+                      || (is_nonullpropconst<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
 
 template <typename T>
 concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> ||
-                    (is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
+                    (is_nonullpropconst<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
 
 template <typename T>
 concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename std::remove_cvref_t<T>::value_type>>;
@@ -89,9 +89,9 @@ shared_from_base(std::enable_shared_from_this<Base> const* base) {
 }
 
 template <typename That>
-inline ceto::propagate_const<std::shared_ptr<That>>
+inline ceto::nonullpropconst<std::shared_ptr<That>>
 shared_from(That* that) {
-    return ceto::propagate_const<std::shared_ptr<That>>(std::static_pointer_cast<That>(shared_from_base(that)));
+    return ceto::nonullpropconst<std::shared_ptr<That>>(std::static_pointer_cast<That>(shared_from_base(that)));
 }
 
 #ifdef CETO_HAS_SOURCE_LOCATION
@@ -176,28 +176,28 @@ auto mad(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsO
 // construction wrappers
 
 template<typename T, typename... A>
-auto make_shared_propagate_const(A&&... args) -> auto {
-    return ceto::propagate_const<std::shared_ptr<T>>(std::make_shared<T>(std::forward<A>(args)...));
+auto make_shared_nonullpropconst(A&&... args) -> auto {
+    return ceto::nonullpropconst<std::shared_ptr<T>>(std::make_shared<T>(std::forward<A>(args)...));
 }
 
 template<typename T, typename... A>
-auto make_unique_propagate_const(A&&... args) -> auto {
-    return ceto::propagate_const<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
+auto make_unique_nonullpropconst(A&&... args) -> auto {
+    return ceto::nonullpropconst<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
 }
 
 template <typename Target, typename Source>
-auto asinstance(const ceto::propagate_const<std::shared_ptr<Source>>& orig)
-    -> std::optional<ceto::propagate_const<std::shared_ptr<Target>>>
+auto asinstance(const ceto::nonullpropconst<std::shared_ptr<Source>>& orig)
+    -> std::optional<ceto::nonullpropconst<std::shared_ptr<Target>>>
 {
     if (auto casted = std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))) {
-        return ceto::propagate_const<std::shared_ptr<Target>>{std::move(casted)};
+        return ceto::nonullpropconst<std::shared_ptr<Target>>{std::move(casted)};
     }
     return std::nullopt;
 }
 
 template <typename Target, typename Source>
-auto asinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) 
-    -> std::optional<ceto::propagate_const<std::shared_ptr<Target>>> 
+auto asinstance(const std::optional<ceto::nonullpropconst<std::shared_ptr<Source>>>& orig) 
+    -> std::optional<ceto::nonullpropconst<std::shared_ptr<Target>>> 
 {
     if (!orig) {
         return std::nullopt;
@@ -207,16 +207,16 @@ auto asinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source
 }
 
 template <typename Target, typename Source>
-auto asinstance_assert(const ceto::propagate_const<std::shared_ptr<Source>>& orig)
-    -> ceto::propagate_const<std::shared_ptr<Target>>
+auto asinstance_assert(const ceto::nonullpropconst<std::shared_ptr<Source>>& orig)
+    -> ceto::nonullpropconst<std::shared_ptr<Target>>
 {
     // this will std::terminate if the cast returns nullptr
-    return ceto::propagate_const<std::shared_ptr<Target>>{std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))};
+    return ceto::nonullpropconst<std::shared_ptr<Target>>{std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))};
 }
 
 template <typename Target, typename Source>
-auto asinstance_assert(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) 
-    -> ceto::propagate_const<std::shared_ptr<Target>>
+auto asinstance_assert(const std::optional<ceto::nonullpropconst<std::shared_ptr<Source>>>& orig) 
+    -> ceto::nonullpropconst<std::shared_ptr<Target>>
 {
     if (!orig) {
         std::cerr << "expected non-null arg to asinstance_assert\n" << std::endl;
@@ -226,12 +226,12 @@ auto asinstance_assert(const std::optional<ceto::propagate_const<std::shared_ptr
 }
 
 template <typename Target, typename Source>
-bool isinstance(const ceto::propagate_const<std::shared_ptr<Source>>& orig) {
+bool isinstance(const ceto::nonullpropconst<std::shared_ptr<Source>>& orig) {
     return std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig)) != nullptr;
 }
 
 template <typename Target, typename Source>
-bool isinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) {
+bool isinstance(const std::optional<ceto::nonullpropconst<std::shared_ptr<Source>>>& orig) {
     if (!orig) {
         return false;
     }
@@ -239,21 +239,21 @@ bool isinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source
     return ceto::isinstance<Target>(*orig);
 }
 
-// Notes regarding a non-removed call_or_construct implementation (resurrecting it would require fixing breakage since introducing const by default / propagate_const by default:
+// Notes regarding a non-removed call_or_construct implementation (resurrecting it would require fixing breakage since introducing const by default / nonullpropconst by default:
 // ceto::call_or_construct() works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
 // TODO consider re-enabling in certain contexts: would allow decltype(x)(1, 2) to result in a make_shared when x is a shared_ptr<shared_object> (this will fail in most cases now but may succeed undesirably in a few others e.g. decltype(x)() is an empty shared_ptr under naive class lookup when some might expect make_shared<decltype(*x)>()  (default constructor call)
 
 // this one may be controversial (strong capture of shared object references by default - use 'weak' to break cycle)
 template <class T>
-std::enable_if_t<std::is_base_of_v<object, T>, const ceto::propagate_const<std::shared_ptr<T>>>  // We now autoderef all shared/unique_ptrs not just to ceto class instances. doing the same for lambda capture might go a bit too far - don't want to encourange writing shared_ptr<vector<int>> instead of creating a wrapper class instance that's automatically placed in the capture list
-constexpr default_capture(ceto::propagate_const<std::shared_ptr<T>> t) {
+std::enable_if_t<std::is_base_of_v<object, T>, const ceto::nonullpropconst<std::shared_ptr<T>>>  // We now autoderef all shared/unique_ptrs not just to ceto class instances. doing the same for lambda capture might go a bit too far - don't want to encourange writing shared_ptr<vector<int>> instead of creating a wrapper class instance that's automatically placed in the capture list
+constexpr default_capture(ceto::nonullpropconst<std::shared_ptr<T>> t) {
     return t;
 }
 
 template <class T>
-std::enable_if_t<std::is_base_of_v<object, T>, const std::optional<ceto::propagate_const<std::shared_ptr<T>>>>
-constexpr default_capture(std::optional<ceto::propagate_const<std::shared_ptr<T>>> t) {
+std::enable_if_t<std::is_base_of_v<object, T>, const std::optional<ceto::nonullpropconst<std::shared_ptr<T>>>>
+constexpr default_capture(std::optional<ceto::nonullpropconst<std::shared_ptr<T>>> t) {
     return t;
 }
 

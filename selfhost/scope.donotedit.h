@@ -18,9 +18,9 @@
 // unsafe;
 struct ClassDefinition : public ceto::shared_object, public std::enable_shared_from_this<ClassDefinition> {
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> name_node;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> name_node;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Call>>> class_def_node;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Call>>> class_def_node;
 
     bool is_unique;
 
@@ -42,7 +42,7 @@ struct ClassDefinition : public ceto::shared_object, public std::enable_shared_f
 
          virtual ~ClassDefinition() = default;
 
-    explicit ClassDefinition(std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> name_node, std::optional<ceto::propagate_const<std::shared_ptr<const Call>>> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(name_node), class_def_node(class_def_node), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
+    explicit ClassDefinition(std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> name_node, std::optional<ceto::nonullpropconst<std::shared_ptr<const Call>>> class_def_node, bool is_unique, bool is_struct, bool is_forward_declaration) : name_node(name_node), class_def_node(class_def_node), is_unique(is_unique), is_struct(is_struct), is_forward_declaration(is_forward_declaration) {}
 
     ClassDefinition() = delete;
 
@@ -57,9 +57,9 @@ struct InterfaceDefinition : public ClassDefinition {
 
 struct FunctionDefinition : public ceto::shared_object, public std::enable_shared_from_this<FunctionDefinition> {
 
-    ceto::propagate_const<std::shared_ptr<const Node>> def_node;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> def_node;
 
-    ceto::propagate_const<std::shared_ptr<const Identifier>> function_name;
+    ceto::nonullpropconst<std::shared_ptr<const Identifier>> function_name;
 
          virtual inline auto class_name() const -> std::string {
             return ceto::util::typeid_name((*this));
@@ -71,7 +71,7 @@ struct FunctionDefinition : public ceto::shared_object, public std::enable_share
 
          virtual ~FunctionDefinition() = default;
 
-    explicit FunctionDefinition(ceto::propagate_const<std::shared_ptr<const Node>> def_node, ceto::propagate_const<std::shared_ptr<const Identifier>> function_name) : def_node(std::move(def_node)), function_name(std::move(function_name)) {}
+    explicit FunctionDefinition(ceto::nonullpropconst<std::shared_ptr<const Node>> def_node, ceto::nonullpropconst<std::shared_ptr<const Identifier>> function_name) : def_node(std::move(def_node)), function_name(std::move(function_name)) {}
 
     FunctionDefinition() = delete;
 
@@ -79,9 +79,9 @@ struct FunctionDefinition : public ceto::shared_object, public std::enable_share
 
 struct NamespaceDefinition : public ceto::shared_object, public std::enable_shared_from_this<NamespaceDefinition> {
 
-    ceto::propagate_const<std::shared_ptr<const Call>> namespace_node;
+    ceto::nonullpropconst<std::shared_ptr<const Call>> namespace_node;
 
-    ceto::propagate_const<std::shared_ptr<const Node>> namespace_name;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> namespace_name;
 
          virtual inline auto class_name() const -> std::string {
             return ceto::util::typeid_name((*this));
@@ -93,7 +93,7 @@ struct NamespaceDefinition : public ceto::shared_object, public std::enable_shar
 
          virtual ~NamespaceDefinition() = default;
 
-    explicit NamespaceDefinition(ceto::propagate_const<std::shared_ptr<const Call>> namespace_node, ceto::propagate_const<std::shared_ptr<const Node>> namespace_name) : namespace_node(std::move(namespace_node)), namespace_name(std::move(namespace_name)) {}
+    explicit NamespaceDefinition(ceto::nonullpropconst<std::shared_ptr<const Call>> namespace_node, ceto::nonullpropconst<std::shared_ptr<const Node>> namespace_name) : namespace_node(std::move(namespace_node)), namespace_name(std::move(namespace_name)) {}
 
     NamespaceDefinition() = delete;
 
@@ -101,9 +101,9 @@ struct NamespaceDefinition : public ceto::shared_object, public std::enable_shar
 
 struct VariableDefinition : public ceto::shared_object, public std::enable_shared_from_this<VariableDefinition> {
 
-    ceto::propagate_const<std::shared_ptr<const Identifier>> defined_node;
+    ceto::nonullpropconst<std::shared_ptr<const Identifier>> defined_node;
 
-    ceto::propagate_const<std::shared_ptr<const Node>> defining_node;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> defining_node;
 
          virtual inline auto class_name() const -> std::string {
             return ceto::util::typeid_name((*this));
@@ -115,7 +115,7 @@ struct VariableDefinition : public ceto::shared_object, public std::enable_share
 
          virtual ~VariableDefinition() = default;
 
-    explicit VariableDefinition(ceto::propagate_const<std::shared_ptr<const Identifier>> defined_node, ceto::propagate_const<std::shared_ptr<const Node>> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
+    explicit VariableDefinition(ceto::nonullpropconst<std::shared_ptr<const Identifier>> defined_node, ceto::nonullpropconst<std::shared_ptr<const Node>> defining_node) : defined_node(std::move(defined_node)), defining_node(std::move(defining_node)) {}
 
     VariableDefinition() = delete;
 
@@ -145,7 +145,7 @@ using VariableDefinition::VariableDefinition;
 
 };
 
-    inline auto creates_new_variable_scope(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  e) -> auto {
+    inline auto creates_new_variable_scope(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  e) -> auto {
         if (ceto::isinstance<const Call>(e)) {
             const auto name = (*ceto::mad((*ceto::mad(e)).func)).name();
             if (name) {
@@ -157,7 +157,7 @@ using VariableDefinition::VariableDefinition;
         return false;
     }
 
-    inline auto comes_before(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  root, const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  before, const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  after) -> std::optional<bool> {
+    inline auto comes_before(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  root, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  before, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  after) -> std::optional<bool> {
         if (root == before) {
             return true;
         } else if ((root == after)) {
@@ -195,19 +195,19 @@ using VariableDefinition::VariableDefinition;
 
 struct Scope : public ceto::shared_object, public std::enable_shared_from_this<Scope> {
 
-    decltype(std::map<std::string,std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>>()) interfaces = std::map<std::string,std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>>();
+    decltype(std::map<std::string,std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>>()) interfaces = std::map<std::string,std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>>();
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const ClassDefinition>>> class_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const ClassDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const ClassDefinition>>>{}), std::remove_cvref_t<decltype(class_definitions)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const ClassDefinition>>> class_definitions = std::vector<ceto::nonullpropconst<std::shared_ptr<const ClassDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const ClassDefinition>>>{}), std::remove_cvref_t<decltype(class_definitions)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> variable_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(variable_definitions)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>> variable_definitions = std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(variable_definitions)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>> function_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>>{}), std::remove_cvref_t<decltype(function_definitions)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const FunctionDefinition>>> function_definitions = std::vector<ceto::nonullpropconst<std::shared_ptr<const FunctionDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const FunctionDefinition>>>{}), std::remove_cvref_t<decltype(function_definitions)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>> namespace_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>>{}), std::remove_cvref_t<decltype(namespace_definitions)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const NamespaceDefinition>>> namespace_definitions = std::vector<ceto::nonullpropconst<std::shared_ptr<const NamespaceDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const NamespaceDefinition>>>{}), std::remove_cvref_t<decltype(namespace_definitions)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> unsafe_nodes = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(unsafe_nodes)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> unsafe_nodes = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(unsafe_nodes)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> external_cpp = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(external_cpp)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> external_cpp = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(external_cpp)>>);
 
     decltype(0) indent = 0;
 
@@ -227,18 +227,18 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return std::string(4 * (this -> indent), ' ');
         }
 
-        inline auto add_variable_definition(const ceto::propagate_const<std::shared_ptr<const Identifier>>&  defined_node, const ceto::propagate_const<std::shared_ptr<const Node>>&  defining_node) -> void {
+        inline auto add_variable_definition(const ceto::nonullpropconst<std::shared_ptr<const Identifier>>&  defined_node, const ceto::nonullpropconst<std::shared_ptr<const Node>>&  defining_node) -> void {
             auto parent { (*ceto::mad(defined_node)).parent() } ;
             while (parent) {                if (creates_new_variable_scope(parent)) {
                     const auto name = (*ceto::mad((*ceto::mad(parent)).func)).name();
                     if ((name == "class") || (name == "struct")) {
-                        const auto defn = ceto::make_shared_propagate_const<const FieldDefinition>(defined_node, defining_node);
+                        const auto defn = ceto::make_shared_nonullpropconst<const FieldDefinition>(defined_node, defining_node);
                         ceto::append_or_push_back(this -> variable_definitions, defn);
                     } else if (((name == "def") || (name == "lambda") || (name == "defmacro"))) {
-                        const auto defn = ceto::make_shared_propagate_const<const ParameterDefinition>(defined_node, defining_node);
+                        const auto defn = ceto::make_shared_nonullpropconst<const ParameterDefinition>(defined_node, defining_node);
                         ceto::append_or_push_back(this -> variable_definitions, defn);
                     } else {
-                        const auto defn = ceto::make_shared_propagate_const<const LocalVariableDefinition>(defined_node, defining_node);
+                        const auto defn = ceto::make_shared_nonullpropconst<const LocalVariableDefinition>(defined_node, defining_node);
                         ceto::append_or_push_back(this -> variable_definitions, defn);
                         std::cerr << "this is no good?\n";
                     }
@@ -246,37 +246,37 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 } else if ((ceto::isinstance<const Block>(parent) && creates_new_variable_scope((*ceto::mad(parent)).parent()))) {
                     const auto name = (*ceto::mad((*ceto::mad((*ceto::mad(parent)).parent())).func)).name();
                     if ((name == "class") || (name == "struct")) {
-                        const auto defn = ceto::make_shared_propagate_const<const FieldDefinition>(defined_node, defining_node);
+                        const auto defn = ceto::make_shared_nonullpropconst<const FieldDefinition>(defined_node, defining_node);
                         ceto::append_or_push_back(this -> variable_definitions, defn);
                     } else {
-                        const auto defn = ceto::make_shared_propagate_const<const LocalVariableDefinition>(defined_node, defining_node);
+                        const auto defn = ceto::make_shared_nonullpropconst<const LocalVariableDefinition>(defined_node, defining_node);
                         ceto::append_or_push_back(this -> variable_definitions, defn);
                     }
                     return;
                 }
                 parent = (*ceto::mad(parent)).parent();
             }
-            const auto defn = ceto::make_shared_propagate_const<const GlobalVariableDefinition>(defined_node, defining_node);
+            const auto defn = ceto::make_shared_nonullpropconst<const GlobalVariableDefinition>(defined_node, defining_node);
             ceto::append_or_push_back(this -> variable_definitions, defn);
         }
 
-        inline auto add_interface_method(const std::string&  interface_name, const ceto::propagate_const<std::shared_ptr<const Node>>&  interface_method_def_node) -> void {
+        inline auto add_interface_method(const std::string&  interface_name, const ceto::nonullpropconst<std::shared_ptr<const Node>>&  interface_method_def_node) -> void {
             ceto::append_or_push_back(ceto::bounds_check(this -> interfaces, interface_name), interface_method_def_node);
         }
 
-        inline auto add_class_definition(const ceto::propagate_const<std::shared_ptr<const ClassDefinition>>&  class_definition) -> void {
+        inline auto add_class_definition(const ceto::nonullpropconst<std::shared_ptr<const ClassDefinition>>&  class_definition) -> void {
             ceto::append_or_push_back(this -> class_definitions, class_definition);
         }
 
-        inline auto add_function_definition(const ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>&  function_definition) -> void {
+        inline auto add_function_definition(const ceto::nonullpropconst<std::shared_ptr<const FunctionDefinition>>&  function_definition) -> void {
             ceto::append_or_push_back(this -> function_definitions, function_definition);
         }
 
-        inline auto add_namespace_definition(const ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>&  namespace_definition) -> void {
+        inline auto add_namespace_definition(const ceto::nonullpropconst<std::shared_ptr<const NamespaceDefinition>>&  namespace_definition) -> void {
             ceto::append_or_push_back(this -> namespace_definitions, namespace_definition);
         }
 
-        inline auto lookup_class(const ceto::propagate_const<std::shared_ptr<const Node>>&  class_node) const -> std::optional<ceto::propagate_const<std::shared_ptr<const ClassDefinition>>> {
+        inline auto lookup_class(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  class_node) const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const ClassDefinition>>> {
             if (!ceto::isinstance<const Identifier>(class_node)) {
                 return CETO_NONE;
             }
@@ -301,7 +301,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
 
                 }
                 if ((*ceto::mad(this -> interfaces)).contains((*ceto::mad_smartptr((*ceto::mad(class_node)).name())).value())) {
-                return ceto::make_shared_propagate_const<const InterfaceDefinition>();
+                return ceto::make_shared_nonullpropconst<const InterfaceDefinition>();
             }
             if (const auto s = (*ceto::mad(this -> _parent)).lock()) {
                 return (*ceto::mad(s)).lookup_class(class_node);
@@ -309,7 +309,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return CETO_NONE;
         }
 
-        inline auto lookup_function(const ceto::propagate_const<std::shared_ptr<const Node>>&  function_name_node) const -> std::optional<ceto::propagate_const<std::shared_ptr<const FunctionDefinition>>> {
+        inline auto lookup_function(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  function_name_node) const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const FunctionDefinition>>> {
             if (!ceto::isinstance<const Identifier>(function_name_node)) {
                 return CETO_NONE;
             }
@@ -339,7 +339,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return CETO_NONE;
         }
 
-        inline auto lookup_namespace(const ceto::propagate_const<std::shared_ptr<const Node>>&  namespace_name_node) const -> std::optional<ceto::propagate_const<std::shared_ptr<const NamespaceDefinition>>> {
+        inline auto lookup_namespace(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  namespace_name_node) const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const NamespaceDefinition>>> {
             
                 auto&& ceto__private__intermediate23 = this -> namespace_definitions;
 
@@ -366,7 +366,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return CETO_NONE;
         }
 
-        inline auto is_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) const -> auto {
+        inline auto is_node_unsafe(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) const -> auto {
             
                 auto&& ceto__private__intermediate26 = this -> unsafe_nodes;
 
@@ -391,11 +391,11 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return (parent && (*ceto::mad(parent)).is_node_unsafe(node));
         }
 
-        inline auto mark_node_unsafe(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
+        inline auto mark_node_unsafe(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> void {
             ceto::append_or_push_back(this -> unsafe_nodes, node);
         }
 
-        inline auto is_external_cpp(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) const -> auto {
+        inline auto is_external_cpp(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) const -> auto {
             
                 auto&& ceto__private__intermediate29 = this -> external_cpp;
 
@@ -420,15 +420,15 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return (parent && (*ceto::mad(parent)).is_external_cpp(node));
         }
 
-        inline auto add_external_cpp(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
+        inline auto add_external_cpp(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> void {
             ceto::append_or_push_back(this -> external_cpp, node);
         }
 
-        inline auto find_defs(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  var_node, const decltype(true)& find_all = true) const -> std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> {
+        inline auto find_defs(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  var_node, const decltype(true)& find_all = true) const -> std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>> {
             if (!ceto::isinstance<const Identifier>(var_node)) {
                 return {};
             }
-            std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> results = std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(results)>>);
+            std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>> results = std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>>{}), std::remove_cvref_t<decltype(results)>>);
             
                 auto&& ceto__private__intermediate32 = this -> variable_definitions;
 
@@ -474,7 +474,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return results;
         }
 
-        inline auto find_def(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  var_node) const -> std::optional<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> {
+        inline auto find_def(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  var_node) const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>> {
             const auto find_all = false;
             const auto found = this -> find_defs(var_node, find_all);
             return (((*ceto::mad(found)).size() > 0) ?
@@ -482,15 +482,15 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
                 return ceto::bounds_check(found, 0);
             }() :
                 [&]() {
-                const std::optional<ceto::propagate_const<std::shared_ptr<const VariableDefinition>>> none_result = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none_result)>>);
+                const std::optional<ceto::nonullpropconst<std::shared_ptr<const VariableDefinition>>> none_result = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none_result)>>);
                 return none_result;
             }())
 ;
         }
 
-        inline auto enter_scope() const -> ceto::propagate_const<std::shared_ptr<const Scope>> {
+        inline auto enter_scope() const -> ceto::nonullpropconst<std::shared_ptr<const Scope>> {
             const auto self = ceto::shared_from(this);
-            auto s { ceto::make_shared_propagate_const<Scope>() } ;
+            auto s { ceto::make_shared_nonullpropconst<Scope>() } ;
             (*ceto::mad(s))._parent = ceto::get_underlying(self);
             (*ceto::mad(s)).in_function_body = (this -> in_function_body);
             (*ceto::mad(s)).in_decltype = (this -> in_decltype);
@@ -501,7 +501,7 @@ struct Scope : public ceto::shared_object, public std::enable_shared_from_this<S
             return s;
         }
 
-        inline auto parent() const -> std::optional<ceto::propagate_const<std::shared_ptr<const Scope>>> {
+        inline auto parent() const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const Scope>>> {
             const auto p = (*ceto::mad(this -> _parent)).lock();
             if (p) {
                 return p;

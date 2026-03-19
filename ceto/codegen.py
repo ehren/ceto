@@ -2086,10 +2086,10 @@ def _shared_ptr_str_for_type(type_node, cx):
         return None
 
     if classdef := cx.lookup_class(type_node):
-        shared_ptr_str_begin = "ceto::propagate_const<std::shared_ptr<"
+        shared_ptr_str_begin = "ceto::nonullpropconst<std::shared_ptr<"
         shared_ptr_str_end = ">>"
         # unique_ptr could use std::experimental::propagate_const but needs autoderef handling in ceto.h:
-        unique_ptr_str_begin = "ceto::propagate_const<std::unique_ptr<"
+        unique_ptr_str_begin = "ceto::nonullpropconst<std::unique_ptr<"
         unique_ptr_str_end = ">>"
 
         if classdef.is_struct:
@@ -2119,7 +2119,7 @@ def _sublist_indices(sublist, lst : typing.List):
 
 
 def _propagate_const_str(string: str) -> str:
-    return "ceto::propagate_const<" + string + ">"
+    return "ceto::nonullpropconst<" + string + ">"
 
 
 def _codegen_compound_class_type(types, cx):
@@ -2136,9 +2136,9 @@ def _codegen_compound_class_type(types, cx):
     if class_def.is_unique:
         # we should perhaps remove these
         if indices := _sublist_indices(["const", class_name, "ref"], typenames):
-            return "const ceto::propagate_const<std::unique_ptr<const " + class_name + ">>&", indices
+            return "const ceto::nonullpropconst<std::unique_ptr<const " + class_name + ">>&", indices
         if indices := _sublist_indices([class_name, "const", "ref"], typenames):
-            return "const ceto::propagate_const<std::unique_ptr<const " + class_name + ">>&", indices
+            return "const ceto::nonullpropconst<std::unique_ptr<const " + class_name + ">>&", indices
     if not class_def.is_struct and ("ref" in typenames or "pointer" in typenames):
         raise CodeGenError("no ref/pointer specifiers allowed for class. Use Foo.class instead, or make your class a struct", types[0])
     if indices := _sublist_indices(["shared", "mut", class_name], typenames):
@@ -2803,9 +2803,9 @@ def codegen_call(node: Call, cx: Scope):
                     const_part = "const " if _is_const_make(node) else ""
 
                     if class_def.is_unique:
-                        func_str = "ceto::make_unique_propagate_const<" + const_part + class_name + ">"
+                        func_str = "ceto::make_unique_nonullpropconst<" + const_part + class_name + ">"
                     else:
-                        func_str = "ceto::make_shared_propagate_const<" + const_part + class_name + ">"
+                        func_str = "ceto::make_shared_nonullpropconst<" + const_part + class_name + ">"
 
                 return func_str + args_str
 

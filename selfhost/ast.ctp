@@ -27,8 +27,8 @@ def (module_path:
     return dir.cast<std.string>();
 )
 
-#PYBIND11_DECLARE_HOLDER_TYPE(T, ceto.propagate_const<std.shared_ptr<T>>, true)
-PYBIND11_DECLARE_HOLDER_TYPE(T, ceto.propagate_const<std.shared_ptr<T>>)
+#PYBIND11_DECLARE_HOLDER_TYPE(T, ceto.nonullpropconst<std.shared_ptr<T>>, true)
+PYBIND11_DECLARE_HOLDER_TYPE(T, ceto.nonullpropconst<std.shared_ptr<T>>)
 
 cpp'
 PYBIND11_MODULE(_abstractsyntaxtree, m) {

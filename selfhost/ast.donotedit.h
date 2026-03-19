@@ -36,7 +36,7 @@ struct Source : public ceto::shared_object, public std::enable_shared_from_this<
 
 struct SourceLoc : public ceto::object {
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Source>>> source;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Source>>> source;
 
     int loc;
 
@@ -44,7 +44,7 @@ struct SourceLoc : public ceto::object {
 
     decltype(std::string {""}) header_file_h = std::string {""};
 
-    explicit SourceLoc(const std::optional<ceto::propagate_const<std::shared_ptr<const Source>>> source = CETO_NONE, const int loc = 0) : source(source), loc(loc) {
+    explicit SourceLoc(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Source>>> source = CETO_NONE, const int loc = 0) : source(source), loc(loc) {
     }
 
 };
@@ -53,15 +53,15 @@ struct Scope;
 
 struct Node : public ceto::shared_object, public std::enable_shared_from_this<Node> {
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> func;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> func;
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> args;
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> args;
 
     SourceLoc source;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> declared_type = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(declared_type)>>);
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> declared_type = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(declared_type)>>);
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Scope>>> scope = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(scope)>>);
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Scope>>> scope = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(scope)>>);
 
     std::weak_ptr<const Node> _parent = {};
 
@@ -92,8 +92,8 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto cloned_args() const -> std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> {
-            std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> new_args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
+        inline auto cloned_args() const -> std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> {
+            std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> new_args = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(new_args)>>);
             (*ceto::mad(new_args)).reserve((*ceto::mad(this -> args)).size());
             
                 auto&& ceto__private__intermediate5 = this -> args;
@@ -116,9 +116,9 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
                 return new_args;
         }
 
-         virtual inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> {
-            const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
-            auto c { ceto::make_shared_propagate_const<Node>(((this -> func) ?
+         virtual inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> {
+            const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
+            auto c { ceto::make_shared_nonullpropconst<Node>(((this -> func) ?
                 [&]() {
                 return (*ceto::mad(this -> func)).clone();
             }() :
@@ -130,7 +130,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
             return c;
         }
 
-         virtual inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other) const -> bool {
+         virtual inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other) const -> bool {
             if (other == CETO_NONE) {
                 return false;
             }
@@ -168,7 +168,7 @@ return ceto::LoopControl::Break;
         }
 
         template <typename ceto__private__T111>
-auto replace(const ceto__private__T111& replacer) -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>> {
+auto replace(const ceto__private__T111& replacer) -> ceto::nonullpropconst<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::nonullpropconst<std::shared_ptr<const Node>>>())),std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
             const auto self = ceto::shared_from(this);
             ceto::safe_for_loop<!std::is_reference_v<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))> && ceto::OwningContainer<std::remove_cvref_t<decltype(ceto::util::range((*ceto::mad(this -> args)).size()))>>>(ceto::util::range((*ceto::mad(this -> args)).size()), [&](auto &&ceto__private__lambda_param12) -> ceto::LoopControl {
     const auto i = ceto__private__lambda_param12;
@@ -185,39 +185,39 @@ auto replace(const ceto__private__T111& replacer) -> ceto::propagate_const<std::
         }
 
         template <typename ceto__private__T113>
-auto replace(const ceto__private__T113& replacer) const -> ceto::propagate_const<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::propagate_const<std::shared_ptr<const Node>>>())),std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>> {
+auto replace(const ceto__private__T113& replacer) const -> ceto::nonullpropconst<std::shared_ptr<Node>> requires std::is_same_v<decltype(replacer(std::declval<ceto::nonullpropconst<std::shared_ptr<const Node>>>())),std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
             return (*ceto::mad(this -> clone())).replace(replacer);
         }
 
-        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) -> ceto::propagate_const<std::shared_ptr<Node>> {
+        inline auto replace(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  pattern, const ceto::nonullpropconst<std::shared_ptr<const Node>>&  replacement) -> ceto::nonullpropconst<std::shared_ptr<Node>> {
             return this -> replace([pattern = ceto::default_capture(pattern), replacement = ceto::default_capture(replacement)](const auto &orig) {
                     return (((*ceto::mad(pattern)).equals(orig)) ?
                         [&]() {
                         return replacement;
                     }() :
                         [&]() {
-                        const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
+                        const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
                         return none;
                     }())
 ;
                     });
         }
 
-        inline auto replace(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern, const ceto::propagate_const<std::shared_ptr<const Node>>&  replacement) const -> ceto::propagate_const<std::shared_ptr<Node>> {
+        inline auto replace(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  pattern, const ceto::nonullpropconst<std::shared_ptr<const Node>>&  replacement) const -> ceto::nonullpropconst<std::shared_ptr<Node>> {
             return this -> replace([pattern = ceto::default_capture(pattern), replacement = ceto::default_capture(replacement)](const auto &orig) {
                     return (((*ceto::mad(pattern)).equals(orig)) ?
                         [&]() {
                         return replacement;
                     }() :
                         [&]() {
-                        const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
+                        const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> none = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(none)>>);
                         return none;
                     }())
 ;
                     });
         }
 
-        inline auto parent() const -> std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> {
+        inline auto parent() const -> std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> {
             const auto p = (*ceto::mad(this -> _parent)).lock();
             if (p != nullptr) {
                 return p;
@@ -226,7 +226,7 @@ auto replace(const ceto__private__T113& replacer) const -> ceto::propagate_const
             }
         }
 
-        inline auto set_parent(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  p) -> void {
+        inline auto set_parent(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  p) -> void {
             if (p) {
                 (this -> _parent) = ceto::get_underlying((*ceto::mad_smartptr(p)).value());
             } else {
@@ -236,7 +236,7 @@ auto replace(const ceto__private__T113& replacer) const -> ceto::propagate_const
 
          virtual ~Node() = default;
 
-    explicit Node(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  func, const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : func(func), args(args), source(source) {
+    explicit Node(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  func, const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : func(func), args(args), source(source) {
     }
 
     Node() = delete;
@@ -255,13 +255,13 @@ struct UnOp : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<UnOp>(this -> op, this -> cloned_args(), source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<UnOp>(this -> op, this -> cloned_args(), source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit UnOp(const std::string&  op, const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
+    explicit UnOp(const std::string&  op, const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
     }
 
     UnOp() = delete;
@@ -280,13 +280,13 @@ struct LeftAssociativeUnOp : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<LeftAssociativeUnOp>(this -> op, this -> cloned_args(), source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<LeftAssociativeUnOp>(this -> op, this -> cloned_args(), source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
+    explicit LeftAssociativeUnOp(const std::string&  op, const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
     }
 
     LeftAssociativeUnOp() = delete;
@@ -313,13 +313,13 @@ struct BinOp : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<BinOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<BinOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-        inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other_node) const -> bool override {
+        inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other_node) const -> bool override {
             const auto other = ceto::asinstance<const BinOp>(other_node);
             if (!other) {
                 return false;
@@ -330,7 +330,7 @@ struct BinOp : public Node {
             return ((*ceto::mad(this -> lhs())).equals((*ceto::mad(other)).lhs()) && (*ceto::mad(this -> rhs())).equals((*ceto::mad(other)).rhs()));
         }
 
-    explicit BinOp(const std::string&  op, const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
+    explicit BinOp(const std::string&  op, const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source), op(op) {
     }
 
     BinOp() = delete;
@@ -345,8 +345,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<TypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<TypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -357,14 +357,14 @@ struct SyntaxTypeOp : public TypeOp {
 
 using TypeOp::TypeOp;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Node>>> synthetic_lambda_return_lambda = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(synthetic_lambda_return_lambda)>>);
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>> synthetic_lambda_return_lambda = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(synthetic_lambda_return_lambda)>>);
 
         inline auto accept( Visitor &  visitor) const -> void override {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<SyntaxTypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<SyntaxTypeOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -383,8 +383,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<AttributeAccess>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<AttributeAccess>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -399,8 +399,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<ArrowOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<ArrowOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -415,8 +415,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<ScopeResolution>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<ScopeResolution>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -431,8 +431,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Assign>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Assign>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -453,8 +453,8 @@ using Assign::Assign;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<NamedParameter>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<NamedParameter>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -469,8 +469,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<BitwiseOrOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<BitwiseOrOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -485,8 +485,8 @@ using BinOp::BinOp;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<EqualsCompareOp>(this -> op, this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<EqualsCompareOp>(this -> op, this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -509,7 +509,7 @@ struct Identifier : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other_node) const -> bool override {
+        inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other_node) const -> bool override {
             const auto other = ceto::asinstance<const Identifier>(other_node);
             if (!other) {
                 return false;
@@ -517,13 +517,13 @@ struct Identifier : public Node {
             return ((this -> _name) == (*ceto::mad(other))._name);
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Identifier>(this -> _name, this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Identifier>(this -> _name, this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit Identifier(const std::string&  name, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}, source), _name(name) {
+    explicit Identifier(const std::string&  name, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}, source), _name(name) {
     }
 
     Identifier() = delete;
@@ -547,8 +547,8 @@ using Node::Node;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Call>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Call>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -570,8 +570,8 @@ using Node::Node;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<ArrayAccess>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<ArrayAccess>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -593,8 +593,8 @@ using Node::Node;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<BracedCall>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<BracedCall>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -616,8 +616,8 @@ using Node::Node;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Template>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Template>((*ceto::mad(this -> func)).clone(), this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -628,9 +628,9 @@ struct StringLiteral : public Node {
 
     std::string str;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> prefix;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> prefix;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix;
 
         inline auto escaped() const -> auto {
             auto s { ceto::util::string_replace(this -> str, "\\", "\\\\") } ;
@@ -662,7 +662,7 @@ struct StringLiteral : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other_node) const -> bool override {
+        inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other_node) const -> bool override {
             const auto other = ceto::asinstance<const StringLiteral>(other_node);
             if (!other) {
                 return false;
@@ -683,8 +683,8 @@ struct StringLiteral : public Node {
             return true;
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<StringLiteral>(this -> str, ((this -> prefix) ?
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<StringLiteral>(this -> str, ((this -> prefix) ?
                 [&]() {
                 return ceto::asinstance<const Identifier>((*ceto::mad(this -> prefix)).clone());
             }() :
@@ -703,7 +703,7 @@ struct StringLiteral : public Node {
             return c;
         }
 
-    explicit StringLiteral(const std::string&  str, const std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> prefix = CETO_NONE, const std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}, source), str(str), prefix(prefix), suffix(suffix) {
+    explicit StringLiteral(const std::string&  str, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> prefix = CETO_NONE, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}, source), str(str), prefix(prefix), suffix(suffix) {
     }
 
     StringLiteral() = delete;
@@ -714,7 +714,7 @@ struct IntegerLiteral : public Node {
 
     std::string integer_string;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix;
 
         inline auto repr() const -> std::string override {
             return ((this -> integer_string) + ((this -> suffix) ?
@@ -731,8 +731,8 @@ struct IntegerLiteral : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<IntegerLiteral>(this -> integer_string, ((this -> suffix) ?
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<IntegerLiteral>(this -> integer_string, ((this -> suffix) ?
                 [&]() {
                 return ceto::asinstance<const Identifier>((*ceto::mad(this -> suffix)).clone());
             }() :
@@ -744,7 +744,7 @@ struct IntegerLiteral : public Node {
             return c;
         }
 
-        inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other_node) const -> bool override {
+        inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other_node) const -> bool override {
             const auto other = ceto::asinstance<const IntegerLiteral>(other_node);
             if (!other) {
                 return false;
@@ -760,7 +760,7 @@ struct IntegerLiteral : public Node {
             return true;
         }
 
-    explicit IntegerLiteral(const std::string&  integer_string, const std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, {}, source), integer_string(integer_string), suffix(suffix) {
+    explicit IntegerLiteral(const std::string&  integer_string, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, {}, source), integer_string(integer_string), suffix(suffix) {
     }
 
     IntegerLiteral() = delete;
@@ -771,7 +771,7 @@ struct FloatLiteral : public Node {
 
     std::string float_string;
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix;
 
         inline auto repr() const -> std::string override {
             return ((this -> float_string) + ((this -> suffix) ?
@@ -788,7 +788,7 @@ struct FloatLiteral : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto equals(const std::optional<ceto::propagate_const<std::shared_ptr<const Node>>>  other_node) const -> bool override {
+        inline auto equals(const std::optional<ceto::nonullpropconst<std::shared_ptr<const Node>>>  other_node) const -> bool override {
             const auto other = ceto::asinstance<const FloatLiteral>(other_node);
             if (!other) {
                 return false;
@@ -804,8 +804,8 @@ struct FloatLiteral : public Node {
             return true;
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<FloatLiteral>(this -> float_string, ((this -> suffix) ?
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<FloatLiteral>(this -> float_string, ((this -> suffix) ?
                 [&]() {
                 return ceto::asinstance<const Identifier>((*ceto::mad(this -> suffix)).clone());
             }() :
@@ -817,7 +817,7 @@ struct FloatLiteral : public Node {
             return c;
         }
 
-    explicit FloatLiteral(const std::string&  float_string, const std::optional<ceto::propagate_const<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, {}, source), float_string(float_string), suffix(suffix) {
+    explicit FloatLiteral(const std::string&  float_string, const std::optional<ceto::nonullpropconst<std::shared_ptr<const Identifier>>> suffix = CETO_NONE, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, {}, source), float_string(float_string), suffix(suffix) {
     }
 
     FloatLiteral() = delete;
@@ -837,13 +837,13 @@ struct ListLike_ : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<ListLike_>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<ListLike_>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit ListLike_(const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
+    explicit ListLike_(const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
     }
 
     ListLike_() = delete;
@@ -858,8 +858,8 @@ using ListLike_::ListLike_;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<ListLiteral>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<ListLiteral>(this -> cloned_args(), this -> source) } ;
             return c;
         }
 
@@ -873,8 +873,8 @@ using ListLike_::ListLike_;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<TupleLiteral>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<TupleLiteral>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -889,8 +889,8 @@ using ListLike_::ListLike_;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<BracedLiteral>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<BracedLiteral>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -905,8 +905,8 @@ using ListLike_::ListLike_;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Block>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Block>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -923,8 +923,8 @@ using Block::Block;
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<Module>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<Module>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
@@ -944,13 +944,13 @@ struct RedundantParens : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<RedundantParens>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<RedundantParens>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit RedundantParens(const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
+    explicit RedundantParens(const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
     }
 
     RedundantParens() = delete;
@@ -970,13 +970,13 @@ struct InfixWrapper_ : public Node {
             (*ceto::mad(visitor)).visit((*this));
         }
 
-        inline auto clone() const -> ceto::propagate_const<std::shared_ptr<Node>> override {
-            auto c { ceto::make_shared_propagate_const<InfixWrapper_>(this -> cloned_args(), this -> source) } ;
+        inline auto clone() const -> ceto::nonullpropconst<std::shared_ptr<Node>> override {
+            auto c { ceto::make_shared_nonullpropconst<InfixWrapper_>(this -> cloned_args(), this -> source) } ;
             (*ceto::mad(c))._parent = (this -> _parent);
             return c;
         }
 
-    explicit InfixWrapper_(const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
+    explicit InfixWrapper_(const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(SourceLoc())& source = SourceLoc()) : Node (CETO_NONE, args, source) {
     }
 
     InfixWrapper_() = delete;
@@ -985,7 +985,7 @@ struct InfixWrapper_ : public Node {
 
     inline auto gensym() -> auto {
         static unsigned long long counter { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(counter)>);
-        const auto s = ceto::make_shared_propagate_const<const Identifier>("ceto__private__ident__" + std::to_string(counter));
+        const auto s = ceto::make_shared_nonullpropconst<const Identifier>("ceto__private__ident__" + std::to_string(counter));
         counter += 1;
         return s;
     }

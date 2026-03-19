@@ -17,7 +17,7 @@ rootdir = os.path.dirname(__file__)
 manifest = os.path.join(rootdir, "MANIFEST.in")
 
 packaged_include_ceto = os.path.join(rootdir, "ceto", "ceto.h")
-packaged_include_propconst = os.path.join(rootdir, "ceto", "propagate_const_copyable.h")
+packaged_include_propconst = os.path.join(rootdir, "ceto", "non_null_propagate_const.h")
 packaged_ast_header = os.path.join(rootdir, "ceto", "ast.cth")
 packaged_utility_header = os.path.join(rootdir, "ceto", "utility.cth")
 packaged_range_utility_header = os.path.join(rootdir, "ceto", "range_utility.cth")
@@ -44,7 +44,7 @@ for f in os.listdir(os.path.join(rootdir, "include")):
         extra_packaged.append(dest)
 
 shutil.copyfile(os.path.join(rootdir, "include", "ceto.h"), packaged_include_ceto)
-shutil.copyfile(os.path.join(rootdir, "include", "propagate_const_copyable.h"), packaged_include_propconst)
+shutil.copyfile(os.path.join(rootdir, "include", "non_null_propagate_const.h"), packaged_include_propconst)
 shutil.copyfile(os.path.join(rootdir, "selfhost", "ast.cth"), packaged_ast_header)
 shutil.copyfile(os.path.join(rootdir, "selfhost", "utility.cth"), packaged_utility_header)
 shutil.copyfile(os.path.join(rootdir, "selfhost", "range_utility.cth"), packaged_range_utility_header)

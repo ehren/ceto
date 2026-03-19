@@ -57,17 +57,17 @@ using std::runtime_error::runtime_error;
 
 struct MacroDefinition : public ceto::shared_object, public std::enable_shared_from_this<MacroDefinition> {
 
-    ceto::propagate_const<std::shared_ptr<const Node>> defmacro_node;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> defmacro_node;
 
-    ceto::propagate_const<std::shared_ptr<const Node>> pattern_node;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> pattern_node;
 
-    std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> parameters;
+    std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> parameters;
 
     std::string dll_path = {};
 
     std::string impl_function_name = {};
 
-    explicit MacroDefinition(ceto::propagate_const<std::shared_ptr<const Node>> defmacro_node, ceto::propagate_const<std::shared_ptr<const Node>> pattern_node, std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
+    explicit MacroDefinition(ceto::nonullpropconst<std::shared_ptr<const Node>> defmacro_node, ceto::nonullpropconst<std::shared_ptr<const Node>> pattern_node, std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> parameters) : defmacro_node(std::move(defmacro_node)), pattern_node(std::move(pattern_node)), parameters(parameters) {}
 
     MacroDefinition() = delete;
 
@@ -77,21 +77,21 @@ struct MacroScope : public ceto::object {
 
     MacroScope const * parent = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(parent)>>);
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>> macro_definitions = std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>> macro_definitions = std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>>{}), std::remove_cvref_t<decltype(macro_definitions)>>);
 
-        inline auto add_definition(const ceto::propagate_const<std::shared_ptr<const MacroDefinition>>&  defn) -> void {
+        inline auto add_definition(const ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>&  defn) -> void {
             ceto::append_or_push_back(this -> macro_definitions, defn);
         }
 
-        inline auto enter_scope() const -> ceto::propagate_const<std::unique_ptr<MacroScope>> {
-            auto s = ceto::make_unique_propagate_const<MacroScope>();
+        inline auto enter_scope() const -> ceto::nonullpropconst<std::unique_ptr<MacroScope>> {
+            auto s = ceto::make_unique_nonullpropconst<MacroScope>();
             (*ceto::mad(s)).parent = this;
             return s;
         }
 
 };
 
-    inline auto is_optional_pattern(const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params) -> auto {
+    inline auto is_optional_pattern(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  pattern,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  params) -> auto {
         if (!ceto::isinstance<const Identifier>(pattern)) {
             return false;
         }
@@ -113,10 +113,10 @@ struct MacroScope : public ceto::object {
     }
 
     template <typename ceto__private__T140, typename ceto__private__T241>
-auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T241& pattern_args,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params, const decltype(false)& is_reversed = false) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
+auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T241& pattern_args,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  params, const decltype(false)& is_reversed = false) -> std::optional<std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
         auto pattern_iterator { (*ceto::mad(pattern_args)).begin() } ;
         auto arg_iterator { (*ceto::mad(args)).begin() } ;
-        auto submatches { std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{} } ;
+        auto submatches { std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{} } ;
         while (true) {            if (pattern_iterator == (*ceto::mad(pattern_args)).end()) {
                 if (arg_iterator != (*ceto::mad(args)).end()) {
                     return {};
@@ -143,9 +143,9 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
                             if (!ceto::isinstance<const Identifier>(wildcard_list_name)) {
                                 throw SemanticAnalysisError{"arg of type ListLiteral must be an identifier"};
                             }
-                            const auto wildcard_type_op = ceto::make_shared_propagate_const<const TypeOp>(":", std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{wildcard_list_name, wildcard_list_type});
-                            const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> wildcard_list_params = {{(*ceto::mad_smartptr((*ceto::mad(wildcard_list_name)).name())).value(), wildcard_type_op}};
-                            std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> wildcard_list_matches = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(wildcard_list_matches)>>);
+                            const auto wildcard_type_op = ceto::make_shared_nonullpropconst<const TypeOp>(":", std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{wildcard_list_name, wildcard_list_type});
+                            const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> wildcard_list_params = {{(*ceto::mad_smartptr((*ceto::mad(wildcard_list_name)).name())).value(), wildcard_type_op}};
+                            std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> wildcard_list_matches = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(wildcard_list_matches)>>);
                             while (arg_iterator != (*ceto::mad(args)).end()) {                                const auto arg = (*arg_iterator);
                                 if (macro_matches(arg, wildcard_list_name, wildcard_list_params)) {
                                     (wildcard_list_matches).push_back(arg);
@@ -157,7 +157,7 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
                             if (is_reversed) {
                                 std::reverse((*ceto::mad(wildcard_list_matches)).begin(), (*ceto::mad(wildcard_list_matches)).end());
                             }
-                            (*ceto::mad(submatches)).insert_or_assign(param_name, ceto::make_shared_propagate_const<const ListLiteral>(wildcard_list_matches));
+                            (*ceto::mad(submatches)).insert_or_assign(param_name, ceto::make_shared_nonullpropconst<const ListLiteral>(wildcard_list_matches));
                             pattern_iterator += 1;
                             if (pattern_iterator == (*ceto::mad(pattern_args)).end()) {
                                 if (arg_iterator != (*ceto::mad(args)).end()) {
@@ -192,26 +192,26 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         return submatches;
     }
 
-    inline auto macro_matches(const ceto::propagate_const<std::shared_ptr<const Node>>&  node, const ceto::propagate_const<std::shared_ptr<const Node>>&  pattern,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  params) -> std::optional<std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>> {
+    inline auto macro_matches(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node, const ceto::nonullpropconst<std::shared_ptr<const Node>>&  pattern,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  params) -> std::optional<std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
         if (ceto::isinstance<const Identifier>(pattern)) {
             const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(pattern)).name())).value());
             if (search != (*ceto::mad(params)).end()) {
                 const auto param_name = (search -> first);
                 const auto matched_param = (search -> second);
                 if (ceto::isinstance<const Identifier>(matched_param)) {
-                    return std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{{param_name, node}};
+                    return std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{{param_name, node}};
                 } else if (const auto typeop = ceto::asinstance<const TypeOp>(matched_param)) {
                     const auto param_type = (*ceto::mad(typeop)).rhs();
                     if (ceto::isinstance<const Identifier>(param_type)) {
                         if ((((*ceto::mad(param_type)).name() == "BinOp") && ceto::isinstance<const BinOp>(node)) || (((*ceto::mad(param_type)).name() == "UnOp") && ceto::isinstance<const UnOp>(node)) || ((*ceto::mad(param_type)).name() == "Node") || ((*ceto::mad(node)).classname() == (*ceto::mad((*ceto::mad(typeop)).rhs())).name())) {
-                            return std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{{param_name, node}};
+                            return std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{{param_name, node}};
                         }
                     } else if (const auto or_type = ceto::asinstance<const BitwiseOrOp>(param_type)) {
-                        const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> lhs_alternate_param = {{param_name, ceto::make_shared_propagate_const<const TypeOp>(":", std::vector {{matched_param, (*ceto::mad(or_type)).lhs()}})}};
+                        const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> lhs_alternate_param = {{param_name, ceto::make_shared_nonullpropconst<const TypeOp>(":", std::vector {{matched_param, (*ceto::mad(or_type)).lhs()}})}};
                         if (const auto m = macro_matches(node, pattern, lhs_alternate_param)) {
                             return m;
                         }
-                        const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> rhs_alternate_param = {{param_name, ceto::make_shared_propagate_const<const TypeOp>(":", std::vector {{matched_param, (*ceto::mad(or_type)).rhs()}})}};
+                        const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> rhs_alternate_param = {{param_name, ceto::make_shared_nonullpropconst<const TypeOp>(":", std::vector {{matched_param, (*ceto::mad(or_type)).rhs()}})}};
                         if (const auto m = macro_matches(node, pattern, rhs_alternate_param)) {
                             return m;
                         }
@@ -219,7 +219,7 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
                 }
             }
         } else if (const auto binop_pattern = ceto::asinstance<const BinOp>(pattern)) {
-            std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> idents = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(idents)>>);
+            std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> idents = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(idents)>>);
             
                 auto&& ceto__private__intermediate42 = (*ceto::mad(binop_pattern)).args;
 
@@ -300,11 +300,11 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         }
         if (((*ceto::mad((*ceto::mad(node)).args)).size() == 0) && ((*ceto::mad(node)).func == CETO_NONE) && ((*ceto::mad(pattern)).func == CETO_NONE)) {
             if ((*ceto::mad(node)).equals(pattern)) {
-                return std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{};
+                return std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{};
             }
             return {};
         }
-        auto submatches { std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{} } ;
+        auto submatches { std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{} } ;
         if ((*ceto::mad(node)).func) {
             const auto m = macro_matches((*ceto::mad_smartptr((*ceto::mad(node)).func)).value(), (*ceto::mad_smartptr((*ceto::mad(pattern)).func)).value(), params);
             if (!m) {
@@ -327,8 +327,8 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         return submatches;
     }
 
-using MacroImplResult = std::optional<std::variant<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::macros::Skip>>;
-    inline auto call_macro_impl(const ceto::propagate_const<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  match) -> MacroImplResult {
+using MacroImplResult = std::optional<std::variant<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::macros::Skip>>;
+    inline auto call_macro_impl(const ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  match) -> MacroImplResult {
         const auto handle = CETO_DLOPEN((*ceto::mad((*ceto::mad(definition)).dll_path)).c_str());
         if (!handle) {
             throw std::runtime_error("Failed to open macro dll: " + (*ceto::mad(definition)).dll_path);
@@ -337,7 +337,7 @@ using MacroImplResult = std::optional<std::variant<ceto::propagate_const<std::sh
         if (!fptr) {
             throw std::runtime_error("Failed to find symbol " + (*ceto::mad(definition)).impl_function_name + " in dll " + (*ceto::mad(definition)).dll_path);
         }
-        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>> &  m) -> MacroImplResult {
+        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  m) -> MacroImplResult {
                 return CETO_NONE;
                 })>(fptr);
         return (*f)(match);
@@ -347,9 +347,9 @@ struct ExpandResult : public ceto::object {
 
     bool did_expand;
 
-    ceto::propagate_const<std::shared_ptr<const Node>> _node;
+    ceto::nonullpropconst<std::shared_ptr<const Node>> _node;
 
-    std::map<ceto::propagate_const<std::shared_ptr<const Node>>,std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions;
+    std::map<ceto::nonullpropconst<std::shared_ptr<const Node>>,std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions;
 
         ~ExpandResult() {
             if (this -> did_expand) {
@@ -361,7 +361,7 @@ struct ExpandResult : public ceto::object {
             }
         }
 
-    explicit ExpandResult(bool did_expand, ceto::propagate_const<std::shared_ptr<const Node>> _node, std::map<ceto::propagate_const<std::shared_ptr<const Node>>,std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions) : did_expand(did_expand), _node(std::move(_node)), _skipped_definitions(_skipped_definitions) {}
+    explicit ExpandResult(bool did_expand, ceto::nonullpropconst<std::shared_ptr<const Node>> _node, std::map<ceto::nonullpropconst<std::shared_ptr<const Node>>,std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>>> & _skipped_definitions) : did_expand(did_expand), _node(std::move(_node)), _skipped_definitions(_skipped_definitions) {}
 
     ExpandResult() = delete;
 
@@ -369,15 +369,15 @@ struct ExpandResult : public ceto::object {
 
 struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
-    std::function<void(ceto::propagate_const<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> &)> on_visit_definition;
+    std::function<void(ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> &)> on_visit_definition;
 
-    std::optional<ceto::propagate_const<std::unique_ptr<MacroScope>>> current_scope = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(current_scope)>>);
+    std::optional<ceto::nonullpropconst<std::unique_ptr<MacroScope>>> current_scope = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(current_scope)>>);
 
-    std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> replacements = {};
+    std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> replacements = {};
 
-    std::map<ceto::propagate_const<std::shared_ptr<const Node>>,std::vector<ceto::propagate_const<std::shared_ptr<const MacroDefinition>>>> skipped_definitions = {};
+    std::map<ceto::nonullpropconst<std::shared_ptr<const Node>>,std::vector<ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>>> skipped_definitions = {};
 
-        inline auto expand(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> auto {
+        inline auto expand(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> auto {
             auto const * scope { (&(*ceto::mad_smartptr(this -> current_scope)).value()) -> get() } ;
             while (scope) {                auto&& ceto__private__intermediate51 = scope -> macro_definitions;
 auto&& ceto__private__intermediate52 = ceto::util::reversed(ceto__private__intermediate51);
@@ -403,7 +403,7 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                             if (std::holds_alternative<ceto::macros::Skip>(result_variant)) {
                                 (*ceto::mad((*ceto::mad(this -> skipped_definitions)).at(node))).push_back(definition);
                             } else {
-                                const auto replacement = std::get<ceto::propagate_const<std::shared_ptr<const Node>>>(result_variant);
+                                const auto replacement = std::get<ceto::nonullpropconst<std::shared_ptr<const Node>>>(result_variant);
                                 if (replacement != node) {
                                     (*ceto::mad(this -> replacements)).insert_or_assign(node, replacement);
                                     (*ceto::mad(replacement)).accept((*this));
@@ -487,7 +487,7 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
             if (!ceto::isinstance<const Block>((*ceto::mad((*ceto::mad(node)).args)).back())) {
                 throw SemanticAnalysisError{"last defmacro arg must be a Block"};
             }
-            auto parameters { std::map<std::string,ceto::propagate_const<std::shared_ptr<const Node>>>{} } ;
+            auto parameters { std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{} } ;
             
 #if defined(__clang__) && (__clang_major__ < 16)
                 const auto match_args = std::vector((*ceto::mad((*ceto::mad(node)).args)).cbegin() + 1, (*ceto::mad((*ceto::mad(node)).args)).cend() - 1);
@@ -528,13 +528,13 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                             (*ceto::mad_smartptr(parameters)).emplace(name, arg);
 
                 }
-                const auto defn = ceto::make_shared_propagate_const<const MacroDefinition>(node, pattern, parameters);
+                const auto defn = ceto::make_shared_nonullpropconst<const MacroDefinition>(node, pattern, parameters);
             (*ceto::mad(this -> current_scope)).add_definition(defn);
             this -> on_visit_definition(defn, this -> replacements);
         }
 
         inline auto visit(const Module&  node) -> void override {
-            auto s = ceto::make_unique_propagate_const<MacroScope>();
+            auto s = ceto::make_unique_nonullpropconst<MacroScope>();
             (this -> current_scope) = std::move(s);
             
                 auto&& ceto__private__intermediate61 = (*ceto::mad(node)).args;
@@ -557,7 +557,7 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
             }
 
         inline auto visit(const Block&  block_node) -> void override {
-            ceto::propagate_const<std::unique_ptr<MacroScope>> outer = std::move((*ceto::mad_smartptr(this -> current_scope)).value()); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move((*ceto::mad_smartptr(this -> current_scope)).value())), std::remove_cvref_t<decltype(outer)>>);
+            ceto::nonullpropconst<std::unique_ptr<MacroScope>> outer = std::move((*ceto::mad_smartptr(this -> current_scope)).value()); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::move((*ceto::mad_smartptr(this -> current_scope)).value())), std::remove_cvref_t<decltype(outer)>>);
             (this -> current_scope) = (*ceto::mad(outer)).enter_scope();
             const auto node = ceto::shared_from((&block_node));
             const auto expand_result = this -> expand(node);
@@ -585,13 +585,13 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                 (this -> current_scope) = std::move(outer);
         }
 
-    explicit MacroDefinitionVisitor(std::function<void(ceto::propagate_const<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> &)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
+    explicit MacroDefinitionVisitor(std::function<void(ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> &)> on_visit_definition) : on_visit_definition(on_visit_definition) {}
 
     MacroDefinitionVisitor() = delete;
 
 };
 
-    inline auto expand_macros(const ceto::propagate_const<std::shared_ptr<const Module>>&  node, const std::function<void(ceto::propagate_const<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> &)>  on_visit) -> std::unordered_map<ceto::propagate_const<std::shared_ptr<const Node>>,ceto::propagate_const<std::shared_ptr<const Node>>> {
+    inline auto expand_macros(const ceto::nonullpropconst<std::shared_ptr<const Module>>&  node, const std::function<void(ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> &)>  on_visit) -> std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> {
         auto visitor { MacroDefinitionVisitor{on_visit} } ;
         (*ceto::mad(node)).accept(visitor);
         return (*ceto::mad(visitor)).replacements;
