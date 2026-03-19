@@ -70,6 +70,10 @@ inline constexpr const Up& get_underlying(const nonullpropconst<Up>& pu) noexcep
 template <class Up>
 inline constexpr Up& get_underlying(nonullpropconst<Up>& pu) noexcept;
 
+// tag type for bypassing null checks during construction (for our make_shared wrappers etc)
+struct assume_non_null_t { explicit assume_non_null_t() = default; };
+inline constexpr assume_non_null_t assume_non_null{};
+
 template <class Tp>
 class nonullpropconst {
 public:
@@ -149,6 +153,19 @@ public:
                             !is_nonullpropconst<std::decay_t<Up>>::value,
                         bool> = false>
   constexpr nonullpropconst(Up&& u) : t_(ensure_not_null(std::forward<Up>(u))) { }
+
+  // bypass null-check constructors (for our make_shared wrapper etc)
+  template <class Up,
+            std::enable_if_t<!std::is_convertible<Up&&, Tp>::value && std::is_constructible<Tp, Up&&>::value &&
+                             !is_nonullpropconst<std::decay_t<Up>>::value,
+                        bool> = true>
+  explicit constexpr nonullpropconst(assume_non_null_t, Up&& u) : t_(std::forward<Up>(u)) { }
+
+  template <class Up,
+            std::enable_if_t<std::is_convertible<Up&&, Tp>::value && std::is_constructible<Tp, Up&&>::value &&
+                             !is_nonullpropconst<std::decay_t<Up>>::value,
+                        bool> = false>
+  constexpr nonullpropconst(assume_non_null_t, Up&& u) : t_(std::forward<Up>(u)) { }
 
   nonullpropconst& operator=(const nonullpropconst&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 

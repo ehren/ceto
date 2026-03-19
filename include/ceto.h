@@ -177,12 +177,12 @@ auto mad(T&& obj CETO_PRIVATE_SOURCE_LOC_PARAM) -> decltype(auto) requires (!IsO
 
 template<typename T, typename... A>
 auto make_shared_nonullpropconst(A&&... args) -> auto {
-    return ceto::nonullpropconst<std::shared_ptr<T>>(std::make_shared<T>(std::forward<A>(args)...));
+    return ceto::nonullpropconst<std::shared_ptr<T>>(ceto::assume_non_null, std::make_shared<T>(std::forward<A>(args)...));
 }
 
 template<typename T, typename... A>
 auto make_unique_nonullpropconst(A&&... args) -> auto {
-    return ceto::nonullpropconst<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
+    return ceto::nonullpropconst<std::unique_ptr<T>>(ceto::assume_non_null, std::make_unique<T>(std::forward<A>(args)...));
 }
 
 template <typename Target, typename Source>
@@ -190,7 +190,7 @@ auto asinstance(const ceto::nonullpropconst<std::shared_ptr<Source>>& orig)
     -> std::optional<ceto::nonullpropconst<std::shared_ptr<Target>>>
 {
     if (auto casted = std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))) {
-        return ceto::nonullpropconst<std::shared_ptr<Target>>{std::move(casted)};
+        return ceto::nonullpropconst<std::shared_ptr<Target>>{ceto::assume_non_null, std::move(casted)};
     }
     return std::nullopt;
 }
