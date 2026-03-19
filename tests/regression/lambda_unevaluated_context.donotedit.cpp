@@ -41,20 +41,16 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
     int a = []() {
             return (5 + g);
-
             }(); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype([]() {
             return (5 + g);
-
             }()), std::remove_cvref_t<decltype(a)>>);
 
     std::conditional_t<false,decltype([](const auto &x) {
             return (x + g);
-
             }),int> f;
 
     explicit Foo(std::conditional_t<false,decltype([](const auto &x) {
             return (x + g);
-
             }),int> f) : f(f) {}
 
     Foo() = delete;
@@ -66,11 +62,9 @@ constexpr const auto cg = "it's a global, no need to capture";
         const auto f = ceto::make_shared_nonullpropconst<const Foo>(2);
         const auto l = [f = ceto::default_capture(f)]() {
                 return (g + (*ceto::mad(f)).a);
-
                 };
         const auto l2 = []() {
                 return cg;
-
                 };
         std::cout << (*ceto::mad(f)).f << (*ceto::mad(f)).a << l() << "\n" << l2();
     }

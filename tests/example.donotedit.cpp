@@ -97,7 +97,6 @@ struct UniqueFoo : public ceto::object {
 // Unsafe
             return std::accumulate((*ceto::mad(vec)).cbegin() + 1, (*ceto::mad(vec)).cend(), ceto::bounds_check(vec, 0), [&sep](const auto &a, const auto &b) {
                     return (a + sep + b);
-
                     });
 };
     }
@@ -128,7 +127,6 @@ struct UniqueFoo : public ceto::object {
 
                     }
                     return ceto__private__ident__1;
-
                 }([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(std::span(/* unsafe: */ (argv), argc))> ) && true) || ceto::IsStateless<std::remove_cvref_t<decltype([]( auto &&  ceto__private__ident__2) {
         auto ceto__private__ident__1 { std::vector<std::remove_cvref_t<decltype(std::string(std::declval<std::ranges::range_value_t<decltype(ceto__private__ident__2)>>()))>>() } ;
         ceto::util::maybe_reserve(ceto__private__ident__1, ceto__private__ident__2);
@@ -150,7 +148,6 @@ struct UniqueFoo : public ceto::object {
 
             }
             return ceto__private__ident__1;
-
         })>> )); return std::span(/* unsafe: */ (argv), argc); }());
         const auto summary = string_join(args, ", ");
         const auto f = ceto::make_shared_nonullpropconst<const decltype(Foo{summary})>(summary);
@@ -159,13 +156,11 @@ struct UniqueFoo : public ceto::object {
         calls_method(f);
         auto fut { std::async(std::launch::async, [f = ceto::default_capture(f)]() {
                 return (*ceto::mad(f)).method(f);
-
                 }) } ;
         (*ceto::mad((*ceto::mad(fut)).get())).method(f);
         auto thread { std::thread([f = ceto::default_capture(f)]() {
                 std::cout << (*ceto::mad(f)).size();
                 return (*ceto::mad(f)).method(f);
-
                 }) } ;
         (*ceto::mad(thread)).join();
         auto u = ceto::make_unique_nonullpropconst<UniqueFoo>();

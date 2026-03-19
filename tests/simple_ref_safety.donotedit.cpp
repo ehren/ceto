@@ -75,12 +75,10 @@ auto foo(const ceto__private__T11& x) -> void {
             std::cout << (*ceto::mad([]() {
                     const auto x = 5;
                     return std::ref(x);
-
                     }())).get();
             std::cout << (*ceto::mad([]() {
                     auto x { 5 } ;
                     return /* unsafe: */ (HoldsRef{x});
-
                     }())).x;
         }
 

@@ -12,6 +12,9 @@ build-backend = "setuptools.build_meta"
 test-command = "pytest {project}"
 #test-skip = "*universal2:arm64"
 
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+
 [tool.ruff]
 extend-select = [
   "B",   # flake8-bugbear

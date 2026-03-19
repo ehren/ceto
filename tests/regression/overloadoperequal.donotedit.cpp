@@ -36,7 +36,8 @@
 ;
 #include "ceto_private_append_to_pushback.donotedit.h"
 ;
-// unsafe;
+ // unsafe external C++: printf
+;
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
     int x { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(x)>);
@@ -71,10 +72,6 @@ auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, con
         return (*ceto::mad(f)).operator==(otherfoo);
     }
 
-    inline auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, const std::nullptr_t  other) -> auto {
-        return !f;
-    }
-
     auto main() -> int {
         const auto f = ceto::make_shared_nonullpropconst<const Foo>();
         (*ceto::mad(f)).bar();
@@ -86,14 +83,6 @@ auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, con
             printf("same\n");
         } else {
             printf("not same\n");
-        }
-        const ceto::nonullpropconst<std::shared_ptr<const Foo>> f2 = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f2)>>);
-        printf("testing for null...\n");
-        if (f2 == nullptr) {
-            printf("we're dead\n");
-        }
-        if (!f2) {
-            printf("we're dead\n");
         }
     }
 

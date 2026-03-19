@@ -66,7 +66,6 @@
                 static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
                 static_assert(std::is_reference_v<decltype(a)>);
                 return f(a);
-
                 };
         struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
 

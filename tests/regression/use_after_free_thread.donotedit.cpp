@@ -75,7 +75,6 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
         auto t { std::thread([g = ceto::default_capture(g)]() {
                 auto gm { g } ;
                 return (*ceto::mad((*ceto::mad(gm)).f)).long_running_method();
-
                 }) } ;
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         (*ceto::mad(g)).f = CETO_NONE;

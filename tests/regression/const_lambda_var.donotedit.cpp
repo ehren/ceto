@@ -41,19 +41,15 @@
     auto main() -> int {
         const auto l { [](const auto &x) {
                 return (x + 1);
-
                 } } ;
         auto const l2 { [](const auto &x) -> int {
                 return (x * 2);
-
                 } } ;
         const auto l3 = [](const auto &x) {
                 return (x * 3);
-
                 };
         auto lmut { [](const auto &x) {
                 return (x * 4);
-
                 } } ;
         std::cout << l(2) << l2(2);
         std::cout << std::is_const_v<decltype(l)>;

@@ -38,30 +38,24 @@
 ;
     inline auto foo(const decltype(std::function([](const int  x) {
             return 0;
-
             })) f = [](const int  x) {
             return 0;
-
             }) -> auto {
         return f(3);
     }
 
     inline auto foo2(const decltype(std::function([](const int  x) -> int {
             return 0;
-
             })) f = [](const int  x) -> int {
             return 0;
-
             }) -> auto {
         return f(3);
     }
 
     inline auto foo3(const std::add_const_t<decltype(std::function([](const int  x) -> int {
             return 0;
-
             }))> f = [](const int  x) -> int {
             return 0;
-
             }) -> auto {
         static_assert(std::is_const_v<decltype(f)>);
         return f(3);
@@ -71,7 +65,6 @@
         const auto l = [](const int  x) {
                 std::cout << ("hi" + std::to_string(x));
                 return 5;
-
                 };
         const std::function f = l; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(l), std::remove_cvref_t<decltype(f)>>);
         const auto v = std::vector {f};

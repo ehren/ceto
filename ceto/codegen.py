@@ -1685,7 +1685,8 @@ allowed_scope_resolutions = (
     ("std", "terminate"),
     ("std", "chrono"),  # duration_cast is banned specially below
     ("std", "remove_cvref_t"), ("std", "type_identity_t"), ("std", "remove_const_t"), ("std", "remove_reference_t"), ("std", "remove_reference"), 
-    ("std", "remove_const"), ("std", "add_const"), ("std", "add_const_t"), ("std", "is_reference_v"), ("std", "is_const_v")
+    ("std", "remove_const"), ("std", "add_const"), ("std", "add_const_t"), ("std", "is_reference_v"), ("std", "is_const_v"),
+    ("std", "nullptr_t"),
 )
 
 

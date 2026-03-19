@@ -55,7 +55,6 @@
                     return ceto::bounds_check(x, 0);
                 }())
 ;
-
                 }(x);
         std::cout << ((result) ?
             [&]() {
@@ -75,7 +74,6 @@
                     return ceto::bounds_check(x, 0);
                 }())
 ;
-
                 }(x);
             return (r) ?
                 [&]() {
@@ -96,7 +94,6 @@
                     return ceto::bounds_check(x, 0);
                 }())
 ;
-
                 }(x);
             return (r) ?
                 [&]() {

@@ -72,7 +72,6 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
                         }
                     }
                     return;
-
                     });
         }
 

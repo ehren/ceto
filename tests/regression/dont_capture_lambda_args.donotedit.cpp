@@ -40,7 +40,6 @@
         auto x { std::vector<decltype(1)>() } ;
         const auto lfunc = [](const auto &x, const auto &y) {
                 return (x + y);
-
                 };
         (x).push_back(1);
         const auto [val1, val2] = std::make_tuple(ceto::bounds_check(x, 0), ceto::bounds_check(x, 0));
