@@ -21,7 +21,7 @@
 // Also our aim is not "const implies thread safe" (it most certainly does not in general ceto code!) but at the least "the
 // interprocedural transitive absence of 'mut' (and 'unsafe') implies C++ range-based-for safe".
 
-// TODO bunch of leading underscore usage from the libcxx implementation should be removed
+// now has non null baked in (loosely inspired by gsl non_null but allows std::move to invalidate this guarantee - safe ceto code should rely on move from last use - std.move/std.forward requires unsafe.extern declaration)
 
 #ifndef CETO_PROPAGATE_CONST
 #define CETO_PROPAGATE_CONST
@@ -49,7 +49,7 @@ T&& ensure_not_null(T&& arg) {
     return std::forward<T>(arg);
 }
 
-template <class _Tp>
+template <class Tp>
 class propagate_const;
 
 template <class Up>
@@ -64,53 +64,53 @@ struct is_optional : std::false_type {};
 template <typename T>
 struct is_optional<std::optional<T>> : std::true_type {};
 
-template <class _Up>
-inline constexpr const _Up& get_underlying(const propagate_const<_Up>& __pu) noexcept;
+template <class Up>
+inline constexpr const Up& get_underlying(const propagate_const<Up>& pu) noexcept;
 
-template <class _Up>
-inline constexpr _Up& get_underlying(propagate_const<_Up>& __pu) noexcept;
+template <class Up>
+inline constexpr Up& get_underlying(propagate_const<Up>& pu) noexcept;
 
-template <class _Tp>
+template <class Tp>
 class propagate_const {
 public:
-  typedef std::remove_reference_t<decltype(*std::declval<_Tp&>())> element_type;
+  typedef std::remove_reference_t<decltype(*std::declval<Tp&>())> element_type;
 
-  static_assert(!std::is_array<_Tp>::value, "Instantiation of propagate_const with an array type is ill-formed.");
-  static_assert(!std::is_reference<_Tp>::value, "Instantiation of propagate_const with a reference type is ill-formed.");
-  static_assert(!(std::is_pointer<_Tp>::value && std::is_function<std::remove_pointer_t<_Tp> >::value),
+  static_assert(!std::is_array<Tp>::value, "Instantiation of propagate_const with an array type is ill-formed.");
+  static_assert(!std::is_reference<Tp>::value, "Instantiation of propagate_const with a reference type is ill-formed.");
+  static_assert(!(std::is_pointer<Tp>::value && std::is_function<std::remove_pointer_t<Tp> >::value),
                 "Instantiation of propagate_const with a function-pointer type is ill-formed.");
-  static_assert(!(std::is_pointer<_Tp>::value && std::is_same<std::remove_cv_t<std::remove_pointer_t<_Tp> >, void>::value),
+  static_assert(!(std::is_pointer<Tp>::value && std::is_same<std::remove_cv_t<std::remove_pointer_t<Tp> >, void>::value),
                 "Instantiation of propagate_const with a pointer to (possibly cv-qualified) void is ill-formed.");
 
 private:
-  template <class _Up>
-  static constexpr element_type* __get_pointer(_Up* __u) {
-    return __u;
+  template <class Up>
+  static constexpr element_type* get_pointer(Up* u) {
+    return u;
   }
 
-  template <class _Up>
-  static constexpr element_type* __get_pointer(_Up& __u) {
-    return __get_pointer(__u.get());
+  template <class Up>
+  static constexpr element_type* get_pointer(Up& u) {
+    return get_pointer(u.get());
   }
 
-  template <class _Up>
-  static constexpr const element_type* __get_pointer(const _Up* __u) {
-    return __u;
+  template <class Up>
+  static constexpr const element_type* get_pointer(const Up* u) {
+    return u;
   }
 
-  template <class _Up>
-  static constexpr const element_type* __get_pointer(const _Up& __u) {
-    return __get_pointer(__u.get());
+  template <class Up>
+  static constexpr const element_type* get_pointer(const Up& u) {
+    return get_pointer(u.get());
   }
 
-  _Tp __t_;
+  Tp t_;
 
 public:
 
-  template <class _Up>
-  friend constexpr const _Up& ceto::get_underlying(const propagate_const<_Up>& __pu) noexcept;
-  template <class _Up>
-  friend constexpr _Up& ceto::get_underlying(propagate_const<_Up>& __pu) noexcept;
+  template <class Up>
+  friend constexpr const Up& ceto::get_underlying(const propagate_const<Up>& pu) noexcept;
+  template <class Up>
+  friend constexpr Up& ceto::get_underlying(propagate_const<Up>& pu) noexcept;
 
 
 // pybind11 requires a default constructible holder (maybe we can try nanobind instead; or maybe the new pybind11 3 py::smart_holder would allow our wrapper?) 
@@ -126,60 +126,60 @@ public:
 
   constexpr propagate_const(propagate_const&&) = default;
 
-  template <class _Up,
-            std::enable_if_t<!std::is_convertible<_Up, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value, bool> = true>
-  explicit constexpr propagate_const(propagate_const<_Up>&& __pu)
-      : __t_(std::move(ceto::get_underlying(__pu))) {}
+  template <class Up,
+            std::enable_if_t<!std::is_convertible<Up, Tp>::value && std::is_constructible<Tp, Up&&>::value, bool> = true>
+  explicit constexpr propagate_const(propagate_const<Up>&& pu)
+      : t_(std::move(ceto::get_underlying(pu))) {}
 
-  template <class _Up,
-            std::enable_if_t<std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value, bool> = false>
-  constexpr propagate_const(propagate_const<_Up>&& __pu)
-      : __t_(std::move(ceto::get_underlying(__pu))) {}
+  template <class Up,
+            std::enable_if_t<std::is_convertible<Up&&, Tp>::value && std::is_constructible<Tp, Up&&>::value, bool> = false>
+  constexpr propagate_const(propagate_const<Up>&& pu)
+      : t_(std::move(ceto::get_underlying(pu))) {}
 
   // ceto modification: added null checks to these
 
-  template <class _Up,
-            std::enable_if_t<!std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
-                            !is_propagate_const<std::decay_t<_Up>>::value,
+  template <class Up,
+            std::enable_if_t<!std::is_convertible<Up&&, Tp>::value && std::is_constructible<Tp, Up&&>::value &&
+                            !is_propagate_const<std::decay_t<Up>>::value,
                         bool> = true>
-  explicit constexpr propagate_const(_Up&& __u) : __t_(ensure_not_null(std::forward<_Up>(__u))) { }
+  explicit constexpr propagate_const(Up&& u) : t_(ensure_not_null(std::forward<Up>(u))) { }
 
-  template <class _Up,
-            std::enable_if_t<std::is_convertible<_Up&&, _Tp>::value && std::is_constructible<_Tp, _Up&&>::value &&
-                            !is_propagate_const<std::decay_t<_Up>>::value,
+  template <class Up,
+            std::enable_if_t<std::is_convertible<Up&&, Tp>::value && std::is_constructible<Tp, Up&&>::value &&
+                            !is_propagate_const<std::decay_t<Up>>::value,
                         bool> = false>
-  constexpr propagate_const(_Up&& __u) : __t_(ensure_not_null(std::forward<_Up>(__u))) { }
+  constexpr propagate_const(Up&& u) : t_(ensure_not_null(std::forward<Up>(u))) { }
 
   propagate_const& operator=(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
   constexpr propagate_const& operator=(propagate_const&&) = default;
 
   // ceto modification: added this
-  template <class _Up,
-            std::enable_if_t< is_propagate_const<std::decay_t<_Up>>::value,
+  template <class Up,
+            std::enable_if_t< is_propagate_const<std::decay_t<Up>>::value,
                         bool> = false>
-  //constexpr propagate_const(_Up&& __u) : __t_(std::move(ceto::get_underlying(__u))) {}
-  constexpr propagate_const(_Up&& __u) : __t_(ceto::get_underlying(__u)) {}
+  //constexpr propagate_const(Up&& u) : t_(std::move(ceto::get_underlying(u))) {}
+  constexpr propagate_const(Up&& u) : t_(ceto::get_underlying(u)) {}
 
 
   /* ceto modification: disabled these 
-  template <class _Up>
-  constexpr propagate_const& operator=(propagate_const<_Up>&& __pu) {
-    __t_ = std::move(ceto::get_underlying(__pu));
+  template <class Up>
+  constexpr propagate_const& operator=(propagate_const<Up>&& pu) {
+    t_ = std::move(ceto::get_underlying(pu));
     return *this;
   }
 
-  template <class _Up, class _Vp = std::enable_if_t<!is_propagate_const<std::decay_t<_Up>>::value>>
-  constexpr propagate_const& operator=(_Up&& __u) {
-    __t_ = std::forward<_Up>(__u);
+  template <class Up, class Vp = std::enable_if_t<!is_propagate_const<std::decay_t<Up>>::value>>
+  constexpr propagate_const& operator=(Up&& u) {
+    t_ = std::forward<Up>(u);
     return *this;
   } */
 
   // ceto modification:: added this:
-  template <class _Up, class _Vp = std::enable_if_t<is_propagate_const<std::decay_t<_Up>>::value>>
-  constexpr propagate_const& operator=(_Up&& __u) {
-    //__t_ = std::move(ceto::get_underlying(__u));
-    __t_ = ceto::get_underlying(__u);
+  template <class Up, class Vp = std::enable_if_t<is_propagate_const<std::decay_t<Up>>::value>>
+  constexpr propagate_const& operator=(Up&& u) {
+    //t_ = std::move(ceto::get_underlying(u));
+    t_ = ceto::get_underlying(u);
     return *this;
   }
 
@@ -190,9 +190,9 @@ public:
   propagate_const& operator=(std::nullptr_t) = delete;
 #endif
 
-  constexpr const element_type* get() const { return __get_pointer(__t_); }
+  constexpr const element_type* get() const { return get_pointer(t_); }
 
-  constexpr element_type* get() { return __get_pointer(__t_); }
+  constexpr element_type* get() { return get_pointer(t_); }
 
 #ifdef CETO_EXPERIMENTAL_NON_NULL
   explicit operator bool() const = delete;
@@ -202,7 +202,7 @@ public:
 
   constexpr const element_type* operator->() const { return get(); }
 
-  template <class _Dummy = _Tp, class _Up = std::enable_if_t<std::is_convertible< const _Dummy, const element_type*>::value>>
+  template <class Dummy = Tp, class Up = std::enable_if_t<std::is_convertible< const Dummy, const element_type*>::value>>
   constexpr operator const element_type*() const {
     return get();
   }
@@ -212,16 +212,16 @@ public:
   constexpr element_type* operator->() { return get(); }
 
   // ceto modification: disabled this (seem like a bad idea to implicitly convert to a raw ptr)
-  //template <class _Dummy = _Tp, class _Up = std::enable_if_t< std::is_convertible<_Dummy, element_type*>::value>>
+  //template <class Dummy = Tp, class Up = std::enable_if_t< std::is_convertible<Dummy, element_type*>::value>>
   //constexpr operator element_type*() {
   //  return get();
   //}
 
   constexpr element_type& operator*() { return *get(); }
 
-  constexpr void swap(propagate_const& __pt) noexcept(std::is_nothrow_swappable_v<_Tp>) {
+  constexpr void swap(propagate_const& pt) noexcept(std::is_nothrow_swappable_v<Tp>) {
     using std::swap;
-    swap(__t_, __pt.__t_);
+    swap(t_, pt.t_);
   }
 };
 
@@ -239,120 +239,120 @@ template <class Tp>
 constexpr bool operator!=(std::nullptr_t, const propagate_const<Tp>&) = delete;
 
 #else
-template <class _Tp>
-constexpr bool operator==(const propagate_const<_Tp>& __pt, std::nullptr_t) {
-  return ceto::get_underlying(__pt) == nullptr;
+template <class Tp>
+constexpr bool operator==(const propagate_const<Tp>& pt, std::nullptr_t) {
+  return ceto::get_underlying(pt) == nullptr;
 }
 
-template <class _Tp>
-constexpr bool operator==(std::nullptr_t, const propagate_const<_Tp>& __pt) {
-  return nullptr == ceto::get_underlying(__pt);
+template <class Tp>
+constexpr bool operator==(std::nullptr_t, const propagate_const<Tp>& pt) {
+  return nullptr == ceto::get_underlying(pt);
 }
 
-template <class _Tp>
-constexpr bool operator!=(const propagate_const<_Tp>& __pt, std::nullptr_t) {
-  return ceto::get_underlying(__pt) != nullptr;
+template <class Tp>
+constexpr bool operator!=(const propagate_const<Tp>& pt, std::nullptr_t) {
+  return ceto::get_underlying(pt) != nullptr;
 }
 
-template <class _Tp>
-constexpr bool operator!=(std::nullptr_t, const propagate_const<_Tp>& __pt) {
-  return nullptr != ceto::get_underlying(__pt);
+template <class Tp>
+constexpr bool operator!=(std::nullptr_t, const propagate_const<Tp>& pt) {
+  return nullptr != ceto::get_underlying(pt);
 }
 #endif
 
 // ceto modification - these don't play well with optional wrapped propagate_const
 /*
-template <class _Tp, class _Up>
-constexpr bool operator==(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) == ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator==(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) == ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator!=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) != ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator!=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) != ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) < ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator<(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) < ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) > ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator>(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) > ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) <= ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator<=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) <= ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
-  return ceto::get_underlying(__pt) >= ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator>=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+  return ceto::get_underlying(pt) >= ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator==(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) == __u;
+template <class Tp, class Up>
+constexpr bool operator==(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) == u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator!=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) != __u;
+template <class Tp, class Up>
+constexpr bool operator!=(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) != u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) < __u;
+template <class Tp, class Up>
+constexpr bool operator<(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) < u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) > __u;
+template <class Tp, class Up>
+constexpr bool operator>(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) > u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) <= __u;
+template <class Tp, class Up>
+constexpr bool operator<=(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) <= u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>=(const propagate_const<_Tp>& __pt, const _Up& __u) {
-  return ceto::get_underlying(__pt) >= __u;
+template <class Tp, class Up>
+constexpr bool operator>=(const propagate_const<Tp>& pt, const Up& u) {
+  return ceto::get_underlying(pt) >= u;
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator==(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t == ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator==(const Tp& t, const propagate_const<Up>& pu) {
+  return t == ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator!=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t != ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator!=(const Tp& t, const propagate_const<Up>& pu) {
+  return t != ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t < ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator<(const Tp& t, const propagate_const<Up>& pu) {
+  return t < ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t > ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator>(const Tp& t, const propagate_const<Up>& pu) {
+  return t > ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator<=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t <= ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator<=(const Tp& t, const propagate_const<Up>& pu) {
+  return t <= ceto::get_underlying(pu);
 }
 
-template <class _Tp, class _Up>
-constexpr bool operator>=(const _Tp& __t, const propagate_const<_Up>& __pu) {
-  return __t >= ceto::get_underlying(__pu);
+template <class Tp, class Up>
+constexpr bool operator>=(const Tp& t, const propagate_const<Up>& pu) {
+  return t >= ceto::get_underlying(pu);
 }*/
 
-// --- propagate_const vs propagate_const ---
+// propagate_const vs propagate_const
 
 template <class Tp, class Up>
 constexpr bool operator==(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
@@ -384,7 +384,7 @@ constexpr bool operator>=(const propagate_const<Tp>& pt, const propagate_const<U
     return ceto::get_underlying(pt) >= ceto::get_underlying(pu);
 }
 
-// --- propagate_const vs generic Up (Constrained) ---
+// propagate_const vs generic but not optional
 
 #define CETO_PC_REL_OP(op) \
 template <class Tp, class Up, \
@@ -402,106 +402,108 @@ constexpr bool operator op(const Tp& t, const propagate_const<Up>& pu) { \
 
 CETO_PC_REL_OP(==)
 CETO_PC_REL_OP(!=)
-CETO_PC_REL_OP(<)
-CETO_PC_REL_OP(>)
-CETO_PC_REL_OP(<=)
-CETO_PC_REL_OP(>=)
+
+// these aren't a great idea unless you're wrapping raw pointers
+//CETO_PC_REL_OP(<)
+//CETO_PC_REL_OP(>)
+//CETO_PC_REL_OP(<=)
+//CETO_PC_REL_OP(>=)
 
 #undef CETO_PC_REL_OP
 
-template <class _Tp>
+template <class Tp>
 constexpr void
-swap(propagate_const<_Tp>& __pc1, propagate_const<_Tp>& __pc2) noexcept(std::is_nothrow_swappable_v<_Tp>) {
-  __pc1.swap(__pc2);
+swap(propagate_const<Tp>& pc1, propagate_const<Tp>& pc2) noexcept(std::is_nothrow_swappable_v<Tp>) {
+  pc1.swap(pc2);
 }
 
-template <class _Tp>
-constexpr const _Tp& get_underlying(const propagate_const<_Tp>& __pt) noexcept {
-  return __pt.__t_;
+template <class Tp>
+constexpr const Tp& get_underlying(const propagate_const<Tp>& pt) noexcept {
+  return pt.t_;
 }
 
-template <class _Tp>
-constexpr _Tp& get_underlying(propagate_const<_Tp>& __pt) noexcept {
-  return __pt.__t_;
+template <class Tp>
+constexpr Tp& get_underlying(propagate_const<Tp>& pt) noexcept {
+  return pt.t_;
 }
 
 } // end namespace ceto
 
 namespace std {
 
-template <class _Tp>
-struct hash<ceto::propagate_const<_Tp>> {
+template <class Tp>
+struct hash<ceto::propagate_const<Tp>> {
   typedef size_t result_type;
-  typedef ceto::propagate_const<_Tp> argument_type;
+  typedef ceto::propagate_const<Tp> argument_type;
 
-  size_t operator()(const ceto::propagate_const<_Tp>& __pc1) const {
-    return std::hash<_Tp>()(ceto::get_underlying(__pc1));
+  size_t operator()(const ceto::propagate_const<Tp>& pc1) const {
+    return std::hash<Tp>()(ceto::get_underlying(pc1));
   }
 };
 
-template <class _Tp>
-struct equal_to<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct equal_to<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::equal_to<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::equal_to<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
-template <class _Tp>
-struct not_equal_to<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct not_equal_to<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::not_equal_to<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::not_equal_to<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
-template <class _Tp>
-struct less<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct less<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::less<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::less<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
-template <class _Tp>
-struct greater<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct greater<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::greater<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::greater<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
-template <class _Tp>
-struct less_equal<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct less_equal<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::less_equal<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::less_equal<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
-template <class _Tp>
-struct greater_equal<ceto::propagate_const<_Tp>> {
-  typedef ceto::propagate_const<_Tp> first_argument_type;
-  typedef ceto::propagate_const<_Tp> second_argument_type;
+template <class Tp>
+struct greater_equal<ceto::propagate_const<Tp>> {
+  typedef ceto::propagate_const<Tp> first_argument_type;
+  typedef ceto::propagate_const<Tp> second_argument_type;
 
   bool
-  operator()(const ceto::propagate_const<_Tp>& __pc1, const ceto::propagate_const<_Tp>& __pc2) const {
-    return std::greater_equal<_Tp>()(ceto::get_underlying(__pc1), ceto::get_underlying(__pc2));
+  operator()(const ceto::propagate_const<Tp>& pc1, const ceto::propagate_const<Tp>& pc2) const {
+    return std::greater_equal<Tp>()(ceto::get_underlying(pc1), ceto::get_underlying(pc2));
   }
 };
 
