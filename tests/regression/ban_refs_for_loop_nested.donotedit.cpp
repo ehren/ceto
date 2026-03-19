@@ -102,12 +102,12 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 };
 
     inline auto create_foo() -> auto {
-        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        auto f { ceto::make_shared_nonullpropconst<Foo>() } ;
         return f;
     }
 
     auto main() -> int {
-        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        auto f { ceto::make_shared_nonullpropconst<Foo>() } ;
         (*ceto::mad(f)).foo();
         const auto c = create_foo();
         (*ceto::mad(c)).foo();

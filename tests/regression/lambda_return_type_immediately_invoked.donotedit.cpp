@@ -39,10 +39,12 @@
     auto main() -> int {
         const auto val = [](const auto &x) -> int {
                 return x;
+
                 }(5);
         std::cout << val;
         const auto val2 = [](const auto &x) -> const char ptr {
                 return "hi";
+
                 }(5);
         std::cout << val2;
     }

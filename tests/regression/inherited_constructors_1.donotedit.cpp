@@ -53,7 +53,7 @@ using Base::Base;
 };
 
     auto main() -> int {
-        const auto d = ceto::make_shared_propagate_const<const Derived>(5);
+        const auto d = ceto::make_shared_nonullpropconst<const Derived>(5);
         std::cout << (*ceto::mad(d)).a;
     }
 

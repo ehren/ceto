@@ -61,8 +61,8 @@ template <typename ceto__private__C3>struct GenericChild : public std::type_iden
 };
 
     auto main() -> int {
-        const auto g = ceto::make_shared_propagate_const<const decltype(Generic{101, (-333)})>(101, (-333));
-        const auto g2 = ceto::make_shared_propagate_const<const decltype(GenericChild{std::vector {{"x", "y", "z"}}})>(std::vector {{"x", "y", "z"}});
+        const auto g = ceto::make_shared_nonullpropconst<const decltype(Generic{101, (-333)})>(101, (-333));
+        const auto g2 = ceto::make_shared_nonullpropconst<const decltype(GenericChild{std::vector {{"x", "y", "z"}}})>(std::vector {{"x", "y", "z"}});
         std::cout << (*ceto::mad(g)).x << (*ceto::mad(g)).y << (*ceto::mad(g)).z;
         std::cout << ceto::bounds_check((*ceto::mad(g2)).x, 2) << (*ceto::mad(g2)).y << ceto::bounds_check((*ceto::mad(g2)).z, 1);
     }

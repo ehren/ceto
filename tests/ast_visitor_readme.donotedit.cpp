@@ -46,13 +46,13 @@ struct Add;
 
 struct Visitor : public ceto::shared_object, public std::enable_shared_from_this<Visitor> {
 
-         virtual auto visit(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void = 0;
+         virtual auto visit(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> void = 0;
 
-         virtual auto visit(const ceto::propagate_const<std::shared_ptr<const Identifier>>&  node) -> void = 0;
+         virtual auto visit(const ceto::nonullpropconst<std::shared_ptr<const Identifier>>&  node) -> void = 0;
 
-         virtual auto visit(const ceto::propagate_const<std::shared_ptr<const BinOp>>&  node) -> void = 0;
+         virtual auto visit(const ceto::nonullpropconst<std::shared_ptr<const BinOp>>&  node) -> void = 0;
 
-         virtual auto visit(const ceto::propagate_const<std::shared_ptr<const Add>>&  node) -> void = 0;
+         virtual auto visit(const ceto::nonullpropconst<std::shared_ptr<const Add>>&  node) -> void = 0;
 
          virtual ~Visitor() = default;
 
@@ -62,7 +62,7 @@ struct Node : public ceto::shared_object, public std::enable_shared_from_this<No
 
     int loc;
 
-         virtual inline auto accept( ceto::propagate_const<std::shared_ptr<Visitor>>  visitor) const -> void {
+         virtual inline auto accept( ceto::nonullpropconst<std::shared_ptr<Visitor>>  visitor) const -> void {
             const auto self = ceto::shared_from(this);
             (*ceto::mad(visitor)).visit(self);
         }
@@ -79,7 +79,7 @@ struct Identifier : public Node {
 
     std::string name;
 
-         virtual inline auto accept( ceto::propagate_const<std::shared_ptr<Visitor>>  visitor) const -> void {
+         virtual inline auto accept( ceto::nonullpropconst<std::shared_ptr<Visitor>>  visitor) const -> void {
             const auto self = ceto::shared_from(this);
             (*ceto::mad(visitor)).visit(self);
         }
@@ -93,14 +93,14 @@ struct Identifier : public Node {
 
 struct BinOp : public Node {
 
-    std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> args;
+    std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> args;
 
-         virtual inline auto accept( ceto::propagate_const<std::shared_ptr<Visitor>>  visitor) const -> void {
+         virtual inline auto accept( ceto::nonullpropconst<std::shared_ptr<Visitor>>  visitor) const -> void {
             const auto self = ceto::shared_from(this);
             (*ceto::mad(visitor)).visit(self);
         }
 
-    explicit BinOp(const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>&  args, const decltype(0)& loc = 0) : Node (loc), args(args) {
+    explicit BinOp(const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>&  args, const decltype(0)& loc = 0) : Node (loc), args(args) {
     }
 
     BinOp() = delete;
@@ -111,7 +111,7 @@ struct Add : public BinOp {
 
 using BinOp::BinOp;
 
-         virtual inline auto accept( ceto::propagate_const<std::shared_ptr<Visitor>>  visitor) const -> void {
+         virtual inline auto accept( ceto::nonullpropconst<std::shared_ptr<Visitor>>  visitor) const -> void {
             const auto self = ceto::shared_from(this);
             (*ceto::mad(visitor)).visit(self);
         }
@@ -124,15 +124,15 @@ using Visitor::Visitor;
 
     decltype(std::string {""}) record = std::string {""};
 
-         virtual inline auto visit(const ceto::propagate_const<std::shared_ptr<const Node>>&  node) -> void {
+         virtual inline auto visit(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> void {
             (this -> record) += "visiting Node\n";
         }
 
-         virtual inline auto visit(const ceto::propagate_const<std::shared_ptr<const Identifier>>&  ident) -> void {
+         virtual inline auto visit(const ceto::nonullpropconst<std::shared_ptr<const Identifier>>&  ident) -> void {
             (this -> record) += ("visiting Identifier " + (*ceto::mad(ident)).name + "\n");
         }
 
-         virtual inline auto visit(const ceto::propagate_const<std::shared_ptr<const BinOp>>&  node) -> void {
+         virtual inline auto visit(const ceto::nonullpropconst<std::shared_ptr<const BinOp>>&  node) -> void {
             const auto self = ceto::shared_from(this);
             (this -> record) += "visiting BinOp\n";
             
@@ -155,7 +155,7 @@ using Visitor::Visitor;
                 }
             }
 
-         virtual inline auto visit(const ceto::propagate_const<std::shared_ptr<const Add>>&  node) -> void {
+         virtual inline auto visit(const ceto::nonullpropconst<std::shared_ptr<const Add>>&  node) -> void {
             const auto self = ceto::shared_from(this);
             (this -> record) += "visiting Add\n";
             
@@ -181,11 +181,11 @@ using Visitor::Visitor;
 };
 
     auto main() -> int {
-        const auto node = ceto::make_shared_propagate_const<const Node>(0);
-        const auto ident = ceto::make_shared_propagate_const<const Identifier>("a", 5);
-        const std::vector<ceto::propagate_const<std::shared_ptr<const Node>>> args = std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{ident, node, ident}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Node>>>{ident, node, ident}), std::remove_cvref_t<decltype(args)>>);
-        const ceto::propagate_const<std::shared_ptr<const Add>> add = ceto::make_shared_propagate_const<const Add>(args); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::make_shared_propagate_const<const Add>(args)), std::remove_cvref_t<decltype(add)>>);
-        auto simple_visitor { ceto::make_shared_propagate_const<SimpleVisitor>() } ;
+        const auto node = ceto::make_shared_nonullpropconst<const Node>(0);
+        const auto ident = ceto::make_shared_nonullpropconst<const Identifier>("a", 5);
+        const std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> args = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{ident, node, ident}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{ident, node, ident}), std::remove_cvref_t<decltype(args)>>);
+        const ceto::nonullpropconst<std::shared_ptr<const Add>> add = ceto::make_shared_nonullpropconst<const Add>(args); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::make_shared_nonullpropconst<const Add>(args)), std::remove_cvref_t<decltype(add)>>);
+        auto simple_visitor { ceto::make_shared_nonullpropconst<SimpleVisitor>() } ;
         (*ceto::mad(ident)).accept(simple_visitor);
         (*ceto::mad(add)).accept(simple_visitor);
         std::cout << (*ceto::mad(simple_visitor)).record;

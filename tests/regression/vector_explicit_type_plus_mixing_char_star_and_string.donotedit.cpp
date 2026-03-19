@@ -47,9 +47,9 @@ struct Blah : public ceto::shared_object, public std::enable_shared_from_this<Bl
 };
 
     auto main() -> int {
-        const auto a = ceto::make_shared_propagate_const<const Blah>();
-        const auto b = ceto::make_shared_propagate_const<const Blah>();
-        const std::vector<ceto::propagate_const<std::shared_ptr<const Blah>>> l = std::vector<ceto::propagate_const<std::shared_ptr<const Blah>>>{a, b}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::propagate_const<std::shared_ptr<const Blah>>>{a, b}), std::remove_cvref_t<decltype(l)>>);
+        const auto a = ceto::make_shared_nonullpropconst<const Blah>();
+        const auto b = ceto::make_shared_nonullpropconst<const Blah>();
+        const std::vector<ceto::nonullpropconst<std::shared_ptr<const Blah>>> l = std::vector<ceto::nonullpropconst<std::shared_ptr<const Blah>>>{a, b}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Blah>>>{a, b}), std::remove_cvref_t<decltype(l)>>);
         (*ceto::mad(ceto::bounds_check(l, 1))).foo();
         const std::vector<std::string> s = std::vector<std::string>{"a", "b", "c"}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::string>{"a", "b", "c"}), std::remove_cvref_t<decltype(s)>>);
         if (1) {

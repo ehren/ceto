@@ -37,141 +37,137 @@
 #include "ceto_private_append_to_pushback.donotedit.h"
 ;
     auto main() -> int {
-        const auto x = [ & ]() {
-            if (1) {
-                return std::vector {{1, 2}};
-            }
-            else {
-                return std::vector {{2, 1}};
-            }
-        }()
+        const auto x = ((1) ?
+            [&]() {
+            return std::vector {{1, 2}};
+        }() :
+            [&]() {
+            return std::vector {{2, 1}};
+        }())
 ;
         std::cout << ceto::bounds_check(x, 0) << ceto::bounds_check(x, 1);
         const auto result = [](const auto &x) {
-                return [ & ]() {
-                    if (ceto::bounds_check(x, 1) == 2) {
-                        return ceto::bounds_check(x, 1);
-                    }
-                    else {
-                        return ceto::bounds_check(x, 0);
-                    }
-                }()
+                return ((ceto::bounds_check(x, 1) == 2) ?
+                    [&]() {
+                    return ceto::bounds_check(x, 1);
+                }() :
+                    [&]() {
+                    return ceto::bounds_check(x, 0);
+                }())
 ;
+
                 }(x);
-        std::cout << [ & ]() {
-            if (result) {
-                return result;
-            }
-            else {
-                return 0;
-            }
-        }()
+        std::cout << ((result) ?
+            [&]() {
+            return result;
+        }() :
+            [&]() {
+            return 0;
+        }())
 ;
-        std::cout << [ & ]() {
-            if (const auto r = [](const auto &x) {
-                    return [ & ]() {
-                        if (ceto::bounds_check(x, 1) == 2) {
-                            return ceto::bounds_check(x, 1);
-                        }
-                        else {
-                            return ceto::bounds_check(x, 0);
-                        }
-                    }()
-;
-                    }(x)) {
-                return r;
-            }
-            else {
-                return 0;
-            }
-        }()
-;
-        std::cout << [ & ]() {
-            if (const auto r = [](const auto &x) {
-                    return [ & ]() {
-                        if (ceto::bounds_check(x, 1) == 2) {
-                            return ceto::bounds_check(x, 1);
-                        }
-                        else {
-                            return ceto::bounds_check(x, 0);
-                        }
-                    }()
-;
-                    }(x)) {
-                return r;
-            }
-            else {
-                return 0;
-            }
-        }()
-;
-        std::cout << [ & ]() {
-            if (const auto r = [ & ]() {
-                if (ceto::bounds_check(x, 1) == 2) {
+        std::cout << [&]() {
+            const auto r = [](const auto &x) {
+                return ((ceto::bounds_check(x, 1) == 2) ?
+                    [&]() {
                     return ceto::bounds_check(x, 1);
-                }
-                else {
+                }() :
+                    [&]() {
                     return ceto::bounds_check(x, 0);
-                }
-            }()
-) {
-                return r;
-            }
-            else {
-                return 0;
-            }
+                }())
+;
+
+                }(x);
+            return (r) ?
+                [&]() {
+            return r;
+        }() :
+                [&]() {
+            return 0;
+        }();
         }()
 ;
-        std::cout << [ & ]() {
-            if (const auto r = [ & ]() {
-                if (ceto::bounds_check(x, 1) == 2) {
+        std::cout << [&]() {
+            const auto r = [](const auto &x) {
+                return ((ceto::bounds_check(x, 1) == 2) ?
+                    [&]() {
                     return ceto::bounds_check(x, 1);
-                }
-                else {
+                }() :
+                    [&]() {
                     return ceto::bounds_check(x, 0);
-                }
-            }()
-) {
-                return r;
-            }
-            else {
-                return 0;
-            }
+                }())
+;
+
+                }(x);
+            return (r) ?
+                [&]() {
+            return r;
+        }() :
+                [&]() {
+            return 0;
+        }();
         }()
 ;
-        std::cout << [ & ]() {
-            if ([ & ]() {
-                if (ceto::bounds_check(x, 1) == 2) {
-                    return ceto::bounds_check(x, 1);
-                }
-                else {
-                    return ceto::bounds_check(x, 0);
-                }
-            }()
-) {
-                return ceto::bounds_check(x, 1);
-            }
-            else {
-                return 0;
-            }
+        std::cout << [&]() {
+            const auto r = ((ceto::bounds_check(x, 1) == 2) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return ceto::bounds_check(x, 0);
+        }());
+            return (r) ?
+                [&]() {
+            return r;
+        }() :
+                [&]() {
+            return 0;
+        }();
         }()
 ;
-        std::cout << [ & ]() {
-            if ([ & ]() {
-                if (ceto::bounds_check(x, 1) == 2) {
-                    return ceto::bounds_check(x, 1);
-                }
-                else {
-                    return ceto::bounds_check(x, 0);
-                }
-            }()
-) {
-                return ceto::bounds_check(x, 1);
-            }
-            else {
-                return 0;
-            }
+        std::cout << [&]() {
+            const auto r = ((ceto::bounds_check(x, 1) == 2) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return ceto::bounds_check(x, 0);
+        }());
+            return (r) ?
+                [&]() {
+            return r;
+        }() :
+                [&]() {
+            return 0;
+        }();
         }()
+;
+        std::cout << ((((ceto::bounds_check(x, 1) == 2) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return ceto::bounds_check(x, 0);
+        }())) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return 0;
+        }())
+;
+        std::cout << ((((ceto::bounds_check(x, 1) == 2) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return ceto::bounds_check(x, 0);
+        }())) ?
+            [&]() {
+            return ceto::bounds_check(x, 1);
+        }() :
+            [&]() {
+            return 0;
+        }())
 ;
     }
 

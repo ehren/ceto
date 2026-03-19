@@ -83,18 +83,18 @@ auto func(const ceto__private__T13& f) -> void {
         std::cout << "generic " << (*ceto::mad(f)).a << std::endl;
     }
 
-    inline auto func(const ceto::propagate_const<std::shared_ptr<const FooConcrete>>&  f) -> void {
+    inline auto func(const ceto::nonullpropconst<std::shared_ptr<const FooConcrete>>&  f) -> void {
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(std::is_reference_v<decltype(f)>);
         std::cout << "FooConcrete " << (*ceto::mad(f)).a << std::endl;
     }
 
-    inline auto func( ceto::propagate_const<std::unique_ptr<const FooConcreteUnique>>  f) -> void {
+    inline auto func( ceto::nonullpropconst<std::unique_ptr<const FooConcreteUnique>>  f) -> void {
         static_assert(!std::is_reference_v<decltype(f)>);
         std::cout << "FooConcreteUnique " << (*ceto::mad(f)).a << std::endl;
     }
 
-    inline auto func2( const ceto::propagate_const<std::unique_ptr<const FooConcreteUnique>>&  f) -> void {
+    inline auto func2( const ceto::nonullpropconst<std::unique_ptr<const FooConcreteUnique>>&  f) -> void {
         static_assert(std::is_const_v<std::remove_reference_t<decltype(f)>>);
         static_assert(std::is_reference_v<decltype(f)>);
         static_assert(std::is_same_v<decltype(f),const std::unique_ptr<const FooConcreteUnique> &>);
@@ -107,16 +107,16 @@ auto func(const ceto__private__T13& f) -> void {
     }
 
     auto main() -> int {
-        const auto f = ceto::make_shared_propagate_const<const decltype(FooGeneric{std::string {"yo"}})>(std::string {"yo"});
-        const auto f2 = ceto::make_shared_propagate_const<const FooConcrete>(std::string {"hi"});
+        const auto f = ceto::make_shared_nonullpropconst<const decltype(FooGeneric{std::string {"yo"}})>(std::string {"yo"});
+        const auto f2 = ceto::make_shared_nonullpropconst<const FooConcrete>(std::string {"hi"});
         func(f);
         func(f2);
-        func(ceto::make_unique_propagate_const<const decltype(FooGenericUnique{std::string {"hi"}})>(std::string {"hi"}));
-        auto f3 = ceto::make_unique_propagate_const<const FooConcreteUnique>(std::string {"hey"});
-        auto f4 = ceto::make_unique_propagate_const<FooConcreteUnique>(std::string {"hello"});
+        func(ceto::make_unique_nonullpropconst<const decltype(FooGenericUnique{std::string {"hi"}})>(std::string {"hi"}));
+        auto f3 = ceto::make_unique_nonullpropconst<const FooConcreteUnique>(std::string {"hey"});
+        auto f4 = ceto::make_unique_nonullpropconst<FooConcreteUnique>(std::string {"hello"});
         std::cout << (*ceto::mad(f3)).a << "\n";
         func(f4);
-        func(ceto::make_unique_propagate_const<const FooConcreteUnique>(std::string {"yo"}));
+        func(ceto::make_unique_nonullpropconst<const FooConcreteUnique>(std::string {"yo"}));
         byval(std::move(f4));
     }
 

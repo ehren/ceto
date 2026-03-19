@@ -62,9 +62,9 @@ auto calls_method(const ceto__private__T11& f) -> void {
     }
 
     auto main() -> int {
-        const auto fc = ceto::make_shared_propagate_const<const Foo>(1);
+        const auto fc = ceto::make_shared_nonullpropconst<const Foo>(1);
         (*ceto::mad(fc)).method();
-        const auto f { ceto::make_shared_propagate_const<Foo>(1) } ;
+        const auto f { ceto::make_shared_nonullpropconst<Foo>(1) } ;
         static_assert(std::is_const_v<decltype(f)>);
         (*ceto::mad(f)).method();
         calls_method(f);

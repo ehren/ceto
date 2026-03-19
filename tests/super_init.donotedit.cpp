@@ -77,10 +77,10 @@ using Concrete::Concrete;
 };
 
     auto main() -> int {
-        const auto f = ceto::make_shared_propagate_const<const decltype(Generic{"5"})>("5");
-        const auto f2 = ceto::make_shared_propagate_const<const decltype(Concrete{5})>(5);
-        const auto f3 = ceto::make_shared_propagate_const<const decltype(Generic2{std::vector {{5, 6}}, std::map<int,std::string>{{2, "two"}}})>(std::vector {{5, 6}}, std::map<int,std::string>{{2, "two"}});
-        const auto f4 = ceto::make_shared_propagate_const<const decltype(Concrete2{42})>(42);
+        const auto f = ceto::make_shared_nonullpropconst<const decltype(Generic{"5"})>("5");
+        const auto f2 = ceto::make_shared_nonullpropconst<const decltype(Concrete{5})>(5);
+        const auto f3 = ceto::make_shared_nonullpropconst<const decltype(Generic2{std::vector {{5, 6}}, std::map<int,std::string>{{2, "two"}}})>(std::vector {{5, 6}}, std::map<int,std::string>{{2, "two"}});
+        const auto f4 = ceto::make_shared_nonullpropconst<const decltype(Concrete2{42})>(42);
         std::cout << (*ceto::mad(f)).x << (*ceto::mad(f2)).x << ceto::bounds_check((*ceto::mad(f3)).x, 1) << (*ceto::mad((*ceto::mad(f3)).y)).at(2) << (*ceto::mad(f4)).x;
     }
 

@@ -68,12 +68,12 @@ auto calls_foo(const ceto__private__T11& x) -> auto {
     }
 
     auto main() -> int {
-        (*ceto::mad(ceto::make_shared_propagate_const<const Foo>())).foo();
-        auto f { ceto::make_shared_propagate_const<Foo>() } ;
+        (*ceto::mad(ceto::make_shared_nonullpropconst<const Foo>())).foo();
+        auto f { ceto::make_shared_nonullpropconst<Foo>() } ;
         (*ceto::mad(f)).foo();
         (*ceto::mad(f)).x = 55;
         (*ceto::mad(f)).foo();
-        const auto y = ceto::make_shared_propagate_const<const Foo>();
+        const auto y = ceto::make_shared_nonullpropconst<const Foo>();
         (*ceto::mad((*ceto::mad(calls_foo(y))).foo())).foo();
     }
 

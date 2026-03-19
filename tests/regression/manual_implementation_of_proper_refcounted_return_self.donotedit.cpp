@@ -52,10 +52,10 @@ template <typename ceto__private__C1>struct A : public ceto::enable_shared_from_
 struct S : public ceto::shared_object, public std::enable_shared_from_this<S> {
 
         inline auto foo() const -> auto {
-            return std::static_pointer_cast<std::type_identity_t<ceto::propagate_const<std::shared_ptr<const S>>> :: element_type>(shared_from_this());
+            return std::static_pointer_cast<std::type_identity_t<ceto::nonullpropconst<std::shared_ptr<const S>>> :: element_type>(shared_from_this());
         }
 
-        inline auto foo2() const -> ceto::propagate_const<std::shared_ptr<const S>> {
+        inline auto foo2() const -> ceto::nonullpropconst<std::shared_ptr<const S>> {
             return std::static_pointer_cast<std::remove_reference<decltype(*this)> :: type>(shared_from_this());
             return std::static_pointer_cast<std::remove_reference<decltype(*this)> :: type>(shared_from_this());
         }
@@ -63,11 +63,11 @@ struct S : public ceto::shared_object, public std::enable_shared_from_this<S> {
 };
 
     auto main() -> int {
-        const auto s = ceto::make_shared_propagate_const<const S>();
+        const auto s = ceto::make_shared_nonullpropconst<const S>();
         std::cout << (&ceto::get_underlying(s)) -> use_count() << std::endl;
         const auto s2 = (*ceto::mad(s)).foo();
         std::cout << (&s2) -> use_count() << std::endl;
-        const auto a = ceto::make_shared_propagate_const<const decltype(A{s})>(s);
+        const auto a = ceto::make_shared_nonullpropconst<const decltype(A{s})>(s);
         std::cout << (&s2) -> use_count() << std::endl;
         const auto s3 = (*ceto::mad((*ceto::mad(a)).a)).foo2();
         std::cout << (&ceto::get_underlying(s)) -> use_count() << std::endl;

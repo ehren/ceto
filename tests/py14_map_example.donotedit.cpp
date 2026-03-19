@@ -75,25 +75,32 @@ auto foo_generic(const ceto__private__T15& x) -> auto {
         map([&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype(map(l, [](const auto &x) {
                 std::cout << x;
                 return (x * 2);
+
                 }))>  || (!std::is_reference_v<decltype([](const auto &x) {
                 std::cout << x;
                 return x;
+
                 })> && std::is_fundamental_v<std::remove_cvref_t<decltype([](const auto &x) {
                 std::cout << x;
                 return x;
+
                 })>>)) && true)  )); return map(l, [](const auto &x) {
                 std::cout << x;
                 return (x * 2);
+
                 }); }(), [](const auto &x) {
                 std::cout << x;
                 return x;
+
                 });
         map(l, foo);
         map(l, [](const int  x) {
                 return foo_generic(x);
+
                 });
         map(l, [](const auto &x) {
                 return foo_generic(x);
+
                 });
         map(l, foo_generic<int>);
     }

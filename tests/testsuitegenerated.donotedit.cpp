@@ -37,24 +37,63 @@
 #include "ceto_private_append_to_pushback.donotedit.h"
 ;
 // unsafe;
-    template <typename ceto__private__T11>
-auto foo(const ceto__private__T11& bar) -> auto {
-        return bar;
+struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
+
+    int x { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(x)>);
+
+        inline auto bar() const -> void {
+            printf("bar %d\n", this -> x);
+        }
+
+        ~Foo() {
+            printf("dead\n");
+        }
+
+        inline auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  other) const -> auto {
+            printf("in == method - both foo\n");
+            return ((this -> x) == (*ceto::mad(other)).x);
+        }
+
+        template <typename ceto__private__T11>
+auto operator==(const ceto__private__T11& other) const -> auto {
+            printf("in == method - other not foo\n");
+            return (other == 5);
+        }
+
+};
+
+    template <typename ceto__private__T22>
+auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, const ceto__private__T22& other) -> auto {
+        return (*ceto::mad(f)).operator==(other);
     }
 
-    inline auto blah(const int  x) -> auto {
-        return x;
+    inline auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  otherfoo) -> auto {
+        return (*ceto::mad(f)).operator==(otherfoo);
+    }
+
+    inline auto operator==(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, const std::nullptr_t  other) -> auto {
+        return !f;
     }
 
     auto main() -> int {
-        const auto l = std::vector {{1, 2, 3}};
-        printf("%d\n", ceto::bounds_check(l, 0));
-        const auto f = []() {
-                return 0;
-                };
-        foo(f)();
-        foo(printf);
-        blah(1);
-        printf;
+        const auto f = ceto::make_shared_nonullpropconst<const Foo>();
+        (*ceto::mad(f)).bar();
+        if (f == 5) {
+            printf("overload == works\n");
+        }
+        const auto b = ceto::make_shared_nonullpropconst<const Foo>();
+        if (f == b) {
+            printf("same\n");
+        } else {
+            printf("not same\n");
+        }
+        const ceto::nonullpropconst<std::shared_ptr<const Foo>> f2 = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f2)>>);
+        printf("testing for null...\n");
+        if (f2 == nullptr) {
+            printf("we're dead\n");
+        }
+        if (!f2) {
+            printf("we're dead\n");
+        }
     }
 

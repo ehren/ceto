@@ -53,6 +53,7 @@ auto foo(const ceto__private__T11& bar) -> auto {
         printf("%d\n", v);
         const auto f = []() {
                 return 0;
+
                 };
         foo(f)();
         foo(printf);

@@ -57,9 +57,9 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
 struct HolderMut : public ceto::shared_object, public std::enable_shared_from_this<HolderMut> {
 
-    ceto::propagate_const<std::shared_ptr<Foo>> f;
+    ceto::nonullpropconst<std::shared_ptr<Foo>> f;
 
-    explicit HolderMut(ceto::propagate_const<std::shared_ptr<Foo>> f) : f(f) {}
+    explicit HolderMut(ceto::nonullpropconst<std::shared_ptr<Foo>> f) : f(f) {}
 
     HolderMut() = delete;
 
@@ -67,23 +67,23 @@ struct HolderMut : public ceto::shared_object, public std::enable_shared_from_th
 
 struct HolderConst : public ceto::shared_object, public std::enable_shared_from_this<HolderConst> {
 
-    ceto::propagate_const<std::shared_ptr<const Foo>> f;
+    ceto::nonullpropconst<std::shared_ptr<const Foo>> f;
 
-    explicit HolderConst(ceto::propagate_const<std::shared_ptr<const Foo>> f) : f(std::move(f)) {}
+    explicit HolderConst(ceto::nonullpropconst<std::shared_ptr<const Foo>> f) : f(std::move(f)) {}
 
     HolderConst() = delete;
 
 };
 
     auto main() -> int {
-        const auto f = ceto::make_shared_propagate_const<const Foo>(1);
-        const auto h = ceto::make_shared_propagate_const<const HolderConst>(f);
+        const auto f = ceto::make_shared_nonullpropconst<const Foo>(1);
+        const auto h = ceto::make_shared_nonullpropconst<const HolderConst>(f);
         std::cout << (*ceto::mad((*ceto::mad(h)).f)).constmethod();
-        auto fm { ceto::make_shared_propagate_const<Foo>(2) } ;
-        auto hm { ceto::make_shared_propagate_const<HolderMut>(fm) } ;
+        auto fm { ceto::make_shared_nonullpropconst<Foo>(2) } ;
+        auto hm { ceto::make_shared_nonullpropconst<HolderMut>(fm) } ;
         std::cout << (*ceto::mad((*ceto::mad(hm)).f)).constmethod();
         std::cout << (*ceto::mad((*ceto::mad(hm)).f)).mutmethod();
-        const auto hc = ceto::make_shared_propagate_const<const HolderConst>(fm);
+        const auto hc = ceto::make_shared_nonullpropconst<const HolderConst>(fm);
         std::cout << (*ceto::mad((*ceto::mad(hc)).f)).constmethod();
     }
 

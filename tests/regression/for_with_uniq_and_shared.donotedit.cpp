@@ -119,15 +119,15 @@ for( auto &&  x : lst) {
         };
 
             }
-            auto u { std::vector<ceto::propagate_const<std::unique_ptr<decltype(Uniq())>>>() } ;
-        auto s { std::vector<ceto::propagate_const<std::shared_ptr<const decltype(Shared())>>>() } ;
-        auto s2 { std::vector<ceto::propagate_const<std::shared_ptr<const decltype(Shared2{std::string {"blah"}})>>>() } ;
+            auto u { std::vector<ceto::nonullpropconst<std::unique_ptr<decltype(Uniq())>>>() } ;
+        auto s { std::vector<ceto::nonullpropconst<std::shared_ptr<const decltype(Shared())>>>() } ;
+        auto s2 { std::vector<ceto::nonullpropconst<std::shared_ptr<const decltype(Shared2{std::string {"blah"}})>>>() } ;
         auto&& ceto__private__intermediate5 = std::vector {{1, 2, 3, 4, 5}};
 
 for(const auto& x : ceto__private__intermediate5) {
-            (u).push_back(ceto::make_unique_propagate_const<Uniq>());
-            (s).push_back(ceto::make_shared_propagate_const<const Shared>());
-            (s2).push_back(ceto::make_shared_propagate_const<const decltype(Shared2{std::string {"blah"}})>(std::string {"blah"}));
+            (u).push_back(ceto::make_unique_nonullpropconst<Uniq>());
+            (s).push_back(ceto::make_shared_nonullpropconst<const Shared>());
+            (s2).push_back(ceto::make_shared_nonullpropconst<const decltype(Shared2{std::string {"blah"}})>(std::string {"blah"}));
         }
         
 for( auto &  x : u) {
@@ -147,8 +147,8 @@ for( auto &  x : u) {
 for( auto &  x : u) {
             printf("bar again again: %d\n", [&]() -> decltype(auto) { static_assert((((!std::is_reference_v<decltype((*ceto::mad(x)).bar())>  || (!std::is_reference_v<decltype("bar again again: %d\n")> && std::is_fundamental_v<std::remove_cvref_t<decltype("bar again again: %d\n")>>)) && true)  )); return (*ceto::mad(x)).bar(); }());
         }
-        auto v { std::vector {ceto::make_shared_propagate_const<Shared>()} } ;
-        auto v2 { std::vector {ceto::make_shared_propagate_const<const Shared>()} } ;
+        auto v { std::vector {ceto::make_shared_nonullpropconst<Shared>()} } ;
+        auto v2 { std::vector {ceto::make_shared_nonullpropconst<const Shared>()} } ;
         
     
             static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(s)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
@@ -184,7 +184,7 @@ for( auto &  x : u) {
                             (*ceto::mad(vv2)).foo();
 
             }
-            const auto s1 = ceto::make_shared_propagate_const<Shared>();
+            const auto s1 = ceto::make_shared_nonullpropconst<Shared>();
         
 for( auto  v1 : v) {
             (*ceto::mad(v1)).x = 55;

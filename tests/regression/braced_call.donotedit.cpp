@@ -110,6 +110,7 @@ for(const auto& x : ceto__private__intermediate6) {
     return ceto::LoopControl::Continue;
 });        const auto get = [](const auto &t) -> void {
                 (std::cout << ceto::bounds_check(std::get<0>(t), 0));
+
                 };
         const auto t = std::tuple{a, a3, a4, v, v2, v3};
         const auto t2 = std::make_tuple(a, v);

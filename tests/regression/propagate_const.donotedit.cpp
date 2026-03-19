@@ -71,8 +71,8 @@ auto calls_foo_through_mut_copy(const ceto__private__T13& f) -> void {
     }
 
     auto main() -> int {
-        auto m { ceto::make_shared_propagate_const<decltype(Foo{1})>(1) } ;
-        const auto c = ceto::make_shared_propagate_const<const decltype(Foo{std::string {"blah"}})>(std::string {"blah"});
+        auto m { ceto::make_shared_nonullpropconst<decltype(Foo{1})>(1) } ;
+        const auto c = ceto::make_shared_nonullpropconst<const decltype(Foo{std::string {"blah"}})>(std::string {"blah"});
         (*ceto::mad(c)).foo();
         (*ceto::mad(m)).foo();
         calls_foo(c);

@@ -1,6 +1,44 @@
 
 #include "ceto.h"
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+
+;
+#include "ceto_private_listcomp.donotedit.h"
+;
+#include "ceto_private_boundscheck.donotedit.h"
+;
+#include "ceto_private_convenience.donotedit.h"
+;
+#include "ceto_private_append_to_pushback.donotedit.h"
+;
 #include <thread>
+;
+ // unsafe external C++: std.thread, std.this_thread
 ;
 struct Delegate : public ceto::shared_object, public std::enable_shared_from_this<Delegate> {
 
@@ -14,11 +52,9 @@ struct Delegate : public ceto::shared_object, public std::enable_shared_from_thi
 
 };
 
- // unsafe external C++: std.thread, std.this_thread
-;
 struct Timer : public ceto::shared_object, public std::enable_shared_from_this<Timer> {
 
-    std::optional<ceto::propagate_const<std::shared_ptr<const Delegate>>> _delegate;
+    std::optional<ceto::nonullpropconst<std::shared_ptr<const Delegate>>> _delegate;
 
     std::thread _thread = {};
 
@@ -36,6 +72,7 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
                         }
                     }
                     return;
+
                     });
         }
 
@@ -51,14 +88,14 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
             std::cout << "Timer destruct\n";
         }
 
-    explicit Timer(std::optional<ceto::propagate_const<std::shared_ptr<const Delegate>>> _delegate) : _delegate(_delegate) {}
+    explicit Timer(std::optional<ceto::nonullpropconst<std::shared_ptr<const Delegate>>> _delegate) : _delegate(_delegate) {}
 
     Timer() = delete;
 
 };
 
     auto main() -> int {
-        auto timer { ceto::make_shared_propagate_const<Timer>(ceto::make_shared_propagate_const<const Delegate>()) } ;
+        auto timer { ceto::make_shared_nonullpropconst<Timer>(ceto::make_shared_nonullpropconst<const Delegate>()) } ;
         (*ceto::mad(timer)).start();
         using namespace std::literals;
         std::this_thread::sleep_for(3.5s);

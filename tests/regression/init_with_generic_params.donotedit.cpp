@@ -48,6 +48,6 @@ template <typename ceto__private__C1>struct Foo : public ceto::enable_shared_fro
 };
 
     auto main() -> int {
-        std::cout << (*ceto::mad(ceto::make_shared_propagate_const<const decltype(Foo{5})>(5))).x;
+        std::cout << (*ceto::mad(ceto::make_shared_nonullpropconst<const decltype(Foo{5})>(5))).x;
     }
 

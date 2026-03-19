@@ -50,16 +50,16 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
 struct Holder : public ceto::shared_object, public std::enable_shared_from_this<Holder> {
 
-    ceto::propagate_const<std::shared_ptr<const Foo>> f;
+    ceto::nonullpropconst<std::shared_ptr<const Foo>> f;
 
-    explicit Holder(ceto::propagate_const<std::shared_ptr<const Foo>> f) : f(std::move(f)) {}
+    explicit Holder(ceto::nonullpropconst<std::shared_ptr<const Foo>> f) : f(std::move(f)) {}
 
     Holder() = delete;
 
 };
 
     inline auto accessor() -> auto {
-        static auto g { ceto::make_shared_propagate_const<Holder>(nullptr) } ;
+        static auto g { ceto::make_shared_nonullpropconst<Holder>(nullptr) } ;
         return g;
     }
 
@@ -76,7 +76,7 @@ auto aliaser(const ceto__private__T11& f) -> void {
     auto main() -> int {
         // unsafe;
         auto f { accessor() } ;
-        (*ceto::mad(f)).f = ceto::make_shared_propagate_const<const Foo>();
+        (*ceto::mad(f)).f = ceto::make_shared_nonullpropconst<const Foo>();
         std::cout << (&ceto::get_underlying((*ceto::mad(f)).f)) -> use_count();
         aliaser((*ceto::mad(f)).f);
     }

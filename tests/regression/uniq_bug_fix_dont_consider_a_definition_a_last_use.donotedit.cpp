@@ -47,6 +47,6 @@ struct Foo : public ceto::object {
 };
 
     auto main() -> int {
-        auto f = ceto::make_unique_propagate_const<const Foo>(2);
+        auto f = ceto::make_unique_nonullpropconst<const Foo>(2);
     }
 

@@ -47,6 +47,6 @@ using Base::Base;
 };
 
     auto main() -> int {
-        const auto d = ceto::make_shared_propagate_const<const Derived>();
+        const auto d = ceto::make_shared_nonullpropconst<const Derived>();
     }
 

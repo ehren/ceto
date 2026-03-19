@@ -51,7 +51,7 @@ template <typename ceto__private__C1>struct Blah : public ceto::enable_shared_fr
 };
 
     auto main() -> int {
-        auto b { ceto::make_shared_propagate_const<decltype(Blah{1})>(1) } ;
+        auto b { ceto::make_shared_nonullpropconst<decltype(Blah{1})>(1) } ;
         (*ceto::mad(b)).foo();
         std::cout << (*ceto::mad(b)).x;
         (*ceto::mad(b)).x = 5;

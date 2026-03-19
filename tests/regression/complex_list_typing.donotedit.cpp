@@ -66,6 +66,7 @@
                 static_assert(std::is_const_v<std::remove_reference_t<decltype(a)>>);
                 static_assert(std::is_reference_v<decltype(a)>);
                 return f(a);
+
                 };
         struct C : public ceto::shared_object, public std::enable_shared_from_this<C> {
 
@@ -77,7 +78,7 @@
 
         };
 
-        const auto c = ceto::make_shared_propagate_const<const C>(l);
+        const auto c = ceto::make_shared_nonullpropconst<const C>(l);
         struct C2 : public ceto::shared_object, public std::enable_shared_from_this<C2> {
 
                     std::vector<std::vector<int>> a = std::vector<std::vector<int>>{std::vector {0}}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<std::vector<int>>{std::vector {0}}), std::remove_cvref_t<decltype(a)>>);
@@ -86,7 +87,7 @@
 
         };
 
-        const auto c2 = ceto::make_shared_propagate_const<const C2>();
+        const auto c2 = ceto::make_shared_nonullpropconst<const C2>();
         const auto ll = std::vector {{l, l2, l3, l4, l5, l6, l7, l9, (*ceto::mad(c)).a, (*ceto::mad(c2)).a}};
         const std::vector<std::vector<std::vector<int>>> ll2 = ll; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ll), std::remove_cvref_t<decltype(ll2)>>);
         const auto ll3 = std::vector<std::vector<std::vector<int>>>{l, l2, l3};

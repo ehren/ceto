@@ -48,6 +48,6 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 };
 
     auto main() -> int {
-        std::cout << (*ceto::mad(ceto::make_shared_propagate_const<const Foo>(5))).a;
+        std::cout << (*ceto::mad(ceto::make_shared_nonullpropconst<const Foo>(5))).a;
     }
 

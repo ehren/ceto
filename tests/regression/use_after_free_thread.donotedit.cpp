@@ -61,7 +61,7 @@ struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo
 
 struct Holder : public ceto::shared_object, public std::enable_shared_from_this<Holder> {
 
-    ceto::propagate_const<std::shared_ptr<Foo>> f = nullptr; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(nullptr), std::remove_cvref_t<decltype(f)>>);
+    ceto::nonullpropconst<std::shared_ptr<Foo>> f = CETO_NONE; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(CETO_NONE), std::remove_cvref_t<decltype(f)>>);
 
         inline auto getter() const -> auto {
             return this -> f;
@@ -70,14 +70,15 @@ struct Holder : public ceto::shared_object, public std::enable_shared_from_this<
 };
 
     auto main() -> int {
-        auto g { ceto::make_shared_propagate_const<Holder>() } ;
-        (*ceto::mad(g)).f = ceto::make_shared_propagate_const<Foo>();
+        auto g { ceto::make_shared_nonullpropconst<Holder>() } ;
+        (*ceto::mad(g)).f = ceto::make_shared_nonullpropconst<Foo>();
         auto t { std::thread([g = ceto::default_capture(g)]() {
                 auto gm { g } ;
                 return (*ceto::mad((*ceto::mad(gm)).f)).long_running_method();
+
                 }) } ;
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-        (*ceto::mad(g)).f = nullptr;
+        (*ceto::mad(g)).f = CETO_NONE;
         (*ceto::mad(t)).join();
         std::cout << "ub has occured\n";
     }

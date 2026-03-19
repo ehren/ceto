@@ -37,24 +37,22 @@
 #include "ceto_private_append_to_pushback.donotedit.h"
 ;
     auto main() -> int {
-        const auto x = [ & ]() {
-            if (1) {
-                return std::vector {{1, 2}};
-            }
-            else {
-                return std::vector {{2, 1}};
-            }
-        }()
+        const auto x = ((1) ?
+            [&]() {
+            return std::vector {{1, 2}};
+        }() :
+            [&]() {
+            return std::vector {{2, 1}};
+        }())
 ;
         std::cout << ceto::bounds_check(x, 0) << ceto::bounds_check(x, 1);
-        std::cout << [ & ]() {
-            if (1) {
-                return 2;
-            }
-            else {
-                return 1;
-            }
-        }()
+        std::cout << ((1) ?
+            [&]() {
+            return 2;
+        }() :
+            [&]() {
+            return 1;
+        }())
 ;
     }
 

@@ -47,6 +47,6 @@
 
         };
 
-        (*ceto::mad(ceto::make_shared_propagate_const<const Foo>())).doit();
+        (*ceto::mad(ceto::make_shared_nonullpropconst<const Foo>())).doit();
     }
 
