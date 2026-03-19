@@ -26,108 +26,13 @@
 #ifndef CETO_PROPAGATE_CONST
 #define CETO_PROPAGATE_CONST
 
-//#define CETO_EXPERIMENTAL_NON_NULL
-
-/*
-    propagate_const synopsis
-
-    namespace ceto {
-
-    // [propagate_const]
-    template <class T> class propagate_const;
-
-    // [propagate_const.underlying], underlying pointer access
-    constexpr const _Tp& get_underlying(const propagate_const<T>& pt) noexcept;
-    constexpr T& get_underlying(propagate_const<T>& pt) noexcept;
-
-    // [propagate_const.relational], relational operators
-    template <class T> constexpr bool operator==(const propagate_const<T>& pt, std::nullptr_t);
-    template <class T> constexpr bool operator==(std::nullptr_t, const propagate_const<T>& pu);
-    template <class T> constexpr bool operator!=(const propagate_const<T>& pt, std::nullptr_t);
-    template <class T> constexpr bool operator!=(std::nullptr_t, const propagate_const<T>& pu);
-    template <class T, class U> constexpr bool operator==(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator!=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator<(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator>(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator<=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator>=(const propagate_const<T>& pt, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator==(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator!=(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator<(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator>(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator<=(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator>=(const propagate_const<T>& pt, const _Up& u);
-    template <class T, class U> constexpr bool operator==(const _Tp& t, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator!=(const _Tp& t, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator<(const _Tp& t, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator>(const _Tp& t, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator<=(const _Tp& t, const propagate_const<_Up>& pu);
-    template <class T, class U> constexpr bool operator>=(const _Tp& t, const propagate_const<_Up>& pu);
-
-    // [propagate_const.algorithms], specialized algorithms
-    template <class T> constexpr void swap(propagate_const<T>& pt, propagate_const<T>& pu) noexcept(see below);
-
-    template <class T>
-    class propagate_const
-    {
-
-    public:
-      typedef std::remove_reference_t<decltype(*declval<T&>())> element_type;
-
-      // [propagate_const.ctor], constructors
-      constexpr propagate_const() = default;
-      propagate_const(const propagate_const& p) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
-      constexpr propagate_const(propagate_const&& p) = default;
-      template <class U> EXPLICIT constexpr propagate_const(propagate_const<_Up>&& pu); // see below
-      template <class U> EXPLICIT constexpr propagate_const(U&& u); // see below
-
-      // [propagate_const.assignment], assignment
-      propagate_const& operator=(const propagate_const& p) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
-      constexpr propagate_const& operator=(propagate_const&& p) = default;
-      template <class U> constexpr propagate_const& operator=(propagate_const<_Up>&& pu);
-      template <class U> constexpr propagate_const& operator=(U&& u); // see below
-
-      // [propagate_const.const_observers], const observers
-      explicit constexpr operator bool() const;
-      constexpr const element_type* operator->() const;
-      constexpr operator const element_type*() const; // Not always defined
-      constexpr const element_type& operator*() const;
-      constexpr const element_type* get() const;
-
-      // [propagate_const.non_const_observers], non-const observers
-      constexpr element_type* operator->();
-      constexpr operator element_type*(); // Not always defined
-      constexpr element_type& operator*();
-      constexpr element_type* get();
-
-      // [propagate_const.modifiers], modifiers
-      constexpr void swap(propagate_const& pt) noexcept(see below)
-
-    private:
-      T t_; // exposition only
-    };
-
-  } // namespace ceto
-
-  // [propagate_const.hash], hash support
-  template <class T> struct hash<ceto::propagate_const<T>>;
-
-  // [propagate_const.comparison_function_objects], comparison function objects
-  template <class T> struct equal_to<ceto::propagate_const<T>>;
-  template <class T> struct not_equal_to<ceto::propagate_const<T>>;
-  template <class T> struct less<ceto::propagate_const<T>>;
-  template <class T> struct greater<ceto::propagate_const<T>>;
-  template <class T> struct less_equal<ceto::propagate_const<T>>;
-  template <class T> struct greater_equal<ceto::propagate_const<T>>;
-
-} // namespace std
-
-*/
+#define CETO_EXPERIMENTAL_NON_NULL
 
 #include <functional>
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <optional>
 #include <iostream>
 
 
@@ -146,6 +51,18 @@ T&& ensure_not_null(T&& arg) {
 
 template <class _Tp>
 class propagate_const;
+
+template <class Up>
+struct is_propagate_const : std::false_type {};
+
+template <class Up>
+struct is_propagate_const<propagate_const<Up>> : std::true_type {};
+
+template <typename T>
+struct is_optional : std::false_type {};
+
+template <typename T>
+struct is_optional<std::optional<T>> : std::true_type {};
 
 template <class _Up>
 inline constexpr const _Up& get_underlying(const propagate_const<_Up>& __pu) noexcept;
@@ -186,12 +103,6 @@ private:
     return __get_pointer(__u.get());
   }
 
-  template <class _Up>
-  struct is_propagate_const : std::false_type {};
-
-  template <class _Up>
-  struct is_propagate_const<propagate_const<_Up>> : std::true_type {};
-
   _Tp __t_;
 
 public:
@@ -201,11 +112,15 @@ public:
   template <class _Up>
   friend constexpr _Up& ceto::get_underlying(propagate_const<_Up>& __pu) noexcept;
 
-#ifdef CETO_EXPERIMENTAL_NON_NULL
-  propagate_const() = delete;
-#else
+
+// pybind11 requires a default constructible holder (maybe we can try nanobind instead; or maybe the new pybind11 3 py::smart_holder would allow our wrapper?) 
+// workaround is to enable CETO_UNSAFE_ALLOW_PTR_DEFAULT_CONSTRUCTION for build of the compiler and defmacros (a little extra unsafety is ok at macro expansion time)
+#if !defined(CETO_EXPERIMENTAL_NON_NULL) || defined(CETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION)
   constexpr propagate_const() = default;
+#else
+  propagate_const() = delete;
 #endif
+
 
   propagate_const(const propagate_const&) = default;  // ceto modification: changed to be copyable (defaulted instead of deleted)
 
@@ -343,7 +258,10 @@ template <class _Tp>
 constexpr bool operator!=(std::nullptr_t, const propagate_const<_Tp>& __pt) {
   return nullptr != ceto::get_underlying(__pt);
 }
+#endif
 
+// ceto modification - these don't play well with optional wrapped propagate_const
+/*
 template <class _Tp, class _Up>
 constexpr bool operator==(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
   return ceto::get_underlying(__pt) == ceto::get_underlying(__pu);
@@ -353,7 +271,6 @@ template <class _Tp, class _Up>
 constexpr bool operator!=(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
   return ceto::get_underlying(__pt) != ceto::get_underlying(__pu);
 }
-#endif
 
 template <class _Tp, class _Up>
 constexpr bool operator<(const propagate_const<_Tp>& __pt, const propagate_const<_Up>& __pu) {
@@ -433,7 +350,64 @@ constexpr bool operator<=(const _Tp& __t, const propagate_const<_Up>& __pu) {
 template <class _Tp, class _Up>
 constexpr bool operator>=(const _Tp& __t, const propagate_const<_Up>& __pu) {
   return __t >= ceto::get_underlying(__pu);
+}*/
+
+// --- propagate_const vs propagate_const ---
+
+template <class Tp, class Up>
+constexpr bool operator==(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) == ceto::get_underlying(pu);
 }
+
+template <class Tp, class Up>
+constexpr bool operator!=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) != ceto::get_underlying(pu);
+}
+
+template <class Tp, class Up>
+constexpr bool operator<(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) < ceto::get_underlying(pu);
+}
+
+template <class Tp, class Up>
+constexpr bool operator>(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) > ceto::get_underlying(pu);
+}
+
+template <class Tp, class Up>
+constexpr bool operator<=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) <= ceto::get_underlying(pu);
+}
+
+template <class Tp, class Up>
+constexpr bool operator>=(const propagate_const<Tp>& pt, const propagate_const<Up>& pu) {
+    return ceto::get_underlying(pt) >= ceto::get_underlying(pu);
+}
+
+// --- propagate_const vs generic Up (Constrained) ---
+
+#define CETO_PC_REL_OP(op) \
+template <class Tp, class Up, \
+          std::enable_if_t<!is_propagate_const<std::decay_t<Up>>::value && \
+                           !is_optional<std::decay_t<Up>>::value, bool> = true> \
+constexpr bool operator op(const propagate_const<Tp>& pt, const Up& u) { \
+    return ceto::get_underlying(pt) op u; \
+} \
+template <class Tp, class Up, \
+          std::enable_if_t<!is_propagate_const<std::decay_t<Tp>>::value && \
+                           !is_optional<std::decay_t<Tp>>::value, bool> = true> \
+constexpr bool operator op(const Tp& t, const propagate_const<Up>& pu) { \
+    return t op ceto::get_underlying(pu); \
+}
+
+CETO_PC_REL_OP(==)
+CETO_PC_REL_OP(!=)
+CETO_PC_REL_OP(<)
+CETO_PC_REL_OP(>)
+CETO_PC_REL_OP(<=)
+CETO_PC_REL_OP(>=)
+
+#undef CETO_PC_REL_OP
 
 template <class _Tp>
 constexpr void

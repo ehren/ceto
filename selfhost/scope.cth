@@ -6,8 +6,8 @@ include (utility)
 unsafe()
 
 class (ClassDefinition:
-    name_node : Identifier
-    class_def_node : Call
+    name_node : Identifier|None
+    class_def_node : Call|None
     is_unique: bool
     is_struct: bool
     is_forward_declaration: bool
@@ -114,7 +114,7 @@ class (ParameterDefinition(VariableDefinition):
     pass
 )
 
-def (creates_new_variable_scope, e: Node:
+def (creates_new_variable_scope, e: Node|None:
     if (isinstance(e, Call):
         name = e.func.name()
         if (name:
@@ -126,8 +126,7 @@ def (creates_new_variable_scope, e: Node:
     return False
 )
 
-
-def (comes_before, root: Node, before: Node, after: Node:
+def (comes_before, root: Node|None, before: Node|None, after: Node|None:
     if (root == before:
         return true
     elif root == after:
@@ -146,7 +145,7 @@ def (comes_before, root: Node, before: Node, after: Node:
         )
     )
     return {}
-) : std.optional<bool>
+) : bool|None
 
 class (Scope:
     interfaces = std.map<std.string, std.vector<Node>>()
@@ -243,7 +242,7 @@ class (Scope:
             return s.lookup_class(class_node)
         )
         return None
-    ) : ClassDefinition
+    ) : ClassDefinition|None
 
     def (lookup_function, function_name_node: Node:
         if (not isinstance(function_name_node, Identifier):
@@ -259,7 +258,7 @@ class (Scope:
             return s.lookup_function(function_name_node)
         )
         return None
-    ) : FunctionDefinition
+    ) : FunctionDefinition|None
 
     def (lookup_namespace, namespace_name_node: Node:
         for (n in self.namespace_definitions:
@@ -271,7 +270,7 @@ class (Scope:
             return s.lookup_namespace(namespace_name_node)
         )
         return None
-    ) : NamespaceDefinition
+    ) : NamespaceDefinition|None
 
     def (is_node_unsafe, node: Node:
         for (x in self.unsafe_nodes:
@@ -301,7 +300,7 @@ class (Scope:
         self.external_cpp.append(node)
     )
 
-    def (find_defs, var_node: Node, find_all=true:
+    def (find_defs, var_node: Node|None, find_all=true:
 
         if (not isinstance(var_node, Identifier):
             return {}
@@ -351,16 +350,16 @@ class (Scope:
         return results
     ) : [VariableDefinition]
 
-    def (find_def, var_node: Node:
+    def (find_def, var_node: Node|None:
         find_all = false
         found = self.find_defs(var_node, find_all)
         return if (found.size() > 0:
             found[0]
         else:
-            none_result : VariableDefinition = None
+            none_result : VariableDefinition|None = None
             none_result  # needed for lambda return type deduction; arguably expression-if usage here is silly.
         )
-    )
+    ) : VariableDefinition|None
 
     def (enter_scope:
         s: mut = Scope()
@@ -375,8 +374,13 @@ class (Scope:
     ) : Scope
 
     def (parent:
-        return self._parent.lock()
-    )
+        p = self._parent.lock()
+        if (p:
+            return p
+        else:
+            return None
+        )
+    ) : Scope|None
 
     def (is_unsafe:
         return self._is_unsafe or (self.parent() and self.parent().is_unsafe())

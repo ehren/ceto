@@ -20,14 +20,6 @@
 #define CETO_PRIVATE_SOURCE_LOC_ARG
 #endif
 
-#if !_MSC_VER
-// although we currently use ceto::propagate_const for shared and unique
-// classes we could potentially use std::experimental::propagate_const
-// for :unique in the future (unsuported with MSVC)
-#include <experimental/propagate_const>
-#define CETO_HAS_PROP_CONST_STD_EXP
-#endif
-
 #include "propagate_const_copyable.h"
 #include "kit_local_shared_ptr/smart_ptr.hpp"
 
@@ -47,31 +39,13 @@ concept IsBasicStrongPtr = std::same_as<T, std::shared_ptr<typename T::element_t
 template <typename T>
 concept IsBasicWeakPtr = std::same_as<T, std::weak_ptr<typename T::element_type>>;
 
-template <class T>
-struct is_propagate_const_copyable : std::false_type {};
-
-#if defined(CETO_HAS_PROP_CONST_STD_EXP)
-template <class T>
-struct is_propagate_const_noncopyable : std::false_type {};
-
-template <class T>
-struct is_propagate_const_noncopyable<std::experimental::propagate_const<T>> : std::true_type {};
-#endif
-
-template <class T>
-struct is_propagate_const_copyable<ceto::propagate_const<T>> : std::true_type {};
-
 template <typename T>
 concept IsStrongPtr = IsBasicStrongPtr<std::remove_cvref_t<T>>
-                      || (is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>)
-#if defined(CETO_HAS_PROP_CONST_STD_EXP)
-                      || (is_propagate_const_noncopyable<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(std::experimental::get_underlying(std::declval<T>()))>>)
-#endif
-                      ;
+                      || (is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicStrongPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
 
 template <typename T>
 concept IsWeakPtr = IsBasicWeakPtr<std::remove_cvref_t<T>> ||
-                    (is_propagate_const_copyable<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
+                    (is_propagate_const<std::remove_cvref_t<T>>::value && IsBasicWeakPtr<std::remove_cvref_t<decltype(ceto::get_underlying(std::declval<T>()))>>);
 
 template <typename T>
 concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename std::remove_cvref_t<T>::value_type>>;
@@ -211,6 +185,60 @@ auto make_unique_propagate_const(A&&... args) -> auto {
     return ceto::propagate_const<std::unique_ptr<T>>(std::make_unique<T>(std::forward<A>(args)...));
 }
 
+template <typename Target, typename Source>
+auto asinstance(const ceto::propagate_const<std::shared_ptr<Source>>& orig)
+    -> std::optional<ceto::propagate_const<std::shared_ptr<Target>>>
+{
+    if (auto casted = std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))) {
+        return ceto::propagate_const<std::shared_ptr<Target>>{std::move(casted)};
+    }
+    return std::nullopt;
+}
+
+template <typename Target, typename Source>
+auto asinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) 
+    -> std::optional<ceto::propagate_const<std::shared_ptr<Target>>> 
+{
+    if (!orig) {
+        return std::nullopt;
+    }
+
+    return ceto::asinstance<Target>(*orig);
+}
+
+template <typename Target, typename Source>
+auto asinstance_assert(const ceto::propagate_const<std::shared_ptr<Source>>& orig)
+    -> ceto::propagate_const<std::shared_ptr<Target>>
+{
+    // this will std::terminate if the cast returns nullptr
+    return ceto::propagate_const<std::shared_ptr<Target>>{std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig))};
+}
+
+template <typename Target, typename Source>
+auto asinstance_assert(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) 
+    -> ceto::propagate_const<std::shared_ptr<Target>>
+{
+    if (!orig) {
+        std::cerr << "expected non-null arg to asinstance_assert\n" << std::endl;
+        std::terminate();
+    }
+    return ceto::asinstance_assert<Target>(*orig);
+}
+
+template <typename Target, typename Source>
+bool isinstance(const ceto::propagate_const<std::shared_ptr<Source>>& orig) {
+    return std::dynamic_pointer_cast<Target>(ceto::get_underlying(orig)) != nullptr;
+}
+
+template <typename Target, typename Source>
+bool isinstance(const std::optional<ceto::propagate_const<std::shared_ptr<Source>>>& orig) {
+    if (!orig) {
+        return false;
+    }
+
+    return ceto::isinstance<Target>(*orig);
+}
+
 // Notes regarding a non-removed call_or_construct implementation (resurrecting it would require fixing breakage since introducing const by default / propagate_const by default:
 // ceto::call_or_construct() works for many cases but currently unused (class lookup instead) due to relying on built-in C++ CTAD for [Foo(), Foo(), Foo()].
 // (our manually implemented codegen (decltype of first element) from py14 still works with call_or_construct based construction).
@@ -220,6 +248,12 @@ auto make_unique_propagate_const(A&&... args) -> auto {
 template <class T>
 std::enable_if_t<std::is_base_of_v<object, T>, const ceto::propagate_const<std::shared_ptr<T>>>  // We now autoderef all shared/unique_ptrs not just to ceto class instances. doing the same for lambda capture might go a bit too far - don't want to encourange writing shared_ptr<vector<int>> instead of creating a wrapper class instance that's automatically placed in the capture list
 constexpr default_capture(ceto::propagate_const<std::shared_ptr<T>> t) {
+    return t;
+}
+
+template <class T>
+std::enable_if_t<std::is_base_of_v<object, T>, const std::optional<ceto::propagate_const<std::shared_ptr<T>>>>
+constexpr default_capture(std::optional<ceto::propagate_const<std::shared_ptr<T>>> t) {
     return t;
 }
 

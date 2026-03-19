@@ -793,7 +793,8 @@ def quote_expander(node):
             for r in replacements:
                 repr = repr.replace(r.ast_repr(preserve_source_loc=False, ceto_evalable=True), r.name)
             # having quote return a Node rather than the concrete subclass seems to reduce boilerplate in macros
-            repr = "asinstance(" + repr + ", Node)"
+            # TODO revisit this ^ now that we're using the ternary operator more for expression-if
+            repr = "asinstance_assert(" + repr + ", Node)"
             expanded = parse(repr).args[0]
             for r in replacements:
                 expanded = replace_node(expanded, lambda n: quote_expander(replacements[r]) if n.name == r.name else n)
@@ -901,7 +902,7 @@ def prepare_macro_ready_callback(module):
             for param in defmacro_node.args[1:]:
                 if isinstance(param, TypeOp) and param_name == param.lhs.name:
                     if isinstance(param.rhs, Identifier):
-                        init_param = "asinstance(" + init_param + ", " + param.rhs.name + ")"
+                        init_param = "asinstance_assert(" + init_param + ", " + param.rhs.name + ")"
                     elif isinstance(param.rhs, ListLiteral):
                         init_param = init_param + ".args"
                     elif isinstance(param.rhs, BitwiseOrOp):
@@ -910,11 +911,11 @@ def prepare_macro_ready_callback(module):
                             alternate_type = non_none[0]
                         else:
                             alternate_type = "Node"
-                        init_param = "if (CETO_PRIVATE_params.find('" + param_name + "') != CETO_PRIVATE_params.end():\n" + indt * 2 + "asinstance(CETO_PRIVATE_params.at('" + param_name + "'), " + alternate_type + ")\n" + indt + "else:\n" + indt * 2 + "CETO_PRIVATE_none: " + alternate_type  + " = None; CETO_PRIVATE_none\n" + indt + ")\n"
+                        init_param = "if (CETO_PRIVATE_params.find('" + param_name + "') != CETO_PRIVATE_params.end():\n" + indt * 2 + "asinstance(CETO_PRIVATE_params.at('" + param_name + "'), " + alternate_type + ")\n" + indt + "else:\n" + indt * 2 + "CETO_PRIVATE_none: " + alternate_type + "|None = None; CETO_PRIVATE_none\n" + indt + ")\n"
                     break
 
             impl_str += indt + param_name + " = " + init_param + "\n"
-        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip>"
+        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip>|None"
 
         # avoid error C2526: 'macro_impl0': C linkage function cannot return C++ class
         # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
@@ -923,7 +924,7 @@ def prepare_macro_ready_callback(module):
 unsafe.extern(std.variant)
 if (_MSC_VER:
     def (force_instantiate_template_msvc_hack:
-        vrnt:std.variant<Node, ceto.macros.Skip> = {}
+        vrnt:std.variant<Node, ceto.macros.Skip>|None = {}
         static_cast<void>(vrnt)
     )
 ): preprocessor
@@ -1015,12 +1016,12 @@ if (_MSC_VER:
 
         if sys.platform == "win32":
             include_opts = include_opts.replace('-I', '/I')
-            build_command = f"cl.exe /std:c++20 /Wall /permissive- /EHsc {include_opts} /LD /Fe:{dll_path} {dll_cpp}"
+            build_command = f"cl.exe /std:c++20 /Wall /permissive- /EHsc /DCETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION {include_opts} /LD /Fe:{dll_path} {dll_cpp}"
         else:
             dll_options = f"-fPIC -shared -Wl,-soname,{dll_path}.so -ldl"
             if sys.platform == "darwin":
                 dll_options = "-dynamiclib"
-            build_command = f"c++ -Wall -Wextra -std=c++20 -O2 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
+            build_command = f"c++ -Wall -Wextra -std=c++20 -DCETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION -O2 {include_opts} {dll_options} -o {dll_path} {dll_cpp}"
 
         print(build_command)
         result = subprocess.run(

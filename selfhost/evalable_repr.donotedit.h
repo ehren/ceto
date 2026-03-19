@@ -57,11 +57,13 @@ auto generate_loc(const ceto__private__T135& node) -> void {
                             (this -> repr) += ", ";
 
                 }
-                (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+                (this -> repr) += (std::string {"]"} + ((this -> ceto_evalable) ?
+                [&]() {
                 return ": Node";
-            } else {
+            }() :
+                [&]() {
                 return "";
-            }}()
+            }())
  + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
@@ -70,11 +72,13 @@ auto generate_loc(const ceto__private__T135& node) -> void {
         inline auto visit(const UnOp&  node) -> void override {
             (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             (*ceto::mad(ceto::bounds_check((*ceto::mad(node)).args, 0))).accept((*this));
-            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            (this -> repr) += (std::string {"]"} + ((this -> ceto_evalable) ?
+                [&]() {
                 return ": Node";
-            } else {
+            }() :
+                [&]() {
                 return "";
-            }}()
+            }())
  + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
@@ -83,11 +87,13 @@ auto generate_loc(const ceto__private__T135& node) -> void {
         inline auto visit(const LeftAssociativeUnOp&  node) -> void override {
             (this -> repr) += ((*ceto::mad(node)).classname() + "(\"" + (*ceto::mad(node)).op + "\", [");
             (*ceto::mad(ceto::bounds_check((*ceto::mad(node)).args, 0))).accept((*this));
-            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+            (this -> repr) += (std::string {"]"} + ((this -> ceto_evalable) ?
+                [&]() {
                 return ": Node";
-            } else {
+            }() :
+                [&]() {
                 return "";
-            }}()
+            }())
  + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";
@@ -101,11 +107,13 @@ auto generate_loc(const ceto__private__T135& node) -> void {
                 (*ceto::mad(arg)).accept((*this));
                 (this -> repr) += ", ";
     return ceto::LoopControl::Continue;
-});            (this -> repr) += (std::string {"]"} + [&]() {if (this -> ceto_evalable) {
+});            (this -> repr) += (std::string {"]"} + ((this -> ceto_evalable) ?
+                [&]() {
                 return ": Node";
-            } else {
+            }() :
+                [&]() {
                 return "";
-            }}()
+            }())
  + ", ");
             this -> generate_loc(node);
             (this -> repr) += ")";

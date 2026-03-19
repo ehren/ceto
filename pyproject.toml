@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=42",
-    "pybind11>=2.10.0",
+    "pybind11>=3.0.2",
     "cpyparsing",  # pyparsing also supported
     "colorama",
 ]

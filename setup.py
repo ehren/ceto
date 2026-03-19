@@ -62,7 +62,7 @@ else:
 ext_modules = [
     Pybind11Extension("ceto._abstractsyntaxtree",
         ["selfhost/ast.donotedit.cpp"],
-        #define_macros = [('VERSION_INFO', __version__)],
+        define_macros = [('CETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION', '1')],  # pybind11 holder type needs to be default constructible
         cxx_std=20,
         include_dirs=["include", "selfhost/thirdparty", "include/kit_local_shared_ptr"],
         extra_compile_args=_extra_compile_args,

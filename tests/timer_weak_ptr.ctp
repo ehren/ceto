@@ -6,6 +6,8 @@
 
 include <thread>
 
+unsafe.extern (std.thread, std.this_thread)
+
 class (Delegate:
     def (action:
         std.cout << "action\n"
@@ -16,16 +18,18 @@ class (Delegate:
     )
 )
 
-unsafe.extern (std.thread, std.this_thread)
-
 class (Timer:
 
-    _delegate: Delegate
+    _delegate: Delegate|None
 
     _thread: std.thread = {}
 
     def (start: mut:
-        w: weak:Delegate = self._delegate
+        if (not self._delegate:
+            return
+        )
+
+        w: weak:Delegate = self._delegate.value()
 
         self._thread = std.thread(lambda(:
             while (True:

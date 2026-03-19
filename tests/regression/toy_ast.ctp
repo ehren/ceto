@@ -7,7 +7,7 @@
 
 
 class (Node:
-    func : Node
+    func : Node|None
     args : [Node]
     
     # <strike>TODO</strike>no: "overridable" / "canoverride" / "yesoverride"? otherwise "final" by default
@@ -40,7 +40,7 @@ class (Identifier(Node):
         self.name = name
         # super.init(nullptr, std.vector<Node> {})  # this works but should't be required
         # super.init(nullptr, {})  # likewise - also not semantically identical (use of '{' and '}' nearly as dangerous as other c++ compat unsafe features)
-        super.init(nullptr, [] : Node)  # nicer ceto solution
+        super.init(None, [] : Node)  # nicer ceto solution
         # super.init(nullptr, [])  # transpiler error. TODO maybe just print "[]" as "{}" as a final fallback? only as a param?
     )
 )
@@ -58,7 +58,7 @@ def (main:
     args2 = [id, id_node] : Node   # ensure specifying type of list element instead of type of list works too
     static_cast<void>(args2)  # unused
     node = Node(id, args)
-    std.cout << (node.args[0] == nullptr)
+    std.cout << (node.func == None)
     std.cout << "\n" << node.repr()
     std.cout << node.args[0].repr()
 )

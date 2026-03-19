@@ -1,41 +1,5 @@
 
 #include "ceto.h"
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-
-;
-#include "ceto_private_listcomp.donotedit.h"
-;
-#include "ceto_private_boundscheck.donotedit.h"
-;
-#include "ceto_private_convenience.donotedit.h"
-;
-#include "ceto_private_append_to_pushback.donotedit.h"
-;
 #include <thread>
 ;
 struct Delegate : public ceto::shared_object, public std::enable_shared_from_this<Delegate> {
@@ -54,12 +18,15 @@ struct Delegate : public ceto::shared_object, public std::enable_shared_from_thi
 ;
 struct Timer : public ceto::shared_object, public std::enable_shared_from_this<Timer> {
 
-    ceto::propagate_const<std::shared_ptr<const Delegate>> _delegate;
+    std::optional<ceto::propagate_const<std::shared_ptr<const Delegate>>> _delegate;
 
     std::thread _thread = {};
 
         inline auto start() -> void {
-            const std::weak_ptr<const Delegate> w = ceto::get_underlying((this -> _delegate)); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::get_underlying((this -> _delegate))), std::remove_cvref_t<decltype(w)>>);
+            if (!(this -> _delegate)) {
+                return;
+            }
+            const std::weak_ptr<const Delegate> w = ceto::get_underlying((*ceto::mad_smartptr(this -> _delegate)).value()); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(ceto::get_underlying((*ceto::mad_smartptr(this -> _delegate)).value())), std::remove_cvref_t<decltype(w)>>);
             (this -> _thread) = std::thread([w = ceto::default_capture(w)]() {
                     while (true) {                        std::this_thread::sleep_for(std::chrono::seconds(1));
                         if (const auto s = (*ceto::mad(w)).lock()) {
@@ -77,14 +44,14 @@ struct Timer : public ceto::shared_object, public std::enable_shared_from_this<T
         }
 
         inline auto clear_delegate() -> void {
-            (this -> _delegate) = nullptr;
+            (this -> _delegate) = CETO_NONE;
         }
 
         ~Timer() {
             std::cout << "Timer destruct\n";
         }
 
-    explicit Timer(ceto::propagate_const<std::shared_ptr<const Delegate>> _delegate) : _delegate(std::move(_delegate)) {}
+    explicit Timer(std::optional<ceto::propagate_const<std::shared_ptr<const Delegate>>> _delegate) : _delegate(_delegate) {}
 
     Timer() = delete;
 

@@ -298,7 +298,7 @@ defmacro (def (args, loc = std.source_location.current(), block): return_type, a
     def_maker = lambda(def_args:
         call: Node = Call(quote(def), def_args)
         if (return_type:
-            typed_call: Node = quote(unquote(call) : unquote(return_type))
+            typed_call: Node = quote(unquote(call) : unquote(return_type.value()))
             typed_call
         else:
             call

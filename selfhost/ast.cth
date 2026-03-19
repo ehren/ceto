@@ -15,10 +15,10 @@ class (Source:
 )
 
 struct (SourceLoc:
-    source: Source
+    source: Source|None
     loc: int
 
-    def (init, source: Source = None, loc: int = 0:
+    def (init, source: Source|None = None, loc: int = 0:
         self.source = source
         self.loc = loc
     )
@@ -30,18 +30,18 @@ struct (SourceLoc:
 class (Scope)
 
 class (Node:
-    func: Node
+    func: Node|None
     args: [Node]
     source: SourceLoc
 
-    def (init, func, args, source = SourceLoc():
+    def (init, func: Node|None, args, source = SourceLoc():
         self.func = func
         self.args = args
         self.source = source
     )
 
-    declared_type: Node = None
-    scope: Scope = None
+    declared_type: Node|None = None
+    scope: Scope|None = None
     _parent: Node:weak = {}
 
     def (classname: virtual:
@@ -55,8 +55,8 @@ class (Node:
     ) : std.string
 
     def (name: virtual:
-        return std.nullopt
-    ) : std.optional<std.string>
+        return None
+    ) : std.string|None
 
     def (accept: virtual, visitor: Visitor:mut:ref:
         visitor.visit(*this)
@@ -72,13 +72,13 @@ class (Node:
     ) : [Node]
 
     def (clone: virtual:
-        none: Node:mut = None
+        none: Node|None = None
         c: mut = Node(if (self.func: self.func.clone() else: none), self.cloned_args(), self.source)
         c._parent = self._parent
         return c
     ) : Node:mut
 
-    def (equals: virtual, other: Node:
+    def (equals: virtual, other: Node|None:
         if (other == None:
             return False
         )
@@ -122,13 +122,13 @@ class (Node:
         )
 
         return self
-    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node>
+    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node|None>
 
     def (replace, replacer:
         return self.clone().replace(replacer)
         #shallow_copy: mut = *this #std.make_shared<Node.class>(*this)
         #return shallow_copy.replace(replacer)
-    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node>
+    ) : Node:mut:requires:std.is_same_v<decltype(replacer(std.declval<Node>())), Node|None>
 
 #    def (replace: mut, pattern: Node, replacement: Node:
 #        if (self.equals(pattern):
@@ -154,7 +154,7 @@ class (Node:
             if (pattern.equals(orig): 
                 replacement
             else:
-                none: Node = None
+                none: Node|None = None
                 none
                 #same: Node = orig
                 #same
@@ -167,7 +167,7 @@ class (Node:
             if (pattern.equals(orig): 
                 replacement
             else:
-                none: Node = None
+                none: Node|None = None
                 none
                 #orig
             )
@@ -220,11 +220,20 @@ class (Node:
 #    ) : Node
 
     def (parent:
-        return self._parent.lock()
-    ) : Node
+        p = self._parent.lock()
+        if (p != nullptr:
+            return p
+        else:
+            return None
+        )
+    ) : Node|None
 
-    def (set_parent: mut, p: Node:
-        self._parent = ceto.get_underlying(p)
+    def (set_parent: mut, p: Node|None:
+        if (p:
+            self._parent = ceto.get_underlying(p.value())
+        else:
+            self._parent.reset()
+        )
     )
 
     def (destruct: virtual:
@@ -308,7 +317,7 @@ class (BinOp(Node):
         return c
     ) : Node:mut
 
-    def (equals: override, other_node: Node:
+    def (equals: override, other_node: Node|None:
         other = asinstance(other_node, BinOp)
 
         if (not other:
@@ -337,7 +346,7 @@ class (TypeOp(BinOp):
 )
 
 class (SyntaxTypeOp(TypeOp):
-    synthetic_lambda_return_lambda : Node = None
+    synthetic_lambda_return_lambda: Node|None = None
 
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
@@ -457,13 +466,13 @@ class (Identifier(Node):
 
     def (name: override:
         return self._name
-    ) : std.optional<std.string>
+    ) : std.string|None
 
     def (accept: override, visitor: Visitor:mut:ref:
         visitor.visit(*this)
     )
 
-    def (equals: override, other_node: Node:
+    def (equals: override, other_node: Node|None:
         other = asinstance(other_node, Identifier)
         if (not other:
             return False
@@ -550,10 +559,10 @@ class (Template(Node):
 
 class (StringLiteral(Node):
     str : string
-    prefix : Identifier
-    suffix : Identifier
+    prefix : Identifier|None
+    suffix : Identifier|None
 
-    def (init, str, prefix: Identifier = None, suffix: Identifier = None, source = SourceLoc():
+    def (init, str, prefix: Identifier|None = None, suffix: Identifier|None = None, source = SourceLoc():
         self.str = str
         self.prefix = prefix
         self.suffix = suffix
@@ -584,7 +593,7 @@ class (StringLiteral(Node):
         visitor.visit(*this)
     )
 
-    def (equals: override, other_node: Node:
+    def (equals: override, other_node: Node|None:
         other = asinstance(other_node, StringLiteral)
         if (not other:
             return False
@@ -617,9 +626,9 @@ class (StringLiteral(Node):
 
 class (IntegerLiteral(Node):
     integer_string : std.string
-    suffix : Identifier
+    suffix : Identifier|None
 
-    def (init, integer_string, suffix: Identifier = None, source = SourceLoc():
+    def (init, integer_string, suffix: Identifier|None = None, source = SourceLoc():
         self.integer_string = integer_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -641,7 +650,7 @@ class (IntegerLiteral(Node):
         return c
     ) : Node:mut
 
-    def (equals: override, other_node: Node:
+    def (equals: override, other_node: Node|None:
         other = asinstance(other_node, IntegerLiteral)
         if (not other:
             return False
@@ -660,9 +669,9 @@ class (IntegerLiteral(Node):
 
 class (FloatLiteral(Node):
     float_string : std.string
-    suffix : Identifier
+    suffix : Identifier|None
 
-    def (init, float_string, suffix : Identifier, source = SourceLoc():
+    def (init, float_string, suffix: Identifier|None = None, source = SourceLoc():
         self.float_string = float_string
         self.suffix = suffix
         super.init(None, {}, source)
@@ -676,7 +685,7 @@ class (FloatLiteral(Node):
         visitor.visit(*this)
     )
 
-    def (equals: override, other_node: Node:
+    def (equals: override, other_node: Node|None:
         other = asinstance(other_node, FloatLiteral)
         if (not other:
             return False

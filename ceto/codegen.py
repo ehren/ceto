@@ -2566,7 +2566,7 @@ def ban_reference_in_subexpression(code: str, node: Node, cx: Scope):
         _ban_check_cache.processing_nodes.add(node_id)
 
         parent = node.parent
-        if node in parent.args and parent.func and parent.func.name not in ["if", "decltype", "isinstance", "asinstance"]:
+        if node in parent.args and parent.func and parent.func.name not in ["if", "decltype", "isinstance", "asinstance", "asinstance_assert"]:
             others = [codegen_node(a, cx) for a in node.parent.args if a != node]
 
             others_simple = " && ".join("!std::is_reference_v<decltype" + _strip_outer_double_parentheses("(" + c + ")") + "> && std::is_fundamental_v<std::remove_cvref_t<decltype(" + c + ")>>" for c in others)
@@ -2685,7 +2685,7 @@ def codegen_call(node: Call, cx: Scope):
                 param_strs.append(param_str)
 
             return "requires (" + ", ".join(param_strs) + ") {" + codegen_block(block, cx) + "}"
-        elif func_name in ["asinstance", "isinstance"]:
+        elif func_name in ["asinstance", "isinstance", "asinstance_assert"]:
             if not len(node.args) == 2:
                 raise CodeGenError("asinstance takes 2 args", node)
             class_name = node.args[1]
@@ -2700,12 +2700,7 @@ def codegen_call(node: Call, cx: Scope):
                 if classdef.is_concrete:
                     raise CodeGenError("is/asinstance arg can't be a template", classdef)
                 raise CodeGenError("is/asinstance arg must be a class", node)
-            cast_string = "std::dynamic_pointer_cast<" + const_specifier + class_name.name + ">(ceto::get_underlying(" + codegen_node(node.args[0], cx) + "))"
-            if func_name == "isinstance":
-                cast_string = "(" + cast_string + " != nullptr)"
-            else:
-                cast_string = "ceto::propagate_const<std::shared_ptr<" + const_specifier + class_name.name + ">>(" + cast_string + ")"
-            return cast_string
+            return "ceto::" + func_name + "<" + const_specifier + class_name.name + ">(" + codegen_node(node.args[0], cx) + ")"
         elif func_name == "namespace":
             if len(node.args) == 0:
                 raise CodeGenError("empty namespace args", node)

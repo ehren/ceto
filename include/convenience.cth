@@ -2,7 +2,7 @@
 defmacro(def (func_name<T>:specifier, args), func_name, T: Identifier, specifier: Node|None, args: [Node]:
     template_header: Node = quote(template<typename:unquote(T)>)
     specified_template = if (specifier:
-        specified: Node = quote(unquote(template_header):unquote(specifier))
+        specified: Node = quote(unquote(template_header):unquote(specifier.value()))
         specified
     else:
         template_header
@@ -28,7 +28,7 @@ defmacro (def (destruct:specifier:
 ), specifier: Node|None:
     name: Node = quote(destruct)
     destructor = if (specifier:
-        specified: Node = quote(unquote(name): unquote(specifier))
+        specified: Node = quote(unquote(name): unquote(specifier.value()))
         specified
     else:
         name
@@ -67,16 +67,14 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 
     vacuous: Node = quote(True)
     assertion: mut = vacuous
-    map_type: mut = None.Node
-    # ^ Note that we can't write mut:Node/Node:mut on the left (assertion and
-    # map_type must be mut vars holding instances of Node aka Node:const aka const:Node)
+    map_type: mut: Node|None = None
 
     for (kv in keyvals:
         type = quote(std.(unquote(map))<decltype(unquote(kv.args.at(0))), decltype(unquote(kv.args.at(1)))>)
         if (not map_type:
             map_type = type
         else:
-            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type), unquote(map_type)>)
+            assertion = quote(unquote(assertion) and std.is_same_v<unquote(type), unquote(map_type.value())>)
         )
         args.append(quote({unquote(kv.args.at(0)), unquote(kv.args.at(1))}))
         keys.append(kv.args.at(0))
@@ -91,17 +89,20 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
         )
     )
 
-    map_call = BracedCall(map_type, args)
+    map_type_val = map_type.value()
+    # we could special case ast Node subclasses but in general passing a reference (map_type.value()) along with a vector is not safe (e.g. reference could be to a (or owned by an) element of the vector)
+    # (or see if we can use c++26 reflection to determine if a call takes its args by val or by ref)
+    map_call = BracedCall(map_type_val, args)
 
     if (west_specifier:
-        map_type = quote(unquote(west_specifier): unquote(map_type))
+        map_type = quote(unquote(west_specifier.value()): unquote(map_type.value()))
     )
 
     if (east_specifier:
-        map_type = quote(unquote(map_type): unquote(east_specifier))
+        map_type = quote(unquote(map_type.value()): unquote(east_specifier.value()))
     )
 
-    return quote(unquote(m): unquote(map_type) = lambda(:
+    return quote(unquote(m): unquote(map_type.value()) = lambda(:
         static_assert(unquote(assertion), "all key-value pairs must be of the same type in map literal")
         unquote(map_call)
     ) ())
@@ -176,7 +177,7 @@ defmacro (isinstance(x, Foo) and expr, x: Identifier, Foo, expr:
     state: mut = State()
     new_expr = expr.replace(lambda (orig:
         if (orig.name() != x.name():
-            return None.Node
+            return None
         )
         parent: mut = orig.parent()
         ignore: mut = False
@@ -205,12 +206,12 @@ defmacro (isinstance(x, Foo) and expr, x: Identifier, Foo, expr:
             parent = parent.parent()
         )
         if (ignore:
-            return None.Node
+            return None
         )
         capture: mut = state
         capture.did_replace = True
         return x_as_foo
-    ))
+    ): Node|None)
 
     if (not state.did_replace:
         return None

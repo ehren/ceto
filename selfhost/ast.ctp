@@ -53,7 +53,9 @@ lambda(m : mut:auto:ref:ref:
         "header_file_h", &SourceLoc.header_file_h)
 
     # Node:mut even though we're using Node aka Node:const (std::shared_ptr<const Node>) elsewhere - see https://github.com/pybind/pybind11/issues/131
-    node : mut = py.class_<Node.class, Node:mut>(m, "Node").def_readwrite(
+    node : mut = py.class_<Node.class, Node:mut>(m, "Node").def(
+        py.init<Node|None, const:std.vector<Node>:ref, const:SourceLoc:ref>(),
+        py.arg("func"), py.arg("args"), py.arg("source") = SourceLoc()).def_readwrite(
     "func", &Node.func).def_readwrite(
     "args", &Node.args).def_readwrite(
     "declared_type", &Node.declared_type).def_readwrite(
@@ -145,7 +147,7 @@ lambda(m : mut:auto:ref:ref:
         py.arg("name"), py.arg("source") = SourceLoc())
 
     py.class_<StringLiteral.class, StringLiteral:mut>(m, "StringLiteral", node).def(
-        py.init<const:string:ref, Identifier, Identifier, const:SourceLoc:ref>(),
+        py.init<const:string:ref, Identifier|None, Identifier|None, const:SourceLoc:ref>(),
         py.arg("str"), py.arg("prefix"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "str", &StringLiteral.str).def_readwrite(
         "prefix", &StringLiteral.prefix).def_readwrite(
@@ -153,13 +155,13 @@ lambda(m : mut:auto:ref:ref:
         "escaped", &StringLiteral.escaped)
 
     py.class_<IntegerLiteral.class, IntegerLiteral:mut>(m, "IntegerLiteral", node).def(
-        py.init<const:string:ref, Identifier, const:SourceLoc:ref>(),
+        py.init<const:string:ref, Identifier|None, const:SourceLoc:ref>(),
         py.arg("integer_string"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "integer_string", &IntegerLiteral.integer_string).def_readonly(
         "suffix", &IntegerLiteral.suffix)
 
     py.class_<FloatLiteral.class, FloatLiteral:mut>(m, "FloatLiteral", node).def(
-        py.init<const:string:ref, Identifier, const:SourceLoc:ref>(),
+        py.init<const:string:ref, Identifier|None, const:SourceLoc:ref>(),
         py.arg("float_string"), py.arg("suffix"), py.arg("source") = SourceLoc()).def_readonly(
         "float_string", &FloatLiteral.float_string).def_readonly(
         "suffix", &FloatLiteral.suffix)
