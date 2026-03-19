@@ -1077,59 +1077,8 @@ def codegen_if(ifcall : Call, cx):
     else_start = "} else {\n"
     block_closing = "}"
 
-    if ifkind == "noscope":
-        # python-style "noscope" ifs requires a specifier (TODO probably should just remove this silliness)
-
-        if is_expression or not cx.in_function_body:
-            raise CodeGenError("unscoped if disallowed in expression context", ifcall)
-
-        # scopes = [ifnode.cond, ifnode.thenblock]
-        scopes = [ifnode.thenblock]
-        if ifnode.elseblock is not None:
-            scopes.append(ifnode.elseblock)
-        else:
-            raise CodeGenError("unscoped if without else block disallowed", ifcall)
-
-        for elifcond, elifblock in ifnode.eliftuples:
-            # scopes.append(elifcond)
-            scopes.append(elifblock)
-
-        assigns = { scope:[] for scope in scopes }
-
-        for scope in scopes:
-            assigns[scope].extend(find_all(scope, test=lambda n: isinstance(n, Assign), stop=creates_new_variable_scope))
-
-        print("all if assigns", list(assigns))
-
-        declarations = { scope:{} for scope in scopes }
-
-        for scope in scopes:
-            for assign in assigns[scope]:
-                if hasattr(assign, "already_declared"):
-                    continue
-                if isinstance(assign.lhs, Identifier) and not assign.lhs.declared_type and not assign.scope.find_def(assign.lhs):
-                    if assign.lhs.name in declarations[scope]:
-                        continue
-                    declarations[scope][assign.lhs.name] = assign, codegen_node(assign.rhs, cx)
-                else:
-                    raise CodeGenError("unexpected non-simple assign in noscope if", assign)
-
-        if all(declarations[scopes[0]].keys() == declarations[s].keys() for s in scopes[1:]):
-            # allow noscope
-
-            for lhs in declarations[scopes[0]]:
-                assign, declname = declarations[scopes[0]][lhs]
-                assign.already_declared = True
-                cpp += f"decltype({declname}) {lhs};\n" + indt
-            for scope in scopes[1:]:
-                for lhs in declarations[scope]:
-                    assign, declname = declarations[scope][lhs]
-                    assign.already_declared = True
-        else:
-            raise CodeGenError("unbalanced assignments in if prevents noscope", ifnode)
-
-    # TODO should these be disallowed with expression ifs?
-    elif ifkind == "preprocessor":
+    # TODO some of these should definitely be disallowed with expression-if
+    if ifkind == "preprocessor":
         if_start = "\n#if "
         block_opening = "\n"
         elif_start = "\n#elif "
@@ -2469,10 +2418,8 @@ def codegen_assign(node: Assign, cx: Scope):
 
     assign_str = " ".join([lhs_str, node.op, rhs_str])
 
-    # if not hasattr(node, "already_declared") and find_def(node.lhs) is None:
-    # NOTE 'already_declared' is kludge only for 'noscope' ifs
     lhs_def = node.scope.find_def(node.lhs)
-    if not hasattr(node, "already_declared") and lhs_def is None:
+    if lhs_def is None:
         if cx.in_class_body:
             # "scary" may introduce ODR violation (it's fine or at least no more dangerous than C++ with explicit use of decltype in a function param list...)
             # see https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3897.html
