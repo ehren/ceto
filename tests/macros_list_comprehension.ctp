@@ -1,9 +1,9 @@
-# Test Output: 02468790200400600800
+# Test Output: 0246879020040060080002468123123
 
 include <ranges>
 
 include (macros_list_comprehension)
-#include (listcomp_simple)
+# include (listcomp_simple)
 
 def (main:
     l = [x, for (x in std.ranges.iota_view(0, 10)), if (x % 2 == 0)]
@@ -28,19 +28,28 @@ def (main:
 
     list_of_lists = [[1, 2, 3], [2, 3, 4], [3, 4, 5]]
 
-    for (i in [x, for(x in list_of_lists[0])]:
+    # this works even though list_of_lists[0] is a reference passed by ref to the lambda
+    # because the one argument lambda makes no captures (is stateless)
+    for (i in [x, for (x in list_of_lists[0])]:
         std.cout << i
     )
 
-    # errors due to the pass by ref to 1-arg immediately invoked lambda in non-simple (.reserve handling) listcomp impl
-    # the pass by ref to a 1 arg func is only allowed so long as the func is stateless (simple function or non-capturing lambda), which fails for the below
+    # these next two fail with the complicated/prereserving listcom implementation (but not the simple/non-prereserving implementation)
 
-    #for (i in [x*list_of_lists[0][0], for(x in list_of_lists[0])]:
-    #    std.cout << i
-    #)
+    # even though list_of_lists[0] is passed as an arg to the lambda, using list_of_lists[0][0] means list_of_lists is also by-ref captured (immediately invoked lambdas that capture use c++ [&] ref capture)
+    # for (i in [x*list_of_lists[0][0], for (x in list_of_lists[0])]:
+    #     std.cout << i
+    # )
 
-    #captured = list_of_lists[0][0]
-    #for (i in [x*captured, for(x in list_of_lists[0])]:
+    captured = list_of_lists[0][0]
+    # same restriction here (any capture by the lambda prevents pass by ref of the iterable
+    # for (i in [x*captured, for (x in list_of_lists[0])]:
     #    std.cout << i
-    #)
+    # )
+
+    # a capture is ok here because there's no reference passed as the argument for the iterable to the lambda
+    copy_of_list = list_of_lists[0]
+    for (i in [x*captured, for (x in copy_of_list)]:
+        std.cout << i
+    )
 )

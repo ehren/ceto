@@ -19,13 +19,11 @@ defmacro (print(args), args: [Node]:
 )
 
 defmacro (print(args, file=optional_stream), args: [Node], file: Identifier, optional_stream: Node|None:
-    stream = if (optional_stream:
-        optional_stream
+    result: mut = if (optional_stream:
+        optional_stream.value()
     else:
         quote(std.cout)
     )
-
-    result: mut = stream
 
     if (optional_stream and optional_stream.equals(quote(std.cerr)):
         result = quote(unquote(result) << "🙀")

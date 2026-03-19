@@ -1,3 +1,4 @@
+unsafe()  # for the explicit ref capture lambda
 
 struct (Bar:
     x: int = 1

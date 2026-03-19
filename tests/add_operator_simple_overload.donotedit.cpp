@@ -40,7 +40,7 @@
 ;
 struct Foo : public ceto::shared_object, public std::enable_shared_from_this<Foo> {
 
-        inline auto operator+(const ceto::propagate_const<std::shared_ptr<const Foo>>&  foo) const -> auto {
+        inline auto operator+(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  foo) const -> auto {
             const auto self = ceto::shared_from(this);
             printf("adding foo and foo (in the member function)\n");
             return self;
@@ -56,30 +56,30 @@ auto operator+(const ceto__private__T11& other) const -> auto {
 };
 
     template <typename ceto__private__T22>
-auto operator+(const ceto::propagate_const<std::shared_ptr<const Foo>>&  f, const ceto__private__T22& x) -> auto {
+auto operator+(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f, const ceto__private__T22& x) -> auto {
         printf("adding foo and other\n");
         return (*ceto::mad(f)).operator+(x);
     }
 
     template <typename ceto__private__T13>
-auto operator+(const ceto__private__T13& x, const ceto::propagate_const<std::shared_ptr<const Foo>>&  f) -> auto {
+auto operator+(const ceto__private__T13& x, const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f) -> auto {
         printf("adding other and foo\n");
         return (*ceto::mad(f)).operator+(x);
     }
 
-    inline auto operator+(const ceto::propagate_const<std::shared_ptr<const Foo>>&  x, const ceto::propagate_const<std::shared_ptr<const Foo>>&  f) -> auto {
+    inline auto operator+(const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  x, const ceto::nonullpropconst<std::shared_ptr<const Foo>>&  f) -> auto {
         printf("adding foo and foo\n");
         return (*ceto::mad(f)).operator+(x);
     }
 
     auto main() -> int {
-        ceto::make_shared_propagate_const<const Foo>() + 1;
+        ceto::make_shared_nonullpropconst<const Foo>() + 1;
         printf("done\n");
-        1 + ceto::make_shared_propagate_const<const Foo>();
+        1 + ceto::make_shared_nonullpropconst<const Foo>();
         printf("done\n");
-        const auto two_foo = (ceto::make_shared_propagate_const<const Foo>() + ceto::make_shared_propagate_const<const Foo>());
+        const auto two_foo = (ceto::make_shared_nonullpropconst<const Foo>() + ceto::make_shared_nonullpropconst<const Foo>());
         printf("done\n");
-        1 + two_foo + 1 + ceto::make_shared_propagate_const<const Foo>();
+        1 + two_foo + 1 + ceto::make_shared_nonullpropconst<const Foo>();
         printf("done\n");
     }
 

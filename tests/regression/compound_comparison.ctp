@@ -16,9 +16,11 @@ def (main:
     )
     
     l = [1, 2, 3]
-    lp = &l
-    if (0 < lp->size():    # parsed correctly as a comparison
-        std.cout << "ok"
+    unsafe (:  # for the address taking raw pointers and pointer deref
+        lp = &l
+        if (0 < lp->size():    # parsed correctly as a comparison
+            std.cout << "ok"
+        )
     )
     
     a : mut:std.array<int, 3>   # mut because a const uninitialized declaration will be a C++ error
