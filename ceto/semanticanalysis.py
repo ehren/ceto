@@ -915,7 +915,7 @@ def prepare_macro_ready_callback(module):
                     break
 
             impl_str += indt + param_name + " = " + init_param + "\n"
-        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip>|None"
+        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip, std.nullopt_t>"
 
         # avoid error C2526: 'macro_impl0': C linkage function cannot return C++ class
         # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
@@ -924,7 +924,7 @@ def prepare_macro_ready_callback(module):
 unsafe.extern(std.variant)
 if (_MSC_VER:
     def (force_instantiate_template_msvc_hack:
-        vrnt:std.variant<Node, ceto.macros.Skip>|None = {}
+        vrnt:std.variant<Node, ceto.macros.Skip, std.nullopt_t> = {}
         static_cast<void>(vrnt)
     )
 ): preprocessor

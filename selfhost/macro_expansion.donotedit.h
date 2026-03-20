@@ -327,7 +327,7 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         return submatches;
     }
 
-using MacroImplResult = std::optional<std::variant<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::macros::Skip>>;
+using MacroImplResult = std::variant<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::macros::Skip,std::nullopt_t>;
     inline auto call_macro_impl(const ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  match) -> MacroImplResult {
         const auto handle = CETO_DLOPEN((*ceto::mad((*ceto::mad(definition)).dll_path)).c_str());
         if (!handle) {
@@ -397,19 +397,16 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                     }
                     const auto match = macro_matches(node, (*ceto::mad(definition)).pattern_node, (*ceto::mad(definition)).parameters);
                     if (match) {
-                        const auto result_variant_optional = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
-                        if (result_variant_optional) {
-                            const auto result_variant = (*ceto::mad_smartptr(result_variant_optional)).value();
-                            if (std::holds_alternative<ceto::macros::Skip>(result_variant)) {
-                                (*ceto::mad((*ceto::mad(this -> skipped_definitions)).at(node))).push_back(definition);
-                            } else {
-                                const auto replacement = std::get<ceto::nonullpropconst<std::shared_ptr<const Node>>>(result_variant);
-                                if (replacement != node) {
-                                    (*ceto::mad(this -> replacements)).insert_or_assign(node, replacement);
-                                    (*ceto::mad(replacement)).accept((*this));
-                                    const auto did_expand = true;
-                                    return ExpandResult{did_expand, node, this -> skipped_definitions};
-                                }
+                        const auto result_variant = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
+                        if (std::holds_alternative<ceto::macros::Skip>(result_variant)) {
+                            (*ceto::mad((*ceto::mad(this -> skipped_definitions)).at(node))).push_back(definition);
+                        } else if (!std::holds_alternative<std::nullopt_t>(result_variant)) {
+                            const auto replacement = std::get<ceto::nonullpropconst<std::shared_ptr<const Node>>>(result_variant);
+                            if (replacement != node) {
+                                (*ceto::mad(this -> replacements)).insert_or_assign(node, replacement);
+                                (*ceto::mad(replacement)).accept((*this));
+                                const auto did_expand = true;
+                                return ExpandResult{did_expand, node, this -> skipped_definitions};
                             }
                         }
                     }

@@ -313,7 +313,7 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 ) : std.optional<std.map<std.string, Node>>
 
 
-MacroImplResult: using = std.variant<Node, ceto.macros.Skip>|None
+MacroImplResult: using = std.variant<Node, ceto.macros.Skip, std.nullopt_t>
 
 def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.string, Node>:ref:
     handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak it for now
@@ -369,20 +369,17 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
                 match = macro_matches(node, definition.pattern_node, definition.parameters)
                 if (match:
                     #std.cout << "found match\n"
-                    result_variant_optional = call_macro_impl(definition, match.value())
-                    if (result_variant_optional:
-                        result_variant = result_variant_optional.value()
-                        if (std.holds_alternative<ceto.macros.Skip>(result_variant):
-                            self.skipped_definitions.at(node).push_back(definition)
-                        else:
-                            replacement = std.get<Node>(result_variant)
-                            if (replacement != node:
-                                #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
-                                self.replacements.insert_or_assign(node,  replacement)
-                                replacement.accept(*this)
-                                did_expand = True
-                                return ExpandResult(did_expand, node, self.skipped_definitions)
-                            )
+                    result_variant = call_macro_impl(definition, match.value())
+                    if (std.holds_alternative<ceto.macros.Skip>(result_variant):
+                        self.skipped_definitions.at(node).push_back(definition)
+                    elif not std.holds_alternative<std.nullopt_t>(result_variant):
+                        replacement = std.get<Node>(result_variant)
+                        if (replacement != node:
+                            #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
+                            self.replacements.insert_or_assign(node,  replacement)
+                            replacement.accept(*this)
+                            did_expand = True
+                            return ExpandResult(did_expand, node, self.skipped_definitions)
                         )
                     )
                 )
