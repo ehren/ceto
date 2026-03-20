@@ -1,7 +1,11 @@
 # Test Output: 0
 
+class (Foo:
+    pass
+)
+
 class (Node:
-    func : Node:mut
+    func : Foo:mut
     args : [Node:mut]
 
     def (init,
@@ -18,6 +22,8 @@ class (Node:
 )
 
 def (main:
-    std.cout << Node(nullptr, [] : Node:mut).args.size()
+    arr: [Node:mut] = []
+    foo: mut = Foo()
+    std.cout << Node(foo, arr).args.size()
 )
     

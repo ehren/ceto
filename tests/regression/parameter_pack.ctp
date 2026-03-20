@@ -27,7 +27,7 @@
 # }
     
 def (tprintf, format: const:char:pointer: # base function
-    std.cout << format
+    std.cout << format  # TODO ban even referencing a pointer (hidden deref here)
 )
     
 def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic function
@@ -35,13 +35,13 @@ def (tprintf: template<typename:T, typename:...:Targs>,  # recursive variadic fu
        value: T, 
        Fargs: Targs:...:
       
-    while (*format != char'\0':
-        if (*format == char'%':
+    while (unsafe(*format) != char'\0':
+        if (unsafe(*format) == char'%':
             std.cout << value
             tprintf(format + 1, Fargs...) # recursive call
             return
         )
-        std.cout << *format
+        std.cout << unsafe(*format)
         format = format + 1
     )
 )
