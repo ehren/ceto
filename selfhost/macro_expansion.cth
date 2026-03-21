@@ -313,10 +313,10 @@ def (macro_matches, node: Node, pattern: Node, params: const:std.map<std.string,
 ) : std.optional<std.map<std.string, Node>>
 
 
-MacroImplResult: using = std.variant<Node, ceto.macros.Skip, std.nullopt_t>
+#MacroImplResult: using = std.variant<Node, ceto.macros.Skip, std.nullopt_t>
 
 def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.string, Node>:ref:
-    handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak it for now
+    handle = CETO_DLOPEN(definition.dll_path.c_str())  # just leak the handle for now (and let dlsym manage multiple openings)
     if (not handle:
         throw (std.runtime_error("Failed to open macro dll: " + definition.dll_path))
     )
@@ -324,9 +324,9 @@ def (call_macro_impl, definition: MacroDefinition, match: const:std.map<std.stri
     if (not fptr:
         throw (std.runtime_error("Failed to find symbol " + definition.impl_function_name + " in dll " + definition.dll_path))
     )
-    f = reinterpret_cast<decltype(+(lambda(m: const:std.map<std.string, Node>:ref, None): MacroImplResult))>(fptr)  # no explicit function ptr syntax yet/ever(?)
-    return (*f)(match)
-) : MacroImplResult
+    f = reinterpret_cast<decltype(+(lambda(m: const:std.map<std.string, Node>:ref, gensym_ptr: decltype(&gensym), macro_return_none_ptr: decltype(&macro_return_none), macro_return_skip_ptr: decltype(&macro_return_skip), macro_return_none()): Node))>(fptr)  # no explicit function ptr syntax yet/ever(?)
+    return (*f)(match, &gensym, &macro_return_none, &macro_return_skip)
+) : Node
 
 struct (ExpandResult:
     did_expand: bool
@@ -366,18 +366,30 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
                 if (skip_definition:
                     continue
                 )
-                match = macro_matches(node, definition.pattern_node, definition.parameters)
+                match = macro_matches(node, definition.pattern_node, definition.parameters, )
                 if (match:
                     #std.cout << "found match\n"
-                    result_variant = call_macro_impl(definition, match.value())
-                    if (std.holds_alternative<ceto.macros.Skip>(result_variant):
+#                    result_variant = call_macro_impl(definition, match.value())
+#                    if (std.holds_alternative<ceto.macros.Skip>(result_variant):
+#                        self.skipped_definitions.at(node).push_back(definition)
+#                    elif not std.holds_alternative<std.nullopt_t>(result_variant):
+#                        replacement = std.get<Node>(result_variant)
+#                        if (replacement != node:
+#                            #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
+#                            self.replacements.insert_or_assign(node,  replacement)
+#                            replacement.accept(*this)
+#                            did_expand = True
+#                            return ExpandResult(did_expand, node, self.skipped_definitions)
+#                        )
+#                    )
+                    result = call_macro_impl(definition, match.value())
+                    if (result == macro_return_skip():
                         self.skipped_definitions.at(node).push_back(definition)
-                    elif not std.holds_alternative<std.nullopt_t>(result_variant):
-                        replacement = std.get<Node>(result_variant)
-                        if (replacement != node:
+                    elif result != macro_return_none():
+                        if (result != node:
                             #std.cout << "found replacement for " << node.repr() << ": " << replacement.repr() << std.endl
-                            self.replacements.insert_or_assign(node,  replacement)
-                            replacement.accept(*this)
+                            self.replacements.insert_or_assign(node,  result)
+                            result.accept(*this)
                             did_expand = True
                             return ExpandResult(did_expand, node, self.skipped_definitions)
                         )
@@ -501,6 +513,11 @@ struct (MacroDefinitionVisitor(BaseVisitor<MacroDefinitionVisitor>):
 )
 
 def (expand_macros, node: Module, on_visit: std.function<void(MacroDefinition, const:std.unordered_map<Node, Node>:ref)>:
+    # make sure the first caller of these is not from a macro dll so that the static vars point to instances allocated on the main pybind module dll heap
+    static_cast<void>(gensym())
+    static_cast<void>(macro_return_none())
+    static_cast<void>(macro_return_skip())
+
     visitor: mut = MacroDefinitionVisitor(on_visit)
     node.accept(visitor)
     return visitor.replacements

@@ -895,8 +895,9 @@ def prepare_macro_ready_callback(module):
         print("mcd", defmacro_node)
 
         # prepare a function that implements the body of the "defmacro"
-        impl_str = f'def ({mcd.impl_function_name}: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref:\n'
+        impl_str = f'def ({mcd.impl_function_name}: extern:"C":CETO_EXPORT:noinline, CETO_PRIVATE_params: const:std.map<std.string, Node>:ref, gensym_ptr: decltype(unsafe(&gensym)), macro_return_none_ptr: decltype(unsafe(&macro_return_none)), macro_return_skip_ptr: decltype(unsafe(&macro_return_skip)):\n'
         indt = "    "
+        impl_str += indt + "gensym = gensym_ptr\n"  # shadow outer gensym (declared in ast.cth but located in main ast.ctp pybind dll.
         for param_name in parameters:
             init_param = 'CETO_PRIVATE_params.at("' + param_name + '")'
             for param in defmacro_node.args[1:]:
@@ -915,12 +916,13 @@ def prepare_macro_ready_callback(module):
                     break
 
             impl_str += indt + param_name + " = " + init_param + "\n"
-        impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip, std.nullopt_t>"
+        #impl_str += indt + "pass\n): std.variant<Node, ceto.macros.Skip, std.nullopt_t>"
+        impl_str += indt + "pass\n): Node"
 
         # avoid error C2526: 'macro_impl0': C linkage function cannot return C++ class
         # from illusory0x0 https://stackoverflow.com/questions/22263380/c-linkage-function-cannot-return-c-class-error-resulting-from-the-contents-o/79591778#79591778
         # another alternative on msvc would be to drop the extern "C" and use GetProcAddress(handle, MAKEINTRESOURCEA(1)) # might even get away without making a .def file to specify ordinal 1 since only 1 func in dll: https://stackoverflow.com/questions/57968865/exporting-a-c-function-from-a-dll-without-extern-c#comment102348942_57968998
-        impl_str = """
+        impl_str2 = """
 unsafe.extern(std.variant)
 if (_MSC_VER:
     def (force_instantiate_template_msvc_hack:
@@ -930,7 +932,8 @@ if (_MSC_VER:
 ): preprocessor
 """ + impl_str
 
-        extern_cpp_decl, msvc_hack, macro_impl = parse(impl_str).args
+        macro_impl = parse(impl_str).args[0]
+        #extern_cpp_decl, msvc_hack, macro_impl = parse(impl_str).args
         assert isinstance(macro_impl, TypeOp)
         impl_def = macro_impl.args[0]
         assert isinstance(impl_def, Call)
@@ -939,6 +942,20 @@ if (_MSC_VER:
         defmacro_body = defmacro_node.args[-1]
         assert isinstance(defmacro_body, Block)
 
+        def replace_none_skip(n):
+            if n.name == "None" and is_return(n.parent):
+                parent = n.parent
+                while parent:
+                    if isinstance(parent, Call) and parent.func.name in ["def", "lambda", "class", "struct"]:
+                        # this is a return in a nested control structure - ignore it
+                        return n
+                    parent = parent.parent
+                # this is a top-level defmacro return - replace with call to func
+                return Call(Identifier("macro_return_none_ptr"), [])
+            return n
+
+        replace_node(defmacro_body, replace_none_skip)
+
         expanded = quote_expander(defmacro_body)
         impl_block.args = impl_block.args[:-1] + expanded.args
 
@@ -946,7 +963,8 @@ if (_MSC_VER:
 
         impl_index = next(i for i, v in enumerate(macro_impl_module.args) if v.args and v.args[0].args and v.args[0].args[0].args and v.args[0].args[0].args[0].name == mcd.impl_function_name)
         macro_impl_module_args = macro_impl_module.args[0:impl_index + 1]
-        macro_impl_module.args = [extern_cpp_decl, msvc_hack] + macro_impl_module_args
+        #macro_impl_module.args = [extern_cpp_decl, msvc_hack] + macro_impl_module_args
+        macro_impl_module.args = macro_impl_module_args
 
         package_dir = os.path.dirname(__file__)
         selfhost_dir = os.path.join(package_dir, os.pardir, "selfhost")

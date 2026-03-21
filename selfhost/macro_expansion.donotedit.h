@@ -112,8 +112,8 @@ struct MacroScope : public ceto::object {
         return false;
     }
 
-    template <typename ceto__private__T140, typename ceto__private__T241>
-auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T241& pattern_args,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  params, const decltype(false)& is_reversed = false) -> std::optional<std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
+    template <typename ceto__private__T114, typename ceto__private__T215>
+auto macro_matches_args(const ceto__private__T114& args, const ceto__private__T215& pattern_args,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  params, const decltype(false)& is_reversed = false) -> std::optional<std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>> {
         auto pattern_iterator { (*ceto::mad(pattern_args)).begin() } ;
         auto arg_iterator { (*ceto::mad(args)).begin() } ;
         auto submatches { std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>>{} } ;
@@ -221,20 +221,20 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         } else if (const auto binop_pattern = ceto::asinstance<const BinOp>(pattern)) {
             std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>> idents = std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}; static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(std::vector<ceto::nonullpropconst<std::shared_ptr<const Node>>>{}), std::remove_cvref_t<decltype(idents)>>);
             
-                auto&& ceto__private__intermediate42 = (*ceto::mad(binop_pattern)).args;
+                auto&& ceto__private__intermediate16 = (*ceto::mad(binop_pattern)).args;
 
-                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate42)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate16)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size44 = std::size(ceto__private__intermediate42);
-                for (size_t ceto__private__idx43 = 0; ; ceto__private__idx43++) {
-                    if (std::size(ceto__private__intermediate42) != ceto__private__size44) {
+                size_t ceto__private__size18 = std::size(ceto__private__intermediate16);
+                for (size_t ceto__private__idx17 = 0; ; ceto__private__idx17++) {
+                    if (std::size(ceto__private__intermediate16) != ceto__private__size18) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx43 >= ceto__private__size44) {
+                    if (ceto__private__idx17 >= ceto__private__size18) {
                         break ;
                     }
-                    const auto a = ceto__private__intermediate42[ceto__private__idx43];
+                    const auto a = ceto__private__intermediate16[ceto__private__idx17];
                                     if (ceto::isinstance<const Identifier>(a)) {
                                 (idents).push_back(a);
                             }
@@ -244,16 +244,16 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
     
                 static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(idents)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size49 = std::size(idents);
-                for (size_t ceto__private__idx48 = 0; ; ceto__private__idx48++) {
-                    if (std::size(idents) != ceto__private__size49) {
+                size_t ceto__private__size23 = std::size(idents);
+                for (size_t ceto__private__idx22 = 0; ; ceto__private__idx22++) {
+                    if (std::size(idents) != ceto__private__size23) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx48 >= ceto__private__size49) {
+                    if (ceto__private__idx22 >= ceto__private__size23) {
                         break ;
                     }
-                    const auto i = idents[ceto__private__idx48];
+                    const auto i = idents[ceto__private__idx22];
                                     const auto search = (*ceto::mad(params)).find((*ceto::mad_smartptr((*ceto::mad(i)).name())).value());
                             if (search != (*ceto::mad(params)).end()) {
                                 const auto param_name = (search -> first);
@@ -264,20 +264,20 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
                                 if (const auto or_param = ceto::asinstance<const BitwiseOrOp>((*ceto::mad(typed_param)).rhs())) {
                                     if (((*ceto::mad((*ceto::mad(or_param)).lhs())).name() == "None") || ((*ceto::mad((*ceto::mad(or_param)).rhs())).name() == "None")) {
                             
-                                            auto&& ceto__private__intermediate45 = (*ceto::mad(binop_pattern)).args;
+                                            auto&& ceto__private__intermediate19 = (*ceto::mad(binop_pattern)).args;
 
-                                            static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate45)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                                            static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate19)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                                            size_t ceto__private__size47 = std::size(ceto__private__intermediate45);
-                                            for (size_t ceto__private__idx46 = 0; ; ceto__private__idx46++) {
-                                                if (std::size(ceto__private__intermediate45) != ceto__private__size47) {
+                                            size_t ceto__private__size21 = std::size(ceto__private__intermediate19);
+                                            for (size_t ceto__private__idx20 = 0; ; ceto__private__idx20++) {
+                                                if (std::size(ceto__private__intermediate19) != ceto__private__size21) {
                                                     std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                                                     std::terminate();
                                                 }
-                                                if (ceto__private__idx46 >= ceto__private__size47) {
+                                                if (ceto__private__idx20 >= ceto__private__size21) {
                                                     break ;
                                                 }
-                                                const auto a = ceto__private__intermediate45[ceto__private__idx46];
+                                                const auto a = ceto__private__intermediate19[ceto__private__idx20];
                                                                                 if ((*ceto::mad(a)).name() != (*ceto::mad(i)).name()) {
                                                                             const auto m = macro_matches(node, a, params);
                                                                             if (m) {
@@ -327,8 +327,7 @@ auto macro_matches_args(const ceto__private__T140& args, const ceto__private__T2
         return submatches;
     }
 
-using MacroImplResult = std::variant<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::macros::Skip,std::nullopt_t>;
-    inline auto call_macro_impl(const ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  match) -> MacroImplResult {
+    inline auto call_macro_impl(const ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>&  definition,  const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  match) -> ceto::nonullpropconst<std::shared_ptr<const Node>> {
         const auto handle = CETO_DLOPEN((*ceto::mad((*ceto::mad(definition)).dll_path)).c_str());
         if (!handle) {
             throw std::runtime_error("Failed to open macro dll: " + (*ceto::mad(definition)).dll_path);
@@ -337,10 +336,10 @@ using MacroImplResult = std::variant<ceto::nonullpropconst<std::shared_ptr<const
         if (!fptr) {
             throw std::runtime_error("Failed to find symbol " + (*ceto::mad(definition)).impl_function_name + " in dll " + (*ceto::mad(definition)).dll_path);
         }
-        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  m) -> MacroImplResult {
-                return CETO_NONE;
+        const auto f = reinterpret_cast<decltype(+[]( const std::map<std::string,ceto::nonullpropconst<std::shared_ptr<const Node>>> &  m, const decltype(&gensym)  gensym_ptr, const decltype(&macro_return_none)  macro_return_none_ptr, const decltype(&macro_return_skip)  macro_return_skip_ptr) -> ceto::nonullpropconst<std::shared_ptr<const Node>> {
+                return macro_return_none();
                 })>(fptr);
-        return (*f)(match);
+        return (*f)(match, (&gensym), (&macro_return_none), (&macro_return_skip));
     }
 
 struct ExpandResult : public ceto::object {
@@ -379,14 +378,14 @@ struct MacroDefinitionVisitor : public BaseVisitor<MacroDefinitionVisitor> {
 
         inline auto expand(const ceto::nonullpropconst<std::shared_ptr<const Node>>&  node) -> auto {
             auto const * scope { (&(*ceto::mad_smartptr(this -> current_scope)).value()) -> get() } ;
-            while (scope) {                auto&& ceto__private__intermediate51 = scope -> macro_definitions;
-auto&& ceto__private__intermediate52 = ceto::util::reversed(ceto__private__intermediate51);
+            while (scope) {                auto&& ceto__private__intermediate25 = scope -> macro_definitions;
+auto&& ceto__private__intermediate26 = ceto::util::reversed(ceto__private__intermediate25);
 
-for( const auto &  definition : ceto__private__intermediate52) {
+for( const auto &  definition : ceto__private__intermediate26) {
                     auto skip_definition { false } ;
-                    auto&& ceto__private__intermediate50 = this -> skipped_definitions;
+                    auto&& ceto__private__intermediate24 = this -> skipped_definitions;
 
-for(  const auto & [key, defns] : ceto__private__intermediate50) {
+for(  const auto & [key, defns] : ceto__private__intermediate24) {
                         if (ceto::util::contains(defns, definition)) {
                             skip_definition = true;
                             break;
@@ -397,14 +396,13 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                     }
                     const auto match = macro_matches(node, (*ceto::mad(definition)).pattern_node, (*ceto::mad(definition)).parameters);
                     if (match) {
-                        const auto result_variant = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
-                        if (std::holds_alternative<ceto::macros::Skip>(result_variant)) {
+                        const auto result = call_macro_impl(definition, (*ceto::mad_smartptr(match)).value());
+                        if (result == macro_return_skip()) {
                             (*ceto::mad((*ceto::mad(this -> skipped_definitions)).at(node))).push_back(definition);
-                        } else if (!std::holds_alternative<std::nullopt_t>(result_variant)) {
-                            const auto replacement = std::get<ceto::nonullpropconst<std::shared_ptr<const Node>>>(result_variant);
-                            if (replacement != node) {
-                                (*ceto::mad(this -> replacements)).insert_or_assign(node, replacement);
-                                (*ceto::mad(replacement)).accept((*this));
+                        } else if ((result != macro_return_none())) {
+                            if (result != node) {
+                                (*ceto::mad(this -> replacements)).insert_or_assign(node, result);
+                                (*ceto::mad(result)).accept((*this));
                                 const auto did_expand = true;
                                 return ExpandResult{did_expand, node, this -> skipped_definitions};
                             }
@@ -427,20 +425,20 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                 (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             }
             
-                auto&& ceto__private__intermediate53 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate27 = (*ceto::mad(node)).args;
 
-                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate53)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate27)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size55 = std::size(ceto__private__intermediate53);
-                for (size_t ceto__private__idx54 = 0; ; ceto__private__idx54++) {
-                    if (std::size(ceto__private__intermediate53) != ceto__private__size55) {
+                size_t ceto__private__size29 = std::size(ceto__private__intermediate27);
+                for (size_t ceto__private__idx28 = 0; ; ceto__private__idx28++) {
+                    if (std::size(ceto__private__intermediate27) != ceto__private__size29) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx54 >= ceto__private__size55) {
+                    if (ceto__private__idx28 >= ceto__private__size29) {
                         break ;
                     }
-                    const auto arg = ceto__private__intermediate53[ceto__private__idx54];
+                    const auto arg = ceto__private__intermediate27[ceto__private__idx28];
                                     (*ceto::mad(arg)).accept((*this));
 
                 }
@@ -454,20 +452,20 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
             }
             (*ceto::mad((*ceto::mad(node)).func)).accept((*this));
             
-                auto&& ceto__private__intermediate56 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate30 = (*ceto::mad(node)).args;
 
-                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate56)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate30)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size58 = std::size(ceto__private__intermediate56);
-                for (size_t ceto__private__idx57 = 0; ; ceto__private__idx57++) {
-                    if (std::size(ceto__private__intermediate56) != ceto__private__size58) {
+                size_t ceto__private__size32 = std::size(ceto__private__intermediate30);
+                for (size_t ceto__private__idx31 = 0; ; ceto__private__idx31++) {
+                    if (std::size(ceto__private__intermediate30) != ceto__private__size32) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx57 >= ceto__private__size58) {
+                    if (ceto__private__idx31 >= ceto__private__size32) {
                         break ;
                     }
-                    const auto arg = ceto__private__intermediate56[ceto__private__idx57];
+                    const auto arg = ceto__private__intermediate30[ceto__private__idx31];
                                     (*ceto::mad(arg)).accept((*this));
 
                 }
@@ -498,16 +496,16 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
     
                 static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(match_args)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size60 = std::size(match_args);
-                for (size_t ceto__private__idx59 = 0; ; ceto__private__idx59++) {
-                    if (std::size(match_args) != ceto__private__size60) {
+                size_t ceto__private__size34 = std::size(match_args);
+                for (size_t ceto__private__idx33 = 0; ; ceto__private__idx33++) {
+                    if (std::size(match_args) != ceto__private__size34) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx59 >= ceto__private__size60) {
+                    if (ceto__private__idx33 >= ceto__private__size34) {
                         break ;
                     }
-                    const auto arg = match_args[ceto__private__idx59];
+                    const auto arg = match_args[ceto__private__idx33];
                                     const auto name = [&]() {if (ceto::isinstance<const Identifier>(arg)) {
                                 return (*ceto::mad_smartptr((*ceto::mad(arg)).name())).value();
                             } else if (!ceto::isinstance<const TypeOp>(arg)) {
@@ -534,20 +532,20 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
             auto s = ceto::make_unique_nonullpropconst<MacroScope>();
             (this -> current_scope) = std::move(s);
             
-                auto&& ceto__private__intermediate61 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate35 = (*ceto::mad(node)).args;
 
-                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate61)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate35)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size63 = std::size(ceto__private__intermediate61);
-                for (size_t ceto__private__idx62 = 0; ; ceto__private__idx62++) {
-                    if (std::size(ceto__private__intermediate61) != ceto__private__size63) {
+                size_t ceto__private__size37 = std::size(ceto__private__intermediate35);
+                for (size_t ceto__private__idx36 = 0; ; ceto__private__idx36++) {
+                    if (std::size(ceto__private__intermediate35) != ceto__private__size37) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx62 >= ceto__private__size63) {
+                    if (ceto__private__idx36 >= ceto__private__size37) {
                         break ;
                     }
-                    const auto arg = ceto__private__intermediate61[ceto__private__idx62];
+                    const auto arg = ceto__private__intermediate35[ceto__private__idx36];
                                     (*ceto::mad(arg)).accept((*this));
 
                 }
@@ -562,20 +560,20 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
                 return;
             }
             
-                auto&& ceto__private__intermediate64 = (*ceto::mad(node)).args;
+                auto&& ceto__private__intermediate38 = (*ceto::mad(node)).args;
 
-                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate64)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
+                static_assert(ceto::ContiguousContainer<std::remove_cvref_t<decltype(ceto__private__intermediate38)>>, "this loop requires a contiguous container (e.g. std.vector is contiguous, std.map is not)");
     
-                size_t ceto__private__size66 = std::size(ceto__private__intermediate64);
-                for (size_t ceto__private__idx65 = 0; ; ceto__private__idx65++) {
-                    if (std::size(ceto__private__intermediate64) != ceto__private__size66) {
+                size_t ceto__private__size40 = std::size(ceto__private__intermediate38);
+                for (size_t ceto__private__idx39 = 0; ; ceto__private__idx39++) {
+                    if (std::size(ceto__private__intermediate38) != ceto__private__size40) {
                         std::cerr << "Container size changed during iteration: " << __FILE__ << " line: "<< __LINE__ << "\n";
                         std::terminate();
                     }
-                    if (ceto__private__idx65 >= ceto__private__size66) {
+                    if (ceto__private__idx39 >= ceto__private__size40) {
                         break ;
                     }
-                    const auto arg = ceto__private__intermediate64[ceto__private__idx65];
+                    const auto arg = ceto__private__intermediate38[ceto__private__idx39];
                                     (*ceto::mad(arg)).accept((*this));
 
                 }
@@ -589,6 +587,9 @@ for(  const auto & [key, defns] : ceto__private__intermediate50) {
 };
 
     inline auto expand_macros(const ceto::nonullpropconst<std::shared_ptr<const Module>>&  node, const std::function<void(ceto::nonullpropconst<std::shared_ptr<const MacroDefinition>>, const std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> &)>  on_visit) -> std::unordered_map<ceto::nonullpropconst<std::shared_ptr<const Node>>,ceto::nonullpropconst<std::shared_ptr<const Node>>> {
+        static_cast<void>(gensym());
+        static_cast<void>(macro_return_none());
+        static_cast<void>(macro_return_skip());
         auto visitor { MacroDefinitionVisitor{on_visit} } ;
         (*ceto::mad(node)).accept(visitor);
         return (*ceto::mad(visitor)).replacements;

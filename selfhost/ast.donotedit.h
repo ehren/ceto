@@ -983,12 +983,11 @@ struct InfixWrapper_ : public Node {
 
 };
 
-    inline auto gensym() -> auto {
-        static unsigned long long counter { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(counter)>);
-        const auto s = ceto::make_shared_nonullpropconst<const Identifier>("ceto__private__ident__" + std::to_string(counter));
-        counter += 1;
-        return s;
-    }
+     extern "C" CETO_EXPORT auto gensym() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>>;
+
+     extern "C" CETO_EXPORT auto macro_return_skip() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>>;
+
+     extern "C" CETO_EXPORT auto macro_return_none() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>>;
 
 namespace ceto::macros {
     struct Skip : public ceto::object {

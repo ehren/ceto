@@ -834,13 +834,11 @@ class (InfixWrapper_(Node):
     ) : Node:mut
 )
 
-# TODO this should go in ast.ctp with a function pointer passed to the DLL (I think each DLL has it's own copy -- identifier reuse bugs)
-def (gensym:
-    counter: mut:static:unsigned:long:long = 0
-    s = Identifier("ceto__private__ident__" + std.to_string(counter))
-    counter += 1
-    return s
-)
+def (gensym: extern:"C":CETO_EXPORT:noinline): Identifier
+
+def (macro_return_skip: extern:"C":CETO_EXPORT:noinline): Identifier
+
+def (macro_return_none: extern:"C":CETO_EXPORT:noinline): Identifier
 
 namespace (ceto.macros:
     struct (Skip:

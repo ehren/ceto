@@ -2189,7 +2189,7 @@ def codegen_type(expr_node, type_node, cx):
             code = "std::tuple<" + ", ".join([codegen_type(expr_node, a, cx) for a in t.args]) + ">"
         elif isinstance(t, BitwiseOrOp):
             if t.rhs.name != "None":
-                raise CodeGenError("Only Foo|None types are supported (as an alias of std.optional. Use an explicit std.variant<Foo> if that's your intent.", t)
+                raise CodeGenError("Only Foo|None types are supported as an alias of std.optional (except for variadic defmacro params - but that's not where this error is occuring). Use an explicit std.variant if that's your intent.", t)
             return "std::optional<" + codegen_type(expr_node, t.lhs, cx) + ">"
         elif t.name == "pointer":
             code = "*"

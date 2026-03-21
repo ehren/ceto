@@ -18,6 +18,22 @@ unsafe()
 
 py: namespace = pybind11
 
+def (gensym: extern:"C":CETO_EXPORT:noinline:
+    counter: mut:static:unsigned:long:long = 0
+    s = Identifier("ceto_private_gensym_ident_" + std.to_string(counter))  # one day this should use __FILE__/__LINE__ to cut down on the source code churn
+    counter += 1
+    return s
+): Identifier
+
+def (macro_return_skip: extern:"C":CETO_EXPORT:noinline:
+    id: mut:static:auto = Identifier("ceto_private_macro_return_skip") : const
+    return id
+): Identifier
+
+def (macro_return_none: extern:"C":CETO_EXPORT:noinline:
+    id: mut:static:auto = Identifier("ceto_private_macro_return_none") : const
+    return id
+): Identifier
 
 def (module_path:
     module: py.object = py.module.import("ceto");

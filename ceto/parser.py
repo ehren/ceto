@@ -564,7 +564,7 @@ def parse_included_module(module: Identifier) -> typing.Tuple[str, str, Module]:
         module_path = os.path.join(dirname, module_name + ".cth")
         if os.path.isfile(module_path):
             cpp_module_path = os.path.join(dirname, module_name + ".donotedit.h")
-            repr_path = os.path.join(dirname, module_name + ".ceto_private.repr")
+            repr_path = os.path.join(dirname, module_name + ".cth.cetorepr")
             break
 
     if cpp_module_path is None:
@@ -689,7 +689,7 @@ def expand_includes(node: Module):
 
 def parse_from_filename(filename, add_slm = True):
     dirname = os.path.dirname(os.path.realpath(filename))
-    repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".donotedit.danger_passed_to_python_eval.cetorepr")
+    repr_path = os.path.join(dirname, pathlib.Path(filename).name + ".cetorepr")
 
     global add_standard_lib_macros
     add_standard_lib_macros = add_slm

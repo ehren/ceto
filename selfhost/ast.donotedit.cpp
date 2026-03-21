@@ -72,6 +72,23 @@
 ;
 // unsafe;
 namespace py = pybind11;
+     extern "C" CETO_EXPORT auto gensym() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>> {
+        static unsigned long long counter { 0 } ; static_assert(std::is_convertible_v<decltype(0), decltype(counter)>);
+        const auto s = ceto::make_shared_nonullpropconst<const Identifier>("ceto_private_gensym_ident_" + std::to_string(counter));
+        counter += 1;
+        return s;
+    }
+
+     extern "C" CETO_EXPORT auto macro_return_skip() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>> {
+        static auto id { ceto::make_shared_nonullpropconst<const Identifier>("ceto_private_macro_return_skip") } ;
+        return id;
+    }
+
+     extern "C" CETO_EXPORT auto macro_return_none() -> ceto::nonullpropconst<std::shared_ptr<const Identifier>> {
+        static auto id { ceto::make_shared_nonullpropconst<const Identifier>("ceto_private_macro_return_none") } ;
+        return id;
+    }
+
     inline auto module_path() -> auto {
         const py::object module = py::module::import("ceto"); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::module::import("ceto")), std::remove_cvref_t<decltype(module)>>);
         const py::object os = py::module::import("os"); static_assert(ceto::is_non_aggregate_init_and_if_convertible_then_non_narrowing_v<decltype(py::module::import("os")), std::remove_cvref_t<decltype(os)>>);
