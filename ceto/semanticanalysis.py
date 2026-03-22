@@ -1034,7 +1034,7 @@ if (_MSC_VER:
 
         if sys.platform == "win32":
             include_opts = include_opts.replace('-I', '/I')
-            build_command = f"cl.exe /std:c++20 /Wall /permissive- /EHsc /DCETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION {include_opts} /LD /Fe:{dll_path} {dll_cpp}"
+            build_command = f"cl.exe /std:c++20 /Wall /permissive- /Zc:__cplusplus /EHsc /DCETO_UNSAFE_ALLOW_NON_NULL_PTR_DEFAULT_CONSTRUCTION {include_opts} /LD /Fe:{dll_path} {dll_cpp}"
         else:
             dll_options = f"-fPIC -shared -Wl,-soname,{dll_path}.so -ldl"
             if sys.platform == "darwin":

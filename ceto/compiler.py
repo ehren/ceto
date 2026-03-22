@@ -121,7 +121,8 @@ def main():
             cleanup_patterns = [
                 "ceto__private__*",  # select selfhost sources pulled in automatically during macro compilation (TODO these are copies of e.g. ast.cth which is put into the package dir. There is a -I include option now added for ceto headers - macro system should use it instead of so much file copying)
                 "ceto_private_*.cth.macro_impl.*",
-                "ceto_private_*.ceto_private.repr",
+                "*.cetorepr",
+                "ceto_private_include_ast_scratch.ctp",
                 "ceto_private_*.donotedit.h",
                 "install_standard_library_macros",
                 "install_standard_library_macros.donotedit.cpp",

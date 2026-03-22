@@ -114,45 +114,6 @@ defmacro(m: west_specifier:std.map:east_specifier = {keyvals}, keyvals: [TypeOp]
 #    return quote(decltype(unquote(foo))::unquote(bar))
 #)
 
-namespace(ceto.util:
-    # TODO needs the syntax suggestion in boundscheck.cth
-    cpp'
-    template <template <class...> class T_container>
-    struct to {
-    };'
-
-    # c z: https://stackoverflow.com/a/79612294/1391250
-    # template <template <class...> class T_container, std::ranges::range T_range>
-    # auto operator|(T_range&& r, to<T_container>) {
-    #     using value_type = typename decltype(r.begin())::value_type;
-    #     return T_container<value_type>{r.begin(), r.end()};
-    # }
-
-    unsafe.extern(std.ranges.range,
-                  to, T_container  # TODO won't be necessary once 'to' is a ceto struct
-    )
-
-    def (operator("|"): template <template <class...>:class:T_container, std.ranges.range:T_range>,
-         r: mut:T_range:ref:ref, 
-         t: to<T_container>:
-
-        static_cast<void>(t)  # unused (TODO _: type for param decl without variable name)
-        value_type: using = typename : decltype(r.begin())::value_type
-        return T_container<value_type>{unsafe(r.begin()), unsafe(r.end())}
-    )
-)
-
-defmacro (view | [], view:
-    return quote(lambda(:
-        if (__cplusplus >= 202302L:
-            unsafe.extern (std.ranges.to)
-            return unquote(view) | std.ranges.to<std.vector>()
-        else:
-            return unquote(view) | ceto.util.to<std.vector>()
-        ): preprocessor
-    )())
-)
-
 defmacro (isinstance(x, (Foos,)), x, Foos: [Node]:
     unsafe.extern (std.views)
 
