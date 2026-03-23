@@ -18,12 +18,19 @@ struct is_vector<std::vector<T, A>> : std::true_type {};
 # TODO ".value" should print as "::value" here (we can't rewrite every blah<T>.foo to blah<T>::foo due to C++ template variables (e.g. https://stackoverflow.com/a/21163272/1391250) but codegen_attribute_access should print :: if the .func of blah<T> has a ClassDefinition
 is_vector_v: template<class:T>:concept = is_vector<T>::value
 
+# make sure .append doesn't become append_or_push_back in append_or_push_back itself
+cpp'#define CETO_PRIVATE_REAL_APPEND append
+'
+
 def (append_or_push_back: template<class:T, class:Y>,
                  non_vec: mut:T:ref:ref,
                       el: mut:Y:ref:ref:
     # note we rely on .append performing an autoderef here
-    return std.forward<T>(non_vec).append(std.forward<Y>(el))
+    return std.forward<T>(non_vec).CETO_PRIVATE_REAL_APPEND(std.forward<Y>(el))
 ) : decltype(auto):requires:not is_vector_v<T>
+
+cpp'#undef CETO_PRIVATE_REAL_APPEND
+'
 
 def (append_or_push_back: template<class: T>,
                      vec: mut:[T]:ref,
